@@ -4,7 +4,8 @@ info:
   version: 0.1.1
   description: |
     暫定API契約。
-    FieldとProgramの内部構造は仮定義。
+    FieldとStageはSchema以下のJSON Schemaを参照する。
+    Programの内部構造は仮定義。
 
 servers:
   - url: /api
@@ -82,8 +83,8 @@ paths:
 
   /field/{fieldId}:
     get:
-      summary: フィールドと配置候補を取得
-      description: 実行前に表示可能な候補情報を返す。
+      summary: フィールドを取得
+      description: 単一のフィールドの盤面情報を返す。
       operationId: getField
       parameters:
         - $ref: "#/components/parameters/FieldId"
@@ -305,7 +306,7 @@ paths:
 
   /tutorial/{tutorialId}:
     get:
-      summary: チュートリアルを取得
+      summary: チュートリアルのタイトル、説明、ステージを取得
       operationId: getTutorial
       parameters:
         - name: tutorialId
@@ -315,11 +316,11 @@ paths:
             type: string
       responses:
         "200":
-          description: チュートリアル
+          description: チュートリアルのタイトル、説明、ステージ
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Tutorial"
+                $ref: "#/components/schemas/TutorialDetail"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -365,16 +366,11 @@ components:
             $ref: "#/components/schemas/ApiError"
 
   schemas:
-    # TODO: 正式なフィールドJSON Schemaに差し替える
     Field:
-      type: object
-      additionalProperties: true
-      description: 暫定スキーマ。内部構造は未確定。
-      examples:
-        - id: crystal-route
-          title: 結晶の道
-          template: ["..??..", "S.??.G", "..__.."]
-          rockCounts: [1, 2]
+      $ref: "./field/field.schema.yaml"
+
+    Stage:
+      $ref: "./field/stage.schema.yaml"
 
     # TODO: 正式なプログラムJSON Schemaに差し替える
     Program:
@@ -432,8 +428,22 @@ components:
           type: string
         title:
           type: string
-        fieldId:
+
+    TutorialDetail:
+      type: object
+      description: チュートリアルのタイトル、説明、ステージを含む詳細情報
+      additionalProperties: false
+      required: [title, description, stage]
+      properties:
+        title:
           type: string
+          description: チュートリアルのタイトル
+        description:
+          type: string
+          description: チュートリアルの内容や取り組み方の説明のmarkdown
+        stage:
+          description: チュートリアルで使用するステージ
+          $ref: "#/components/schemas/Stage"
 
     ApiError:
       type: object
