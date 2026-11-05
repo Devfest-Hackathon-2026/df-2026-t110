@@ -55,12 +55,12 @@ func New(board game.Board, participants []Participant) (*Hub, error) {
 	if board == nil || len(participants) == 0 {
 		return nil, errors.New("board and at least one robot are required")
 	}
-	seen := make(map[game.RobotID]bool, len(participants))
+	seen := make(map[game.RobotID]struct{}, len(participants))
 	for _, p := range participants {
-		if p.ID == "" || p.Robot == nil || seen[p.ID] {
+		if _, exists := seen[p.ID]; p.ID == "" || p.Robot == nil || exists {
 			return nil, fmt.Errorf("invalid or duplicate robot %q", p.ID)
 		}
-		seen[p.ID] = true
+		seen[p.ID] = struct{}{}
 	}
 	return &Hub{board: board, participants: append([]Participant(nil), participants...)}, nil
 }
@@ -72,7 +72,7 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 	}
 	h.used = true
 	robots := make(map[game.RobotID]game.Robot, len(h.participants))
-	resumed := make(map[game.RobotID]bool, len(h.participants))
+	resumed := make(map[game.RobotID]struct{}, len(h.participants))
 	ids := make([]game.RobotID, 0, len(h.participants))
 	for _, p := range h.participants {
 		robots[p.ID] = p.Robot
@@ -129,7 +129,7 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 			if !ok || report.Outcomes[request.RobotID].Status != Stopped {
 				return report, fmt.Errorf("%w: unavailable robot %q", ErrProtocol, request.RobotID)
 			}
-			if resumed[request.RobotID] != (request.ReturnValue != nil) {
+			if _, exists := resumed[request.RobotID]; exists != (request.ReturnValue != nil) {
 				return report, fmt.Errorf("%w: unexpected or missing return value for %q", ErrProtocol, request.RobotID)
 			}
 			if value := request.ReturnValue; value != nil && value.Kind != game.Bool && value.Kind != game.Integer && value.Kind != game.Unit && value.Kind != game.Field {
@@ -139,7 +139,7 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 				return report, ErrResumeLimit
 			}
 			report.Resumes++
-			resumed[request.RobotID] = true
+			resumed[request.RobotID] = struct{}{}
 			step, err := robot.Next(ctx, request.ReturnValue)
 			if cancelErr := ctx.Err(); cancelErr != nil {
 				return report, cancelErr

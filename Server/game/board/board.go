@@ -83,17 +83,17 @@ func New(config Config) (*Board, error) {
 			}
 		}
 	}
-	occupied := make(map[Position]bool)
+	occupied := make(map[Position]struct{})
 	for id, robot := range config.Robots {
 		p := robot.Position
 		if id == "" || directionIndex(robot.Direction) < 0 || robot.DrillDurability < 0 ||
 			p.X < 0 || p.Y < 0 || p.X >= width || p.Y >= len(config.Terrain) {
 			return nil, fmt.Errorf("invalid robot %q", id)
 		}
-		if config.Terrain[p.Y][p.X] != Land || occupied[p] {
+		if _, exists := occupied[p]; config.Terrain[p.Y][p.X] != Land || exists {
 			return nil, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
-		occupied[p] = true
+		occupied[p] = struct{}{}
 	}
 	state := Snapshot{Terrain: config.Terrain, Robots: config.Robots}
 	return &Board{state: clone(state)}, nil
@@ -228,26 +228,27 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			counts[target]++
 		}
 	}
-	visiting := make(map[game.RobotID]bool)
-	resolved := make(map[game.RobotID]bool)
+	visiting := make(map[game.RobotID]struct{})
+	resolved := make(map[game.RobotID]struct{})
 	movable := make(map[game.RobotID]bool)
 	var canMove func(game.RobotID) bool
 	canMove = func(id game.RobotID) bool {
-		if resolved[id] {
+		if _, exists := resolved[id]; exists {
 			return movable[id]
 		}
-		if visiting[id] {
+		if _, exists := visiting[id]; exists {
 			return false
 		}
 		target, ok := targets[id]
 		if !ok || counts[target] != 1 {
-			resolved[id] = true
+			resolved[id] = struct{}{}
 			return false
 		}
-		visiting[id] = true
+		visiting[id] = struct{}{}
 		other, occupied := occupied[target]
 		movable[id] = !occupied || canMove(other)
-		visiting[id], resolved[id] = false, true
+		delete(visiting, id)
+		resolved[id] = struct{}{}
 		return movable[id]
 	}
 	next := clone(b.state)
