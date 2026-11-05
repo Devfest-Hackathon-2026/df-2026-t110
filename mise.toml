@@ -6,7 +6,7 @@ oapi-codegen = "2.8.2"
 
 [tasks.generate]
 description = "Generate API models and Echo server from the shared schemas"
-dir = "{{config_root}}"
+dir = "{{config_root}}/Server"
 sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml"]
 outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go"]
 run = [
