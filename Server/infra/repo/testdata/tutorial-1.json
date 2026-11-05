@@ -1,0 +1,17 @@
+{
+  "title": "ゴールを目指そう",
+  "description": "ロボットを前に進めて、ゴールまで連れて行きましょう。\n\n`forward` を使うと、ロボットは向いている方向に1マス進みます。",
+  "stage": {
+    "variants": [
+      {
+        "width": 4,
+        "height": 1,
+        "terrain": [["land", "land", "land", "land"]],
+        "objects": [{ "type": "goal", "position": { "x": 3, "y": 0 } }],
+        "robot": { "position": { "x": 0, "y": 0 }, "direction": "east" },
+        "drillLimit": 0
+      }
+    ],
+    "clearCondition": { "type": "reach_goal" }
+  }
+}
