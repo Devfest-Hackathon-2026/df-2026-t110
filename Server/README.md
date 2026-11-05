@@ -78,6 +78,33 @@ robot に渡す情報は、初回の `nil` と、以後の組み込み関数の�
 tick、盤面 snapshot、スケジューリング情報は渡しません。
 robot は内部の制御状態を保持し、board は盤面上の機体の状態を保持します。
 
+共通の `Action` / `Value` と hub は、`Docs/picolang.md` の action 全19種類を扱えます。
+`Action.Kind` に応じて次の引数を設定し、使用しない引数フィールドはゼロ値にします。
+
+| action | `Action` の引数 | 戻り値 | 最小 board |
+| --- | --- | --- | --- |
+| `forward`, `back` | なし | bool | 対応 |
+| `rotate` | `Turn`（left / right） | unit | 対応 |
+| `wait` | `Integer` | unit | not supported |
+| `pick_up`, `release`, `drill` | なし | bool | not supported |
+| `drill_durability` | なし | integer | 対応 |
+| `distance` | なし | integer | not supported |
+| `search_front`, `search_now` | なし | field | not supported |
+| `is_land`, `is_goal`, `is_checkpoint`, `is_laggage`, `is_sea`, `is_rock` | `Field` | bool | not supported |
+| `print_integer` | `Integer` | unit | not supported |
+| `print_bool` | `Bool` | unit | not supported |
+
+`Value.Kind` は bool・integer・unit・field を表し、それぞれ対応するフィールドを使います。
+`field` は board が発行する `FieldRef`（不透明な文字列参照）です。
+robot は検索結果の参照を保持し、`is_*` の引数として返せます。
+参照先は取得時点の不変な観測値とし、その管理と解釈は発行元の board が行います。
+hub は参照をそのまま仲介し、盤面 snapshot を robot に公開しません。
+
+未実装の action を最小 board に渡すと、盤面を更新せず `game.ErrNotSupported` を返します。
+呼び出し側は `errors.Is(err, game.ErrNotSupported)` で判定できます。
+これは board エラーとして全体を停止します。未実装 action の tick 消費量・実行処理と
+stdio コマンドの追加は、各実装を拡張する際に定義します。
+
 robot の実行エラーはその robot のみを停止させます。機体は盤面に残ります。
 board エラー、契約違反、tick 通知のエラー、中断、上限到達では全体を停止します。
 `Run` はエラーの場合も、最後に commit された tick、再開回数、各 robot の終了状態を返します。
@@ -104,8 +131,8 @@ stdio の `Session` は渡された `io.ReadCloser` を所有します。利用�
 `board.New` は地形・初期位置・向き・ドリル残量を検証し、設定をコピーします。
 `Snapshot` もコピーを返すので、呼び出し側から内部状態は変更できません。
 
-今回の対象は移動・回転・残量照会までです。picolang、wait、ゴール判定、
-岩の破壊、荷物、HTTP/SSE、既存 JSON スキーマとの接続は含みません。
+具体的な盤面処理は移動・回転・残量照会までです。picolang、wait、ゴール判定、
+岩の破壊、荷物の実行処理、HTTP/SSE、既存 JSON スキーマとの接続は含みません。
 
 ## 検証
 

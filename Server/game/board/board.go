@@ -187,7 +187,7 @@ func (b *Board) accept(reply *game.Reply) error {
 			}
 			c.pending = &a
 		default:
-			return fmt.Errorf("unsupported action %q", a.Kind)
+			return fmt.Errorf("%w: action %q", game.ErrNotSupported, a.Kind)
 		}
 	} else {
 		c.done = true

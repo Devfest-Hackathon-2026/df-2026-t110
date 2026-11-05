@@ -83,6 +83,15 @@ func TestEOFAppliesToAllRobots(t *testing.T) {
 	}
 }
 
+func TestDisplaysFieldReturnValue(t *testing.T) {
+	var output bytes.Buffer
+	r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 done\n")), &output))
+	step, err := r.Next(t.Context(), &game.Value{Kind: game.Field, Field: "board-a:observation"})
+	if err != nil || !step.Done || !strings.Contains(output.String(), `p1 => field("board-a:observation")`) {
+		t.Fatalf("field return value not displayed: %+v, %v, %s", step, err, output.String())
+	}
+}
+
 type observedInput struct {
 	*io.PipeReader
 	entered  chan struct{}

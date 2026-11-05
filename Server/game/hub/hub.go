@@ -132,7 +132,7 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 			if resumed[request.RobotID] != (request.ReturnValue != nil) {
 				return report, fmt.Errorf("%w: unexpected or missing return value for %q", ErrProtocol, request.RobotID)
 			}
-			if value := request.ReturnValue; value != nil && value.Kind != game.Bool && value.Kind != game.Integer && value.Kind != game.Unit {
+			if value := request.ReturnValue; value != nil && value.Kind != game.Bool && value.Kind != game.Integer && value.Kind != game.Unit && value.Kind != game.Field {
 				return report, fmt.Errorf("%w: unknown return value type %q", ErrProtocol, value.Kind)
 			}
 			if report.Resumes == options.MaxResumes {

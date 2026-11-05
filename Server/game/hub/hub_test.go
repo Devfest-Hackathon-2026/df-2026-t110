@@ -306,3 +306,126 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 		}
 	}
 }
+
+func TestRoutesAllActionBuiltins(t *testing.T) {
+	field := game.FieldRef("board-a:observation-1")
+	boolean := game.Value{Kind: game.Bool, Bool: true}
+	integer := game.Value{Kind: game.Integer, Integer: 3}
+	unit := game.Value{Kind: game.Unit}
+	observation := game.Value{Kind: game.Field, Field: field}
+	tests := []struct {
+		action game.Action
+		result game.Value
+	}{
+		{game.Action{Kind: game.Forward}, boolean},
+		{game.Action{Kind: game.Back}, boolean},
+		{game.Action{Kind: game.Rotate, Turn: game.Left}, unit},
+		{game.Action{Kind: game.Wait, Integer: 7}, unit},
+		{game.Action{Kind: game.PickUp}, boolean},
+		{game.Action{Kind: game.Release}, boolean},
+		{game.Action{Kind: game.Drill}, boolean},
+		{game.Action{Kind: game.DrillDurability}, integer},
+		{game.Action{Kind: game.Distance}, integer},
+		{game.Action{Kind: game.SearchFront}, observation},
+		{game.Action{Kind: game.SearchNow}, observation},
+		{game.Action{Kind: game.IsLand, Field: field}, boolean},
+		{game.Action{Kind: game.IsGoal, Field: field}, boolean},
+		{game.Action{Kind: game.IsCheckpoint, Field: field}, boolean},
+		{game.Action{Kind: game.IsLaggage, Field: field}, boolean},
+		{game.Action{Kind: game.IsSea, Field: field}, boolean},
+		{game.Action{Kind: game.IsRock, Field: field}, boolean},
+		{game.Action{Kind: game.PrintInteger, Integer: -42}, unit},
+		{game.Action{Kind: game.PrintBool, Bool: true}, unit},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.action.Kind), func(t *testing.T) {
+			boardCalls, robotCalls := 0, 0
+			b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
+				boardCalls++
+				switch boardCalls {
+				case 1:
+					if reply != nil {
+						t.Fatal("initial reply must be nil")
+					}
+					return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
+				case 2:
+					if reply == nil || reply.RobotID != "a" || reply.Action == nil || *reply.Action != tt.action || reply.Done || reply.Err != nil {
+						t.Fatalf("action or arguments lost in transit: %+v", reply)
+					}
+					return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &tt.result}}, nil
+				case 3:
+					if reply == nil || reply.RobotID != "a" || !reply.Done || reply.Action != nil || reply.Err != nil {
+						t.Fatalf("completion lost in transit: %+v", reply)
+					}
+					return game.Decision{Done: true}, nil
+				default:
+					t.Fatal("unexpected board call")
+					return game.Decision{}, nil
+				}
+			}}
+			r := robotFunc(func(_ context.Context, value *game.Value) (game.Step, error) {
+				robotCalls++
+				if robotCalls == 1 {
+					if value != nil {
+						t.Fatal("initial return value must be nil")
+					}
+					return game.Step{Action: &tt.action}, nil
+				}
+				if value == nil || *value != tt.result {
+					t.Fatalf("return value lost in transit: got %+v, want %+v", value, tt.result)
+				}
+				return game.Step{Done: true}, nil
+			})
+			h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
+			report, err := h.Run(t.Context(), limits())
+			if err != nil || report.Outcomes["a"].Status != hub.Completed || report.Resumes != 2 || boardCalls != 3 || robotCalls != 2 {
+				t.Fatalf("unexpected result: %+v, %v", report, err)
+			}
+		})
+	}
+}
+
+func TestFieldObservationRoundTrip(t *testing.T) {
+	observation := game.FieldRef("board-a:immutable-observation")
+	boardCalls, robotCalls := 0, 0
+	b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
+		boardCalls++
+		switch boardCalls {
+		case 1:
+			return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
+		case 2:
+			if reply.Action == nil || reply.Action.Kind != game.SearchFront {
+				t.Fatal("expected search_front")
+			}
+			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Field, Field: observation}}}, nil
+		case 3:
+			if reply.Action == nil || reply.Action.Kind != game.IsLand || reply.Action.Field != observation {
+				t.Fatalf("field reference not returned to issuing board: %+v", reply.Action)
+			}
+			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: true}}}, nil
+		default:
+			return game.Decision{Done: true}, nil
+		}
+	}}
+	r := robotFunc(func(_ context.Context, value *game.Value) (game.Step, error) {
+		robotCalls++
+		switch robotCalls {
+		case 1:
+			return game.Step{Action: &game.Action{Kind: game.SearchFront}}, nil
+		case 2:
+			if value == nil || value.Kind != game.Field {
+				t.Fatal("expected field return value")
+			}
+			return game.Step{Action: &game.Action{Kind: game.IsLand, Field: value.Field}}, nil
+		default:
+			if value == nil || value.Kind != game.Bool || !value.Bool {
+				t.Fatal("expected predicate result")
+			}
+			return game.Step{Done: true}, nil
+		}
+	})
+	h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
+	if _, err := h.Run(t.Context(), limits()); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -171,6 +171,8 @@ func formatValue(value game.Value) string {
 		return strconv.FormatInt(value.Integer, 10)
 	case game.Unit:
 		return "()"
+	case game.Field:
+		return fmt.Sprintf("field(%q)", value.Field)
 	default:
 		return "<invalid value>"
 	}

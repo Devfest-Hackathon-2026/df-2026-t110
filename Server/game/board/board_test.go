@@ -240,3 +240,33 @@ func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
 		t.Fatal("board did not finish")
 	}
 }
+
+func TestUnimplementedActionsAreNotSupported(t *testing.T) {
+	for _, action := range []game.Action{
+		{Kind: game.Wait, Integer: 7},
+		{Kind: game.PickUp}, {Kind: game.Release}, {Kind: game.Drill},
+		{Kind: game.Distance}, {Kind: game.SearchFront}, {Kind: game.SearchNow},
+		{Kind: game.IsLand, Field: "observation"}, {Kind: game.IsGoal, Field: "observation"},
+		{Kind: game.IsCheckpoint, Field: "observation"}, {Kind: game.IsLaggage, Field: "observation"},
+		{Kind: game.IsSea, Field: "observation"}, {Kind: game.IsRock, Field: "observation"},
+		{Kind: game.PrintInteger, Integer: -42}, {Kind: game.PrintBool, Bool: true},
+	} {
+		t.Run(string(action.Kind), func(t *testing.T) {
+			b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[game.RobotID]board.RobotState{
+				"a": state(0, 0, board.Right), "b": state(2, 0, board.Left),
+			}}, []game.RobotID{"a", "b"})
+			initial := b.Snapshot()
+			next(t, b, nil)
+			// A valid action is already pending when the other robot sends an
+			// unimplemented action; neither action may mutate the board.
+			next(t, b, &game.Reply{RobotID: "a", Action: &game.Action{Kind: game.Forward}})
+			_, err := b.Next(t.Context(), &game.Reply{RobotID: "b", Action: &action})
+			if !errors.Is(err, game.ErrNotSupported) {
+				t.Fatalf("got %v, want ErrNotSupported", err)
+			}
+			if !reflect.DeepEqual(initial, b.Snapshot()) {
+				t.Fatal("unsupported action committed pending changes")
+			}
+		})
+	}
+}
