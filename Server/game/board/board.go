@@ -29,6 +29,13 @@ const (
 
 type Position struct{ X, Y int }
 
+var directionDeltas = map[Direction]Position{
+	Up:    {0, -1},
+	Right: {1, 0},
+	Down:  {0, 1},
+	Left:  {-1, 0},
+}
+
 type RobotState struct {
 	Position        Position
 	Direction       Direction
@@ -211,8 +218,7 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			continue
 		}
 		robot := b.state.Robots[id]
-		deltas := [...]Position{{0, -1}, {1, 0}, {0, 1}, {-1, 0}}
-		delta := deltas[directionIndex(robot.Direction)]
+		delta := directionDeltas[robot.Direction]
 		if a.Kind == game.Back {
 			delta.X, delta.Y = -delta.X, -delta.Y
 		}
