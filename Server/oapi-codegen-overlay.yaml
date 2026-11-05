@@ -1,0 +1,31 @@
+overlay: 1.0.0
+info:
+  title: Use generated JSON Schema models
+  version: 1.0.0
+actions:
+  - target: $.components.schemas.Field
+    remove: true
+  - target: $.components.schemas.Stage
+    remove: true
+  - target: $.components.schemas.PicolangProgram
+    remove: true
+  - target: $.components.schemas
+    update:
+      Field:
+        type: object
+        x-go-type: schema.FieldDefinition
+        x-go-type-import:
+          name: schema
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
+      Stage:
+        type: object
+        x-go-type: schema.StageDefinition
+        x-go-type-import:
+          name: schema
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
+      PicolangProgram:
+        type: object
+        x-go-type: schema.PicolangProgram
+        x-go-type-import:
+          name: schema
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema

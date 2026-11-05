@@ -7,5 +7,5 @@ enum:
   - bool
   - integer
   - unit
-  - field
+  - terrain
   - rotation

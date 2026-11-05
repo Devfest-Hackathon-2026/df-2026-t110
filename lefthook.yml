@@ -1,0 +1,15 @@
+pre-push:
+  parallel: true
+  jobs:
+    - name: server
+      root: Server/
+      glob:
+        - "Server/**"
+        - "mise.toml"
+      group:
+        parallel: true
+        jobs:
+          - name: test
+            run: go test ./...
+          - name: lint
+            run: golangci-lint config verify && golangci-lint run ./...

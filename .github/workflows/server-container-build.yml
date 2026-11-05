@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'Server/**'
+      - 'mise.toml'
       - '!Server/AGENTS.md'
       - '.github/workflows/server-container-build.yml'
       - '.github/workflows/actions.lock'
@@ -20,7 +21,6 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
         with:
-          working_directory: Server
           install: false
       - name: Build container
         working-directory: Server

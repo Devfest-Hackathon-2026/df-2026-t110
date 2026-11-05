@@ -226,26 +226,69 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /auth:
-    post:
-      summary: 認証
-      description: メソッドと認証方式は仮定義。
-      operationId: authenticate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
+  /login:
+    get:
+      summary: Google ログインを開始
+      description: |
+        ブラウザの画面遷移で呼び出す。
+        ログイン試行を紐づける cookie を発行し、Google の認可画面へリダイレクトする。
+      operationId: login
       responses:
-        "200":
-          description: 認証結果
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
+        "302":
+          description: Google の認可画面へリダイレクト
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+            Set-Cookie:
+              $ref: "#/components/headers/SetCookie"
+
+  /login/callback:
+    get:
+      summary: Google ログインを完了
+      description: |
+        Google の認可後のリダイレクト先。Google Cloud にリダイレクト URI として登録する。
+        state、認可コード、ID トークンを検証してセッション cookie を発行し、クライアントの画面へリダイレクトする。
+      operationId: loginCallback
+      parameters:
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          description: 認可された場合に Google が付与する認可コード
+          schema:
+            type: string
+        - name: error
+          in: query
+          description: 認可されなかった場合に Google が付与するエラーコード
+          schema:
+            type: string
+      responses:
+        "302":
+          description: ログインに成功し、クライアントの画面へリダイレクト
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+            Set-Cookie:
+              $ref: "#/components/headers/SetCookie"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /logout:
+    post:
+      summary: ログアウト
+      description: セッション cookie を削除する。
+      operationId: logout
+      security:
+        - sessionCookie: []
+      responses:
+        "204":
+          description: ログアウトした
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/SetCookie"
 
   /ranking:
     get:
@@ -351,7 +394,31 @@ components:
       schema:
         type: string
 
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Google ログイン後にサーバーが発行するセッション cookie
+
+  headers:
+    Location:
+      description: リダイレクト先の URL
+      schema:
+        type: string
+        format: uri
+    SetCookie:
+      description: セッションまたはログイン試行の cookie
+      schema:
+        type: string
+
   responses:
+    BadRequest:
+      description: リクエストが不正
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
     NotFound:
       description: 対象が存在しない
       content:
