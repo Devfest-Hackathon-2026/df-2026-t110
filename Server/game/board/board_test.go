@@ -49,7 +49,7 @@ func next(t *testing.T, b *board.Board, reply *game.Reply) game.Decision {
 func TestBarrierAndImmutableQueries(t *testing.T) {
 	t.Parallel()
 	b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[game.RobotID]board.RobotState{
-		"p1": state(0, 0, board.Right), "p2": state(2, 0, board.Left),
+		"p1": state(0, 0, board.East), "p2": state(2, 0, board.West),
 	}}, []game.RobotID{"p1", "p2"})
 	initial := b.Snapshot()
 	d := next(t, b, nil)
@@ -104,20 +104,20 @@ func TestAtomicMovement(t *testing.T) {
 		want    map[game.RobotID]board.RobotState
 		moved   map[game.RobotID]bool
 	}{
-		{"chain into empty cell", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Right)}, []game.RobotID{"a", "b"}, nil,
-			map[game.RobotID]board.RobotState{"a": state(1, 0, board.Right), "b": state(2, 0, board.Right)}, map[game.RobotID]bool{"a": true, "b": true}},
-		{"swap", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Left)}, []game.RobotID{"b", "a"}, nil, nil, nil},
-		{"cycle", land(2, 2), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Down), "c": state(1, 1, board.Left), "d": state(0, 1, board.Up)}, []game.RobotID{"a", "b", "c", "d"}, nil, nil, nil},
-		{"conflict propagates", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Right), "c": state(3, 0, board.Left)}, []game.RobotID{"a", "b", "c"}, nil, nil, nil},
-		{"boundary propagates", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Right)}, []game.RobotID{"a", "b"}, nil, nil, nil},
-		{"rock", [][]board.Terrain{{board.Land, board.Rock}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}, []game.RobotID{"a"}, nil, nil, nil},
-		{"sea", [][]board.Terrain{{board.Land, board.Sea}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}, []game.RobotID{"a"}, nil, nil, nil},
-		{"back", land(2, 1), map[game.RobotID]board.RobotState{"a": state(1, 0, board.Right)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Back}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}, map[game.RobotID]bool{"a": true}},
-		{"rotate blocks follower", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Up)}, []game.RobotID{"a", "b"}, map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Left)}, nil},
-		{"rotate right wraps", land(1, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Left)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Up)}, nil},
+		{"chain into empty cell", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}, []game.RobotID{"a", "b"}, nil,
+			map[game.RobotID]board.RobotState{"a": state(1, 0, board.East), "b": state(2, 0, board.East)}, map[game.RobotID]bool{"a": true, "b": true}},
+		{"swap", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)}, []game.RobotID{"b", "a"}, nil, nil, nil},
+		{"cycle", land(2, 2), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.South), "c": state(1, 1, board.West), "d": state(0, 1, board.North)}, []game.RobotID{"a", "b", "c", "d"}, nil, nil, nil},
+		{"conflict propagates", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East), "c": state(3, 0, board.West)}, []game.RobotID{"a", "b", "c"}, nil, nil, nil},
+		{"boundary propagates", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}, []game.RobotID{"a", "b"}, nil, nil, nil},
+		{"rock", [][]board.Terrain{{board.Land, board.Rock}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, []game.RobotID{"a"}, nil, nil, nil},
+		{"sea", [][]board.Terrain{{board.Land, board.Sea}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, []game.RobotID{"a"}, nil, nil, nil},
+		{"back", land(2, 1), map[game.RobotID]board.RobotState{"a": state(1, 0, board.East)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Back}},
+			map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, map[game.RobotID]bool{"a": true}},
+		{"rotate blocks follower", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.North)}, []game.RobotID{"a", "b"}, map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
+			map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)}, nil},
+		{"rotate right wraps", land(1, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.West)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
+			map[game.RobotID]board.RobotState{"a": state(0, 0, board.North)}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,14 +165,14 @@ func TestAtomicMovement(t *testing.T) {
 
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
-	valid := board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}}
+	valid := board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
 	b, err := board.New(valid)
 	if err != nil {
 		t.Fatal(err)
 	}
 	initial := b.Snapshot()
 	valid.Terrain[0][0] = board.Sea
-	valid.Robots["a"] = state(1, 0, board.Left)
+	valid.Robots["a"] = state(1, 0, board.West)
 	copy := b.Snapshot()
 	copy.Terrain[0][0] = board.Rock
 	delete(copy.Robots, "a")
@@ -184,10 +184,10 @@ func TestValidationAndCopies(t *testing.T) {
 		{Terrain: [][]board.Terrain{{board.Land}, {}}, Robots: initial.Robots},
 		{Terrain: [][]board.Terrain{{"unknown"}}, Robots: initial.Robots},
 		{Terrain: [][]board.Terrain{{board.Sea}}, Robots: initial.Robots},
-		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(1, 0, board.Up)}},
+		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},
-		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"": state(0, 0, board.Up)}},
-		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.Up), "b": state(0, 0, board.Down)}},
+		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"": state(0, 0, board.North)}},
+		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.North), "b": state(0, 0, board.South)}},
 	}
 	for i, config := range invalid {
 		if _, err := board.New(config); err == nil {
@@ -207,7 +207,7 @@ func TestValidationAndCopies(t *testing.T) {
 
 func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 	t.Parallel()
-	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}}, []game.RobotID{"a"})
+	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}, []game.RobotID{"a"})
 	initial := b.Snapshot()
 	next(t, b, nil)
 	for _, reply := range []*game.Reply{
@@ -237,7 +237,7 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 
 func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
 	t.Parallel()
-	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Right)}}, []game.RobotID{"a", "b"})
+	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}}, []game.RobotID{"a", "b"})
 	next(t, b, nil)
 	next(t, b, &game.Reply{RobotID: "a", Action: &game.Action{Kind: game.Forward}})
 	next(t, b, &game.Reply{RobotID: "b", Done: true})
@@ -265,7 +265,7 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 		t.Run(string(action.Kind), func(t *testing.T) {
 			t.Parallel()
 			b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[game.RobotID]board.RobotState{
-				"a": state(0, 0, board.Right), "b": state(2, 0, board.Left),
+				"a": state(0, 0, board.East), "b": state(2, 0, board.West),
 			}}, []game.RobotID{"a", "b"})
 			initial := b.Snapshot()
 			next(t, b, nil)

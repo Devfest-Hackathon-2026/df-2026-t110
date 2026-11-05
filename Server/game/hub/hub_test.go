@@ -53,8 +53,8 @@ func grid(t *testing.T) *board.Board {
 	b, err := board.New(board.Config{
 		Terrain: [][]board.Terrain{{board.Land, board.Land, board.Land}},
 		Robots: map[game.RobotID]board.RobotState{
-			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.Right, DrillDurability: 3},
-			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.Left, DrillDurability: 3},
+			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
+			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.West, DrillDurability: 3},
 		},
 	})
 	if err != nil {
@@ -189,7 +189,7 @@ func TestLimits(t *testing.T) {
 		})
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: move})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 1, MaxResumes: 100})
-		if !errors.Is(err, hub.ErrTickLimit) || report.Tick != 1 || b.Snapshot().Tick != 1 || b.Snapshot().Robots["a"].Direction != board.Down {
+		if !errors.Is(err, hub.ErrTickLimit) || report.Tick != 1 || b.Snapshot().Tick != 1 || b.Snapshot().Robots["a"].Direction != board.South {
 			t.Errorf("got %+v, %v, board %+v", report, err, b.Snapshot())
 		}
 	})

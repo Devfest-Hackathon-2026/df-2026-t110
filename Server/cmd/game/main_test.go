@@ -17,7 +17,7 @@ func TestInteractiveDemo(t *testing.T) {
 	if err := run(t.Context(), io.NopCloser(strings.NewReader(input)), &output, 1000, 10000); err != nil {
 		t.Error(err)
 	}
-	for _, want := range []string{"tick 0", "tick 1", "tick 2", "p1 => 3", "p1 => true", "p2 => true", "p1 => false", "p2 => false", "p1: (1,0) right", "p2: (3,0) left", "p1: completed", "p2: completed"} {
+	for _, want := range []string{"tick 0", "tick 1", "tick 2", "p1 => 3", "p1 => true", "p2 => true", "p1 => false", "p2 => false", "p1: (1,0) east", "p2: (3,0) west", "p1: completed", "p2: completed"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("missing %q in output:\n%s", want, output.String())
 		}

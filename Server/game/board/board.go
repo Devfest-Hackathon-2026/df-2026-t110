@@ -21,19 +21,19 @@ const (
 type Direction string
 
 const (
-	Up    Direction = "up"
-	Right Direction = "right"
-	Down  Direction = "down"
-	Left  Direction = "left"
+	North Direction = "north"
+	East  Direction = "east"
+	South Direction = "south"
+	West  Direction = "west"
 )
 
 type Position struct{ X, Y int }
 
 var directionDeltas = map[Direction]Position{
-	Up:    {0, -1},
-	Right: {1, 0},
-	Down:  {0, 1},
-	Left:  {-1, 0},
+	North: {0, -1},
+	East:  {1, 0},
+	South: {0, 1},
+	West:  {-1, 0},
 }
 
 type RobotState struct {
@@ -265,7 +265,7 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			if a.Rotation == game.Left {
 				rotation = 3
 			}
-			robot.Direction = [...]Direction{Up, Right, Down, Left}[(directionIndex(robot.Direction)+rotation)%4]
+			robot.Direction = [...]Direction{North, East, South, West}[(directionIndex(robot.Direction)+rotation)%4]
 		} else {
 			value = game.Value{Kind: game.Bool, Bool: canMove(id)}
 			if value.Bool {
@@ -293,7 +293,7 @@ func (b *Board) land(p Position) bool {
 }
 
 func directionIndex(d Direction) int {
-	for i, direction := range [...]Direction{Up, Right, Down, Left} {
+	for i, direction := range [...]Direction{North, East, South, West} {
 		if d == direction {
 			return i
 		}

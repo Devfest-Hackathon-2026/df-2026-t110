@@ -36,8 +36,8 @@ func run(ctx context.Context, input io.ReadCloser, output io.Writer, maxTicks, m
 			{board.Land, board.Land, board.Sea, board.Land, board.Land},
 		},
 		Robots: map[game.RobotID]board.RobotState{
-			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.Right, DrillDurability: 3},
-			"p2": {Position: board.Position{X: 4, Y: 0}, Direction: board.Left, DrillDurability: 3},
+			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
+			"p2": {Position: board.Position{X: 4, Y: 0}, Direction: board.West, DrillDurability: 3},
 		},
 	})
 	if err != nil {
