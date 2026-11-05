@@ -1,0 +1,26 @@
+name: CI (server)
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+        with:
+          working_directory: Server
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: golangci-lint
+        run: golangci-lint run ./...
