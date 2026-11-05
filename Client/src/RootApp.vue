@@ -1,18 +1,23 @@
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
+import { LOCAL_LESSONS } from './tutorialLessons.js'
 
 const StageViewer = defineAsyncComponent(() => import('./App.vue'))
+const TutorialPage = defineAsyncComponent(() => import('./TutorialPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
+const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
+const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
+  if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
   return 'missing'
 })
 
-document.title = isStage ? 'ステージプレビュー | Robot Field' : 'Robot Field | ロボットを動かして学ぼう'
+document.title = isStage ? 'ステージプレビュー | Robot Field' : tutorialId ? '教材 | Robot Field' : 'Robot Field | ロボットを動かして学ぼう'
 </script>
 
 <template>
@@ -21,7 +26,7 @@ document.title = isStage ? 'ステージプレビュー | Robot Field' : 'Robot 
     <header class="site-nav container">
       <a class="site-logo" href="/" aria-label="Robot Field ホーム">Robot <span>Field</span></a>
       <nav aria-label="メインナビゲーション">
-        <a href="/tutorials" :aria-current="page === 'tutorials' ? 'page' : undefined">教材</a>
+        <a href="/tutorials" :aria-current="page === 'tutorials' || page === 'tutorial-detail' ? 'page' : undefined">教材</a>
         <a href="/rooms" :aria-current="page === 'rooms' ? 'page' : undefined">対戦</a>
         <a href="/account" :aria-current="page === 'account' ? 'page' : undefined">ログイン</a>
       </nav>
@@ -74,12 +79,14 @@ document.title = isStage ? 'ステージプレビュー | Robot Field' : 'Robot 
       </section>
     </main>
 
+    <main v-else-if="page === 'tutorial-detail'" class="tutorial-main"><TutorialPage :tutorial-id="tutorialId" /></main>
+
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
         <h1>最初の一歩から。</h1>
-        <p class="inner-lead">命令を試しながら、ロボットの動かし方を覚えていきます。現在はステージ表示のプレビューを確認できます。</p>
-        <a class="lesson-entry" href="/tutorials/demo"><span>01</span><span><strong>結晶の道</strong><small>配置候補とロボットの動作を確認する</small></span><span aria-hidden="true">↗</span></a>
-        <p class="page-note">プログラミング教材の画面は準備中です。</p>
+        <p class="inner-lead">短い道から始めて、ロボットにできることを少しずつ増やしていきます。</p>
+        <a v-for="(lesson, index) in LOCAL_LESSONS" :key="lesson.id" class="lesson-entry" :href="`/tutorials/${lesson.id}`"><span>{{ String(index + 1).padStart(2, '0') }}</span><span><strong>{{ lesson.title }}</strong><small>{{ lesson.goal }}</small></span><span aria-hidden="true">↗</span></a>
+        <p class="page-note">教材とフィールドは現在サンプルデータです。<a href="/tutorials/demo">ステージ表示の開発用プレビュー</a>も確認できます。</p>
       </template>
       <template v-else-if="page === 'rooms'">
         <h1>対戦は、準備中です。</h1>
@@ -97,7 +104,7 @@ document.title = isStage ? 'ステージプレビュー | Robot Field' : 'Robot 
       </template>
     </main>
 
-    <footer class="site-footer container">
+    <footer v-if="page !== 'tutorial-detail'" class="site-footer container">
       <span>Robot Field</span>
       <p>ロボットを動かして、考えるための場所。</p>
       <a href="/">ホームへ</a>

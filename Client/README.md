@@ -1,6 +1,10 @@
 # Robot Field クライアント
 
-`/` はARを読み込まないホームです。`/tutorials` から既存のステージプレビュー（`/tutorials/demo`）へ進めます。`/rooms` と `/account` は、対戦とログインの準備状況を示すクライアント内のページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` と `/account` は、対戦とログインの準備状況を示すクライアント内のページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+
+## 教材詳細
+
+`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` と `GET /api/field/{fieldId}` を読み、取得したフィールドを3D・カメラ表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。教材APIの説明文形式は未定なので、`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。プログラム編集・実行判定は別画面の担当作業と接続する段階です。
 
 ## ARフィールド表示（issues #1–3）
 

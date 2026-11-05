@@ -6,7 +6,7 @@ import { advanceWater, createStageVisuals, disposeStageVisuals } from './stageVi
 import { createArmPivots } from './armController.js'
 import { createRobotAnimator } from './robotAnimator.js'
 
-const props = defineProps({ stage: { type: Object, required: true }, mode: { type: String, required: true }, animationEvent: { type: Object, default: null } })
+const props = defineProps({ stage: { type: Object, required: true }, mode: { type: String, required: true }, animationEvent: { type: Object, default: null }, previewDistance: { type: Number, default: 4.8 } })
 const emit = defineEmits(['error'])
 const host = ref(null)
 const video = ref(null)
@@ -16,7 +16,7 @@ const robotCell = ref(null)
 defineExpose({ robotCell })
 let yaw = 0.55
 let pitch = 0.65
-let distance = 4.8
+let distance = props.previewDistance
 let dragging = false
 let lastPointer = [0, 0]
 
@@ -25,7 +25,7 @@ function setView() {
   if (props.mode === 'camera') {
     camera.position.set(0, 0, 0)
     camera.rotation.set(0, 0, 0)
-    board.rotation.set(0.4, 0, 0)
+    board.rotation.set(1, 0, 0)
     if (board.position.z !== -3) board.position.set(0, -0.05, -3)
   } else {
     const horizontal = Math.cos(pitch) * distance
@@ -38,6 +38,7 @@ function setView() {
 
 function replaceStage() {
   if (!scene) return
+  distance = props.previewDistance
   pendingEvent = null
   if (board) {
     robotAnimator?.stop()
