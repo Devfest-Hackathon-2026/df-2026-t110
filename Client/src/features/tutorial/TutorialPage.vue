@@ -20,7 +20,23 @@ const mode = ref<'preview' | 'camera'>('preview')
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
 const sceneRef = ref<{ reset: () => void } | null>(null)
+const workspaceRef = ref<HTMLElement | null>(null)
+const editorWidth = ref(56)
+const editorWidthBeforeRun = ref(56)
+const stageExpanded = ref(false)
+const activeCategory = ref('motion')
+let resizing = false
 let controller: AbortController | null = null
+
+const editorCategories = [
+  { id: 'motion', label: '動き', color: '#337cc1', blocks: ['前進する', '後退する', '左に回る', '右に回る'] },
+  { id: 'action', label: '操作', color: '#ab6a22', blocks: ['拾う', '置く', '岩を壊す', '海を埋める'] },
+  { id: 'control', label: '制御', color: '#ad7420', blocks: ['もし〈条件〉なら', 'くり返す'] },
+  { id: 'sense', label: '調べる', color: '#287e8f', blocks: ['前が岩？', '前が海？', 'ここがゴール？'] },
+] as const
+const selectedCategory = computed(
+  () => editorCategories.find((category) => category.id === activeCategory.value) ?? editorCategories[0],
+)
 
 const stage = computed(() => field.value?.layouts[layoutIndex.value] ?? null)
 const lessonCopy = computed(() => {
@@ -69,6 +85,9 @@ async function load(id: string): Promise<void> {
   mode.value = 'preview'
   layoutIndex.value = 0
   guideIndex.value = 0
+  editorWidth.value = 56
+  editorWidthBeforeRun.value = 56
+  stageExpanded.value = false
 
   try {
     const remote = await getTutorial(id, signal)
@@ -108,6 +127,9 @@ function changeLayout(delta: number): void {
 
 async function runProgram(): Promise<void> {
   if (!field.value || !stage.value) return
+  if (!stageExpanded.value) editorWidthBeforeRun.value = editorWidth.value
+  stageExpanded.value = true
+  editorWidth.value = 32
   layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
   await nextTick()
   sceneRef.value?.reset()
@@ -123,6 +145,7 @@ async function runProgram(): Promise<void> {
 }
 
 function resetProgram(): void {
+  restoreEditorWidth()
   sceneRef.value?.reset()
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-reset', {
@@ -131,128 +154,221 @@ function resetProgram(): void {
   )
 }
 
+function restoreEditorWidth(): void {
+  if (!stageExpanded.value) return
+  stageExpanded.value = false
+  editorWidth.value = editorWidthBeforeRun.value
+}
+
+function setEditorWidth(clientX: number): void {
+  const bounds = workspaceRef.value?.getBoundingClientRect()
+  if (!bounds?.width) return
+  editorWidth.value = Math.min(72, Math.max(28, ((clientX - bounds.left) / bounds.width) * 100))
+}
+
+function beginResize(event: PointerEvent): void {
+  resizing = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  setEditorWidth(event.clientX)
+}
+
+function moveResize(event: PointerEvent): void {
+  if (resizing) setEditorWidth(event.clientX)
+}
+
+function endResize(event: PointerEvent): void {
+  resizing = false
+  const handle = event.currentTarget as HTMLElement
+  if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
+}
+
+function resizeWithKeyboard(event: KeyboardEvent): void {
+  const delta = event.key === 'ArrowLeft' ? -2 : event.key === 'ArrowRight' ? 2 : 0
+  if (!delta) return
+  event.preventDefault()
+  editorWidth.value = Math.min(72, Math.max(28, editorWidth.value + delta))
+}
+
 watch(() => props.tutorialId, load, { immediate: true })
 onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <div class="tutorial-page">
-    <section class="tutorial-stage" aria-label="教材のフィールド">
-      <StageScene
-        v-if="stage"
-        ref="sceneRef"
-        :stage="stage"
-        :mode="mode"
-        :preview-distance="previewDistance"
-        @error="sceneError = $event"
-      />
-      <div v-else class="tutorial-stage-empty">
-        {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
+  <div
+    ref="workspaceRef"
+    class="tutorial-page"
+    :class="{ 'tutorial-page--executing': stageExpanded }"
+    :style="{ '--editor-width': `${editorWidth}%` }"
+  >
+    <section id="tutorial-editor" class="tutorial-editor" aria-labelledby="tutorial-editor-title">
+      <div class="tutorial-editor-heading">
+        <h2 id="tutorial-editor-title">コード</h2>
+        <span>エディタ準備中</span>
       </div>
-      <div v-if="stage" class="tutorial-stage-toolbar">
-        <span v-if="field && field.layouts.length > 1"
-          >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
-        >
-        <div class="tutorial-view-switch" aria-label="表示モード">
-          <button type="button" :aria-pressed="mode === 'preview'" @click="mode = 'preview'">3D</button>
-          <button type="button" :aria-pressed="mode === 'camera'" @click="mode = 'camera'">カメラ</button>
-        </div>
+      <div class="tutorial-editor-body">
+        <slot name="program-editor" :tutorial-id="tutorialId">
+          <div class="tutorial-editor-mock">
+            <nav class="tutorial-editor-categories" aria-label="命令の種類">
+              <button
+                v-for="category in editorCategories"
+                :key="category.id"
+                type="button"
+                :aria-pressed="activeCategory === category.id"
+                :style="{ '--category-color': category.color }"
+                @click="activeCategory = category.id"
+              >
+                <span aria-hidden="true"></span>{{ category.label }}
+              </button>
+            </nav>
+            <div class="tutorial-editor-palette" :style="{ '--category-color': selectedCategory.color }">
+              <h3>{{ selectedCategory.label }}</h3>
+              <div v-for="block in selectedCategory.blocks" :key="block" class="tutorial-example-block">
+                {{ block }}
+              </div>
+              <p>命令の見本です。エディタ接続後に編集できます。</p>
+            </div>
+            <div class="tutorial-editor-workspace">
+              <div class="tutorial-editor-placeholder">
+                <strong>ここに命令を並べます</strong>
+                <p>プログラミングエディタをこの領域に接続します。</p>
+              </div>
+            </div>
+          </div>
+        </slot>
       </div>
     </section>
 
-    <aside class="tutorial-panel">
-      <div class="tutorial-panel-scroll">
-        <div class="tutorial-back-row">
-          <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
-        </div>
-        <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
-          教材を読み込んでいます。
-        </div>
-        <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-          <h1>教材が見つかりません。</h1>
-          <a href="/tutorials">教材一覧を見る</a>
-        </div>
-        <template v-else-if="tutorial">
-          <header class="tutorial-heading">
-            <p v-if="lessonCopy" class="tutorial-count">
-              {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
-              {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
-            </p>
-            <h1>{{ tutorial.title }}</h1>
-            <p>
-              この章の目標: {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
-            </p>
-          </header>
-          <section class="tutorial-editor" aria-labelledby="tutorial-editor-title">
-            <div class="tutorial-editor-heading">
-              <h2 id="tutorial-editor-title">プログラムを組む</h2>
-              <span>エディタ準備中</span>
-            </div>
-            <div class="tutorial-editor-body">
-              <slot name="program-editor" :tutorial-id="tutorialId">
-                <div class="tutorial-editor-placeholder">
-                  <strong>ここに命令を並べます</strong>
-                  <p>プログラミングエディタをこの領域に接続します。</p>
-                </div>
-              </slot>
-            </div>
-          </section>
+    <div
+      class="tutorial-resizer"
+      role="separator"
+      tabindex="0"
+      aria-label="エディタとARの幅を調整"
+      aria-orientation="vertical"
+      aria-controls="tutorial-editor tutorial-view"
+      aria-valuemin="28"
+      aria-valuemax="72"
+      :aria-valuenow="Math.round(editorWidth)"
+      @pointerdown="beginResize"
+      @pointermove="moveResize"
+      @pointerup="endResize"
+      @pointercancel="endResize"
+      @keydown="resizeWithKeyboard"
+    >
+      <span aria-hidden="true"></span>
+    </div>
 
-          <div class="tutor-conversation">
-            <TutorAvatar />
-            <div class="tutor-speech">
-              <span>案内役のロボット</span>
-              <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
-            </div>
-          </div>
-          <div class="tutor-stepper" aria-label="説明を切り替える">
-            <button type="button" :disabled="guideIndex === 0" @click="guideIndex--">前の説明</button>
-            <span>{{ guideIndex + 1 }} / {{ guideLines.length }}</span>
-            <button type="button" :disabled="guideIndex === guideLines.length - 1" @click="guideIndex++">
-              次の説明
-            </button>
-          </div>
-
-          <section class="tutorial-note" aria-labelledby="tutorial-note-title">
-            <h2 id="tutorial-note-title">この課題で考えること</h2>
-            <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
-          </section>
-          <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
-            <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
-            <div>
-              <button type="button" @click="changeLayout(-1)">前の配置</button
-              ><button type="button" @click="changeLayout(1)">次の配置</button>
-            </div>
-            <small>個人の教材では、実行直前に候補から1つ選びます。</small>
-          </div>
-          <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
-            <span>{{ loadMessage }}</span
-            ><button type="button" @click="load(tutorialId)">再読み込み</button>
-          </div>
-          <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
-          <div class="tutorial-bottom-link" aria-label="課題の移動">
-            <a v-if="previousLesson" :href="`/tutorials/${previousLesson.id}`"
-              ><span aria-hidden="true">←</span> 前の課題を見る</a
-            ><span v-else class="tutorial-nav-unavailable" aria-disabled="true"
-              ><span aria-hidden="true">←</span> 前の課題を見る</span
-            >
-            <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
-              >次の課題を見る <span aria-hidden="true">→</span></a
-            ><a v-else href="/tutorials">教材一覧へ <span aria-hidden="true">→</span></a>
-          </div>
-        </template>
-        <div v-else class="tutorial-load-message" role="alert">
-          {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+    <div id="tutorial-view" class="tutorial-view">
+      <section class="tutorial-stage" aria-label="教材のフィールド">
+        <StageScene
+          v-if="stage"
+          ref="sceneRef"
+          :stage="stage"
+          :mode="mode"
+          :preview-distance="previewDistance"
+          @error="sceneError = $event"
+        />
+        <div v-else class="tutorial-stage-empty">
+          {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
         </div>
-      </div>
-      <div v-if="tutorial && stage" class="tutorial-program-actions" aria-label="プログラムの操作">
-        <button type="button" class="tutorial-run-button" @click="runProgram">
-          <span aria-hidden="true">▶</span> プログラムを実行
-        </button>
-        <button type="button" class="tutorial-reset-button" @click="resetProgram">
-          <span aria-hidden="true">↺</span> リセット
-        </button>
-      </div>
-    </aside>
+        <div v-if="tutorial && stage" class="tutorial-program-actions" aria-label="プログラムの操作">
+          <button type="button" class="tutorial-run-button" @click="runProgram">
+            <span aria-hidden="true">▶</span> プログラムを実行
+          </button>
+          <button type="button" class="tutorial-reset-button" @click="resetProgram">
+            <span aria-hidden="true">↺</span> リセット
+          </button>
+          <button
+            v-if="stageExpanded"
+            type="button"
+            class="tutorial-restore-button"
+            @click="restoreEditorWidth"
+          >
+            編集へ戻る
+          </button>
+        </div>
+        <div v-if="stage" class="tutorial-stage-toolbar">
+          <span v-if="field && field.layouts.length > 1"
+            >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
+          >
+          <div class="tutorial-view-switch" aria-label="表示モード">
+            <button type="button" :aria-pressed="mode === 'preview'" @click="mode = 'preview'">3D</button>
+            <button type="button" :aria-pressed="mode === 'camera'" @click="mode = 'camera'">カメラ</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="tutorial-panel">
+        <div class="tutorial-panel-scroll">
+          <div class="tutorial-back-row">
+            <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
+          </div>
+          <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
+            教材を読み込んでいます。
+          </div>
+          <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
+            <h1>教材が見つかりません。</h1>
+            <a href="/tutorials">教材一覧を見る</a>
+          </div>
+          <template v-else-if="tutorial">
+            <header class="tutorial-heading">
+              <p v-if="lessonCopy" class="tutorial-count">
+                {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
+                {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
+              </p>
+              <h1>{{ tutorial.title }}</h1>
+              <p>
+                この章の目標:
+                {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+              </p>
+            </header>
+            <div class="tutor-conversation">
+              <TutorAvatar />
+              <div class="tutor-speech">
+                <span>案内役のロボット</span>
+                <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+              </div>
+            </div>
+            <div class="tutor-stepper" aria-label="説明を切り替える">
+              <button type="button" :disabled="guideIndex === 0" @click="guideIndex--">前の説明</button>
+              <span>{{ guideIndex + 1 }} / {{ guideLines.length }}</span>
+              <button type="button" :disabled="guideIndex === guideLines.length - 1" @click="guideIndex++">
+                次の説明
+              </button>
+            </div>
+
+            <section class="tutorial-note" aria-labelledby="tutorial-note-title">
+              <h2 id="tutorial-note-title">この課題で考えること</h2>
+              <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
+            </section>
+            <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
+              <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
+              <div>
+                <button type="button" @click="changeLayout(-1)">前の配置</button
+                ><button type="button" @click="changeLayout(1)">次の配置</button>
+              </div>
+              <small>個人の教材では、実行直前に候補から1つ選びます。</small>
+            </div>
+            <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
+              <span>{{ loadMessage }}</span
+              ><button type="button" @click="load(tutorialId)">再読み込み</button>
+            </div>
+            <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
+            <div class="tutorial-bottom-link" aria-label="課題の移動">
+              <a v-if="previousLesson" :href="`/tutorials/${previousLesson.id}`"
+                ><span aria-hidden="true">←</span> 前の課題を見る</a
+              ><span v-else class="tutorial-nav-unavailable" aria-disabled="true"
+                ><span aria-hidden="true">←</span> 前の課題を見る</span
+              >
+              <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
+                >次の課題を見る <span aria-hidden="true">→</span></a
+              ><a v-else href="/tutorials">教材一覧へ <span aria-hidden="true">→</span></a>
+            </div>
+          </template>
+          <div v-else class="tutorial-load-message" role="alert">
+            {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
