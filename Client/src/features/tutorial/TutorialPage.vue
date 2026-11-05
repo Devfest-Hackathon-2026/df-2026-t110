@@ -19,7 +19,7 @@ const sceneError = ref('')
 const mode = ref<'preview' | 'camera'>('preview')
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
-const sceneRef = ref<{ reset: () => void } | null>(null)
+const sceneRef = ref<{ reset: () => void; resetRobot: () => void } | null>(null)
 const workspaceRef = ref<HTMLElement | null>(null)
 const editorWidth = ref(56)
 const editorWidthBeforeRun = ref(56)
@@ -132,7 +132,7 @@ async function runProgram(): Promise<void> {
   editorWidth.value = 32
   layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
   await nextTick()
-  sceneRef.value?.reset()
+  sceneRef.value?.resetRobot()
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-run', {
       detail: {

@@ -27,13 +27,16 @@ let board!: THREE.Group
 let animated: THREE.Mesh[] = []
 let frame = 0
 let resizeObserver: ResizeObserver | null = null
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let canvasWidth = 0
+let canvasHeight = 0
 let stream: MediaStream | null = null
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell, reset: replaceStage })
+defineExpose({ robotCell, reset: replaceStage, resetRobot })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
@@ -84,6 +87,14 @@ function positionRobot(cell: StageCell | { x: number; y: number } | null | undef
   if (!robotRig || !cell) return
   robotRig.position.set(cell.x - (props.stage.width - 1) / 2, 0.07, cell.y - (props.stage.height - 1) / 2)
   robotRig.rotation.y = -Math.PI / 2
+}
+
+function resetRobot(): void {
+  pendingEvent = null
+  robotAnimator?.stop()
+  const start = props.stage.cells.find((cell) => cell.symbol === 'S')
+  robotCell.value = start ? { x: start.x, y: start.y } : null
+  positionRobot(start)
 }
 
 function loadRobot() {
@@ -146,13 +157,26 @@ function playAnimationEvent(event: AnimationEvent | null): void {
   robotAnimator.play(event, destination)
 }
 
-function resize() {
+function resizeImmediately() {
   if (!renderer || !host.value) return
-  const { width, height } = host.value.getBoundingClientRect()
+  const bounds = host.value.getBoundingClientRect()
+  const width = Math.round(bounds.width)
+  const height = Math.round(bounds.height)
   if (!width || !height) return
+  if (width === canvasWidth && height === canvasHeight) return
+  canvasWidth = width
+  canvasHeight = height
   renderer.setSize(width, height, false)
   camera.aspect = width / height
   camera.updateProjectionMatrix()
+}
+
+function resize() {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    resizeTimer = null
+    resizeImmediately()
+  }, 280)
 }
 
 function animate(time: number): void {
@@ -252,7 +276,7 @@ onMounted(() => {
     loadRobot()
     resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(host.value)
-    resize()
+    resizeImmediately()
     frame = requestAnimationFrame(animate)
     startCamera()
   } catch (error) {
@@ -275,6 +299,7 @@ watch(
 onBeforeUnmount(() => {
   cancelAnimationFrame(frame)
   resizeObserver?.disconnect()
+  if (resizeTimer) clearTimeout(resizeTimer)
   stopCamera()
   robotAnimator?.stop()
   if (robotRig && board) board.remove(robotRig)
