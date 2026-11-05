@@ -166,6 +166,9 @@
   line-height: 1.6;
 }
 .tutorial-editor {
+  display: flex;
+  height: clamp(300px, 44dvh, 420px);
+  flex-direction: column;
   margin-top: var(--space-md);
   border: 1px solid var(--color-rule);
   background: var(--color-paper-2);
@@ -186,9 +189,13 @@
   font-size: var(--type-small);
   white-space: nowrap;
 }
+.tutorial-editor-body {
+  flex: 1;
+  min-height: 0;
+}
 .tutorial-editor-placeholder {
   display: flex;
-  min-height: 120px;
+  min-height: 100%;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;

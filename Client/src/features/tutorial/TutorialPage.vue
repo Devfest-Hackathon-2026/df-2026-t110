@@ -180,7 +180,7 @@ onBeforeUnmount(() => controller?.abort())
             </p>
             <h1>{{ tutorial.title }}</h1>
             <p>
-              {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+              この章の目標: {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
             </p>
           </header>
           <section class="tutorial-editor" aria-labelledby="tutorial-editor-title">
@@ -188,12 +188,14 @@ onBeforeUnmount(() => controller?.abort())
               <h2 id="tutorial-editor-title">プログラムを組む</h2>
               <span>エディタ準備中</span>
             </div>
-            <slot name="program-editor" :tutorial-id="tutorialId">
-              <div class="tutorial-editor-placeholder">
-                <strong>ここに命令を並べます</strong>
-                <p>プログラミングエディタをこの領域に接続します。</p>
-              </div>
-            </slot>
+            <div class="tutorial-editor-body">
+              <slot name="program-editor" :tutorial-id="tutorialId">
+                <div class="tutorial-editor-placeholder">
+                  <strong>ここに命令を並べます</strong>
+                  <p>プログラミングエディタをこの領域に接続します。</p>
+                </div>
+              </slot>
+            </div>
           </section>
 
           <div class="tutor-conversation">
