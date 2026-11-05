@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Call
+description: 関数名と実引数の一覧による関数呼び出し
+
+type: object
+additionalProperties: false
+required: [kind, hintId, func, args]
+properties:
+  kind:
+    const: call
+  hintId:
+    $ref: './hint-id.yaml'
+  func:
+    $ref: './func.yaml'
+  args:
+    $ref: './args.yaml'

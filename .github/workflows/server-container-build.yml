@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Server/**'
+      - '!Server/AGENTS.md'
+      - '.github/workflows/server-container-build.yml'
+      - '.github/workflows/actions.lock'
 
 permissions:
   contents: read

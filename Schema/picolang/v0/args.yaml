@@ -1,0 +1,7 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Args
+description: 関数呼び出しの実引数。空配列は引数なしを表し、先頭から順に評価する
+
+type: array
+items:
+  $ref: './expr.yaml'

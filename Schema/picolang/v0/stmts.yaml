@@ -1,0 +1,7 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Stmts
+description: 実行順に並べた文の一覧。空配列は文がないことを表す
+
+type: array
+items:
+  $ref: './stmt.yaml'

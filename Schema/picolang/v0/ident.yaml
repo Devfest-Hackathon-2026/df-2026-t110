@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Ident
+description: 変数の参照または宣言・代入・for 文における変数名
+
+type: object
+additionalProperties: false
+required: [kind, hintId, name]
+properties:
+  kind:
+    const: ident
+  hintId:
+    $ref: './hint-id.yaml'
+  name:
+    $ref: './name.yaml'

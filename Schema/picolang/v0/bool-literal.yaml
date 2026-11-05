@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: BoolLiteral
+description: bool 型のリテラル
+
+type: object
+additionalProperties: false
+required: [kind, hintId, type, value]
+properties:
+  kind:
+    const: literal
+  hintId:
+    $ref: './hint-id.yaml'
+  type:
+    const: bool
+  value:
+    type: boolean
