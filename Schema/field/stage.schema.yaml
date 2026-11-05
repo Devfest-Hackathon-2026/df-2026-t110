@@ -40,6 +40,7 @@ $defs:
     properties:
       type:
         description: ゴールへの到達を求めるクリア条件の種別
+        type: string
         const: reach_goal
 
   VisitCheckpoints:
@@ -50,6 +51,7 @@ $defs:
     properties:
       type:
         description: チェックポイントの順次通過を求めるクリア条件の種別
+        type: string
         const: visit_checkpoints
 
   DeliverAndReachGoal:
@@ -60,4 +62,5 @@ $defs:
     properties:
       type:
         description: 荷物の運搬とゴールへの到達を求めるクリア条件の種別
+        type: string
         const: deliver_and_reach_goal
