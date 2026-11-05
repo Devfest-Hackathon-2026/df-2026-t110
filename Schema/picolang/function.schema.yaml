@@ -1,3 +1,21 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangFunctionDefinition
-description: 関数定義の placeholder。関数内部の文法は後で定義する
+description: 引数、戻り値の型、関数本体を持つ関数定義。関数名はプログラム全体の map のキーで表す
+
+type: object
+additionalProperties: false
+required: [kind, hintId, params, returnType, body]
+properties:
+  kind:
+    const: function
+  hintId:
+    $ref: './hint-id.yaml'
+  params:
+    description: 宣言順に並べた引数の一覧
+    type: array
+    items:
+      $ref: './param.yaml'
+  returnType:
+    $ref: './type.yaml'
+  body:
+    $ref: './block.yaml'

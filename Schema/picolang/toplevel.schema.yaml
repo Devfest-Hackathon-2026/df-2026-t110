@@ -3,5 +3,7 @@ title: PicolangProgram
 description: 関数名をキー、関数定義を値とする picolang プログラム全体のスキーマ定義
 
 type: object
+propertyNames:
+  $ref: './name.yaml'
 additionalProperties:
   $ref: './function.schema.yaml'

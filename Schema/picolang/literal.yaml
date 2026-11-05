@@ -1,0 +1,39 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Literal
+description: bool、integer、unit、direction のリテラル。field 型にはリテラルがない
+
+type: object
+additionalProperties: false
+required: [kind, hintId, type, value]
+properties:
+  kind:
+    const: literal
+  hintId:
+    $ref: './hint-id.yaml'
+  type:
+    $ref: './type.yaml'
+  value:
+    description: 型に対応するリテラルの値。unit の () は JSON の null で表す
+oneOf:
+  - properties:
+      type:
+        const: bool
+      value:
+        type: boolean
+  - properties:
+      type:
+        const: integer
+      value:
+        description: i64 の範囲外の値の扱いは未定義
+        type: integer
+  - properties:
+      type:
+        const: unit
+      value:
+        type: 'null'
+  - properties:
+      type:
+        const: direction
+      value:
+        type: string
+        enum: [left, right]

@@ -1,0 +1,133 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Stmt
+description: 式、変数宣言、代入、制御構文のいずれかの文。型・スコープ・return の配置・break と continue の使用位置は意味解析で検査する
+
+oneOf:
+  - $ref: './expr.yaml'
+  - $ref: '#/$defs/Declaration'
+  - $ref: '#/$defs/Assignment'
+  - $ref: '#/$defs/If'
+  - $ref: '#/$defs/While'
+  - $ref: '#/$defs/For'
+  - $ref: '#/$defs/Return'
+  - $ref: '#/$defs/Break'
+  - $ref: '#/$defs/Continue'
+
+$defs:
+  Declaration:
+    description: 型と初期値を指定した変数宣言
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, type, ident, value]
+    properties:
+      kind:
+        const: declare
+      hintId:
+        $ref: './hint-id.yaml'
+      type:
+        $ref: './type.yaml'
+      ident:
+        $ref: './ident.yaml'
+      value:
+        $ref: './expr.yaml'
+
+  Assignment:
+    description: 既存の変数への代入
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, ident, value]
+    properties:
+      kind:
+        const: assign
+      hintId:
+        $ref: './hint-id.yaml'
+      ident:
+        $ref: './ident.yaml'
+      value:
+        $ref: './expr.yaml'
+
+  If:
+    description: bool 型の条件による分岐。else を省略した場合は偽のときに何も実行しない
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, condition, then]
+    properties:
+      kind:
+        const: if
+      hintId:
+        $ref: './hint-id.yaml'
+      condition:
+        $ref: './expr.yaml'
+      then:
+        $ref: './block.yaml'
+      else:
+        $ref: './block.yaml'
+
+  While:
+    description: bool 型の条件が真である間、ブロックを繰り返す
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, condition, body]
+    properties:
+      kind:
+        const: while
+      hintId:
+        $ref: './hint-id.yaml'
+      condition:
+        $ref: './expr.yaml'
+      body:
+        $ref: './block.yaml'
+
+  For:
+    description: integer 型の start から end までの半開区間を繰り返す。start が end 以上の場合は実行しない。ループ変数への代入は次の反復に影響しない
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, ident, start, end, body]
+    properties:
+      kind:
+        const: for
+      hintId:
+        $ref: './hint-id.yaml'
+      ident:
+        $ref: './ident.yaml'
+      start:
+        $ref: './expr.yaml'
+      end:
+        $ref: './expr.yaml'
+      body:
+        $ref: './block.yaml'
+
+  Return:
+    description: 式を評価した値を返して関数を終了する。unit を返す場合も式を指定する
+    type: object
+    additionalProperties: false
+    required: [kind, hintId, value]
+    properties:
+      kind:
+        const: return
+      hintId:
+        $ref: './hint-id.yaml'
+      value:
+        $ref: './expr.yaml'
+
+  Break:
+    description: 最も内側のループを終了する
+    type: object
+    additionalProperties: false
+    required: [kind, hintId]
+    properties:
+      kind:
+        const: break
+      hintId:
+        $ref: './hint-id.yaml'
+
+  Continue:
+    description: 最も内側のループの次の反復に進む
+    type: object
+    additionalProperties: false
+    required: [kind, hintId]
+    properties:
+      kind:
+        const: continue
+      hintId:
+        $ref: './hint-id.yaml'
