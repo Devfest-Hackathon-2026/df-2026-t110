@@ -16,13 +16,34 @@
 }
 .tutorial-view {
   display: grid;
-  grid-template-rows: minmax(0, 63%) minmax(0, 1fr);
+  grid-template-rows: minmax(0, var(--stage-height)) 10px minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   transition: grid-template-rows 260ms ease;
 }
-.tutorial-page--executing .tutorial-view {
-  grid-template-rows: minmax(0, 78%) minmax(0, 1fr);
+.tutorial-view--resizing {
+  transition: none;
+}
+.tutorial-stage-resizer {
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  background: #d8dedb;
+  cursor: row-resize;
+  touch-action: none;
+  user-select: none;
+}
+.tutorial-stage-resizer span {
+  width: 54px;
+  height: 4px;
+  border-radius: 5px;
+  background: #879a94;
+}
+.tutorial-stage-resizer:hover,
+.tutorial-stage-resizer:focus-visible {
+  background: #c4d8d0;
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 .tutorial-resizer {
   z-index: 3;
@@ -555,10 +576,6 @@
   }
   .tutorial-view {
     grid-row: 1;
-    grid-template-rows: minmax(0, 70%) minmax(0, 1fr);
-  }
-  .tutorial-page--executing .tutorial-view {
-    grid-template-rows: minmax(0, 82%) minmax(0, 1fr);
   }
   .tutorial-editor {
     grid-row: 2;

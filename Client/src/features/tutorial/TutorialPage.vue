@@ -21,11 +21,15 @@ const layoutIndex = ref(0)
 const guideIndex = ref(0)
 const sceneRef = ref<{ reset: () => void; resetRobot: () => void } | null>(null)
 const workspaceRef = ref<HTMLElement | null>(null)
+const viewRef = ref<HTMLElement | null>(null)
 const editorWidth = ref(56)
 const editorWidthBeforeRun = ref(56)
+const stageHeight = ref(66)
+const stageHeightBeforeRun = ref(66)
 const stageExpanded = ref(false)
 const activeCategory = ref('motion')
 let resizing = false
+const resizingStage = ref(false)
 let controller: AbortController | null = null
 
 const editorCategories = [
@@ -87,6 +91,8 @@ async function load(id: string): Promise<void> {
   guideIndex.value = 0
   editorWidth.value = 56
   editorWidthBeforeRun.value = 56
+  stageHeight.value = 66
+  stageHeightBeforeRun.value = 66
   stageExpanded.value = false
 
   try {
@@ -127,9 +133,13 @@ function changeLayout(delta: number): void {
 
 async function runProgram(): Promise<void> {
   if (!field.value || !stage.value) return
-  if (!stageExpanded.value) editorWidthBeforeRun.value = editorWidth.value
+  if (!stageExpanded.value) {
+    editorWidthBeforeRun.value = editorWidth.value
+    stageHeightBeforeRun.value = stageHeight.value
+  }
   stageExpanded.value = true
   editorWidth.value = 32
+  stageHeight.value = 80
   layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
   await nextTick()
   sceneRef.value?.resetRobot()
@@ -145,7 +155,7 @@ async function runProgram(): Promise<void> {
 }
 
 function resetProgram(): void {
-  restoreEditorWidth()
+  restoreWorkspaceSize()
   sceneRef.value?.reset()
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-reset', {
@@ -154,10 +164,11 @@ function resetProgram(): void {
   )
 }
 
-function restoreEditorWidth(): void {
+function restoreWorkspaceSize(): void {
   if (!stageExpanded.value) return
   stageExpanded.value = false
   editorWidth.value = editorWidthBeforeRun.value
+  stageHeight.value = stageHeightBeforeRun.value
 }
 
 function setEditorWidth(clientX: number): void {
@@ -187,6 +198,35 @@ function resizeWithKeyboard(event: KeyboardEvent): void {
   if (!delta) return
   event.preventDefault()
   editorWidth.value = Math.min(72, Math.max(28, editorWidth.value + delta))
+}
+
+function setStageHeight(clientY: number): void {
+  const bounds = viewRef.value?.getBoundingClientRect()
+  if (!bounds?.height) return
+  stageHeight.value = Math.min(85, Math.max(30, ((clientY - bounds.top) / bounds.height) * 100))
+}
+
+function beginStageResize(event: PointerEvent): void {
+  resizingStage.value = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  setStageHeight(event.clientY)
+}
+
+function moveStageResize(event: PointerEvent): void {
+  if (resizingStage.value) setStageHeight(event.clientY)
+}
+
+function endStageResize(event: PointerEvent): void {
+  resizingStage.value = false
+  const handle = event.currentTarget as HTMLElement
+  if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
+}
+
+function resizeStageWithKeyboard(event: KeyboardEvent): void {
+  const delta = event.key === 'ArrowUp' ? -2 : event.key === 'ArrowDown' ? 2 : 0
+  if (!delta) return
+  event.preventDefault()
+  stageHeight.value = Math.min(85, Math.max(30, stageHeight.value + delta))
 }
 
 watch(() => props.tutorialId, load, { immediate: true })
@@ -257,8 +297,14 @@ onBeforeUnmount(() => controller?.abort())
       <span aria-hidden="true"></span>
     </div>
 
-    <div id="tutorial-view" class="tutorial-view">
-      <section class="tutorial-stage" aria-label="教材のフィールド">
+    <div
+      id="tutorial-view"
+      ref="viewRef"
+      class="tutorial-view"
+      :class="{ 'tutorial-view--resizing': resizingStage }"
+      :style="{ '--stage-height': `${stageHeight}%` }"
+    >
+      <section id="tutorial-stage" class="tutorial-stage" aria-label="教材のフィールド">
         <StageScene
           v-if="stage"
           ref="sceneRef"
@@ -281,7 +327,7 @@ onBeforeUnmount(() => controller?.abort())
             v-if="stageExpanded"
             type="button"
             class="tutorial-restore-button"
-            @click="restoreEditorWidth"
+            @click="restoreWorkspaceSize"
           >
             編集へ戻る
           </button>
@@ -297,7 +343,26 @@ onBeforeUnmount(() => controller?.abort())
         </div>
       </section>
 
-      <aside class="tutorial-panel">
+      <div
+        class="tutorial-stage-resizer"
+        role="separator"
+        tabindex="0"
+        aria-label="ARと課題説明の高さを調整"
+        aria-orientation="horizontal"
+        aria-controls="tutorial-stage tutorial-explanation"
+        aria-valuemin="30"
+        aria-valuemax="85"
+        :aria-valuenow="Math.round(stageHeight)"
+        @pointerdown="beginStageResize"
+        @pointermove="moveStageResize"
+        @pointerup="endStageResize"
+        @pointercancel="endStageResize"
+        @keydown="resizeStageWithKeyboard"
+      >
+        <span aria-hidden="true"></span>
+      </div>
+
+      <aside id="tutorial-explanation" class="tutorial-panel">
         <div class="tutorial-panel-scroll">
           <div class="tutorial-back-row">
             <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
