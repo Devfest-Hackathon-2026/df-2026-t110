@@ -36,6 +36,13 @@ var directionDeltas = map[Direction]Position{
 	West:  {-1, 0},
 }
 
+var directionIndices = map[Direction]int{
+	North: 0,
+	East:  1,
+	South: 2,
+	West:  3,
+}
+
 type RobotState struct {
 	Position        Position
 	Direction       Direction
@@ -83,7 +90,7 @@ func New(config Config) (*Board, error) {
 			}
 		}
 	}
-	occupied := make(map[Position]struct{})
+	occupied := make(map[Position]struct{}, len(config.Robots))
 	for id, robot := range config.Robots {
 		p := robot.Position
 		if id == "" || directionIndex(robot.Direction) < 0 || robot.DrillDurability < 0 ||
@@ -206,9 +213,10 @@ func (b *Board) accept(reply *game.Reply) error {
 // commit resolves movement dependencies against one immutable starting state.
 // A visiting dependency denotes a swap/cycle; failure propagates to followers.
 func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
-	occupied := make(map[Position]game.RobotID, len(b.state.Robots))
-	targets := make(map[game.RobotID]Position)
-	counts := make(map[Position]int)
+	robotCount := len(b.state.Robots)
+	occupied := make(map[Position]game.RobotID, robotCount)
+	targets := make(map[game.RobotID]Position, robotCount)
+	counts := make(map[Position]int, robotCount)
 	for id, robot := range b.state.Robots {
 		occupied[robot.Position] = id
 	}
@@ -228,9 +236,9 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			counts[target]++
 		}
 	}
-	visiting := make(map[game.RobotID]struct{})
-	resolved := make(map[game.RobotID]struct{})
-	movable := make(map[game.RobotID]bool)
+	visiting := make(map[game.RobotID]struct{}, robotCount)
+	resolved := make(map[game.RobotID]struct{}, robotCount)
+	movable := make(map[game.RobotID]bool, robotCount)
 	var canMove func(game.RobotID) bool
 	canMove = func(id game.RobotID) bool {
 		if _, exists := resolved[id]; exists {
@@ -294,10 +302,8 @@ func (b *Board) land(p Position) bool {
 }
 
 func directionIndex(d Direction) int {
-	for i, direction := range [...]Direction{North, East, South, West} {
-		if d == direction {
-			return i
-		}
+	if index, ok := directionIndices[d]; ok {
+		return index
 	}
 	return -1
 }
