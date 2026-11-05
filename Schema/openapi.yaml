@@ -4,8 +4,8 @@ info:
   version: 0.1.1
   description: |
     暫定API契約。
-    FieldとStageはSchema以下のJSON Schemaを参照する。
-    Programの内部構造は仮定義。
+    Field、Stage、PicolangProgramはSchema以下のJSON Schemaを参照する。
+    Programは保存用のID、名前、picolangのソースを持つ。
 
 servers:
   - url: /api
@@ -372,17 +372,56 @@ components:
     Stage:
       $ref: "./field/stage.schema.yaml"
 
-    # TODO: 正式なプログラムJSON Schemaに差し替える
+    PicolangProgram:
+      $ref: "./picolang/toplevel.schema.yaml"
+
     Program:
       type: object
-      additionalProperties: true
-      description: 暫定スキーマ。命令JSONの構造は未確定。
+      additionalProperties: false
+      description: プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
+      required: [name, source]
+      properties:
+        id:
+          type: string
+          description: 保存したプログラムのID
+        name:
+          type: string
+          description: プログラムの表示名
+        source:
+          description: 文法のバージョンと picolang.v0.program の関数定義の map を持つ picolang のソース
+          $ref: "#/components/schemas/PicolangProgram"
       examples:
         - id: program-1
           name: 前進する
-          actions:
-            - action: move
-            - action: move
+          source:
+            picolangVersion: 0
+            picolang:
+              v0:
+                program:
+                  main:
+                    kind: function
+                    hintId: 00000000-0000-4000-8000-000000000001
+                    params: []
+                    returnType: unit
+                    body:
+                      kind: block
+                      hintId: 00000000-0000-4000-8000-000000000002
+                      stmts:
+                        - kind: call
+                          hintId: 00000000-0000-4000-8000-000000000003
+                          func: forward
+                          args: []
+                        - kind: call
+                          hintId: 00000000-0000-4000-8000-000000000004
+                          func: forward
+                          args: []
+                        - kind: return
+                          hintId: 00000000-0000-4000-8000-000000000005
+                          value:
+                            kind: literal
+                            hintId: 00000000-0000-4000-8000-000000000006
+                            type: unit
+                            value: null
 
     Room:
       type: object

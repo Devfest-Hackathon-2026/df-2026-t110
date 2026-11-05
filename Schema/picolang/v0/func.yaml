@@ -1,0 +1,5 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Func
+description: 呼び出す組み込み関数またはユーザー定義関数の名前。関数は値として扱わない
+
+$ref: './name.yaml'

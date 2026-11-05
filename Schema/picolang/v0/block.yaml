@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Block
+description: 文の一覧と変数スコープを持つブロック
+
+type: object
+additionalProperties: false
+required: [kind, hintId, stmts]
+properties:
+  kind:
+    const: block
+  hintId:
+    $ref: './hint-id.yaml'
+  stmts:
+    $ref: './stmts.yaml'
