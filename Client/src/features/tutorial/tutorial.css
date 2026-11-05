@@ -9,20 +9,29 @@
 .tutorial-page {
   display: grid;
   grid-template-columns: minmax(0, var(--editor-width)) 12px minmax(0, 1fr);
-  height: calc(100dvh - 72px);
+  height: calc(100dvh - 52px);
   min-height: 580px;
   overflow: hidden;
   background: var(--color-field);
 }
 .tutorial-view {
   display: grid;
-  grid-template-rows: minmax(0, var(--stage-height)) 10px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 10px minmax(0, var(--stage-height));
   min-width: 0;
   min-height: 0;
   transition: grid-template-rows 260ms ease;
 }
 .tutorial-view--resizing {
   transition: none;
+}
+.tutorial-view--stage-hidden {
+  grid-template-rows: minmax(0, 1fr) 0 0;
+  transition: none;
+}
+.tutorial-view--stage-hidden .tutorial-stage,
+.tutorial-view--stage-hidden .tutorial-stage-resizer {
+  visibility: hidden;
+  pointer-events: none;
 }
 .tutorial-stage-resizer {
   z-index: 3;
@@ -32,12 +41,6 @@
   cursor: row-resize;
   touch-action: none;
   user-select: none;
-}
-.tutorial-stage-resizer span {
-  width: 54px;
-  height: 4px;
-  border-radius: 5px;
-  background: #879a94;
 }
 .tutorial-stage-resizer:hover,
 .tutorial-stage-resizer:focus-visible {
@@ -54,12 +57,6 @@
   touch-action: none;
   user-select: none;
 }
-.tutorial-resizer span {
-  width: 4px;
-  height: 54px;
-  border-radius: 5px;
-  background: #879a94;
-}
 .tutorial-resizer:hover,
 .tutorial-resizer:focus-visible {
   background: #c4d8d0;
@@ -72,6 +69,19 @@
   min-height: 0;
   overflow: hidden;
   background: var(--color-field);
+}
+.tutorial-stage--fullscreen {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+}
+.tutorial-stage--fullscreen .tutorial-program-actions {
+  top: max(14px, env(safe-area-inset-top));
+}
+.tutorial-stage--fullscreen .tutorial-stage-toolbar {
+  bottom: max(24px, env(safe-area-inset-bottom));
 }
 .tutorial-stage .stage-scene {
   position: absolute;
@@ -183,6 +193,20 @@
   overflow-y: auto;
   padding: var(--space-md) 24px 28px;
 }
+.tutorial-show-stage-button {
+  align-self: flex-start;
+  min-height: 36px;
+  margin: 10px 24px 0;
+  padding: 5px 12px;
+  border: 1px solid var(--color-accent-deep);
+  border-radius: 4px;
+  background: var(--color-paper);
+  color: var(--color-accent-deep);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: 700;
+  cursor: pointer;
+}
 .tutorial-back-row {
   display: flex;
   justify-content: space-between;
@@ -232,8 +256,9 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: var(--space-sm) var(--space-md);
+  padding: 8px var(--space-md);
   border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper);
 }
 .tutorial-editor-heading h2 {
   font-size: var(--type-body);
@@ -250,7 +275,7 @@
 }
 .tutorial-editor-mock {
   display: grid;
-  grid-template-columns: 78px minmax(150px, 32%) minmax(0, 1fr);
+  grid-template-columns: 54px minmax(150px, 32%) minmax(0, 1fr);
   height: 100%;
   min-width: 0;
 }
@@ -262,11 +287,11 @@
 .tutorial-editor-categories button {
   display: flex;
   width: 100%;
-  min-height: 72px;
+  min-height: 58px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   border: 0;
   border-bottom: 1px solid var(--color-rule);
   background: transparent;
@@ -285,8 +310,8 @@
   outline-offset: -2px;
 }
 .tutorial-editor-categories button span {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--category-color);
 }
@@ -346,17 +371,17 @@
 }
 .tutor-conversation {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: end;
-  gap: var(--space-md);
-  margin-top: var(--space-lg);
+  gap: 12px;
+  margin-top: 16px;
 }
 .tutor-avatar {
   position: relative;
-  width: 104px;
-  height: 124px;
+  width: 56px;
+  height: 68px;
   overflow: hidden;
-  border-radius: 52px 52px 5px 5px;
+  border-radius: 28px 28px 5px 5px;
   background: var(--tutor-peach);
   border-bottom: 4px solid var(--tutor-edge);
 }
@@ -376,8 +401,8 @@
 .tutor-speech {
   position: relative;
   min-width: 0;
-  min-height: 118px;
-  padding: var(--space-md);
+  min-height: 68px;
+  padding: 10px 12px;
   border: 1px solid var(--tutor-edge);
   border-radius: 8px;
   background: var(--tutor-bubble);
@@ -397,7 +422,7 @@
 }
 .tutor-speech span {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: var(--tutor-ink);
   font-size: var(--type-small);
   font-weight: 700;
@@ -411,7 +436,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .tutor-stepper button,
 .tutorial-layout-nav button {
@@ -438,8 +463,8 @@
   font-variant-numeric: tabular-nums;
 }
 .tutorial-note {
-  margin-top: 28px;
-  padding-top: 20px;
+  margin-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid var(--color-rule);
 }
 .tutorial-note h2 {
@@ -457,20 +482,22 @@
   z-index: 3;
   top: 14px;
   left: 14px;
-  right: 14px;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
+  width: 82px;
+  flex-direction: column;
+  gap: 6px;
   pointer-events: none;
 }
 .tutorial-program-actions button {
-  min-height: 42px;
-  padding: var(--space-sm) var(--space-md);
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 6px;
   border: 1px solid var(--color-accent-deep);
   border-radius: 4px;
   font: inherit;
-  font-size: var(--type-body);
+  font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
   box-shadow: 0 2px 8px #102b2833;
@@ -489,9 +516,21 @@
   color: var(--color-accent-ink);
 }
 .tutorial-reset-button,
-.tutorial-restore-button {
+.tutorial-fullscreen-button,
+.tutorial-hide-stage-button {
   background: var(--color-paper);
   color: var(--color-accent-deep);
+}
+.tutorial-program-actions .tutorial-fullscreen-button {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  place-items: center;
+}
+.tutorial-fullscreen-button svg {
+  width: 18px;
+  height: 18px;
 }
 .tutorial-layout-nav {
   display: grid;
@@ -568,7 +607,7 @@
 }
 @media (max-width: 700px), (max-aspect-ratio: 1/1) and (max-width: 980px) {
   .tutorial-page {
-    height: calc(100dvh - 72px);
+    height: calc(100dvh - 52px);
     min-height: 0;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 60%) minmax(0, 1fr);
@@ -589,7 +628,7 @@
 }
 @media (min-aspect-ratio: 1/1) and (max-height: 750px) {
   .tutorial-page {
-    height: calc(100dvh - 72px);
+    height: calc(100dvh - 52px);
     min-height: 0;
   }
   .tutorial-stage {
@@ -598,8 +637,8 @@
 }
 @media (max-width: 900px) {
   .tutorial-page {
-    height: calc(100svh - 70px);
-    height: calc(100dvh - 70px);
+    height: calc(100svh - 52px);
+    height: calc(100dvh - 52px);
   }
   .tutorial-panel-scroll {
     padding-inline: 20px;
@@ -623,17 +662,17 @@
     font-size: var(--type-section);
   }
   .tutor-conversation {
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 12px;
-    margin-top: var(--space-md);
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 12px;
   }
   .tutor-avatar {
-    width: 84px;
-    height: 100px;
+    width: 48px;
+    height: 58px;
   }
   .tutor-speech {
-    min-height: 100px;
-    padding: var(--space-sm) var(--space-md);
+    min-height: 58px;
+    padding: 8px 10px;
   }
   .tutor-speech p {
     font-size: var(--type-body);
@@ -644,21 +683,21 @@
     grid-template-rows: minmax(0, 55%) minmax(0, 1fr);
   }
   .tutorial-editor-mock {
-    grid-template-columns: 64px minmax(120px, 35%) minmax(0, 1fr);
+    grid-template-columns: 48px minmax(120px, 35%) minmax(0, 1fr);
   }
   .tutorial-editor-categories button {
-    min-height: 60px;
+    min-height: 54px;
   }
   .tutorial-program-actions {
     top: 8px;
     left: 8px;
-    right: 8px;
+    width: 74px;
     gap: 6px;
   }
   .tutorial-program-actions button {
-    min-height: 36px;
-    padding: 6px 8px;
-    font-size: var(--type-small);
+    min-height: 32px;
+    padding: 4px 5px;
+    font-size: 11px;
   }
   .tutorial-stage-toolbar {
     bottom: 8px;

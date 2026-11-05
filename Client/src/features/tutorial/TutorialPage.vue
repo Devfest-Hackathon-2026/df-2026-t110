@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Icon } from '@iconify/vue'
+import maximizeIcon from '@iconify-icons/lucide/maximize'
+import minimizeIcon from '@iconify-icons/lucide/minimize'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { normalizeField } from '../stage/stage.ts'
@@ -17,16 +20,17 @@ const loadState = ref('loading')
 const loadMessage = ref('')
 const sceneError = ref('')
 const mode = ref<'preview' | 'camera'>('preview')
+const modeBeforeHide = ref<'preview' | 'camera' | null>(null)
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
 const sceneRef = ref<{ reset: () => void; resetRobot: () => void } | null>(null)
+const stageRef = ref<HTMLElement | null>(null)
 const workspaceRef = ref<HTMLElement | null>(null)
 const viewRef = ref<HTMLElement | null>(null)
 const editorWidth = ref(56)
-const editorWidthBeforeRun = ref(56)
 const stageHeight = ref(66)
-const stageHeightBeforeRun = ref(66)
-const stageExpanded = ref(false)
+const stageFullscreen = ref(false)
+const stageHidden = ref(false)
 const activeCategory = ref('motion')
 let resizing = false
 const resizingStage = ref(false)
@@ -75,6 +79,7 @@ const previewDistance = computed(() =>
 )
 
 async function load(id: string): Promise<void> {
+  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
   controller?.abort()
   controller = new AbortController()
   const signal = controller.signal
@@ -87,13 +92,13 @@ async function load(id: string): Promise<void> {
   loadMessage.value = ''
   sceneError.value = ''
   mode.value = 'preview'
+  modeBeforeHide.value = null
   layoutIndex.value = 0
   guideIndex.value = 0
   editorWidth.value = 56
-  editorWidthBeforeRun.value = 56
   stageHeight.value = 66
-  stageHeightBeforeRun.value = 66
-  stageExpanded.value = false
+  stageFullscreen.value = false
+  stageHidden.value = false
 
   try {
     const remote = await getTutorial(id, signal)
@@ -133,13 +138,6 @@ function changeLayout(delta: number): void {
 
 async function runProgram(): Promise<void> {
   if (!field.value || !stage.value) return
-  if (!stageExpanded.value) {
-    editorWidthBeforeRun.value = editorWidth.value
-    stageHeightBeforeRun.value = stageHeight.value
-  }
-  stageExpanded.value = true
-  editorWidth.value = 32
-  stageHeight.value = 80
   layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
   await nextTick()
   sceneRef.value?.resetRobot()
@@ -155,7 +153,6 @@ async function runProgram(): Promise<void> {
 }
 
 function resetProgram(): void {
-  restoreWorkspaceSize()
   sceneRef.value?.reset()
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-reset', {
@@ -164,11 +161,32 @@ function resetProgram(): void {
   )
 }
 
-function restoreWorkspaceSize(): void {
-  if (!stageExpanded.value) return
-  stageExpanded.value = false
-  editorWidth.value = editorWidthBeforeRun.value
-  stageHeight.value = stageHeightBeforeRun.value
+function toggleStageFullscreen(): void {
+  if (stageFullscreen.value) {
+    stageFullscreen.value = false
+    if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+    return
+  }
+  stageFullscreen.value = true
+  const request = stageRef.value?.requestFullscreen?.()
+  if (request) void request.catch(() => {})
+}
+
+function hideStage(): void {
+  if (stageFullscreen.value) toggleStageFullscreen()
+  modeBeforeHide.value = mode.value
+  stageHidden.value = true
+  if (mode.value === 'camera') mode.value = 'preview'
+}
+
+function showStage(): void {
+  stageHidden.value = false
+  if (modeBeforeHide.value === 'camera') mode.value = 'camera'
+  modeBeforeHide.value = null
+}
+
+function syncFullscreen(): void {
+  if (!document.fullscreenElement) stageFullscreen.value = false
 }
 
 function setEditorWidth(clientX: number): void {
@@ -203,7 +221,7 @@ function resizeWithKeyboard(event: KeyboardEvent): void {
 function setStageHeight(clientY: number): void {
   const bounds = viewRef.value?.getBoundingClientRect()
   if (!bounds?.height) return
-  stageHeight.value = Math.min(85, Math.max(30, ((clientY - bounds.top) / bounds.height) * 100))
+  stageHeight.value = Math.min(85, Math.max(30, ((bounds.bottom - clientY) / bounds.height) * 100))
 }
 
 function beginStageResize(event: PointerEvent): void {
@@ -223,23 +241,23 @@ function endStageResize(event: PointerEvent): void {
 }
 
 function resizeStageWithKeyboard(event: KeyboardEvent): void {
-  const delta = event.key === 'ArrowUp' ? -2 : event.key === 'ArrowDown' ? 2 : 0
+  const delta = event.key === 'ArrowUp' ? 2 : event.key === 'ArrowDown' ? -2 : 0
   if (!delta) return
   event.preventDefault()
   stageHeight.value = Math.min(85, Math.max(30, stageHeight.value + delta))
 }
 
 watch(() => props.tutorialId, load, { immediate: true })
-onBeforeUnmount(() => controller?.abort())
+onMounted(() => document.addEventListener('fullscreenchange', syncFullscreen))
+onBeforeUnmount(() => {
+  controller?.abort()
+  document.removeEventListener('fullscreenchange', syncFullscreen)
+  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+})
 </script>
 
 <template>
-  <div
-    ref="workspaceRef"
-    class="tutorial-page"
-    :class="{ 'tutorial-page--executing': stageExpanded }"
-    :style="{ '--editor-width': `${editorWidth}%` }"
-  >
+  <div ref="workspaceRef" class="tutorial-page" :style="{ '--editor-width': `${editorWidth}%` }">
     <section id="tutorial-editor" class="tutorial-editor" aria-labelledby="tutorial-editor-title">
       <div class="tutorial-editor-heading">
         <h2 id="tutorial-editor-title">コード</h2>
@@ -293,76 +311,19 @@ onBeforeUnmount(() => controller?.abort())
       @pointerup="endResize"
       @pointercancel="endResize"
       @keydown="resizeWithKeyboard"
-    >
-      <span aria-hidden="true"></span>
-    </div>
+    ></div>
 
     <div
       id="tutorial-view"
       ref="viewRef"
       class="tutorial-view"
-      :class="{ 'tutorial-view--resizing': resizingStage }"
+      :class="{ 'tutorial-view--resizing': resizingStage, 'tutorial-view--stage-hidden': stageHidden }"
       :style="{ '--stage-height': `${stageHeight}%` }"
     >
-      <section id="tutorial-stage" class="tutorial-stage" aria-label="教材のフィールド">
-        <StageScene
-          v-if="stage"
-          ref="sceneRef"
-          :stage="stage"
-          :mode="mode"
-          :preview-distance="previewDistance"
-          @error="sceneError = $event"
-        />
-        <div v-else class="tutorial-stage-empty">
-          {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
-        </div>
-        <div v-if="tutorial && stage" class="tutorial-program-actions" aria-label="プログラムの操作">
-          <button type="button" class="tutorial-run-button" @click="runProgram">
-            <span aria-hidden="true">▶</span> プログラムを実行
-          </button>
-          <button type="button" class="tutorial-reset-button" @click="resetProgram">
-            <span aria-hidden="true">↺</span> リセット
-          </button>
-          <button
-            v-if="stageExpanded"
-            type="button"
-            class="tutorial-restore-button"
-            @click="restoreWorkspaceSize"
-          >
-            編集へ戻る
-          </button>
-        </div>
-        <div v-if="stage" class="tutorial-stage-toolbar">
-          <span v-if="field && field.layouts.length > 1"
-            >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
-          >
-          <div class="tutorial-view-switch" aria-label="表示モード">
-            <button type="button" :aria-pressed="mode === 'preview'" @click="mode = 'preview'">3D</button>
-            <button type="button" :aria-pressed="mode === 'camera'" @click="mode = 'camera'">カメラ</button>
-          </div>
-        </div>
-      </section>
-
-      <div
-        class="tutorial-stage-resizer"
-        role="separator"
-        tabindex="0"
-        aria-label="ARと課題説明の高さを調整"
-        aria-orientation="horizontal"
-        aria-controls="tutorial-stage tutorial-explanation"
-        aria-valuemin="30"
-        aria-valuemax="85"
-        :aria-valuenow="Math.round(stageHeight)"
-        @pointerdown="beginStageResize"
-        @pointermove="moveStageResize"
-        @pointerup="endStageResize"
-        @pointercancel="endStageResize"
-        @keydown="resizeStageWithKeyboard"
-      >
-        <span aria-hidden="true"></span>
-      </div>
-
       <aside id="tutorial-explanation" class="tutorial-panel">
+        <button v-if="stageHidden" type="button" class="tutorial-show-stage-button" @click="showStage">
+          ARを表示
+        </button>
         <div class="tutorial-panel-scroll">
           <div class="tutorial-back-row">
             <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
@@ -386,6 +347,10 @@ onBeforeUnmount(() => controller?.abort())
                 {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
               </p>
             </header>
+            <section class="tutorial-note" aria-labelledby="tutorial-note-title">
+              <h2 id="tutorial-note-title">この課題で考えること</h2>
+              <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
+            </section>
             <div class="tutor-conversation">
               <TutorAvatar />
               <div class="tutor-speech">
@@ -401,10 +366,6 @@ onBeforeUnmount(() => controller?.abort())
               </button>
             </div>
 
-            <section class="tutorial-note" aria-labelledby="tutorial-note-title">
-              <h2 id="tutorial-note-title">この課題で考えること</h2>
-              <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
-            </section>
             <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
               <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
               <div>
@@ -434,6 +395,71 @@ onBeforeUnmount(() => controller?.abort())
           </div>
         </div>
       </aside>
+
+      <div
+        class="tutorial-stage-resizer"
+        role="separator"
+        tabindex="0"
+        aria-label="ARと課題説明の高さを調整"
+        aria-orientation="horizontal"
+        aria-controls="tutorial-stage tutorial-explanation"
+        aria-valuemin="30"
+        aria-valuemax="85"
+        :aria-valuenow="Math.round(stageHeight)"
+        @pointerdown="beginStageResize"
+        @pointermove="moveStageResize"
+        @pointerup="endStageResize"
+        @pointercancel="endStageResize"
+        @keydown="resizeStageWithKeyboard"
+      ></div>
+
+      <section
+        id="tutorial-stage"
+        ref="stageRef"
+        class="tutorial-stage"
+        :class="{ 'tutorial-stage--fullscreen': stageFullscreen }"
+        aria-label="教材のフィールド"
+      >
+        <StageScene
+          v-if="stage"
+          ref="sceneRef"
+          :stage="stage"
+          :mode="mode"
+          :preview-distance="previewDistance"
+          @error="sceneError = $event"
+        />
+        <div v-else class="tutorial-stage-empty">
+          {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
+        </div>
+        <div v-if="tutorial && stage" class="tutorial-program-actions" aria-label="プログラムの操作">
+          <button type="button" class="tutorial-run-button" @click="runProgram">
+            <span aria-hidden="true">▶</span> 実行
+          </button>
+          <button type="button" class="tutorial-reset-button" @click="resetProgram">
+            <span aria-hidden="true">↺</span> リセット
+          </button>
+          <button
+            type="button"
+            class="tutorial-fullscreen-button"
+            :aria-pressed="stageFullscreen"
+            :aria-label="stageFullscreen ? '全画面を閉じる' : 'ARを全画面表示'"
+            :title="stageFullscreen ? '全画面を閉じる' : 'ARを全画面表示'"
+            @click="toggleStageFullscreen"
+          >
+            <Icon :icon="stageFullscreen ? minimizeIcon : maximizeIcon" aria-hidden="true" />
+          </button>
+          <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
+        </div>
+        <div v-if="stage" class="tutorial-stage-toolbar">
+          <span v-if="field && field.layouts.length > 1"
+            >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
+          >
+          <div class="tutorial-view-switch" aria-label="表示モード">
+            <button type="button" :aria-pressed="mode === 'preview'" @click="mode = 'preview'">3D</button>
+            <button type="button" :aria-pressed="mode === 'camera'" @click="mode = 'camera'">カメラ</button>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>

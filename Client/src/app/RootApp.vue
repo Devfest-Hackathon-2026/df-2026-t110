@@ -7,6 +7,7 @@ import swordsIcon from '@iconify-icons/lucide/swords'
 import logInIcon from '@iconify-icons/lucide/log-in'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import { LOCAL_LESSONS } from '../features/tutorial/tutorialLessons.ts'
+import AppHeader from './AppHeader.vue'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
@@ -27,22 +28,12 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
 </script>
 
 <template>
-  <StageViewer v-if="isStage" />
-  <div v-else class="site">
-    <header class="site-nav container">
-      <a class="site-logo" href="/" aria-label="Robot Field ホーム">Robot <span>Field</span></a>
-      <nav aria-label="メインナビゲーション">
-        <a
-          href="/tutorials"
-          :aria-current="page === 'tutorials' || page === 'tutorial-detail' ? 'page' : undefined"
-          >教材</a
-        >
-        <a href="/rooms" :aria-current="page === 'rooms' ? 'page' : undefined">対戦</a>
-        <a href="/account" :aria-current="page === 'account' ? 'page' : undefined">ログイン</a>
-      </nav>
-    </header>
+  <div :class="isStage ? 'stage-page' : 'site'">
+    <AppHeader :active-page="isStage ? 'tutorials' : page" />
 
-    <main v-if="page === 'home'">
+    <StageViewer v-if="isStage" />
+
+    <main v-else-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
         <div class="hero-copy">
           <h1 id="home-title" class="heading-with-icon">
@@ -144,11 +135,5 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
         <a class="action-primary" href="/">ホームへ戻る</a>
       </template>
     </main>
-
-    <footer v-if="page !== 'tutorial-detail'" class="site-footer container">
-      <span>Robot Field</span>
-      <p>ロボットを動かして、考えるための場所。</p>
-      <a href="/">ホームへ</a>
-    </footer>
   </div>
 </template>

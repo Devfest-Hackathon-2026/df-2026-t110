@@ -161,13 +161,6 @@ async function loadField() {
 
 <template>
   <main class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="/" aria-label="Robot Field ホームへ戻る"
-        ><span class="brand-icon">RF</span><span>Robot Field<small>ステージプレビュー</small></span></a
-      >
-      <span class="status">{{ mode === 'camera' ? 'カメラ表示' : '3Dプレビュー' }}</span>
-    </header>
-
     <div class="viewer">
       <StageScene
         ref="sceneRef"

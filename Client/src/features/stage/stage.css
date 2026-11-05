@@ -60,52 +60,11 @@ button:disabled {
   opacity: 0.55;
 }
 .app-shell {
-  min-height: 100svh;
+  min-height: calc(100svh - 52px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 370px);
-  grid-template-rows: 62px minmax(600px, calc(100svh - 62px));
+  grid-template-rows: minmax(600px, calc(100svh - 52px));
   background: var(--app-bg);
-}
-.topbar {
-  grid-column: 1/-1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 0 28px;
-  border-bottom: 1px solid var(--app-rule);
-  background: var(--app-paper);
-  z-index: 2;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--app-ink);
-  font-size: 15px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.brand-icon {
-  display: grid;
-  place-items: center;
-  width: 31px;
-  height: 31px;
-  border: 1px solid var(--app-teal);
-  color: var(--app-teal-dark);
-  font-size: 10px;
-  font-weight: 800;
-}
-.brand small {
-  display: block;
-  margin-top: 2px;
-  color: var(--app-muted);
-  font-size: 11px;
-  font-weight: 400;
-}
-.status {
-  color: var(--app-muted);
-  font-size: 12px;
 }
 .viewer {
   position: relative;
@@ -393,15 +352,12 @@ button:disabled {
 }
 @media (max-width: 760px) {
   .app-shell {
-    height: 100svh;
-    height: 100dvh;
+    height: calc(100svh - 52px);
+    height: calc(100dvh - 52px);
     min-height: 0;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 52px minmax(0, 50%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 50%) minmax(0, 1fr);
     overflow: hidden;
-  }
-  .topbar {
-    padding-inline: 16px;
   }
   .viewer {
     min-height: 0;
@@ -513,10 +469,7 @@ button:disabled {
 }
 @media (max-width: 760px) and (max-height: 600px) {
   .app-shell {
-    grid-template-rows: 44px minmax(0, 40%) minmax(0, 1fr);
-  }
-  .topbar {
-    padding-inline: 12px;
+    grid-template-rows: minmax(0, 40%) minmax(0, 1fr);
   }
   .scene-legend {
     display: none;
