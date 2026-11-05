@@ -141,14 +141,14 @@ type ProgramId = string
 // RoomId defines model for RoomId.
 type RoomId = string
 
+// BadRequest defines model for BadRequest.
+type BadRequest = ApiError
+
 // Conflict defines model for Conflict.
 type Conflict = ApiError
 
 // NotFound defines model for NotFound.
 type NotFound = ApiError
-
-// AuthenticateJSONBody defines parameters for Authenticate.
-type AuthenticateJSONBody map[string]interface{}
 
 // CreateMatchJSONBody defines parameters for CreateMatch.
 type CreateMatchJSONBody struct {
@@ -160,8 +160,16 @@ type CreateProgramWithVibeJSONBody struct {
 	Prompt string `json:"prompt"`
 }
 
-// AuthenticateJSONRequestBody defines body for Authenticate for application/json ContentType.
-type AuthenticateJSONRequestBody AuthenticateJSONBody
+// LoginCallbackParams defines parameters for LoginCallback.
+type LoginCallbackParams struct {
+	State string `form:"state" json:"state"`
+
+	// Code 認可された場合に Google が付与する認可コード
+	Code *string `form:"code,omitempty" json:"code,omitempty"`
+
+	// Error 認可されなかった場合に Google が付与するエラーコード
+	Error *string `form:"error,omitempty" json:"error,omitempty"`
+}
 
 // CreateMatchJSONRequestBody defines body for CreateMatch for application/json ContentType.
 type CreateMatchJSONRequestBody CreateMatchJSONBody
@@ -346,9 +354,6 @@ func (a User) MarshalJSON() ([]byte, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Authenticate 認証
-	// (POST /auth)
-	Authenticate(ctx *echo.Context) error
 	// GetField フィールドを取得
 	// (GET /field/{fieldId})
 	GetField(ctx *echo.Context, fieldId FieldId) error
@@ -370,6 +375,15 @@ type ServerInterface interface {
 	// UpdateProgram プログラムを更新
 	// (PUT /field/{fieldId}/program/{programId})
 	UpdateProgram(ctx *echo.Context, fieldId FieldId, programId ProgramId) error
+	// Login Google ログインを開始
+	// (GET /login)
+	Login(ctx *echo.Context) error
+	// LoginCallback Google ログインを完了
+	// (GET /login/callback)
+	LoginCallback(ctx *echo.Context, params LoginCallbackParams) error
+	// Logout ログアウト
+	// (POST /logout)
+	Logout(ctx *echo.Context) error
 	// GetMe 自分の情報を取得
 	// (GET /me)
 	GetMe(ctx *echo.Context) error
@@ -402,15 +416,6 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
-}
-
-// Authenticate converts echo context to params.
-func (w *ServerInterfaceWrapper) Authenticate(ctx *echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.Authenticate(ctx)
-	return err
 }
 
 // GetField converts echo context to params.
@@ -538,6 +543,56 @@ func (w *ServerInterfaceWrapper) UpdateProgram(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateProgram(ctx, fieldId, programId)
+	return err
+}
+
+// Login converts echo context to params.
+func (w *ServerInterfaceWrapper) Login(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Login(ctx)
+	return err
+}
+
+// LoginCallback converts echo context to params.
+func (w *ServerInterfaceWrapper) LoginCallback(ctx *echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LoginCallbackParams
+	// ------------- Required query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "state", ctx.QueryParams(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter state: %s", err))
+	}
+
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", ctx.QueryParams(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter code: %s", err))
+	}
+
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", ctx.QueryParams(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter error: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.LoginCallback(ctx, params)
+	return err
+}
+
+// Logout converts echo context to params.
+func (w *ServerInterfaceWrapper) Logout(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Logout(ctx)
 	return err
 }
 
@@ -705,7 +760,6 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.POST(options.BaseURL+"/auth", wrapper.Authenticate, options.OperationMiddlewares["authenticate"]...)
 	router.GET(options.BaseURL+"/field/:fieldId", wrapper.GetField, options.OperationMiddlewares["getField"]...)
 	router.POST(options.BaseURL+"/field/:fieldId/match", wrapper.CreateMatch, options.OperationMiddlewares["createMatch"]...)
 	router.GET(options.BaseURL+"/field/:fieldId/program", wrapper.ListPrograms, options.OperationMiddlewares["listPrograms"]...)
@@ -713,6 +767,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/field/:fieldId/program/:programId", wrapper.GetProgram, options.OperationMiddlewares["getProgram"]...)
 	router.PUT(options.BaseURL+"/field/:fieldId/program/:programId", wrapper.UpdateProgram, options.OperationMiddlewares["updateProgram"]...)
 	router.POST(options.BaseURL+"/field/:fieldId/program/create-with-vibe", wrapper.CreateProgramWithVibe, options.OperationMiddlewares["createProgramWithVibe"]...)
+	router.GET(options.BaseURL+"/login", wrapper.Login, options.OperationMiddlewares["login"]...)
+	router.GET(options.BaseURL+"/login/callback", wrapper.LoginCallback, options.OperationMiddlewares["loginCallback"]...)
+	router.POST(options.BaseURL+"/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
 	router.POST(options.BaseURL+"/me", wrapper.SaveMe, options.OperationMiddlewares["saveMe"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
