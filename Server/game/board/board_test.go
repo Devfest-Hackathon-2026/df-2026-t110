@@ -3,6 +3,7 @@ package board_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -56,9 +57,9 @@ func TestBarrierAndImmutableQueries(t *testing.T) {
 	if d.Request == nil || d.Request.RobotID != "p1" || d.Request.ReturnValue != nil {
 		t.Errorf("unexpected initial decision: %+v", d)
 	}
-	query := game.Action{Kind: game.DrillDurability}
+	query := game.DrillDurabilityAction{}
 	for range 3 {
-		d = next(t, b, &game.Reply{RobotID: "p1", Action: &query})
+		d = next(t, b, &game.Reply{RobotID: "p1", Action: query})
 		if d.Request == nil || d.Request.RobotID != "p1" || d.Request.ReturnValue == nil || *d.Request.ReturnValue != (game.Value{Kind: game.Integer, Integer: 3}) {
 			t.Errorf("unexpected query result: %+v", d)
 		}
@@ -66,12 +67,12 @@ func TestBarrierAndImmutableQueries(t *testing.T) {
 			t.Error("query changed the board")
 		}
 	}
-	move := game.Action{Kind: game.Forward}
-	d = next(t, b, &game.Reply{RobotID: "p1", Action: &move})
+	move := game.ForwardAction{}
+	d = next(t, b, &game.Reply{RobotID: "p1", Action: move})
 	if d.Request == nil || d.Request.RobotID != "p2" {
 		t.Errorf("expected p2, got %+v", d)
 	}
-	d = next(t, b, &game.Reply{RobotID: "p2", Action: &move})
+	d = next(t, b, &game.Reply{RobotID: "p2", Action: move})
 	if d.AdvanceTo == nil || *d.AdvanceTo != 1 || !reflect.DeepEqual(initial, b.Snapshot()) {
 		t.Error("board must wait for commit authorization")
 	}
@@ -94,7 +95,7 @@ func TestBarrierAndImmutableQueries(t *testing.T) {
 
 func TestAtomicMovement(t *testing.T) {
 	t.Parallel()
-	forward := game.Action{Kind: game.Forward}
+	forward := game.ForwardAction{}
 	tests := []struct {
 		name    string
 		grid    [][]board.Terrain
@@ -156,7 +157,7 @@ func TestAtomicMovement(t *testing.T) {
 			grid:    land(2, 1),
 			robots:  map[game.RobotID]board.RobotState{"a": state(1, 0, board.East)},
 			ids:     []game.RobotID{"a"},
-			actions: map[game.RobotID]game.Action{"a": {Kind: game.Back}},
+			actions: map[game.RobotID]game.Action{"a": game.BackAction{}},
 			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			moved:   map[game.RobotID]bool{"a": true},
 		},
@@ -165,7 +166,7 @@ func TestAtomicMovement(t *testing.T) {
 			grid:    land(2, 1),
 			robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.North)},
 			ids:     []game.RobotID{"a", "b"},
-			actions: map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
+			actions: map[game.RobotID]game.Action{"b": game.RotateAction{Rotation: game.Left}},
 			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)},
 		},
 		{
@@ -173,7 +174,7 @@ func TestAtomicMovement(t *testing.T) {
 			grid:    land(1, 1),
 			robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.West)},
 			ids:     []game.RobotID{"a"},
-			actions: map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
+			actions: map[game.RobotID]game.Action{"a": game.RotateAction{Rotation: game.Right}},
 			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.North)},
 		},
 	}
@@ -186,11 +187,11 @@ func TestAtomicMovement(t *testing.T) {
 				if d.Request == nil || d.Request.RobotID != id {
 					t.Errorf("unexpected request: %+v", d)
 				}
-				a := forward
+				var a game.Action = forward
 				if custom, ok := tt.actions[id]; ok {
 					a = custom
 				}
-				d = next(t, b, &game.Reply{RobotID: id, Action: &a})
+				d = next(t, b, &game.Reply{RobotID: id, Action: a})
 			}
 			if d.AdvanceTo == nil {
 				t.Error("missing advance proposal")
@@ -208,7 +209,7 @@ func TestAtomicMovement(t *testing.T) {
 			}
 			if d.Update != nil {
 				for _, result := range d.Update.Results {
-					if result.Action.Kind == game.Rotate {
+					if _, rotating := result.Action.(game.RotateAction); rotating {
 						if result.Value.Kind != game.Unit {
 							t.Error("rotation must return unit")
 						}
@@ -270,9 +271,8 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 	next(t, b, nil)
 	for _, reply := range []*game.Reply{
 		nil, {RobotID: "other", Done: true}, {RobotID: "a"},
-		{RobotID: "a", Action: &game.Action{Kind: game.Rotate}},
-		{RobotID: "a", Action: &game.Action{Kind: "unknown"}},
-		{RobotID: "a", Action: &game.Action{Kind: game.Forward, Rotation: game.Left}},
+		{RobotID: "a", Action: game.RotateAction{}},
+		{RobotID: "a", Action: game.RotateAction{Rotation: "sideways"}},
 		{RobotID: "a", Done: true, Err: errors.New("error")},
 	} {
 		if _, err := b.Next(t.Context(), reply); err == nil {
@@ -282,7 +282,7 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 			t.Error("invalid reply changed board")
 		}
 	}
-	next(t, b, &game.Reply{RobotID: "a", Action: &game.Action{Kind: game.Forward}})
+	next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := b.Next(ctx, nil); !errors.Is(err, context.Canceled) {
@@ -297,7 +297,7 @@ func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
 	t.Parallel()
 	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}}, []game.RobotID{"a", "b"})
 	next(t, b, nil)
-	next(t, b, &game.Reply{RobotID: "a", Action: &game.Action{Kind: game.Forward}})
+	next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
 	next(t, b, &game.Reply{RobotID: "b", Done: true})
 	d := next(t, b, nil)
 	if d.Update == nil || len(d.Update.Results) != 1 || d.Update.Results[0].Value.Bool {
@@ -313,15 +313,15 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	t.Parallel()
 	field := game.FieldValue{Terrain: game.Land}
 	for _, action := range []game.Action{
-		{Kind: game.Wait, Integer: 7},
-		{Kind: game.PickUp}, {Kind: game.Release}, {Kind: game.Drill},
-		{Kind: game.Distance}, {Kind: game.SearchFront}, {Kind: game.SearchNow},
-		{Kind: game.IsLand, Field: field}, {Kind: game.IsGoal, Field: field},
-		{Kind: game.IsCheckpoint, Field: field}, {Kind: game.IsLaggage, Field: field},
-		{Kind: game.IsSea, Field: field}, {Kind: game.IsRock, Field: field},
-		{Kind: game.PrintInteger, Integer: -42}, {Kind: game.PrintBool, Bool: true},
+		game.WaitAction{Integer: 7},
+		game.PickUpAction{}, game.ReleaseAction{}, game.DrillAction{},
+		game.DistanceAction{}, game.SearchFrontAction{}, game.SearchNowAction{},
+		game.IsLandAction{Field: field}, game.IsGoalAction{Field: field},
+		game.IsCheckpointAction{Field: field}, game.IsLaggageAction{Field: field},
+		game.IsSeaAction{Field: field}, game.IsRockAction{Field: field},
+		game.PrintIntegerAction{Integer: -42}, game.PrintBoolAction{Bool: true},
 	} {
-		t.Run(string(action.Kind), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {
 			t.Parallel()
 			b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[game.RobotID]board.RobotState{
 				"a": state(0, 0, board.East), "b": state(2, 0, board.West),
@@ -330,8 +330,8 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 			next(t, b, nil)
 			// A valid action is already pending when the other robot sends an
 			// unimplemented action; neither action may mutate the board.
-			next(t, b, &game.Reply{RobotID: "a", Action: &game.Action{Kind: game.Forward}})
-			_, err := b.Next(t.Context(), &game.Reply{RobotID: "b", Action: &action})
+			next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
+			_, err := b.Next(t.Context(), &game.Reply{RobotID: "b", Action: action})
 			if !errors.Is(err, game.ErrNotSupported) {
 				t.Errorf("got %v, want ErrNotSupported", err)
 			}

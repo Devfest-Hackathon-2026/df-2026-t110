@@ -3,6 +3,7 @@ package hub_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -90,7 +91,7 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 				if value != nil {
 					t.Error("initial robot input must be nil")
 				}
-				return game.Step{Action: &action}, nil
+				return game.Step{Action: action}, nil
 			}
 			if value == nil || *value != want {
 				t.Errorf("robot %s got %+v, want %+v", id, value, want)
@@ -123,8 +124,8 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 		},
 	}
 	h := newHub(t, b,
-		hub.Participant{ID: "a", Robot: makeRobot("a", game.Action{Kind: game.Rotate, Rotation: game.Left}, valueA)},
-		hub.Participant{ID: "b", Robot: makeRobot("b", game.Action{Kind: game.Forward}, valueB)},
+		hub.Participant{ID: "a", Robot: makeRobot("a", game.RotateAction{Rotation: game.Left}, valueA)},
+		hub.Participant{ID: "b", Robot: makeRobot("b", game.ForwardAction{}, valueB)},
 	)
 	var ticks []uint64
 	options := limits()
@@ -150,7 +151,7 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 	other := robotFunc(func(_ context.Context, value *game.Value) (game.Step, error) {
 		if first {
 			first = false
-			return game.Step{Action: &game.Action{Kind: game.Forward}}, nil
+			return game.Step{Action: game.ForwardAction{}}, nil
 		}
 		if value == nil || value.Kind != game.Bool || !value.Bool {
 			t.Errorf("other robot got wrong result: %+v", value)
@@ -173,7 +174,7 @@ func TestLimits(t *testing.T) {
 		t.Parallel()
 		b := grid(t)
 		query := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
-			return game.Step{Action: &game.Action{Kind: game.DrillDurability}}, nil
+			return game.Step{Action: game.DrillDurabilityAction{}}, nil
 		})
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: query}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 10, MaxResumes: 3})
@@ -185,7 +186,7 @@ func TestLimits(t *testing.T) {
 		t.Parallel()
 		b := grid(t)
 		move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
-			return game.Step{Action: &game.Action{Kind: game.Rotate, Rotation: game.Right}}, nil
+			return game.Step{Action: game.RotateAction{Rotation: game.Right}}, nil
 		})
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: move})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 1, MaxResumes: 100})
@@ -264,7 +265,7 @@ func TestBoardAndCallbackErrors(t *testing.T) {
 	}
 	b := grid(t)
 	move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
-		return game.Step{Action: &game.Action{Kind: game.Forward}}, nil
+		return game.Step{Action: game.ForwardAction{}}, nil
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: move})
 	options := limits()
@@ -280,7 +281,7 @@ func TestCancellationDiscardsPendingActions(t *testing.T) {
 	b := grid(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
-		return game.Step{Action: &game.Action{Kind: game.Forward}}, nil
+		return game.Step{Action: game.ForwardAction{}}, nil
 	})
 	interrupted := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
 		cancel()
@@ -307,7 +308,7 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 	if _, err := hub.New(nil, []hub.Participant{{ID: "a", Robot: doneRobot()}}); err == nil {
 		t.Error("nil board accepted")
 	}
-	for _, step := range []game.Step{{}, {Done: true, Action: &game.Action{Kind: game.Forward}}} {
+	for _, step := range []game.Step{{}, {Done: true, Action: game.ForwardAction{}}} {
 		r := robotFunc(func(context.Context, *game.Value) (game.Step, error) { return step, nil })
 		h := newHub(t, grid(t), hub.Participant{ID: "a", Robot: r}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(t.Context(), limits())
@@ -334,28 +335,28 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 		action game.Action
 		result game.Value
 	}{
-		{action: game.Action{Kind: game.Forward}, result: boolean},
-		{action: game.Action{Kind: game.Back}, result: boolean},
-		{action: game.Action{Kind: game.Rotate, Rotation: game.Left}, result: unit},
-		{action: game.Action{Kind: game.Wait, Integer: 7}, result: unit},
-		{action: game.Action{Kind: game.PickUp}, result: boolean},
-		{action: game.Action{Kind: game.Release}, result: boolean},
-		{action: game.Action{Kind: game.Drill}, result: boolean},
-		{action: game.Action{Kind: game.DrillDurability}, result: integer},
-		{action: game.Action{Kind: game.Distance}, result: integer},
-		{action: game.Action{Kind: game.SearchFront}, result: observation},
-		{action: game.Action{Kind: game.SearchNow}, result: observation},
-		{action: game.Action{Kind: game.IsLand, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.IsGoal, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.IsCheckpoint, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.IsLaggage, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.IsSea, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.IsRock, Field: field}, result: boolean},
-		{action: game.Action{Kind: game.PrintInteger, Integer: -42}, result: unit},
-		{action: game.Action{Kind: game.PrintBool, Bool: true}, result: unit},
+		{action: game.ForwardAction{}, result: boolean},
+		{action: game.BackAction{}, result: boolean},
+		{action: game.RotateAction{Rotation: game.Left}, result: unit},
+		{action: game.WaitAction{Integer: 7}, result: unit},
+		{action: game.PickUpAction{}, result: boolean},
+		{action: game.ReleaseAction{}, result: boolean},
+		{action: game.DrillAction{}, result: boolean},
+		{action: game.DrillDurabilityAction{}, result: integer},
+		{action: game.DistanceAction{}, result: integer},
+		{action: game.SearchFrontAction{}, result: observation},
+		{action: game.SearchNowAction{}, result: observation},
+		{action: game.IsLandAction{Field: field}, result: boolean},
+		{action: game.IsGoalAction{Field: field}, result: boolean},
+		{action: game.IsCheckpointAction{Field: field}, result: boolean},
+		{action: game.IsLaggageAction{Field: field}, result: boolean},
+		{action: game.IsSeaAction{Field: field}, result: boolean},
+		{action: game.IsRockAction{Field: field}, result: boolean},
+		{action: game.PrintIntegerAction{Integer: -42}, result: unit},
+		{action: game.PrintBoolAction{Bool: true}, result: unit},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.action.Kind), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%T", tt.action), func(t *testing.T) {
 			t.Parallel()
 			boardCalls, robotCalls := 0, 0
 			b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
@@ -367,7 +368,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 					}
 					return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
 				case 2:
-					if reply == nil || reply.RobotID != "a" || reply.Action == nil || *reply.Action != tt.action || reply.Done || reply.Err != nil {
+					if reply == nil || reply.RobotID != "a" || reply.Action == nil || reply.Action != tt.action || reply.Done || reply.Err != nil {
 						t.Errorf("action or arguments lost in transit: %+v", reply)
 					}
 					return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &tt.result}}, nil
@@ -387,7 +388,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 					if value != nil {
 						t.Error("initial return value must be nil")
 					}
-					return game.Step{Action: &tt.action}, nil
+					return game.Step{Action: tt.action}, nil
 				}
 				if value == nil || *value != tt.result {
 					t.Errorf("return value lost in transit: got %+v, want %+v", value, tt.result)
@@ -414,20 +415,26 @@ func TestFieldObservationSurvivesBoardChanges(t *testing.T) {
 		case 1:
 			return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
 		case 2:
-			if reply == nil || reply.Action == nil || reply.Action.Kind != game.SearchFront {
+			if reply == nil || reply.Action != (game.SearchFrontAction{}) {
 				t.Error("expected search_front")
 			}
 			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Field, Field: cell}}}, nil
 		case 3:
 			// Change the live cell after search_front returned its observation.
 			cell = game.FieldValue{Terrain: game.Sea}
-			if reply == nil || reply.Action == nil || reply.Action.Kind != game.IsLand || reply.Action.Field != observation {
-				t.Errorf("field observation changed in transit: %+v", reply)
-			}
 			if reply == nil || reply.Action == nil {
+				t.Error("missing field predicate action")
 				return game.Decision{}, errors.New("missing field predicate action")
 			}
-			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: reply.Action.Field.Terrain == game.Land}}}, nil
+			action, ok := reply.Action.(game.IsLandAction)
+			if !ok {
+				t.Errorf("expected is_land, got %T", reply.Action)
+				return game.Decision{}, errors.New("unexpected field predicate action")
+			}
+			if action.Field != observation {
+				t.Errorf("field observation changed in transit: %+v", action.Field)
+			}
+			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: action.Field.Terrain == game.Land}}}, nil
 		default:
 			return game.Decision{Done: true}, nil
 		}
@@ -436,7 +443,7 @@ func TestFieldObservationSurvivesBoardChanges(t *testing.T) {
 		robotCalls++
 		switch robotCalls {
 		case 1:
-			return game.Step{Action: &game.Action{Kind: game.SearchFront}}, nil
+			return game.Step{Action: game.SearchFrontAction{}}, nil
 		case 2:
 			if value == nil {
 				t.Error("expected field return value")
@@ -445,7 +452,7 @@ func TestFieldObservationSurvivesBoardChanges(t *testing.T) {
 			if value.Kind != game.Field {
 				t.Error("expected field return value")
 			}
-			return game.Step{Action: &game.Action{Kind: game.IsLand, Field: value.Field}}, nil
+			return game.Step{Action: game.IsLandAction{Field: value.Field}}, nil
 		default:
 			if value == nil || value.Kind != game.Bool || !value.Bool {
 				t.Error("expected predicate result")

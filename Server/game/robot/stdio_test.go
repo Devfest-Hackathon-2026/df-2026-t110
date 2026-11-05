@@ -42,15 +42,15 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 		value *game.Value
 		want  game.Action
 	}{
-		{value: nil, want: game.Action{Kind: game.DrillDurability}},
-		{value: &game.Value{Kind: game.Integer, Integer: 3}, want: game.Action{Kind: game.Rotate, Rotation: game.Left}},
-		{value: &game.Value{Kind: game.Unit}, want: game.Action{Kind: game.Rotate, Rotation: game.Right}},
-		{value: &game.Value{Kind: game.Unit}, want: game.Action{Kind: game.Back}},
-		{value: &game.Value{Kind: game.Bool, Bool: true}, want: game.Action{Kind: game.Forward}},
+		{value: nil, want: game.DrillDurabilityAction{}},
+		{value: &game.Value{Kind: game.Integer, Integer: 3}, want: game.RotateAction{Rotation: game.Left}},
+		{value: &game.Value{Kind: game.Unit}, want: game.RotateAction{Rotation: game.Right}},
+		{value: &game.Value{Kind: game.Unit}, want: game.BackAction{}},
+		{value: &game.Value{Kind: game.Bool, Bool: true}, want: game.ForwardAction{}},
 	}
 	for _, tt := range tests {
 		step, err := p1.Next(t.Context(), tt.value)
-		if err != nil || step.Done || step.Action == nil || *step.Action != tt.want {
+		if err != nil || step.Done || step.Action == nil || step.Action != tt.want {
 			t.Errorf("got %+v, %v; want %+v", step, err, tt.want)
 		}
 	}
@@ -74,7 +74,7 @@ func TestEOFAppliesToAllRobots(t *testing.T) {
 	s := session(t, io.NopCloser(strings.NewReader("p1 forward")), io.Discard)
 	p1, p2 := stdio(t, "p1", s), stdio(t, "p2", s)
 	step, err := p1.Next(t.Context(), nil)
-	if err != nil || step.Action == nil || step.Action.Kind != game.Forward {
+	if err != nil || step.Action != (game.ForwardAction{}) {
 		t.Errorf("unterminated last line not read: %+v, %v", step, err)
 	}
 	for _, r := range []*robot.Stdio{p2, p1} {

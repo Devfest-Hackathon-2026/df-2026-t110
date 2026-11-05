@@ -62,7 +62,7 @@ type Snapshot struct {
 
 type control struct {
 	done    bool
-	pending *game.Action
+	pending game.Action
 	value   *game.Value
 }
 
@@ -186,22 +186,18 @@ func (b *Board) accept(reply *game.Reply) error {
 	}
 	c := b.controls[b.awaiting]
 	if reply.Action != nil {
-		a := *reply.Action
-		if a.Kind != game.Rotate && a.Rotation != "" {
-			return errors.New("only rotate accepts a rotation")
-		}
-		switch a.Kind {
-		case game.DrillDurability:
+		switch a := reply.Action.(type) {
+		case game.DrillDurabilityAction:
 			c.value = &game.Value{Kind: game.Integer, Integer: b.state.Robots[b.awaiting].DrillDurability}
-		case game.Forward, game.Back:
-			c.pending = &a
-		case game.Rotate:
+		case game.ForwardAction, game.BackAction:
+			c.pending = a
+		case game.RotateAction:
 			if a.Rotation != game.Left && a.Rotation != game.Right {
 				return errors.New("rotate requires left or right")
 			}
-			c.pending = &a
+			c.pending = a
 		default:
-			return fmt.Errorf("%w: action %q", game.ErrNotSupported, a.Kind)
+			return fmt.Errorf("%w: action %T", game.ErrNotSupported, a)
 		}
 	} else {
 		c.done = true
@@ -222,13 +218,14 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 	}
 	for _, id := range b.order {
 		a := b.controls[id].pending
-		if a == nil || (a.Kind != game.Forward && a.Kind != game.Back) {
-			continue
-		}
 		robot := b.state.Robots[id]
 		delta := directionDeltas[robot.Direction]
-		if a.Kind == game.Back {
+		switch a.(type) {
+		case game.ForwardAction:
+		case game.BackAction:
 			delta.X, delta.Y = -delta.X, -delta.Y
+		default:
+			continue
 		}
 		target := Position{robot.Position.X + delta.X, robot.Position.Y + delta.Y}
 		if b.land(target) {
@@ -269,20 +266,23 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 		}
 		robot := next.Robots[id]
 		value := game.Value{Kind: game.Unit}
-		if a.Kind == game.Rotate {
+		switch action := a.(type) {
+		case game.RotateAction:
 			rotation := 1
-			if a.Rotation == game.Left {
+			if action.Rotation == game.Left {
 				rotation = 3
 			}
 			robot.Direction = [...]Direction{North, East, South, West}[(directionIndex(robot.Direction)+rotation)%4]
-		} else {
+		case game.ForwardAction, game.BackAction:
 			value = game.Value{Kind: game.Bool, Bool: canMove(id)}
 			if value.Bool {
 				robot.Position = targets[id]
 			}
+		default:
+			return game.TickUpdate{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, a)
 		}
 		next.Robots[id] = robot
-		update.Results = append(update.Results, game.ActionResult{RobotID: id, Action: *a, Value: value})
+		update.Results = append(update.Results, game.ActionResult{RobotID: id, Action: a, Value: value})
 	}
 	if err := ctx.Err(); err != nil {
 		return game.TickUpdate{}, err

@@ -153,12 +153,16 @@ func parse(id game.RobotID, fields []string) (game.Step, bool) {
 		switch fields[1] {
 		case "done":
 			return game.Step{Done: true}, true
-		case string(game.Forward), string(game.Back), string(game.DrillDurability):
-			return game.Step{Action: &game.Action{Kind: game.ActionKind(fields[1])}}, true
+		case "forward":
+			return game.Step{Action: game.ForwardAction{}}, true
+		case "back":
+			return game.Step{Action: game.BackAction{}}, true
+		case "drill_durability":
+			return game.Step{Action: game.DrillDurabilityAction{}}, true
 		}
 	}
-	if len(fields) == 3 && fields[1] == string(game.Rotate) && (fields[2] == string(game.Left) || fields[2] == string(game.Right)) {
-		return game.Step{Action: &game.Action{Kind: game.Rotate, Rotation: game.Rotation(fields[2])}}, true
+	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(game.Left) || fields[2] == string(game.Right)) {
+		return game.Step{Action: game.RotateAction{Rotation: game.Rotation(fields[2])}}, true
 	}
 	return game.Step{}, false
 }
