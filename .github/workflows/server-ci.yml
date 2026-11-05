@@ -2,7 +2,15 @@ name: CI (server)
 
 on:
   push:
+    paths:
+      - 'Server/**'
+      - '.github/workflows/server-ci.yml'
+      - '.github/workflows/actions.lock'
   pull_request:
+    paths:
+      - 'Server/**'
+      - '.github/workflows/server-ci.yml'
+      - '.github/workflows/actions.lock'
 
 permissions:
   contents: read
