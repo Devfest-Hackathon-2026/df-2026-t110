@@ -8,4 +8,4 @@ enum:
   - integer
   - unit
   - field
-  - direction
+  - rotation

@@ -1,6 +1,6 @@
 $schema: https://json-schema.org/draft/2020-12/schema
-title: DirectionLiteral
-description: direction 型のリテラル
+title: RotationLiteral
+description: rotation 型のリテラル
 
 type: object
 additionalProperties: false
@@ -11,7 +11,7 @@ properties:
   hintId:
     $ref: './hint-id.yaml'
   type:
-    const: direction
+    const: rotation
   value:
     type: string
     enum: [left, right]
