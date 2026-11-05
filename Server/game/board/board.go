@@ -225,8 +225,7 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 	visiting := make(map[game.RobotID]bool)
 	resolved := make(map[game.RobotID]bool)
 	movable := make(map[game.RobotID]bool)
-	var canMove func(game.RobotID) bool
-	canMove = func(id game.RobotID) bool {
+	canMove := func(id game.RobotID) bool {
 		if resolved[id] {
 			return movable[id]
 		}
