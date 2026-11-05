@@ -1,0 +1,22 @@
+name: Container Build (server)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          working_directory: Server
+          install: false
+      - name: Build container
+        working-directory: Server
+        run: docker build --build-arg GO_VERSION="$(mise current go)" --tag server:ci .
