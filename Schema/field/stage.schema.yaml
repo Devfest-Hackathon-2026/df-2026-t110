@@ -1,0 +1,63 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: StageDefinition
+description: 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
+
+type: object
+additionalProperties: false
+required:
+  - variants
+  - clearCondition
+
+properties:
+  variants:
+    type: array
+    minItems: 1
+    description: 実行前に提示する複数のフィールド
+    items:
+      description: ステージの候補となる一つのフィールド
+      $ref: './field.schema.yaml'
+
+  clearCondition:
+    description: 全ての候補フィールドに共通するクリア条件
+    $ref: '#/$defs/ClearCondition'
+
+$defs:
+  ClearCondition:
+    description: ステージのクリアに必要な条件
+    oneOf:
+      - $ref: '#/$defs/ReachGoal'
+        description: ゴールへの到達を求める条件
+      - $ref: '#/$defs/VisitCheckpoints'
+        description: チェックポイントの順次通過を求める条件
+      - $ref: '#/$defs/DeliverAndReachGoal'
+        description: 荷物の運搬とゴールへの到達を求める条件
+
+  ReachGoal:
+    description: ロボットがゴールに到達するとクリアする条件
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        description: ゴールへの到達を求めるクリア条件の種別
+        const: reach_goal
+
+  VisitCheckpoints:
+    description: ロボットが全てのチェックポイントを指定順に通過するとクリアする条件
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        description: チェックポイントの順次通過を求めるクリア条件の種別
+        const: visit_checkpoints
+
+  DeliverAndReachGoal:
+    description: ロボットが荷物を運搬し、ゴールに到達するとクリアする条件
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        description: 荷物の運搬とゴールへの到達を求めるクリア条件の種別
+        const: deliver_and_reach_goal

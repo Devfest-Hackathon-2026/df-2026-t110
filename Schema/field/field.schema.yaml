@@ -1,0 +1,151 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: FieldDefinition
+description: 単一のフィールドのスキーマ定義
+
+type: object
+additionalProperties: false
+required:
+  - width
+  - height
+  - terrain
+  - objects
+  - robot
+  - drillLimit
+properties:
+  width:
+    description: フィールドの横方向のマス数
+    type: integer
+    minimum: 1
+
+  height:
+    description: フィールドの縦方向のマス数
+    type: integer
+    minimum: 1
+
+  terrain:
+    type: array
+    description: 地形を行、列の順に並べた二次元配列。terrain[y][x] で各マスを参照する
+    minItems: 1
+    items:
+      description: 同じ縦座標にあるマスの地形を横方向に並べた行
+      type: array
+      minItems: 1
+      items:
+        description: 各マスの地形
+        $ref: '#/$defs/Terrain'
+
+  objects:
+    description: フィールド上に配置するゴール、チェックポイント、荷物の一覧
+    type: array
+    items:
+      description: フィールド上に配置する一つのオブジェクト
+      $ref: '#/$defs/FieldObject'
+
+  robot:
+    description: ロボットの初期位置と初期方向
+    type: object
+    additionalProperties: false
+    required:
+      - position
+      - direction
+    properties:
+      position:
+        description: ロボットの初期位置
+        $ref: '#/$defs/Position'
+      direction:
+        description: ロボットが最初に向いている方向
+        $ref: '#/$defs/Direction'
+
+  drillLimit:
+    description: ドリルを使用できる回数の上限
+    type: integer
+    minimum: 0
+
+$defs:
+  Position:
+    description: フィールド上のマスの座標
+    type: object
+    additionalProperties: false
+    required: [x, y]
+    properties:
+      x:
+        description: 横方向の座標。最初の列を 0 とする
+        type: integer
+        minimum: 0
+      y:
+        description: 縦方向の座標。最初の行を 0 とする
+        type: integer
+        minimum: 0
+
+  Direction:
+    description: 向いている方向。up は上、down は下、left は左、right は右を表す
+    type: string
+    enum:
+      - up
+      - down
+      - left
+      - right
+
+  Terrain:
+    description: マスの地形。land は陸地、rock は岩、sea は海を表す
+    type: string
+    enum:
+      - land
+      - rock
+      - sea
+
+  FieldObject:
+    description: フィールドに配置するゴール、チェックポイント、荷物のいずれか
+    oneOf:
+      - $ref: '#/$defs/Goal'
+        description: ゴールの定義
+      - $ref: '#/$defs/Checkpoint'
+        description: チェックポイントの定義
+      - $ref: '#/$defs/Luggage'
+        description: 荷物の定義
+
+  Goal:
+    description: ロボットが到達するゴール
+    type: object
+    additionalProperties: false
+    required: [type, position]
+    properties:
+      type:
+        description: オブジェクトがゴールであることを示す種別
+        const: goal
+      position:
+        description: ゴールを配置するマスの座標
+        $ref: '#/$defs/Position'
+
+  Checkpoint:
+    description: 指定した順序で通過するチェックポイント
+    type: object
+    additionalProperties: false
+    required: [type, position, order]
+    properties:
+      type:
+        description: オブジェクトがチェックポイントであることを示す種別
+        const: checkpoint
+      position:
+        description: チェックポイントを配置するマスの座標
+        $ref: '#/$defs/Position'
+      order:
+        description: チェックポイントを通過する順序
+        type: integer
+
+  Luggage:
+    description: ロボットが運搬する荷物
+    type: object
+    additionalProperties: false
+    required: [type, id, position]
+    properties:
+      type:
+        description: オブジェクトが荷物であることを示す種別
+        const: luggage
+      id:
+        description: 荷物を識別するための空でない文字列
+        type: string
+        minLength: 1
+      position:
+        description: 荷物の初期位置
+        $ref: '#/$defs/Position'
