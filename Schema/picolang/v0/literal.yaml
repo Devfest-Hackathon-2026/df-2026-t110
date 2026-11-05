@@ -1,6 +1,6 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Literal
-description: bool、integer、unit、rotation のリテラル。field 型にはリテラルがない
+description: bool、integer、unit、rotation のリテラル。terrain 型にはリテラルがない
 
 oneOf:
   - $ref: './bool-literal.yaml'
