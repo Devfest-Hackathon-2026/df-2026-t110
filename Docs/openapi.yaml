@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: Programming Learning AR API
+  version: 0.1.1
+  description: |
+    暫定API契約。
+    FieldとProgramの内部構造は仮定義。
+
+servers:
+  - url: /api
+
+paths:
+  /room:
+    get:
+      summary: 参加可能なルーム一覧を取得
+      operationId: listRooms
+      responses:
+        "200":
+          description: ルーム一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Room"
+
+  /room/{roomId}:
+    get:
+      summary: ルームを取得
+      operationId: getRoom
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: ルーム
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /room/{roomId}/start/{matchId}:
+    post:
+      summary: ルーム内の対戦を開始
+      operationId: startRoomMatch
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+        - $ref: "#/components/parameters/MatchId"
+      responses:
+        "200":
+          description: 開始した対戦
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /room/{roomId}/join:
+    get:
+      summary: ルームのイベントを購読
+      description: |
+        Server-Sent Events。
+        参加登録を兼ねるか、およびイベント形式の詳細は未確定。
+        対戦開始イベントではサーバーが選んだselectedLayoutIdを配信する。
+      operationId: joinRoomEvents
+      parameters:
+        - $ref: "#/components/parameters/RoomId"
+      responses:
+        "200":
+          description: SSEストリーム
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                event: match-started
+                data: {"matchId":"match-1","selectedLayoutId":"layout-2"}
+
+  /field/{fieldId}:
+    get:
+      summary: フィールドと配置候補を取得
+      description: 実行前に表示可能な候補情報を返す。
+      operationId: getField
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+      responses:
+        "200":
+          description: フィールド
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Field"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /field/{fieldId}/program:
+    get:
+      summary: フィールドのプログラム一覧を取得
+      operationId: listPrograms
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+      responses:
+        "200":
+          description: プログラム一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Program"
+    post:
+      summary: プログラムを作成
+      operationId: createProgram
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Program"
+      responses:
+        "201":
+          description: 作成したプログラム
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+
+  /field/{fieldId}/program/{programId}:
+    get:
+      summary: プログラムを取得
+      operationId: getProgram
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+        - $ref: "#/components/parameters/ProgramId"
+      responses:
+        "200":
+          description: プログラム
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      summary: プログラムを更新
+      operationId: updateProgram
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+        - $ref: "#/components/parameters/ProgramId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Program"
+      responses:
+        "200":
+          description: 更新したプログラム
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /field/{fieldId}/program/create-with-vibe:
+    post:
+      summary: 自然言語からプログラムを生成
+      operationId: createProgramWithVibe
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+      responses:
+        "201":
+          description: 生成したプログラム
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+
+  /field/{fieldId}/match:
+    post:
+      summary: 対戦を作成し、使用する配置を抽選
+      description: |
+        プログラム作成後に呼び出す。
+        サーバーがフィールド内の候補配置を1つ選び、
+        selectedLayoutIdをレスポンスで返す。
+        抽選結果を取得・変更する独立したAPIは設けない。
+        対戦を進行する間はサーバーが同じ配置を参照する。
+      operationId: createMatch
+      parameters:
+        - $ref: "#/components/parameters/FieldId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [programId]
+              properties:
+                programId:
+                  type: string
+      responses:
+        "201":
+          description: 作成した対戦と抽選結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth:
+    post:
+      summary: 認証
+      description: メソッドと認証方式は仮定義。
+      operationId: authenticate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: 認証結果
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /ranking:
+    get:
+      summary: ランキングを取得
+      operationId: getRanking
+      responses:
+        "200":
+          description: ランキング
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+
+  /me:
+    get:
+      summary: 自分の情報を取得
+      operationId: getMe
+      responses:
+        "200":
+          description: ユーザー情報
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    post:
+      summary: 自分の情報を登録または更新
+      operationId: saveMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "200":
+          description: 保存したユーザー情報
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /tutorial:
+    get:
+      summary: チュートリアル一覧を取得
+      operationId: listTutorials
+      responses:
+        "200":
+          description: チュートリアル一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tutorial"
+
+  /tutorial/{tutorialId}:
+    get:
+      summary: チュートリアルを取得
+      operationId: getTutorial
+      parameters:
+        - name: tutorialId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: チュートリアル
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tutorial"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    FieldId:
+      name: fieldId
+      in: path
+      required: true
+      schema:
+        type: string
+    ProgramId:
+      name: programId
+      in: path
+      required: true
+      schema:
+        type: string
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    NotFound:
+      description: 対象が存在しない
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Conflict:
+      description: 現在の状態では操作できない
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  schemas:
+    # TODO: 正式なフィールドJSON Schemaに差し替える
+    Field:
+      type: object
+      additionalProperties: true
+      description: 暫定スキーマ。内部構造は未確定。
+      examples:
+        - id: crystal-route
+          title: 結晶の道
+          template: ["..??..", "S.??.G", "..__.."]
+          rockCounts: [1, 2]
+
+    # TODO: 正式なプログラムJSON Schemaに差し替える
+    Program:
+      type: object
+      additionalProperties: true
+      description: 暫定スキーマ。命令JSONの構造は未確定。
+      examples:
+        - id: program-1
+          name: 前進する
+          actions:
+            - action: move
+            - action: move
+
+    Room:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        fieldId:
+          type: string
+        status:
+          type: string
+          enum: [waiting, running, finished]
+
+    Match:
+      type: object
+      required: [id, fieldId, selectedLayoutId]
+      properties:
+        id:
+          type: string
+        fieldId:
+          type: string
+        selectedLayoutId:
+          type: string
+          description: 対戦作成時にサーバーが選んだ配置候補のID。
+        status:
+          type: string
+          enum: [ready, running, finished]
+
+    User:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+
+    Tutorial:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        fieldId:
+          type: string
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
