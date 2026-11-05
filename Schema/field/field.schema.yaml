@@ -78,7 +78,7 @@ $defs:
         minimum: 0
 
   Direction:
-    description: 盤面上の向き。north は上（y が減る）、south は下（y が増える）、west は左（x が減る）、east は右（x が増える）を表す
+    description: 向いている方向。north は上、south は下、west は左、east は右を表す
     type: string
     enum:
       - north
