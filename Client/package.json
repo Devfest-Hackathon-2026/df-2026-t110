@@ -16,6 +16,8 @@
     "test": "node --test tests/*.test.ts"
   },
   "dependencies": {
+    "@iconify-icons/lucide": "^2.0.27",
+    "@iconify/vue": "^5.0.5",
     "three": "^0.180.0",
     "vue": "^3.5.0"
   },

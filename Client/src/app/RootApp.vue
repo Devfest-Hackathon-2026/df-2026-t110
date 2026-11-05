@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
+import { Icon } from '@iconify/vue'
+import infoIcon from '@iconify-icons/lucide/info'
+import bookOpenIcon from '@iconify-icons/lucide/book-open'
+import swordsIcon from '@iconify-icons/lucide/swords'
+import logInIcon from '@iconify-icons/lucide/log-in'
+import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import { LOCAL_LESSONS } from '../features/tutorial/tutorialLessons.ts'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
@@ -39,9 +45,9 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
     <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
         <div class="hero-copy">
-          <h1 id="home-title">考えた通りに、<br />動くかな。</h1>
-        </div>
-        <div class="hero-detail">
+          <h1 id="home-title" class="heading-with-icon">
+            <Icon :icon="infoIcon" aria-hidden="true" /><span>About</span>
+          </h1>
           <p class="hero-lead">
             命令を組んで、ロボットを動かそう。岩をこわし、海に道をつくりながら、ゴールまでの道を考える教材です。
           </p>
@@ -50,25 +56,20 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
             <a class="text-link" href="/rooms">対戦について</a>
           </div>
         </div>
-      </section>
-
-      <section class="home-mission" aria-label="教材の例">
-        <div class="container mission-inner">
-          <div class="mission-copy">
-            <span class="mission-number">01 / 最初のミッション</span>
-            <p>まずは、<strong>1マス</strong>進めてみよう。</p>
-          </div>
-          <div class="mission-board">
-            <div class="example-map" aria-label="スタートの右にゴールがある2マスの課題">
-              <span>S</span><span>G</span>
-            </div>
-            <div class="example-foot"><span>スタート</span><span>ゴール</span></div>
-          </div>
-        </div>
+        <a class="hero-preview">
+          <img
+            src="/preview-first-step.png"
+            alt="緑のロボットがスタートに立ち、右隣にゴールがある3Dステージ"
+            width="768"
+            height="1024"
+          />
+        </a>
       </section>
 
       <section class="home-explainer container" aria-labelledby="learn-title">
-        <div><h2 id="learn-title">一歩ずつ、できることを増やす。</h2></div>
+        <h1 id="learn-title" class="heading-with-icon">
+          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル機能</span>
+        </h1>
         <div class="lesson-list">
           <p><span>01</span>前へ進み、向きを変える</p>
           <p><span>02</span>岩をこわし、海を埋める</p>
@@ -79,11 +80,13 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
       <section class="home-next">
         <div class="container next-inner">
           <div>
-            <h2>まずはひとりで。<br />いつか、だれかと。</h2>
+            <h1 class="heading-with-icon">
+              <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
+            </h1>
           </div>
           <div class="next-links">
-            <a href="/tutorials"><strong>教材を始める</strong><span>順番に試せる課題へ</span></a>
-            <a href="/rooms"><strong>対戦を見る</strong><span>マッチング機能は準備中です</span></a>
+            <a href="/tutorials"><strong>教材を始める</strong></a>
+            <a href="/rooms"><strong>対戦を見る</strong></a>
           </div>
         </div>
       </section>
@@ -95,7 +98,9 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
-        <h1>最初の一歩から。</h1>
+        <h1 class="heading-with-icon">
+          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>最初の一歩から。</span>
+        </h1>
         <p class="inner-lead">短い道から始めて、ロボットにできることを少しずつ増やしていきます。</p>
         <a
           v-for="(lesson, index) in LOCAL_LESSONS"
@@ -115,21 +120,27 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
         </p>
       </template>
       <template v-else-if="page === 'rooms'">
-        <h1>対戦は、準備中です。</h1>
+        <h1 class="heading-with-icon">
+          <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦は、準備中です。</span>
+        </h1>
         <p class="inner-lead">
           自分で考えた命令でロボットを動かし、ほかの人と同じフィールドに挑む機能を予定しています。
         </p>
         <a class="action-primary" href="/tutorials">先に教材を試す</a>
       </template>
       <template v-else-if="page === 'account'">
-        <h1>ログインは、準備中です。</h1>
+        <h1 class="heading-with-icon">
+          <Icon :icon="logInIcon" aria-hidden="true" /><span>ログインは、準備中です。</span>
+        </h1>
         <p class="inner-lead">
           教材を試すためのアカウント連携を準備しています。今はステージのプレビューを見られます。
         </p>
         <a class="action-primary" href="/tutorials">教材を見る</a>
       </template>
       <template v-else>
-        <h1>ページが見つかりません。</h1>
+        <h1 class="heading-with-icon">
+          <Icon :icon="circleHelpIcon" aria-hidden="true" /><span>ページが見つかりません。</span>
+        </h1>
         <a class="action-primary" href="/">ホームへ戻る</a>
       </template>
     </main>

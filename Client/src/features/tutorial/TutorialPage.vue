@@ -149,9 +149,6 @@ onBeforeUnmount(() => controller?.abort())
       <div v-else class="tutorial-stage-empty">
         {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
       </div>
-      <div v-if="stage" class="tutorial-stage-caption">
-        <span>フィールド</span><strong>{{ field?.title }}</strong>
-      </div>
       <div v-if="stage" class="tutorial-stage-toolbar">
         <span v-if="field && field.layouts.length > 1"
           >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
@@ -164,79 +161,95 @@ onBeforeUnmount(() => controller?.abort())
     </section>
 
     <aside class="tutorial-panel">
-      <div class="tutorial-back-row">
-        <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
-      </div>
-      <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
-        教材を読み込んでいます。
-      </div>
-      <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-        <h1>教材が見つかりません。</h1>
-        <a href="/tutorials">教材一覧を見る</a>
-      </div>
-      <template v-else-if="tutorial">
-        <header class="tutorial-heading">
-          <p v-if="lessonCopy" class="tutorial-count">
-            {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
-            {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
-          </p>
-          <h1>{{ tutorial.title }}</h1>
-          <p>{{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}</p>
-        </header>
+      <div class="tutorial-panel-scroll">
+        <div class="tutorial-back-row">
+          <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
+        </div>
+        <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
+          教材を読み込んでいます。
+        </div>
+        <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
+          <h1>教材が見つかりません。</h1>
+          <a href="/tutorials">教材一覧を見る</a>
+        </div>
+        <template v-else-if="tutorial">
+          <header class="tutorial-heading">
+            <p v-if="lessonCopy" class="tutorial-count">
+              {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
+              {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
+            </p>
+            <h1>{{ tutorial.title }}</h1>
+            <p>
+              {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+            </p>
+          </header>
+          <section class="tutorial-editor" aria-labelledby="tutorial-editor-title">
+            <div class="tutorial-editor-heading">
+              <h2 id="tutorial-editor-title">プログラムを組む</h2>
+              <span>エディタ準備中</span>
+            </div>
+            <slot name="program-editor" :tutorial-id="tutorialId">
+              <div class="tutorial-editor-placeholder">
+                <strong>ここに命令を並べます</strong>
+                <p>プログラミングエディタをこの領域に接続します。</p>
+              </div>
+            </slot>
+          </section>
 
-        <div class="tutor-conversation">
-          <TutorAvatar />
-          <div class="tutor-speech">
-            <span>案内役のロボット</span>
-            <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+          <div class="tutor-conversation">
+            <TutorAvatar />
+            <div class="tutor-speech">
+              <span>案内役のロボット</span>
+              <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+            </div>
           </div>
-        </div>
-        <div class="tutor-stepper" aria-label="説明を切り替える">
-          <button type="button" :disabled="guideIndex === 0" @click="guideIndex--">前の説明</button>
-          <span>{{ guideIndex + 1 }} / {{ guideLines.length }}</span>
-          <button type="button" :disabled="guideIndex === guideLines.length - 1" @click="guideIndex++">
-            次の説明
-          </button>
-        </div>
+          <div class="tutor-stepper" aria-label="説明を切り替える">
+            <button type="button" :disabled="guideIndex === 0" @click="guideIndex--">前の説明</button>
+            <span>{{ guideIndex + 1 }} / {{ guideLines.length }}</span>
+            <button type="button" :disabled="guideIndex === guideLines.length - 1" @click="guideIndex++">
+              次の説明
+            </button>
+          </div>
 
-        <section class="tutorial-note" aria-labelledby="tutorial-note-title">
-          <h2 id="tutorial-note-title">この課題で考えること</h2>
-          <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
-        </section>
-        <div class="tutorial-program-actions" aria-label="プログラムの操作">
-          <button type="button" class="tutorial-run-button" :disabled="!stage" @click="runProgram">
-            <span aria-hidden="true">▶</span> プログラムを実行
-          </button>
-          <button type="button" class="tutorial-reset-button" :disabled="!stage" @click="resetProgram">
-            <span aria-hidden="true">↺</span> リセット
-          </button>
-        </div>
-        <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
-          <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
-          <div>
-            <button type="button" @click="changeLayout(-1)">前の配置</button
-            ><button type="button" @click="changeLayout(1)">次の配置</button>
+          <section class="tutorial-note" aria-labelledby="tutorial-note-title">
+            <h2 id="tutorial-note-title">この課題で考えること</h2>
+            <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
+          </section>
+          <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
+            <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
+            <div>
+              <button type="button" @click="changeLayout(-1)">前の配置</button
+              ><button type="button" @click="changeLayout(1)">次の配置</button>
+            </div>
+            <small>個人の教材では、実行直前に候補から1つ選びます。</small>
           </div>
-          <small>個人の教材では、実行直前に候補から1つ選びます。</small>
+          <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
+            <span>{{ loadMessage }}</span
+            ><button type="button" @click="load(tutorialId)">再読み込み</button>
+          </div>
+          <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
+          <div class="tutorial-bottom-link" aria-label="課題の移動">
+            <a v-if="previousLesson" :href="`/tutorials/${previousLesson.id}`"
+              ><span aria-hidden="true">←</span> 前の課題を見る</a
+            ><span v-else class="tutorial-nav-unavailable" aria-disabled="true"
+              ><span aria-hidden="true">←</span> 前の課題を見る</span
+            >
+            <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
+              >次の課題を見る <span aria-hidden="true">→</span></a
+            ><a v-else href="/tutorials">教材一覧へ <span aria-hidden="true">→</span></a>
+          </div>
+        </template>
+        <div v-else class="tutorial-load-message" role="alert">
+          {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
         </div>
-        <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
-          <span>{{ loadMessage }}</span
-          ><button type="button" @click="load(tutorialId)">再読み込み</button>
-        </div>
-        <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
-        <div class="tutorial-bottom-link" aria-label="課題の移動">
-          <a v-if="previousLesson" :href="`/tutorials/${previousLesson.id}`"
-            ><span aria-hidden="true">←</span> 前の課題を見る</a
-          ><span v-else class="tutorial-nav-unavailable" aria-disabled="true"
-            ><span aria-hidden="true">←</span> 前の課題を見る</span
-          >
-          <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
-            >次の課題を見る <span aria-hidden="true">→</span></a
-          ><a v-else href="/tutorials">教材一覧へ <span aria-hidden="true">→</span></a>
-        </div>
-      </template>
-      <div v-else class="tutorial-load-message" role="alert">
-        {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+      </div>
+      <div v-if="tutorial && stage" class="tutorial-program-actions" aria-label="プログラムの操作">
+        <button type="button" class="tutorial-run-button" @click="runProgram">
+          <span aria-hidden="true">▶</span> プログラムを実行
+        </button>
+        <button type="button" class="tutorial-reset-button" @click="resetProgram">
+          <span aria-hidden="true">↺</span> リセット
+        </button>
       </div>
     </aside>
   </div>

@@ -1,5 +1,5 @@
-/* Hallmark · redesign: full · scope: home · direction: field notebook · signature: the two-cell mission · v2.0.0 */
-/* Hallmark · critique: replaced the generic split hero with a compact introduction and a distinct mission surface. */
+/* Hallmark · redesign: restyle · scope: site · direction: field notebook · signature: the real 3D lesson preview · v2.0.0 */
+/* Hallmark · critique: replaced oversized left copy and empty mission band with a compact heading and product preview. */
 @import url('../../tokens.css');
 @import url('../../base.css');
 :root {
@@ -29,6 +29,10 @@
   --font-outlier: var(--font-body);
   --display-weight: 650;
   --tracking-display: -0.035em;
+  --type-body: 1rem;
+  --type-small: 0.875rem;
+  --type-section: 1.375rem;
+  --type-page: 1.875rem;
   --container: 1160px;
   --gutter: 36px;
 }
@@ -60,7 +64,7 @@ body,
   border-bottom: 1px solid var(--color-rule);
 }
 .site-logo {
-  font-size: 1.12rem;
+  font-size: var(--type-body);
   font-weight: 750;
   letter-spacing: -0.04em;
   text-decoration: none;
@@ -79,7 +83,7 @@ body,
   align-items: center;
   min-height: 44px;
   color: var(--color-ink-2);
-  font-size: 0.9rem;
+  font-size: var(--type-small);
   text-decoration: none;
 }
 .site-nav nav a:hover,
@@ -90,27 +94,44 @@ body,
 }
 .home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
   gap: var(--space-3xl);
-  padding-block: var(--space-3xl) var(--space-2xl);
+  padding-block: var(--space-xl);
 }
 .hero-copy,
-.hero-detail {
+.hero-preview {
   min-width: 0;
 }
-.home-hero h1 {
+.site h1 {
   max-width: 16ch;
-  font-size: clamp(2rem, 2.8vw, 2.6rem);
-  line-height: 1.4;
+  font-size: var(--type-section);
+  line-height: 1.45;
   overflow-wrap: break-word;
   min-width: 0;
 }
+.site .heading-with-icon {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  max-width: none;
+}
+.heading-with-icon > svg {
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-top: 0.18em;
+  color: var(--color-accent-deep);
+}
+.heading-with-icon > span {
+  min-width: 0;
+}
 .hero-lead {
-  max-width: 32em;
+  max-width: 33em;
+  margin-top: var(--space-lg);
   color: var(--color-ink-2);
-  font-size: 1rem;
-  line-height: 1.9;
+  font-size: var(--type-body);
+  line-height: 1.7;
 }
 .hero-actions {
   display: flex;
@@ -151,79 +172,69 @@ body,
 .text-link:hover {
   color: var(--color-ink) !important;
 }
-.home-mission {
+.hero-preview {
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--color-edge);
+  border-radius: 3px;
+  text-decoration: none;
+}
+.hero-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1.55;
+  object-fit: cover;
+  object-position: center 15%;
   background: var(--color-field);
   color: var(--color-field-ink);
 }
-.mission-inner {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+.preview-caption {
+  display: flex;
   align-items: center;
-  gap: var(--space-3xl);
-  padding-block: var(--space-2xl);
-}
-.mission-copy {
-  display: flex;
-  flex-direction: column;
-  align-self: stretch;
-  justify-content: space-between;
-  gap: var(--space-xl);
-  min-width: 0;
-}
-.mission-number {
-  color: var(--color-field-muted);
-  font-size: 0.88rem;
-  font-variant-numeric: tabular-nums;
-}
-.mission-copy p {
-  max-width: 45ch;
-  font-size: clamp(1.45rem, 2vw, 1.8rem);
-  line-height: 1.6;
-  overflow-wrap: break-word;
-  min-width: 0;
-}
-.mission-copy strong {
-  color: var(--color-field-ink);
-  font-weight: 700;
-}
-.mission-board {
-  min-width: 0;
-}
-.example-map {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border: 1px solid var(--color-field-rule);
-}
-.example-map span {
-  display: grid;
-  place-items: center;
-  min-height: 156px;
-  font-size: 2.1rem;
-  font-weight: 600;
-}
-.example-map span + span {
-  border-left: 1px solid var(--color-field-rule);
-  background: var(--color-field-2);
-}
-.example-foot {
-  display: flex;
   justify-content: space-between;
   gap: var(--space-md);
-  margin-top: var(--space-sm);
-  color: var(--color-field-muted);
-  font-size: 0.84rem;
+  min-height: 58px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  font-size: var(--type-small);
+}
+.preview-caption-main,
+.preview-caption-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.preview-caption-main > svg {
+  color: var(--color-accent-deep);
+  font-size: 1.2em;
+}
+.preview-caption-main strong {
+  font-weight: 650;
+}
+.preview-caption-end {
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.hero-preview:hover .preview-caption-main strong {
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }
 .home-explainer,
 .next-inner {
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: var(--space-3xl);
+  padding-block: var(--space-xl);
+}
+.next-inner {
   padding-block: var(--space-2xl);
 }
 .home-explainer h2,
 .home-next h2 {
   max-width: 20ch;
-  font-size: clamp(1.5rem, 1.8vw, 1.85rem);
+  font-size: var(--type-section);
   line-height: 1.5;
   overflow-wrap: break-word;
   min-width: 0;
@@ -233,7 +244,7 @@ body,
   gap: var(--space-lg);
   padding: var(--space-md) 0;
   border-bottom: 1px solid var(--color-rule);
-  font-size: 1rem;
+  font-size: var(--type-body);
   line-height: 1.6;
 }
 .lesson-list p:first-child {
@@ -262,12 +273,12 @@ body,
   border-top: 1px solid var(--color-edge);
 }
 .next-links strong {
-  font-size: 1rem;
+  font-size: var(--type-body);
   font-weight: 650;
 }
 .next-links span {
   color: var(--color-muted);
-  font-size: 0.84rem;
+  font-size: var(--type-small);
   text-align: right;
 }
 .next-links a:hover strong {
@@ -280,18 +291,13 @@ body,
   padding-block: var(--space-3xl);
 }
 .inner-page h1 {
-  max-width: 22ch;
   margin-bottom: var(--space-lg);
-  font-size: clamp(1.9rem, 2.6vw, 2.8rem);
-  line-height: 1.4;
-  overflow-wrap: break-word;
-  min-width: 0;
 }
 .inner-lead {
   max-width: 42em;
   margin-bottom: var(--space-xl);
   color: var(--color-ink-2);
-  line-height: 1.85;
+  line-height: 1.7;
 }
 .lesson-entry {
   display: flex;
@@ -311,12 +317,12 @@ body,
   gap: var(--space-xs);
 }
 .lesson-entry strong {
-  font-size: 1.1rem;
+  font-size: var(--type-body);
 }
 .lesson-entry small,
 .page-note {
   color: var(--color-muted);
-  font-size: 0.88rem;
+  font-size: var(--type-small);
 }
 .lesson-entry:hover strong {
   color: var(--color-accent-deep);
@@ -330,7 +336,7 @@ body,
   gap: var(--space-xl);
   padding-block: var(--space-lg) var(--space-xl);
   border-top: 1px solid var(--color-rule);
-  font-size: 0.84rem;
+  font-size: var(--type-small);
 }
 .site-footer span {
   font-weight: 700;
@@ -355,7 +361,6 @@ body,
     gap: var(--space-lg);
   }
   .home-hero,
-  .mission-inner,
   .home-explainer,
   .next-inner {
     grid-template-columns: minmax(0, 1fr);
@@ -364,23 +369,16 @@ body,
   .home-hero {
     padding-block: var(--space-xl);
   }
-  .hero-detail {
+  .hero-copy {
     max-width: 36em;
   }
-  .mission-inner,
   .home-explainer,
   .next-inner,
   .inner-page {
     padding-block: var(--space-xl);
   }
-  .mission-copy {
-    gap: var(--space-md);
-  }
-  .mission-board {
-    max-width: 560px;
-  }
-  .example-map span {
-    min-height: 120px;
+  .hero-preview {
+    max-width: 640px;
   }
   .lesson-list {
     max-width: 640px;
