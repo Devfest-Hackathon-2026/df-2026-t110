@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Literal
+description: bool、integer、unit、direction のリテラル。field 型にはリテラルがない
+
+oneOf:
+  - $ref: './bool-literal.yaml'
+  - $ref: './integer-literal.yaml'
+  - $ref: './unit-literal.yaml'
+  - $ref: './direction-literal.yaml'

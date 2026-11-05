@@ -1,0 +1,8 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Expr
+description: リテラル、変数参照、関数呼び出しのいずれかの式
+
+oneOf:
+  - $ref: './literal.yaml'
+  - $ref: './ident.yaml'
+  - $ref: './call.yaml'

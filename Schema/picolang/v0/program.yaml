@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangV0Program
+description: 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
+
+type: object
+propertyNames:
+  $ref: './name.yaml'
+additionalProperties:
+  $ref: './function.schema.yaml'
