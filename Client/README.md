@@ -1,6 +1,6 @@
-# ARステージ表示（issue #2）
+# ARフィールド表示（issues #1–3）
 
-ステージデータを受け取り、ロボットを含まない立体的な盤面を表示する最初の移植です。
+1つのフィールドに属する配置候補をすべて見られる3D/カメラビュー、実行前の抽選、Blender製GLBロボットとイベント別アニメーションを含みます。
 
 ```bash
 cd Client
@@ -17,16 +17,40 @@ pnpm dev
 いったん仮ですすめる、jsonが確定したらそっちに合わせる
 ```json
 {
-  "stages": [
-    { "id": "example", "title": "岩の道", "map": ["S..#..G"] },
-    { "id": "sea", "title": "海の道", "map": ["S.._..G"] }
+  "id": "crystal-route",
+  "title": "結晶の道",
+  "template": ["S?????G", "???????"],
+  "rockCounts": [1, 2],
+  "candidates": [
+    { "id": "layout-a", "map": ["S..#..G", "._O.X.."] },
+    { "id": "layout-b", "map": ["S._#..G", "..O.X.."] },
+    { "id": "layout-c", "map": ["S..##.G", ".O._X.."] },
+    { "id": "layout-d", "map": ["S.#..#G", "..O_.X."] }
   ]
 }
 ```
 
-`stages`、`candidates`、配列、または単一ステージを受け取れます。各ステージの `map` は行ごとの文字列配列、または改行区切りの文字列です。記号は `S` スタート、`G` ゴール、`.` 陸、`#` 岩、`_` 海、`O` 荷物、`X` 置き場です。行幅は同一、`S` は1個です。
+`template` はフィールドで固定するマスを示します。`?` は配置ごとに変わるマスで、`candidates` を列挙する場合は陸・岩・海・荷物・置き場にできます。`rockCounts` は固定の `#` も含めた岩の総数候補です。例は盤面サイズが共通で、岩が1個または2個、海や荷物も異なる4配置をすべて表示します。候補のリストがそのフィールドの全候補です。
 
-APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [src/stage.js](src/stage.js) の `normalizeStages` で変換します。表示は [StageScene.vue](src/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
+`candidates` がない簡易モードでは、`?` を陸または岩として `rockCounts` に一致する全組み合わせを生成します。海・荷物なども変わる場合は、サーバーから具体的な `candidates` を渡してください。
+
+記号は `S` スタート、`G` ゴール、`.` 陸、`#` 岩、`_` 海、`O` 荷物、`X` 置き場、`?` 可変マスです。行幅は同一、`S` は1個です。配置候補の `map` に `?` は使いません。
+
+APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [src/stage.js](src/stage.js) の `normalizeField` で変換します。表示は [StageScene.vue](src/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
+
+## 抽選と動作イベント
+
+配置を切り替えて、そのフィールドの全候補を確認できます。サンプルと貼り付けJSONはローカルで配置を抽選します。APIから取得したフィールドでは、`POST /field/{id}/match` のレスポンスにある0始まりの `candidateIndex` または `selectedLayoutId` で結果を決めます。クライアントはその結果へルーレットを止めます。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex, match }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
+
+`StageScene` の `animationEvent` prop に `{ id, type, to? }` を渡すと、ロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `move`（`to: {x,y}` が必要）、`drill`（目のビーム）、`get` / `put`（腕を待機姿勢から Rx +30°）、`clear`（ジャンプと一回転）です。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作ります。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
+
+海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用します。カメラ表示は現時点ではカメラ映像への重ね合わせです。平面検出と空間固定は今後の作業です。
+
+## 接続時に確定する項目
+
+- `GET /field/{id}` が固定マスを示す `template`、岩の個数候補 `rockCounts`、全配置の `candidates` をどう返すか。海・荷物なども変わるため、具体的な候補マップが必要です。
+- `POST /field/{id}/match` のレスポンス形式。現状は0始まりの `candidateIndex`、または候補の `id` と一致する `selectedLayoutId` を受け取ります。対戦ではサーバーの選択を唯一の結果として扱います。
+- ゲームエンジンからの動作イベントに含めるロボットID、tick、座標、向き、および対戦相手への配信方法。現在は描画確認用の仮形式です。
 
 ```bash
 pnpm test
