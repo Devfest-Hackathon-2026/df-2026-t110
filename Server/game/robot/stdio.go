@@ -158,7 +158,7 @@ func parse(id game.RobotID, fields []string) (game.Step, bool) {
 		}
 	}
 	if len(fields) == 3 && fields[1] == string(game.Rotate) && (fields[2] == string(game.Left) || fields[2] == string(game.Right)) {
-		return game.Step{Action: &game.Action{Kind: game.Rotate, Turn: game.Turn(fields[2])}}, true
+		return game.Step{Action: &game.Action{Kind: game.Rotate, Rotation: game.Rotation(fields[2])}}, true
 	}
 	return game.Step{}, false
 }

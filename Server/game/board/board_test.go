@@ -114,9 +114,9 @@ func TestAtomicMovement(t *testing.T) {
 		{"sea", [][]board.Terrain{{board.Land, board.Sea}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}, []game.RobotID{"a"}, nil, nil, nil},
 		{"back", land(2, 1), map[game.RobotID]board.RobotState{"a": state(1, 0, board.Right)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Back}},
 			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right)}, map[game.RobotID]bool{"a": true}},
-		{"rotate blocks follower", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Up)}, []game.RobotID{"a", "b"}, map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Turn: game.Left}},
+		{"rotate blocks follower", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Up)}, []game.RobotID{"a", "b"}, map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
 			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Right), "b": state(1, 0, board.Left)}, nil},
-		{"rotate right wraps", land(1, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Left)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Turn: game.Right}},
+		{"rotate right wraps", land(1, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.Left)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
 			map[game.RobotID]board.RobotState{"a": state(0, 0, board.Up)}, nil},
 	}
 	for _, tt := range tests {
@@ -214,7 +214,7 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 		nil, {RobotID: "other", Done: true}, {RobotID: "a"},
 		{RobotID: "a", Action: &game.Action{Kind: game.Rotate}},
 		{RobotID: "a", Action: &game.Action{Kind: "unknown"}},
-		{RobotID: "a", Action: &game.Action{Kind: game.Forward, Turn: game.Left}},
+		{RobotID: "a", Action: &game.Action{Kind: game.Forward, Rotation: game.Left}},
 		{RobotID: "a", Done: true, Err: errors.New("error")},
 	} {
 		if _, err := b.Next(t.Context(), reply); err == nil {

@@ -173,8 +173,8 @@ func (b *Board) accept(reply *game.Reply) error {
 	c := b.controls[b.awaiting]
 	if reply.Action != nil {
 		a := *reply.Action
-		if a.Kind != game.Rotate && a.Turn != "" {
-			return errors.New("only rotate accepts a turn")
+		if a.Kind != game.Rotate && a.Rotation != "" {
+			return errors.New("only rotate accepts a rotation")
 		}
 		switch a.Kind {
 		case game.DrillDurability:
@@ -182,7 +182,7 @@ func (b *Board) accept(reply *game.Reply) error {
 		case game.Forward, game.Back:
 			c.pending = &a
 		case game.Rotate:
-			if a.Turn != game.Left && a.Turn != game.Right {
+			if a.Rotation != game.Left && a.Rotation != game.Right {
 				return errors.New("rotate requires left or right")
 			}
 			c.pending = &a
@@ -255,11 +255,11 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 		robot := next.Robots[id]
 		value := game.Value{Kind: game.Unit}
 		if a.Kind == game.Rotate {
-			turn := 1
-			if a.Turn == game.Left {
-				turn = 3
+			rotation := 1
+			if a.Rotation == game.Left {
+				rotation = 3
 			}
-			robot.Direction = [...]Direction{Up, Right, Down, Left}[(directionIndex(robot.Direction)+turn)%4]
+			robot.Direction = [...]Direction{Up, Right, Down, Left}[(directionIndex(robot.Direction)+rotation)%4]
 		} else {
 			value = game.Value{Kind: game.Bool, Bool: canMove(id)}
 			if value.Bool {

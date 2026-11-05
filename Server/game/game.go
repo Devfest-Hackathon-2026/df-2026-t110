@@ -58,23 +58,24 @@ const (
 	PrintBool       ActionKind = "print_bool"
 )
 
-type Turn string
+// Rotation is a relative quarter-turn, matching picolang's rotation type.
+type Rotation string
 
 const (
-	Left  Turn = "left"
-	Right Turn = "right"
+	Left  Rotation = "left"
+	Right Rotation = "right"
 )
 
 // Action covers the action builtins in Docs/picolang.md. Kind selects the
-// argument: Turn for Rotate, Integer for Wait/PrintInteger, Bool for PrintBool,
+// argument: Rotation for Rotate, Integer for Wait/PrintInteger, Bool for PrintBool,
 // Field for is_* actions, and no payload for the remaining actions. Unused
 // argument fields must be zero. Tick costs and execution belong to the board.
 type Action struct {
-	Kind    ActionKind
-	Turn    Turn
-	Integer int64
-	Bool    bool
-	Field   FieldRef
+	Kind     ActionKind
+	Rotation Rotation
+	Integer  int64
+	Bool     bool
+	Field    FieldRef
 }
 
 // Step must contain exactly one of Action or Done.

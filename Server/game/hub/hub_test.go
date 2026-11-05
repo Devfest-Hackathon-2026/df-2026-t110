@@ -123,7 +123,7 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 		},
 	}
 	h := newHub(t, b,
-		hub.Participant{ID: "a", Robot: makeRobot("a", game.Action{Kind: game.Rotate, Turn: game.Left}, valueA)},
+		hub.Participant{ID: "a", Robot: makeRobot("a", game.Action{Kind: game.Rotate, Rotation: game.Left}, valueA)},
 		hub.Participant{ID: "b", Robot: makeRobot("b", game.Action{Kind: game.Forward}, valueB)},
 	)
 	var ticks []uint64
@@ -185,7 +185,7 @@ func TestLimits(t *testing.T) {
 		t.Parallel()
 		b := grid(t)
 		move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
-			return game.Step{Action: &game.Action{Kind: game.Rotate, Turn: game.Right}}, nil
+			return game.Step{Action: &game.Action{Kind: game.Rotate, Rotation: game.Right}}, nil
 		})
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: move})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 1, MaxResumes: 100})
@@ -336,7 +336,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 	}{
 		{game.Action{Kind: game.Forward}, boolean},
 		{game.Action{Kind: game.Back}, boolean},
-		{game.Action{Kind: game.Rotate, Turn: game.Left}, unit},
+		{game.Action{Kind: game.Rotate, Rotation: game.Left}, unit},
 		{game.Action{Kind: game.Wait, Integer: 7}, unit},
 		{game.Action{Kind: game.PickUp}, boolean},
 		{game.Action{Kind: game.Release}, boolean},

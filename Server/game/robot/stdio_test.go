@@ -43,8 +43,8 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 		want  game.Action
 	}{
 		{nil, game.Action{Kind: game.DrillDurability}},
-		{&game.Value{Kind: game.Integer, Integer: 3}, game.Action{Kind: game.Rotate, Turn: game.Left}},
-		{&game.Value{Kind: game.Unit}, game.Action{Kind: game.Rotate, Turn: game.Right}},
+		{&game.Value{Kind: game.Integer, Integer: 3}, game.Action{Kind: game.Rotate, Rotation: game.Left}},
+		{&game.Value{Kind: game.Unit}, game.Action{Kind: game.Rotate, Rotation: game.Right}},
 		{&game.Value{Kind: game.Unit}, game.Action{Kind: game.Back}},
 		{&game.Value{Kind: game.Bool, Bool: true}, game.Action{Kind: game.Forward}},
 	}
