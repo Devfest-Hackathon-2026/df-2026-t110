@@ -1,0 +1,8 @@
+package: api
+generate:
+  models: true
+  echo5-server: true
+output-options:
+  overlay:
+    path: oapi-codegen-overlay.yaml
+output: infra/router/gen/api/api.gen.go
