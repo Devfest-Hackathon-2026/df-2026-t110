@@ -28,8 +28,12 @@ const WATER_FRAGMENT = `
   }
 `
 
-const material = (color, metalness = 0.12, roughness = 0.48, emissive = 0) =>
-  new THREE.MeshStandardMaterial({ color, metalness, roughness, emissive, emissiveIntensity: 0.2 })
+const material = (
+  color: THREE.ColorRepresentation,
+  metalness = 0.12,
+  roughness = 0.48,
+  emissive: THREE.ColorRepresentation = 0,
+) => new THREE.MeshStandardMaterial({ color, metalness, roughness, emissive, emissiveIntensity: 0.2 })
 
 const floorMaterial = material(0x638b82, 0.32)
 const edgeMaterial = material(0x183d47, 0.55)
@@ -45,7 +49,13 @@ const waterMaterial = new THREE.ShaderMaterial({
 const goldMaterial = material(0xffd888, 0.48, 0.23, 0xc98a32)
 const parcelMaterial = material(0xc4f6a1, 0.36, 0.27, 0x84ca64)
 
-function mesh(parent, geometry, surface, position, rotation) {
+function mesh(
+  parent: THREE.Group,
+  geometry: THREE.BufferGeometry,
+  surface: THREE.Material,
+  position: [number, number, number],
+  rotation?: [number, number, number],
+): THREE.Mesh {
   const object = new THREE.Mesh(geometry, surface)
   object.position.set(...position)
   if (rotation) object.rotation.set(...rotation)
@@ -55,23 +65,26 @@ function mesh(parent, geometry, surface, position, rotation) {
   return object
 }
 
-function label(parent, letter, color, position) {
+function label(parent: THREE.Group, letter: string, color: string, position: [number, number, number]): void {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = 128
   const context = canvas.getContext('2d')
+  if (!context) return
   context.fillStyle = color
   context.font = 'bold 84px sans-serif'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
   context.fillText(letter, 64, 68)
   const texture = new THREE.CanvasTexture(canvas)
-  const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }))
+  const sign = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }),
+  )
   sign.position.set(...position)
   sign.scale.set(0.35, 0.35, 1)
   parent.add(sign)
 }
 
-function addFloor(group) {
+function addFloor(group: THREE.Group): void {
   mesh(group, new THREE.BoxGeometry(0.96, 0.2, 0.96), edgeMaterial, [0, -0.1, 0])
   mesh(group, new THREE.BoxGeometry(0.88, 0.055, 0.88), floorMaterial, [0, 0.025, 0])
   for (const offset of [-0.36, 0.36]) {
@@ -80,28 +93,37 @@ function addFloor(group) {
   }
 }
 
-function addRock(group, seed) {
+function addRock(group: THREE.Group, seed: number): void {
   for (let index = 0; index < 4; index++) {
     const angle = seed * 2.41 + index * 1.57
     const radius = index === 0 ? 0 : 0.21
-    const height = index === 0 ? 0.7 : 0.32 + (seed + index) % 3 * 0.08
-    const crystal = mesh(group, new THREE.IcosahedronGeometry(0.25, 0), index % 2 ? rockShade : rockMaterial,
-      [Math.cos(angle) * radius, 0.13 + height / 2, Math.sin(angle) * radius])
+    const height = index === 0 ? 0.7 : 0.32 + ((seed + index) % 3) * 0.08
+    const crystal = mesh(
+      group,
+      new THREE.IcosahedronGeometry(0.25, 0),
+      index % 2 ? rockShade : rockMaterial,
+      [Math.cos(angle) * radius, 0.13 + height / 2, Math.sin(angle) * radius],
+    )
     crystal.scale.set(index === 0 ? 1.25 : 0.72, height / 0.45, index === 0 ? 1.15 : 0.72)
     crystal.rotation.y = angle
   }
 }
 
-function addSea(group) {
+function addSea(group: THREE.Group): void {
   mesh(group, new THREE.BoxGeometry(0.96, 0.2, 0.96), edgeMaterial, [0, -0.1, 0])
   mesh(group, new THREE.PlaneGeometry(0.84, 0.84, 20, 20), waterMaterial, [0, 0.035, 0], [-Math.PI / 2, 0, 0])
   for (const offset of [-0.25, 0.05, 0.34]) {
-    mesh(group, new THREE.TorusGeometry(0.12, 0.008, 5, 32), circuitMaterial,
-      [offset, 0.055, offset * 0.4], [-Math.PI / 2, 0, 0])
+    mesh(
+      group,
+      new THREE.TorusGeometry(0.12, 0.008, 5, 32),
+      circuitMaterial,
+      [offset, 0.055, offset * 0.4],
+      [-Math.PI / 2, 0, 0],
+    )
   }
 }
 
-function addMarker(group, symbol, animated) {
+function addMarker(group: THREE.Group, symbol: string, animated: THREE.Mesh[]): void {
   if (symbol === 'S') {
     mesh(group, new THREE.CylinderGeometry(0.26, 0.31, 0.08, 8), circuitMaterial, [0, 0.11, 0])
     label(group, 'S', '#ebffbd', [0, 0.53, 0])
@@ -116,14 +138,23 @@ function addMarker(group, symbol, animated) {
     animated.push(parcel)
   } else if (symbol === 'X') {
     mesh(group, new THREE.CylinderGeometry(0.29, 0.34, 0.08, 8), goldMaterial, [0, 0.1, 0])
-    mesh(group, new THREE.TorusGeometry(0.22, 0.025, 7, 4), goldMaterial, [0, 0.15, 0], [-Math.PI / 2, 0, Math.PI / 4])
+    mesh(
+      group,
+      new THREE.TorusGeometry(0.22, 0.025, 7, 4),
+      goldMaterial,
+      [0, 0.15, 0],
+      [-Math.PI / 2, 0, Math.PI / 4],
+    )
     label(group, 'X', '#fff3bb', [0, 0.57, 0])
   }
 }
 
-export function createStageVisuals(stage) {
+export function createStageVisuals(stage: import('./stage.ts').StageLayout): {
+  root: THREE.Group
+  animated: THREE.Mesh[]
+} {
   const root = new THREE.Group()
-  const animated = []
+  const animated: THREE.Mesh[] = []
   for (const cell of stage.cells) {
     const tile = new THREE.Group()
     tile.position.set(cell.x - (stage.width - 1) / 2, 0, cell.y - (stage.height - 1) / 2)
@@ -140,17 +171,17 @@ export function createStageVisuals(stage) {
   return { root, animated }
 }
 
-export function disposeStageVisuals(root) {
-  root.traverse(object => {
-    if (object.isSprite) {
+export function disposeStageVisuals(root: THREE.Group): void {
+  root.traverse((object) => {
+    if (object instanceof THREE.Sprite) {
       object.material.map?.dispose()
       object.material.dispose()
-    } else if (object.isMesh) {
+    } else if (object instanceof THREE.Mesh) {
       object.geometry.dispose()
     }
   })
 }
 
-export function advanceWater(time) {
+export function advanceWater(time: number): void {
   waterMaterial.uniforms.uTime.value = time * 0.001
 }

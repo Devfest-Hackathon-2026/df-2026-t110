@@ -1,18 +1,38 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { advanceWater, createStageVisuals, disposeStageVisuals } from './stageVisuals.js'
-import { createArmPivots } from './armController.js'
-import { createRobotAnimator } from './robotAnimator.js'
+import { advanceWater, createStageVisuals, disposeStageVisuals } from './stageVisuals.ts'
+import { createArmPivots } from './armController.ts'
+import { createRobotAnimator } from './robotAnimator.ts'
+import type { StageCell, StageLayout } from './stage.ts'
+import type { AnimationEvent } from './robotAnimator.ts'
 
-const props = defineProps({ stage: { type: Object, required: true }, mode: { type: String, required: true }, animationEvent: { type: Object, default: null }, previewDistance: { type: Number, default: 4.8 } })
-const emit = defineEmits(['error'])
-const host = ref(null)
-const video = ref(null)
-let renderer, scene, camera, board, animated = [], frame, resizeObserver, stream
-let robotRig, robotModel, robotAnimator, pendingEvent
-const robotCell = ref(null)
+const props = withDefaults(
+  defineProps<{
+    stage: StageLayout
+    mode: 'preview' | 'camera'
+    animationEvent?: AnimationEvent | null
+    previewDistance?: number
+  }>(),
+  { animationEvent: null, previewDistance: 4.8 },
+)
+const emit = defineEmits<{ error: [message: string] }>()
+const host = ref<HTMLElement | null>(null)
+const video = ref<HTMLVideoElement | null>(null)
+let renderer!: THREE.WebGLRenderer
+let scene!: THREE.Scene
+let camera!: THREE.PerspectiveCamera
+let board!: THREE.Group
+let animated: THREE.Mesh[] = []
+let frame = 0
+let resizeObserver: ResizeObserver | null = null
+let stream: MediaStream | null = null
+let robotRig: THREE.Group | null = null
+let robotModel: THREE.Object3D | null = null
+let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
+let pendingEvent: AnimationEvent | null = null
+const robotCell = ref<{ x: number; y: number } | null>(null)
 defineExpose({ robotCell })
 let yaw = 0.55
 let pitch = 0.65
@@ -50,7 +70,7 @@ function replaceStage() {
   board = visuals.root
   animated = visuals.animated
   scene.add(board)
-  const start = props.stage.cells.find(cell => cell.symbol === 'S')
+  const start = props.stage.cells.find((cell) => cell.symbol === 'S')
   robotCell.value = start ? { x: start.x, y: start.y } : null
   if (robotRig) {
     board.add(robotRig)
@@ -60,44 +80,62 @@ function replaceStage() {
   setView()
 }
 
-function positionRobot(cell) {
+function positionRobot(cell: StageCell | { x: number; y: number } | null | undefined): void {
   if (!robotRig || !cell) return
   robotRig.position.set(cell.x - (props.stage.width - 1) / 2, 0.07, cell.y - (props.stage.height - 1) / 2)
   robotRig.rotation.y = -Math.PI / 2
 }
 
 function loadRobot() {
-  new GLTFLoader().load('/robot.glb', gltf => {
-    if (!scene) return
-    robotModel = gltf.scene
-    robotModel.name = 'electronic-fairy-robot'
-    const { pivots, found } = createArmPivots(robotModel, THREE)
-    const bounds = new THREE.Box3().setFromObject(robotModel)
-    const size = bounds.getSize(new THREE.Vector3())
-    const center = bounds.getCenter(new THREE.Vector3())
-    const scale = Math.min(0.72 / Math.max(size.x, size.z), 0.96 / size.y)
-    robotModel.scale.setScalar(scale)
-    robotModel.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale)
-    robotRig = new THREE.Group()
-    robotRig.name = 'robot-rig'
-    robotRig.add(robotModel)
-    board.add(robotRig)
-    positionRobot(robotCell.value)
-    robotAnimator = createRobotAnimator(robotRig, robotModel, pivots)
-    if (!found.every(Boolean)) emit('error', 'GLBの left_arm / right_arm を検出できませんでした')
-    if (pendingEvent) { playAnimationEvent(pendingEvent); pendingEvent = null }
-  }, undefined, error => emit('error', `ロボットGLBを読み込めませんでした: ${error.message}`))
+  new GLTFLoader().load(
+    '/robot.glb',
+    (gltf) => {
+      if (!scene) return
+      robotModel = gltf.scene
+      robotModel.name = 'electronic-fairy-robot'
+      const { pivots, found } = createArmPivots(robotModel, THREE)
+      const bounds = new THREE.Box3().setFromObject(robotModel)
+      const size = bounds.getSize(new THREE.Vector3())
+      const center = bounds.getCenter(new THREE.Vector3())
+      const scale = Math.min(0.72 / Math.max(size.x, size.z), 0.96 / size.y)
+      robotModel.scale.setScalar(scale)
+      robotModel.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale)
+      robotRig = new THREE.Group()
+      robotRig.name = 'robot-rig'
+      robotRig.add(robotModel)
+      board.add(robotRig)
+      positionRobot(robotCell.value)
+      robotAnimator = createRobotAnimator(robotRig, robotModel, pivots)
+      if (!found.every(Boolean)) emit('error', 'GLBの left_arm / right_arm を検出できませんでした')
+      if (pendingEvent) {
+        playAnimationEvent(pendingEvent)
+        pendingEvent = null
+      }
+    },
+    undefined,
+    (error) =>
+      emit(
+        'error',
+        `ロボットGLBを読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+  )
 }
 
-function playAnimationEvent(event) {
+function playAnimationEvent(event: AnimationEvent | null): void {
   if (!event) return
-  if (!robotAnimator) { pendingEvent = event; return }
+  if (!robotAnimator) {
+    pendingEvent = event
+    return
+  }
+  if (!robotRig) return
   let destination
   if (event.type === 'move') {
     const { x, y } = event.to ?? {}
-    const cell = props.stage.cells.find(item => item.x === x && item.y === y)
+    if (typeof x !== 'number' || typeof y !== 'number') return
+    const cell = props.stage.cells.find((item) => item.x === x && item.y === y)
     if (!cell || ['#', '_'].includes(cell.symbol)) return
     const previous = robotCell.value
+    if (!previous) return
     if (x > previous.x) robotRig.rotation.y = -Math.PI / 2
     else if (x < previous.x) robotRig.rotation.y = Math.PI / 2
     else if (y > previous.y) robotRig.rotation.y = Math.PI
@@ -117,11 +155,11 @@ function resize() {
   camera.updateProjectionMatrix()
 }
 
-function animate(time) {
+function animate(time: number): void {
   frame = requestAnimationFrame(animate)
   advanceWater(time)
   robotAnimator?.update(time)
-  for (const [index, object] of animated.entries()) {
+  for (const object of animated) {
     if (object.geometry.type === 'OctahedronGeometry') {
       object.rotation.y += 0.006
       object.position.y = 0.39 + Math.sin(time * 0.002) * 0.035
@@ -138,38 +176,48 @@ async function startCamera() {
     return
   }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-    if (props.mode !== 'camera') { stopCamera(); return }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    })
+    if (props.mode !== 'camera') {
+      stopCamera()
+      return
+    }
     if (video.value) {
       video.value.srcObject = stream
       await video.value.play()
     }
   } catch (error) {
-    emit('error', `カメラを開けませんでした: ${error.message}`)
+    emit('error', `カメラを開けませんでした: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
 function stopCamera() {
-  stream?.getTracks().forEach(track => track.stop())
+  stream?.getTracks().forEach((track) => track.stop())
   stream = null
   if (video.value) video.value.srcObject = null
 }
 
-function pointerDown(event) {
+function pointerDown(event: PointerEvent): void {
   if (props.mode === 'camera') {
+    if (!host.value || !board) return
     const rect = host.value.getBoundingClientRect()
     const depth = 3
     const halfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * depth
-    board.position.set(((event.clientX - rect.left) / rect.width * 2 - 1) * halfHeight * camera.aspect,
-      (1 - (event.clientY - rect.top) / rect.height * 2) * halfHeight, -depth)
+    board.position.set(
+      (((event.clientX - rect.left) / rect.width) * 2 - 1) * halfHeight * camera.aspect,
+      (1 - ((event.clientY - rect.top) / rect.height) * 2) * halfHeight,
+      -depth,
+    )
     return
   }
   dragging = true
   lastPointer = [event.clientX, event.clientY]
-  event.currentTarget.setPointerCapture(event.pointerId)
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
-function pointerMove(event) {
+function pointerMove(event: PointerEvent): void {
   if (!dragging || props.mode !== 'preview') return
   yaw -= (event.clientX - lastPointer[0]) * 0.006
   pitch = THREE.MathUtils.clamp(pitch + (event.clientY - lastPointer[1]) * 0.006, 0.2, 1.35)
@@ -177,13 +225,14 @@ function pointerMove(event) {
   setView()
 }
 
-function wheel(event) {
+function wheel(event: WheelEvent): void {
   if (props.mode !== 'preview') return
   distance = THREE.MathUtils.clamp(distance + Math.sign(event.deltaY) * 0.35, 2.4, 9)
   setView()
 }
 
 onMounted(() => {
+  if (!host.value) return
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -207,23 +256,32 @@ onMounted(() => {
     frame = requestAnimationFrame(animate)
     startCamera()
   } catch (error) {
-    emit('error', `3Dステージを開始できませんでした: ${error.message}`)
+    emit(
+      'error',
+      `3Dステージを開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
+    )
   }
 })
 
 watch(() => props.stage, replaceStage)
 watch(() => props.animationEvent, playAnimationEvent)
-watch(() => props.mode, () => { setView(); startCamera() })
+watch(
+  () => props.mode,
+  () => {
+    setView()
+    startCamera()
+  },
+)
 onBeforeUnmount(() => {
   cancelAnimationFrame(frame)
   resizeObserver?.disconnect()
   stopCamera()
   robotAnimator?.stop()
   if (robotRig && board) board.remove(robotRig)
-  robotModel?.traverse(object => {
-    if (!object.isMesh) return
+  robotModel?.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
     object.geometry?.dispose()
-    if (Array.isArray(object.material)) object.material.forEach(material => material.dispose())
+    if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose())
     else object.material?.dispose()
   })
   if (board) disposeStageVisuals(board)
@@ -233,7 +291,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="host" class="stage-scene" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="dragging = false" @pointercancel="dragging = false" @wheel.prevent="wheel">
+  <div
+    ref="host"
+    class="stage-scene"
+    @pointerdown="pointerDown"
+    @pointermove="pointerMove"
+    @pointerup="dragging = false"
+    @pointercancel="dragging = false"
+    @wheel.prevent="wheel"
+  >
     <video v-show="mode === 'camera'" ref="video" class="camera-feed" autoplay muted playsinline />
   </div>
 </template>

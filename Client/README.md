@@ -1,5 +1,7 @@
 # Robot Field クライアント
 
+開発とテストには Node.js 24 以上を使います。
+
 `/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` と `/account` は、対戦とログインの準備状況を示すクライアント内のページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
 
 ## 教材詳細
@@ -17,12 +19,15 @@ pnpm dev
 ```
 
 3dプレビュー:カメラなしで動くデバッグ用
+
 - カメラに重ねる:localhost または HTTPS とカメラ許可が必要
 
 画面をタップすると盤面の表示位置を変えられます。現時点ではカメラ映像への重ね合わせで、平面検出・空間固定は次の段階です。
 
 ## ステージデータ
+
 いったん仮ですすめる、jsonが確定したらそっちに合わせる
+
 ```json
 {
   "id": "crystal-route",
@@ -44,7 +49,7 @@ pnpm dev
 
 記号は `S` スタート、`G` ゴール、`.` 陸、`#` 岩、`_` 海、`O` 荷物、`X` 置き場、`?` 可変マスです。行幅は同一、`S` は1個です。配置候補の `map` に `?` は使いません。
 
-APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [src/stage.js](src/stage.js) の `normalizeField` で変換します。表示は [StageScene.vue](src/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
+APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [stage.ts](src/features/stage/stage.ts) の `normalizeField` で変換します。表示は [StageScene.vue](src/features/stage/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
 
 ## 抽選と動作イベント
 
@@ -62,5 +67,17 @@ APIが用意されたら画面のフィールドIDから `GET /field/{id}` を�
 
 ```bash
 pnpm test
+pnpm type-check
+pnpm lint
+pnpm format:check
 pnpm build
 ```
+
+## Client の構成
+
+- `src/app`: 画面の入口とルート別の表示
+- `src/features/stage`: 盤面データ、3D表示、ロボットの動作
+- `src/features/tutorial`: 教材の画面、ローカル教材、API
+- `src/styles`: サイト共通のスタイル
+
+`pnpm format` はClient内のソースと設定をPrettierで整形します。ESLintとTypeScriptの設定もClient内で完結しています。

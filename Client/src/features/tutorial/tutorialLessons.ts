@@ -1,6 +1,17 @@
+export interface Lesson {
+  id: string
+  title: string
+  fieldId: string
+  goal: string
+  description?: string
+  map: string[]
+  lesson: string
+  guide: string[]
+}
+
 // OpenAPI の Tutorial は id / title / fieldId のみを定義している。
 // 説明文とサンプル盤面は、教材 API に内容が追加されるまでのローカル原稿。
-export const LOCAL_LESSONS = [
+export const LOCAL_LESSONS: Lesson[] = [
   {
     id: 'first-step',
     title: '前に進む',
@@ -55,10 +66,10 @@ export const LOCAL_LESSONS = [
   },
 ]
 
-export function localLesson(id) {
-  return LOCAL_LESSONS.find(lesson => lesson.id === id) ?? null
+export function localLesson(id: string): Lesson | null {
+  return LOCAL_LESSONS.find((lesson) => lesson.id === id) ?? null
 }
 
-export function lessonField(lesson) {
+export function lessonField(lesson: Lesson): { id: string; title: string; map: string[] } {
   return { id: lesson.fieldId, title: lesson.title, map: lesson.map }
 }

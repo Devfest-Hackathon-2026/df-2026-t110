@@ -1,11 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
-const host = ref(null)
+const host = ref<HTMLElement | null>(null)
 const failed = ref(false)
-let renderer, scene, camera, model, observer, frame
+let renderer!: THREE.WebGLRenderer
+let scene!: THREE.Scene
+let camera!: THREE.PerspectiveCamera
+let model: THREE.Object3D | null = null
+let observer: ResizeObserver | null = null
+let frame = 0
 let disposed = false
 let baseY = 0
 
@@ -18,7 +23,7 @@ function resize() {
   camera.updateProjectionMatrix()
 }
 
-function animate(time) {
+function animate(time: number): void {
   frame = requestAnimationFrame(animate)
   if (!renderer || !scene) return
   if (model && document.visibilityState === 'visible') {
@@ -29,6 +34,7 @@ function animate(time) {
 }
 
 onMounted(() => {
+  if (!host.value) return
   try {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
@@ -49,25 +55,33 @@ onMounted(() => {
     resize()
     frame = requestAnimationFrame(animate)
 
-    new GLTFLoader().load('/robot.glb', gltf => {
-      if (disposed) return
-      model = gltf.scene
-      model.traverse(node => {
-        if (!node.isMesh || !/^(Body|left_arm|right_arm)$/.test(node.name)) return
-        node.material = node.material.clone()
-        node.material.color.set('#ee783d')
-        node.material.emissive.set('#8f360f')
-        node.material.emissiveIntensity = 0.12
-      })
-      const bounds = new THREE.Box3().setFromObject(model)
-      const size = bounds.getSize(new THREE.Vector3())
-      const center = bounds.getCenter(new THREE.Vector3())
-      const scale = Math.min(1.2 / size.y, 1.3 / Math.max(size.x, size.z))
-      model.scale.setScalar(scale)
-      baseY = -bounds.min.y * scale
-      model.position.set(-center.x * scale, baseY, -center.z * scale)
-      scene.add(model)
-    }, undefined, () => { failed.value = true })
+    new GLTFLoader().load(
+      '/robot.glb',
+      (gltf) => {
+        if (disposed) return
+        model = gltf.scene
+        model.traverse((node) => {
+          if (!(node instanceof THREE.Mesh) || !/^(Body|left_arm|right_arm)$/.test(node.name)) return
+          if (!(node.material instanceof THREE.MeshStandardMaterial)) return
+          node.material = node.material.clone()
+          node.material.color.set('#ee783d')
+          node.material.emissive.set('#8f360f')
+          node.material.emissiveIntensity = 0.12
+        })
+        const bounds = new THREE.Box3().setFromObject(model)
+        const size = bounds.getSize(new THREE.Vector3())
+        const center = bounds.getCenter(new THREE.Vector3())
+        const scale = Math.min(1.2 / size.y, 1.3 / Math.max(size.x, size.z))
+        model.scale.setScalar(scale)
+        baseY = -bounds.min.y * scale
+        model.position.set(-center.x * scale, baseY, -center.z * scale)
+        scene.add(model)
+      },
+      undefined,
+      () => {
+        failed.value = true
+      },
+    )
   } catch {
     failed.value = true
   }
@@ -77,10 +91,10 @@ onBeforeUnmount(() => {
   disposed = true
   cancelAnimationFrame(frame)
   observer?.disconnect()
-  model?.traverse(node => {
-    if (!node.isMesh) return
+  model?.traverse((node) => {
+    if (!(node instanceof THREE.Mesh)) return
     node.geometry?.dispose()
-    if (Array.isArray(node.material)) node.material.forEach(material => material.dispose())
+    if (Array.isArray(node.material)) node.material.forEach((material) => material.dispose())
     else node.material?.dispose()
   })
   renderer?.dispose()
