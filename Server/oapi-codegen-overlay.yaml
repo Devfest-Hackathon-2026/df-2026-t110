@@ -7,6 +7,8 @@ actions:
     remove: true
   - target: $.components.schemas.Stage
     remove: true
+  - target: $.components.schemas.PicolangProgram
+    remove: true
   - target: $.components.schemas
     update:
       Field:
@@ -18,6 +20,12 @@ actions:
       Stage:
         type: object
         x-go-type: schema.StageDefinition
+        x-go-type-import:
+          name: schema
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
+      PicolangProgram:
+        type: object
+        x-go-type: schema.PicolangProgram
         x-go-type-import:
           name: schema
           path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema

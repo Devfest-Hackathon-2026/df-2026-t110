@@ -77,10 +77,20 @@ type Match struct {
 // MatchStatus defines model for Match.Status.
 type MatchStatus string
 
-// Program 暫定スキーマ。命令JSONの構造は未確定。
+// PicolangProgram defines model for PicolangProgram.
+type PicolangProgram = schema.PicolangProgram
+
+// Program プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
 //
-// Examples: {"actions":[{"action":"move"},{"action":"move"}],"id":"program-1","name":"前進する"}
-type Program map[string]interface{}
+// Examples: {"id":"program-1","name":"前進する","source":{"picolang":{"v0":{"program":{"main":{"body":{"hintId":"00000000-0000-4000-8000-000000000002","kind":"block","stmts":[{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000003","kind":"call"},{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000004","kind":"call"},{"hintId":"00000000-0000-4000-8000-000000000005","kind":"return","value":{"hintId":"00000000-0000-4000-8000-000000000006","kind":"literal","type":"unit","value":null}}]},"hintId":"00000000-0000-4000-8000-000000000001","kind":"function","params":[],"returnType":"unit"}}}},"picolangVersion":0}}
+type Program struct {
+	// Id 保存したプログラムのID
+	Id *string `json:"id,omitempty"`
+
+	// Name プログラムの表示名
+	Name   string          `json:"name"`
+	Source PicolangProgram `json:"source"`
+}
 
 // Room defines model for Room.
 type Room struct {

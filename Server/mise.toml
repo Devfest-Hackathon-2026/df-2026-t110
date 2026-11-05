@@ -10,6 +10,6 @@ dir = "{{config_root}}"
 sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml"]
 outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go"]
 run = [
-  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/field/stage.schema.yaml",
+  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/field/stage.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
 ]

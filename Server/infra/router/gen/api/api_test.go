@@ -77,3 +77,22 @@ func TestUnknownSchemaVariant(t *testing.T) {
 		}
 	}
 }
+
+func TestProgramSourceUsesPicolangSchema(t *testing.T) {
+	data := []byte(`{
+		"name": "前進する",
+		"source": {"picolangVersion": 0, "picolang": {"v0": {"program": {}}}}
+	}`)
+
+	var program Program
+	if err := json.Unmarshal(data, &program); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(program.Source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"picolang":{"v0":{"program":{}}},"picolangVersion":0}`; string(encoded) != want {
+		t.Fatalf("source = %s, want %s", encoded, want)
+	}
+}

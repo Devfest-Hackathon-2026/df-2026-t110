@@ -7,9 +7,221 @@ import "encoding/json"
 import "errors"
 import "fmt"
 import "reflect"
+import "regexp"
 import "strconv"
 import "strings"
 import "unicode/utf8"
+
+// 既存の変数への代入
+type Assignment struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Ident corresponds to the JSON schema field "ident".
+	Ident Ident `json:"ident"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value Expr `json:"value"`
+}
+
+const AssignmentKind = "assign"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Assignment) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Assignment: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Assignment: required")
+	}
+	if _, ok := raw["ident"]; raw != nil && !ok {
+		return fmt.Errorf("field ident in Assignment: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Assignment: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in Assignment: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"assign\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"assign\"")
+		}
+	}
+	type Plain Assignment
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Assignment: %w", err)
+	}
+	*j = Assignment(plain)
+	return nil
+}
+
+// 文の一覧と変数スコープを持つブロック
+type Block struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Stmts corresponds to the JSON schema field "stmts".
+	Stmts Stmts `json:"stmts"`
+}
+
+const BlockKind = "block"
+
+// MarshalJSON implements json.Marshaler. It writes a required array or object left
+// nil as an empty one, where encoding/json would write null, which the schema
+// rejects.
+func (j Block) MarshalJSON() ([]byte, error) {
+	type Plain Block
+	plain := Plain(j)
+	if plain.Stmts == nil {
+		plain.Stmts = Stmts{}
+	}
+	return json.Marshal(plain)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Block) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Block: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Block: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Block: required")
+	}
+	if _, ok := raw["stmts"]; raw != nil && !ok {
+		return fmt.Errorf("field stmts in Block: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"block\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"block\"")
+		}
+	}
+	type Plain Block
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Block: %w", err)
+	}
+	*j = Block(plain)
+	return nil
+}
+
+// bool 型のリテラル
+type BoolLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value bool `json:"value"`
+}
+
+const BoolLiteralKind = "literal"
+const BoolLiteralType = "bool"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *BoolLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw BoolLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in BoolLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in BoolLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in BoolLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in BoolLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"bool\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"bool\"")
+		}
+	}
+	type Plain BoolLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal BoolLiteral: %w", err)
+	}
+	*j = BoolLiteral(plain)
+	return nil
+}
+
+// 最も内側のループを終了する
+type Break struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+}
+
+const BreakKind = "break"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Break) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Break: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Break: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Break: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"break\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"break\"")
+		}
+	}
+	type Plain Break
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Break: %w", err)
+	}
+	*j = Break(plain)
+	return nil
+}
 
 // 指定した順序で通過するチェックポイント
 type Checkpoint struct {
@@ -143,6 +355,104 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 最も内側のループの次の反復に進む
+type Continue struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+}
+
+const ContinueKind = "continue"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Continue) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Continue: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Continue: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Continue: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"continue\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"continue\"")
+		}
+	}
+	type Plain Continue
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Continue: %w", err)
+	}
+	*j = Continue(plain)
+	return nil
+}
+
+// 型と初期値を指定した変数宣言
+type Declaration struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Ident corresponds to the JSON schema field "ident".
+	Ident Ident `json:"ident"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type Type `json:"type"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value Expr `json:"value"`
+}
+
+const DeclarationKind = "declare"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Declaration) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Declaration: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Declaration: required")
+	}
+	if _, ok := raw["ident"]; raw != nil && !ok {
+		return fmt.Errorf("field ident in Declaration: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Declaration: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in Declaration: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in Declaration: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"declare\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"declare\"")
+		}
+	}
+	type Plain Declaration
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Declaration: %w", err)
+	}
+	*j = Declaration(plain)
+	return nil
+}
+
 // ロボットが荷物を運搬し、ゴールに到達するとクリアする条件
 type DeliverAndReachGoal struct {
 	// 荷物の運搬とゴールへの到達を求めるクリア条件の種別
@@ -176,6 +486,98 @@ type Direction string
 
 const DirectionDown Direction = "down"
 const DirectionLeft Direction = "left"
+
+// direction 型のリテラル
+type DirectionLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value DirectionLiteralValue `json:"value"`
+}
+
+const DirectionLiteralKind = "literal"
+const DirectionLiteralType = "direction"
+
+type DirectionLiteralValue string
+
+const DirectionLiteralValueLeft DirectionLiteralValue = "left"
+const DirectionLiteralValueRight DirectionLiteralValue = "right"
+
+var enumValues_DirectionLiteralValue = []interface{}{
+	"left",
+	"right",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DirectionLiteralValue) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_DirectionLiteralValue {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DirectionLiteralValue, v)
+	}
+	*j = DirectionLiteralValue(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DirectionLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw DirectionLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in DirectionLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in DirectionLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in DirectionLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in DirectionLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"direction\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"direction\"")
+		}
+	}
+	type Plain DirectionLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal DirectionLiteral: %w", err)
+	}
+	*j = DirectionLiteral(plain)
+	return nil
+}
+
 const DirectionRight Direction = "right"
 const DirectionUp Direction = "up"
 
@@ -205,6 +607,9 @@ func (j *Direction) UnmarshalJSON(value []byte) error {
 	*j = Direction(v)
 	return nil
 }
+
+// リテラル、変数参照、関数呼び出しのいずれかの式
+type Expr interface{}
 
 // 単一のフィールドのスキーマ定義
 type FieldDefinition struct {
@@ -413,6 +818,71 @@ func (j *FieldObject) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// integer 型の start から end までの半開区間を繰り返す。start が end
+// 以上の場合は実行しない。ループ変数への代入は次の反復に影響しない
+type For struct {
+	// Body corresponds to the JSON schema field "body".
+	Body Block `json:"body"`
+
+	// End corresponds to the JSON schema field "end".
+	End Expr `json:"end"`
+
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Ident corresponds to the JSON schema field "ident".
+	Ident Ident `json:"ident"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Start corresponds to the JSON schema field "start".
+	Start Expr `json:"start"`
+}
+
+const ForKind = "for"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *For) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw For: %w", err)
+	}
+	if _, ok := raw["body"]; raw != nil && !ok {
+		return fmt.Errorf("field body in For: required")
+	}
+	if _, ok := raw["end"]; raw != nil && !ok {
+		return fmt.Errorf("field end in For: required")
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in For: required")
+	}
+	if _, ok := raw["ident"]; raw != nil && !ok {
+		return fmt.Errorf("field ident in For: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in For: required")
+	}
+	if _, ok := raw["start"]; raw != nil && !ok {
+		return fmt.Errorf("field start in For: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"for\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"for\"")
+		}
+	}
+	type Plain For
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal For: %w", err)
+	}
+	*j = For(plain)
+	return nil
+}
+
 // ロボットが到達するゴール
 type Goal struct {
 	// ゴールを配置するマスの座標
@@ -445,6 +915,296 @@ func (j *Goal) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "goal")
 	}
 	*j = Goal(plain)
+	return nil
+}
+
+// 構文ノードに対応するデバッグ用 UUID。プログラム全体での一意性は意味解析で検査する
+type HintId string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *HintId) UnmarshalJSON(value []byte) error {
+	type Plain HintId
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal HintId: %w", err)
+	}
+	if matched, _ := regexp.MatchString(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`, string(plain)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "HintId", `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	}
+	if utf8.RuneCountInString(string(plain)) < 36 {
+		return fmt.Errorf("field %s length: must be >= %d", "HintId", 36)
+	}
+	if utf8.RuneCountInString(string(plain)) > 36 {
+		return fmt.Errorf("field %s length: must be <= %d", "HintId", 36)
+	}
+	*j = HintId(plain)
+	return nil
+}
+
+// 変数の参照または宣言・代入・for 文における変数名
+type Ident struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Name corresponds to the JSON schema field "name".
+	Name Name `json:"name"`
+}
+
+const IdentKind = "ident"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Ident) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Ident: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Ident: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Ident: required")
+	}
+	if _, ok := raw["name"]; raw != nil && !ok {
+		return fmt.Errorf("field name in Ident: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"ident\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"ident\"")
+		}
+	}
+	type Plain Ident
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Ident: %w", err)
+	}
+	*j = Ident(plain)
+	return nil
+}
+
+// bool 型の条件による分岐。else を省略した場合は偽のときに何も実行しない
+type If struct {
+	// Condition corresponds to the JSON schema field "condition".
+	Condition Expr `json:"condition"`
+
+	// Else corresponds to the JSON schema field "else".
+	Else *Block `json:"else,omitempty,omitzero"`
+
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Then corresponds to the JSON schema field "then".
+	Then Block `json:"then"`
+}
+
+const IfKind = "if"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *If) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw If: %w", err)
+	}
+	if _, ok := raw["condition"]; raw != nil && !ok {
+		return fmt.Errorf("field condition in If: required")
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in If: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in If: required")
+	}
+	if _, ok := raw["then"]; raw != nil && !ok {
+		return fmt.Errorf("field then in If: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"if\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"if\"")
+		}
+	}
+	type Plain If
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal If: %w", err)
+	}
+	*j = If(plain)
+	return nil
+}
+
+// integer 型のリテラル
+type IntegerLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// i64 の範囲外の値の扱いは未定義
+	Value int `json:"value"`
+}
+
+const IntegerLiteralKind = "literal"
+const IntegerLiteralType = "integer"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw IntegerLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in IntegerLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in IntegerLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in IntegerLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in IntegerLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"integer\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"integer\"")
+		}
+	}
+	type Plain IntegerLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		var retry Plain
+		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_IntegerLiteral); err != nil {
+			return fmt.Errorf("unmarshal IntegerLiteral: %w", err)
+		}
+		plain = retry
+	}
+	*j = IntegerLiteral(plain)
+	return nil
+}
+
+// bool、integer、unit、direction のリテラル。field 型にはリテラルがない
+type Literal struct {
+	Bool *BoolLiteral `json:"-" yaml:"-"`
+
+	Integer *IntegerLiteral `json:"-" yaml:"-"`
+
+	Unit *UnitLiteral `json:"-" yaml:"-"`
+
+	Direction *DirectionLiteral `json:"-" yaml:"-"`
+}
+
+// MarshalJSON implements json.Marshaler. Exactly one variant
+// pointer must be non-nil; otherwise marshaling errors.
+func (j Literal) MarshalJSON() ([]byte, error) {
+	set := 0
+	if j.Bool != nil {
+		set++
+	}
+	if j.Integer != nil {
+		set++
+	}
+	if j.Unit != nil {
+		set++
+	}
+	if j.Direction != nil {
+		set++
+	}
+	if set != 1 {
+		return nil, fmt.Errorf("Literal: exactly one variant must be set, got %d", set)
+	}
+	if j.Bool != nil {
+		return json.Marshal(j.Bool)
+	}
+	if j.Integer != nil {
+		return json.Marshal(j.Integer)
+	}
+	if j.Unit != nil {
+		return json.Marshal(j.Unit)
+	}
+	if j.Direction != nil {
+		return json.Marshal(j.Direction)
+	}
+	return nil, nil // unreachable
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It peeks the
+// discriminator property "type" and dispatches the decode into the
+// matching variant.
+func (j *Literal) UnmarshalJSON(value []byte) error {
+	// Reset to zero value so reusing the same holder across multiple
+	// Unmarshal calls doesn't leave a previous winner set alongside the
+	// new one (which would violate the one-variant-set invariant and
+	// break the corresponding MarshalJSON).
+	*j = Literal{}
+	var peek struct {
+		Discriminator json.RawMessage `json:"type"`
+	}
+	if err := json.Unmarshal(value, &peek); err != nil {
+		return fmt.Errorf("unmarshal Literal: %w", err)
+	}
+	if len(peek.Discriminator) == 0 {
+		return fmt.Errorf("Literal: missing discriminator field type")
+	}
+	if string(peek.Discriminator) == "null" {
+		return fmt.Errorf("Literal: type discriminator must be a string, got null")
+	}
+	var disc string
+	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
+		return fmt.Errorf("Literal: type discriminator must be a string: %w", err)
+	}
+	switch disc {
+	case "bool":
+		var v BoolLiteral
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("Literal.Bool: %w", err)
+		}
+		j.Bool = &v
+	case "integer":
+		var v IntegerLiteral
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("Literal.Integer: %w", err)
+		}
+		j.Integer = &v
+	case "unit":
+		var v UnitLiteral
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("Literal.Unit: %w", err)
+		}
+		j.Unit = &v
+	case "direction":
+		var v DirectionLiteral
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("Literal.Direction: %w", err)
+		}
+		j.Direction = &v
+	default:
+		return fmt.Errorf("Literal: unknown type value %q", disc)
+	}
 	return nil
 }
 
@@ -491,6 +1251,151 @@ func (j *Luggage) UnmarshalJSON(value []byte) error {
 	*j = Luggage(plain)
 	return nil
 }
+
+// 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
+type Name string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Name) UnmarshalJSON(value []byte) error {
+	type Plain Name
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Name: %w", err)
+	}
+	if utf8.RuneCountInString(string(plain)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "Name", 1)
+	}
+	*j = Name(plain)
+	return nil
+}
+
+// 関数の仮引数の名前と型
+type Param struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Ident corresponds to the JSON schema field "ident".
+	Ident Ident `json:"ident"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type Type `json:"type"`
+}
+
+const ParamKind = "param"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Param) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Param: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Param: required")
+	}
+	if _, ok := raw["ident"]; raw != nil && !ok {
+		return fmt.Errorf("field ident in Param: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Param: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in Param: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"param\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"param\"")
+		}
+	}
+	type Plain Param
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Param: %w", err)
+	}
+	*j = Param(plain)
+	return nil
+}
+
+// 引数、戻り値の型、関数本体を持つ関数定義。関数名は picolang.v0.program map のキーで表す
+type PicolangFunctionDefinition struct {
+	// Body corresponds to the JSON schema field "body".
+	Body Block `json:"body"`
+
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// 宣言順に並べた引数の一覧
+	Params []Param `json:"params"`
+
+	// ReturnType corresponds to the JSON schema field "returnType".
+	ReturnType Type `json:"returnType"`
+}
+
+const PicolangFunctionDefinitionKind = "function"
+
+// MarshalJSON implements json.Marshaler. It writes a required array or object left
+// nil as an empty one, where encoding/json would write null, which the schema
+// rejects.
+func (j PicolangFunctionDefinition) MarshalJSON() ([]byte, error) {
+	type Plain PicolangFunctionDefinition
+	plain := Plain(j)
+	if plain.Params == nil {
+		plain.Params = []Param{}
+	}
+	return json.Marshal(plain)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangFunctionDefinition) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw PicolangFunctionDefinition: %w", err)
+	}
+	if _, ok := raw["body"]; raw != nil && !ok {
+		return fmt.Errorf("field body in PicolangFunctionDefinition: required")
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in PicolangFunctionDefinition: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in PicolangFunctionDefinition: required")
+	}
+	if _, ok := raw["params"]; raw != nil && !ok {
+		return fmt.Errorf("field params in PicolangFunctionDefinition: required")
+	}
+	if _, ok := raw["returnType"]; raw != nil && !ok {
+		return fmt.Errorf("field returnType in PicolangFunctionDefinition: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"function\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"function\"")
+		}
+	}
+	type Plain PicolangFunctionDefinition
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangFunctionDefinition: %w", err)
+	}
+	*j = PicolangFunctionDefinition(plain)
+	return nil
+}
+
+// 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
+type PicolangProgram interface{}
+
+// 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
+type PicolangV0Program map[string]PicolangFunctionDefinition
 
 // フィールド上のマスの座標
 type Position struct {
@@ -561,6 +1466,52 @@ func (j *ReachGoal) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 式を評価した値を返して関数を終了する。unit を返す場合も式を指定する
+type Return struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value Expr `json:"value"`
+}
+
+const ReturnKind = "return"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Return) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Return: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Return: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Return: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in Return: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"return\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"return\"")
+		}
+	}
+	type Plain Return
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Return: %w", err)
+	}
+	*j = Return(plain)
+	return nil
+}
+
 // 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
 type StageDefinition struct {
 	// 全ての候補フィールドに共通するクリア条件
@@ -606,6 +1557,12 @@ func (j *StageDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 式、変数宣言、代入、制御構文のいずれかの文。型・スコープ・return の配置・break と continue の使用位置は意味解析で検査する
+type Stmt interface{}
+
+// 実行順に並べた文の一覧。空配列は文がないことを表す
+type Stmts []Stmt
+
 type Terrain string
 
 const TerrainLand Terrain = "land"
@@ -638,6 +1595,205 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type Type string
+
+const TypeBool Type = "bool"
+const TypeDirection Type = "direction"
+const TypeField Type = "field"
+const TypeInteger Type = "integer"
+const TypeUnit Type = "unit"
+
+var enumValues_Type = []interface{}{
+	"bool",
+	"integer",
+	"unit",
+	"field",
+	"direction",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Type) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_Type {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_Type, v)
+	}
+	*j = Type(v)
+	return nil
+}
+
+// unit 型のリテラル
+type UnitLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// unit の () は JSON の null で表す
+	Value interface{} `json:"value"`
+}
+
+const UnitLiteralKind = "literal"
+const UnitLiteralType = "unit"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *UnitLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw UnitLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in UnitLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in UnitLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in UnitLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in UnitLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"unit\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"unit\"")
+		}
+	}
+	type Plain UnitLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal UnitLiteral: %w", err)
+	}
+	if plain.Value != nil {
+		return fmt.Errorf("field %s: must be null", "value")
+	}
+	*j = UnitLiteral(plain)
+	return nil
+}
+
+// 文法バージョン 0 と picolang.v0.program の組。他のバージョンとの同時指定は許可しない
+type Version0 struct {
+	// 文法バージョン 0 のプログラムのみを指定する
+	Picolang Version0Picolang `json:"picolang"`
+
+	// picolang の文法のバージョン。0 から始まり、バージョン更新ごとに 1 ずつ増やす整数
+	PicolangVersion int `json:"picolangVersion"`
+}
+
+// 文法バージョン 0 のプログラムのみを指定する
+type Version0Picolang struct {
+	// 文法バージョン 0 のプログラム
+	V0 Version0PicolangV0 `json:"v0"`
+}
+
+// 文法バージョン 0 のプログラム
+type Version0PicolangV0 struct {
+	// Program corresponds to the JSON schema field "program".
+	Program PicolangV0Program `json:"program"`
+}
+
+// MarshalJSON implements json.Marshaler. It writes a required array or object left
+// nil as an empty one, where encoding/json would write null, which the schema
+// rejects.
+func (j Version0PicolangV0) MarshalJSON() ([]byte, error) {
+	type Plain Version0PicolangV0
+	plain := Plain(j)
+	if plain.Program == nil {
+		plain.Program = PicolangV0Program{}
+	}
+	return json.Marshal(plain)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Version0PicolangV0) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Version0PicolangV0: %w", err)
+	}
+	if _, ok := raw["program"]; raw != nil && !ok {
+		return fmt.Errorf("field program in Version0PicolangV0: required")
+	}
+	type Plain Version0PicolangV0
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Version0PicolangV0: %w", err)
+	}
+	*j = Version0PicolangV0(plain)
+	return nil
+}
+
+const Version0PicolangVersion = 0
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Version0Picolang) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Version0Picolang: %w", err)
+	}
+	if _, ok := raw["v0"]; raw != nil && !ok {
+		return fmt.Errorf("field v0 in Version0Picolang: required")
+	}
+	type Plain Version0Picolang
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Version0Picolang: %w", err)
+	}
+	*j = Version0Picolang(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Version0) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Version0: %w", err)
+	}
+	if _, ok := raw["picolang"]; raw != nil && !ok {
+		return fmt.Errorf("field picolang in Version0: required")
+	}
+	if _, ok := raw["picolangVersion"]; raw != nil && !ok {
+		return fmt.Errorf("field picolangVersion in Version0: required")
+	}
+	type Plain Version0
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		var retry Plain
+		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_Version0); err != nil {
+			return fmt.Errorf("unmarshal Version0: %w", err)
+		}
+		plain = retry
+	}
+	if plain.PicolangVersion != 0 {
+		return fmt.Errorf("field %s: must be equal to %v", "picolangVersion", 0)
+	}
+	*j = Version0(plain)
+	return nil
+}
+
 // ロボットが全てのチェックポイントを指定順に通過するとクリアする条件
 type VisitCheckpoints struct {
 	// チェックポイントの順次通過を求めるクリア条件の種別
@@ -667,6 +1823,58 @@ func (j *VisitCheckpoints) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// bool 型の条件が真である間、ブロックを繰り返す
+type While struct {
+	// Body corresponds to the JSON schema field "body".
+	Body Block `json:"body"`
+
+	// Condition corresponds to the JSON schema field "condition".
+	Condition Expr `json:"condition"`
+
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+}
+
+const WhileKind = "while"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *While) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw While: %w", err)
+	}
+	if _, ok := raw["body"]; raw != nil && !ok {
+		return fmt.Errorf("field body in While: required")
+	}
+	if _, ok := raw["condition"]; raw != nil && !ok {
+		return fmt.Errorf("field condition in While: required")
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in While: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in While: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"while\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"while\"")
+		}
+	}
+	type Plain While
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal While: %w", err)
+	}
+	*j = While(plain)
+	return nil
+}
+
 var integerPaths_Checkpoint = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
 	"order": {kind: "int"},
 }}
@@ -677,10 +1885,92 @@ var integerPaths_FieldDefinition = &unmarshalIntegral_Position_path{fields: map[
 	"width":      {kind: "int"},
 }}
 
+var integerPaths_IntegerLiteral = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+	"value": {kind: "int"},
+}}
+
 var integerPaths_Position = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
 	"x": {kind: "int"},
 	"y": {kind: "int"},
 }}
+
+var integerPaths_Version0 = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+	"picolangVersion": {kind: "int"},
+}}
+
+// uniqueItemKey_Ident returns the JSON encoding of v with each number written in
+// one form, so that items JSON Schema counts as equal, such as 1 and 1.0, get the
+// same key, and integers a float64 cannot tell apart do not. It reports false for
+// a value with no JSON encoding. Every uniqueItems check in this file calls it; it
+// is named after the first, so that no other file of the package declares it.
+func uniqueItemKey_Ident(v interface{}) (string, bool) {
+	var canon func(interface{}) interface{}
+	canon = func(n interface{}) interface{} {
+		switch n := n.(type) {
+		case json.Number:
+			return uniqueItemKey_Ident_number(string(n))
+		case float64:
+			return uniqueItemKey_Ident_number(strconv.FormatFloat(n, 'g', -1, 64))
+		case int:
+			return uniqueItemKey_Ident_number(strconv.Itoa(n))
+		case int64:
+			return uniqueItemKey_Ident_number(strconv.FormatInt(n, 10))
+		case uint64:
+			return uniqueItemKey_Ident_number(strconv.FormatUint(n, 10))
+		case map[string]interface{}:
+			m := make(map[string]interface{}, len(n))
+			for k, e := range n {
+				m[k] = canon(e)
+			}
+			return m
+		case []interface{}:
+			a := make([]interface{}, len(n))
+			for i, e := range n {
+				a[i] = canon(e)
+			}
+			return a
+		}
+		return n
+	}
+	b, err := json.Marshal(canon(v))
+	if err != nil {
+		return "", false
+	}
+	return string(b), true
+}
+
+// uniqueItemKey_Ident_number writes the number s in one form: its significant
+// digits as d.ddd, and the exponent, such as 9.007199254740993e15. A number with
+// an exponent beyond a billion is left as it is.
+func uniqueItemKey_Ident_number(s string) json.Number {
+	neg := strings.HasPrefix(s, "-")
+	mantissa, exp := strings.TrimPrefix(s, "-"), 0
+	if i := strings.IndexAny(mantissa, "eE"); i >= 0 {
+		e, err := strconv.Atoi(mantissa[i+1:])
+		if err != nil || e > 1e9 || e < -1e9 {
+			return json.Number(s)
+		}
+		mantissa, exp = mantissa[:i], e
+	}
+	intPart, frac, _ := strings.Cut(mantissa, ".")
+	all := intPart + frac
+	trimmed := strings.TrimLeft(all, "0")
+	digits := strings.TrimRight(trimmed, "0")
+	if digits == "" {
+		return "0"
+	}
+	// The value is 0.digits times 10 to the power of point.
+	point := exp + len(intPart) - (len(all) - len(trimmed))
+	canonical := digits[:1]
+	if len(digits) > 1 {
+		canonical += "." + digits[1:]
+	}
+	canonical += "e" + strconv.Itoa(point-1)
+	if neg {
+		canonical = "-" + canonical
+	}
+	return json.Number(canonical)
+}
 
 // unmarshalIntegral_Position decodes data into v again, as json.Unmarshal does,
 // after a decode that failed with err. It first writes each number at one of p's
