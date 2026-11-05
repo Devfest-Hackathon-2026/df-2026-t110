@@ -1,0 +1,3 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangFunctionDefinition
+description: 関数定義の placeholder。関数内部の文法は後で定義する
