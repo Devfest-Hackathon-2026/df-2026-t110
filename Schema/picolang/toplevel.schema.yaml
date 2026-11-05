@@ -1,9 +1,32 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangProgram
-description: 関数名をキー、関数定義を値とする picolang プログラム全体のスキーマ定義
+description: 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
 
-type: object
-propertyNames:
-  $ref: './name.yaml'
-additionalProperties:
-  $ref: './function.schema.yaml'
+oneOf:
+  - $ref: '#/$defs/Version0'
+
+$defs:
+  Version0:
+    description: 文法バージョン 0 と picolang.v0.program の組。他のバージョンとの同時指定は許可しない
+    type: object
+    additionalProperties: false
+    required: [picolangVersion, picolang]
+    properties:
+      picolangVersion:
+        description: picolang の文法のバージョン。0 から始まり、バージョン更新ごとに 1 ずつ増やす整数
+        type: integer
+        const: 0
+      picolang:
+        description: 文法バージョン 0 のプログラムのみを指定する
+        type: object
+        additionalProperties: false
+        required: [v0]
+        properties:
+          v0:
+            description: 文法バージョン 0 のプログラム
+            type: object
+            additionalProperties: false
+            required: [program]
+            properties:
+              program:
+                $ref: './v0/program.yaml'

@@ -388,36 +388,40 @@ components:
           type: string
           description: プログラムの表示名
         source:
-          description: 関数名をキー、関数定義を値とする picolang のソース
+          description: 文法のバージョンと picolang.v0.program の関数定義の map を持つ picolang のソース
           $ref: "#/components/schemas/PicolangProgram"
       examples:
         - id: program-1
           name: 前進する
           source:
-            main:
-              kind: function
-              hintId: 00000000-0000-4000-8000-000000000001
-              params: []
-              returnType: unit
-              body:
-                kind: block
-                hintId: 00000000-0000-4000-8000-000000000002
-                stmts:
-                  - kind: call
-                    hintId: 00000000-0000-4000-8000-000000000003
-                    func: forward
-                    args: []
-                  - kind: call
-                    hintId: 00000000-0000-4000-8000-000000000004
-                    func: forward
-                    args: []
-                  - kind: return
-                    hintId: 00000000-0000-4000-8000-000000000005
-                    value:
-                      kind: literal
-                      hintId: 00000000-0000-4000-8000-000000000006
-                      type: unit
-                      value: null
+            picolangVersion: 0
+            picolang:
+              v0:
+                program:
+                  main:
+                    kind: function
+                    hintId: 00000000-0000-4000-8000-000000000001
+                    params: []
+                    returnType: unit
+                    body:
+                      kind: block
+                      hintId: 00000000-0000-4000-8000-000000000002
+                      stmts:
+                        - kind: call
+                          hintId: 00000000-0000-4000-8000-000000000003
+                          func: forward
+                          args: []
+                        - kind: call
+                          hintId: 00000000-0000-4000-8000-000000000004
+                          func: forward
+                          args: []
+                        - kind: return
+                          hintId: 00000000-0000-4000-8000-000000000005
+                          value:
+                            kind: literal
+                            hintId: 00000000-0000-4000-8000-000000000006
+                            type: unit
+                            value: null
 
     Room:
       type: object
