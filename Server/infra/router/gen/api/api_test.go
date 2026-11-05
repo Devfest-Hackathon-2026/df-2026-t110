@@ -36,7 +36,7 @@ func TestFieldAndStageSchemas(t *testing.T) {
 		"variants": [{
 			"width": 1, "height": 1, "terrain": [["land"]],
 			"objects": [{"type": "goal", "position": {"x": 0, "y": 0}}],
-			"robot": {"position": {"x": 0, "y": 0}, "direction": "up"},
+			"robot": {"position": {"x": 0, "y": 0}, "direction": "north"},
 			"drillLimit": 0
 		}],
 		"clearCondition": {"type": "reach_goal"}
