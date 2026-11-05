@@ -134,34 +134,33 @@ async function loadField() {
 <template>
   <main class="app-shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-icon">✳</span><span>ROBOT FIELD<small>AR STAGE VIEWER / ISSUES #1–3</small></span></div>
-      <span class="status"><i /> {{ mode === 'camera' ? 'CAMERA' : '3D PREVIEW' }}</span>
+      <a class="brand" href="/" aria-label="Robot Field ホームへ戻る"><span class="brand-icon">RF</span><span>Robot Field<small>ステージプレビュー</small></span></a>
+      <span class="status">{{ mode === 'camera' ? 'カメラ表示' : '3Dプレビュー' }}</span>
     </header>
 
     <div class="viewer">
       <StageScene ref="sceneRef" :stage="stage" :mode="mode" :animation-event="animationEvent" @error="error = $event" />
-      <div class="scene-caption"><span>FIELD / {{ field.title }} · 配置 {{ selected + 1 }} / {{ layouts.length }}</span><strong>{{ stage.label }}</strong><small>{{ mode === 'camera' ? '画面をタップして盤面を動かす' : 'ドラッグで回転 · ホイールで拡大縮小' }}</small></div>
+      <div class="scene-caption"><span>{{ field.title }}　配置 {{ selected + 1 }} / {{ layouts.length }}</span><strong>{{ stage.label }}</strong><small>{{ mode === 'camera' ? '画面をタップして盤面を動かす' : 'ドラッグで回転、ホイールで拡大縮小' }}</small></div>
       <div class="scene-legend"><span><b class="land" />陸</span><span><b class="rock" />岩</span><span><b class="sea" />海</span><span><b class="goal" />ゴール</span></div>
     </div>
 
     <aside class="panel">
-      <div class="panel-eyebrow">FIELD DATA / LOCAL VIEWER</div>
       <h1>ステージを表示</h1>
       <p class="intro">1つのフィールドの盤面形状と岩の個数候補から、あり得る配置をすべて表示します。実行する配置を抽選し、GLBロボットの動作を確認できます。</p>
 
       <div class="mode-switch"><button :class="{ active: mode === 'preview' }" @click="mode = 'preview'">3Dプレビュー</button><button :class="{ active: mode === 'camera' }" @click="mode = 'camera'">カメラに重ねる</button></div>
 
       <section class="panel-section">
-        <div class="section-heading"><span>{{ field.title }} · 配置候補 {{ layouts.length }} 通り</span><small>{{ source }}</small></div>
-        <p class="stage-note">盤面 {{ field.width }} × {{ field.height }} · 岩の個数候補 {{ field.rockCounts.join(' / ') }}。海や荷物も異なる配置を確認できます。</p>
+        <div class="section-heading"><span>{{ field.title }}、配置候補 {{ layouts.length }} 通り</span><small>{{ source }}</small></div>
+        <p class="stage-note">盤面 {{ field.width }} × {{ field.height }}。岩の個数候補 {{ field.rockCounts.join(' / ') }}。海や荷物も異なる配置を確認できます。</p>
         <div class="stage-list"><button v-for="(item, index) in layouts" :key="item.id + index" :class="{ active: selected === index, rolling: phase === 'rolling' && selected === index }" :disabled="phase === 'rolling'" @click="previewStage(index)"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ item.label }}<small>{{ item.width }} × {{ item.height }}</small></button></div>
         <p class="stage-note">APIで取得したフィールドは、サーバーが選んだ配置でルーレットが止まります。サンプル・貼り付けJSONではローカル抽選です。</p>
-        <button class="roulette-button" :disabled="phase === 'rolling' || phase === 'requesting'" @click="runRoulette">{{ phase === 'requesting' ? 'サーバーの結果を待機中…' : phase === 'rolling' ? '抽選中…' : '配置を抽選して実行 →' }}</button>
+        <button class="roulette-button" :disabled="phase === 'rolling' || phase === 'requesting'" @click="runRoulette">{{ phase === 'requesting' ? 'サーバーの結果を待機中…' : phase === 'rolling' ? '抽選中…' : '配置を抽選して実行' }}</button>
         <p class="run-status" role="status">{{ phase === 'requesting' ? '実行する配置を問い合わせています' : phase === 'rolling' ? '配置を選んでいます' : phase === 'running' ? `実行対象: ${stage.label}` : '実行する配置は未決定です' }}</p>
       </section>
 
       <section class="panel-section">
-        <div class="section-heading"><span>アニメーション確認</span><small>issue #1・#3</small></div>
+        <div class="section-heading"><span>アニメーション確認</span><small>Issue 1、3</small></div>
         <p class="stage-note">抽選後にイベントを送って動作を確認できます。ゲームエンジンとの接続はイベント形式の確定後に行います。</p>
         <div class="event-actions"><button v-for="item in [{ type: 'move', label: '移動' }, { type: 'drill', label: '目のビーム' }, { type: 'get', label: '荷物回収' }, { type: 'clear', label: 'クリア' }]" :key="item.type" :disabled="phase !== 'running'" @click="playDemoEvent(item.type)">{{ item.label }}</button></div>
       </section>
@@ -173,7 +172,7 @@ async function loadField() {
 
       <section class="panel-section">
         <label for="stage-json" class="section-heading">JSONを貼り付ける <small>API未接続時の確認用</small></label>
-        <textarea id="stage-json" v-model="json" spellcheck="false" /><button class="apply-button" @click="loadJson">このデータを表示 →</button>
+        <textarea id="stage-json" v-model="json" spellcheck="false" /><button class="apply-button" @click="loadJson">このデータを表示</button>
       </section>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <p class="symbol-help">S スタート · G ゴール · . 陸 · # 岩 · _ 海 · O 荷物 · X 置き場 · ? 可変マス</p>

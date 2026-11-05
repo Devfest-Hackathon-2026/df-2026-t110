@@ -1,5 +1,10 @@
 import { createApp } from 'vue'
-import App from './App.vue'
-import './style.css'
+import RootApp from './RootApp.vue'
 
-createApp(App).mount('#app')
+if (window.location.pathname.startsWith('/tutorials/demo')) {
+  await import('./style.css')
+} else {
+  await import('./home.css')
+}
+
+createApp(RootApp).mount('#app')
