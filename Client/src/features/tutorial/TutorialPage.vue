@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { normalizeField } from '../stage/stage.ts'
@@ -19,6 +19,7 @@ const sceneError = ref('')
 const mode = ref<'preview' | 'camera'>('preview')
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
+const sceneRef = ref<{ reset: () => void } | null>(null)
 let controller: AbortController | null = null
 
 const stage = computed(() => field.value?.layouts[layoutIndex.value] ?? null)
@@ -40,10 +41,14 @@ const guideLines = computed(() => {
     'まずはスタートとゴールを探してみて。進めないマスがあるかも確認しよう。',
   ]
 })
+const lessonPosition = computed(() => LOCAL_LESSONS.findIndex((item) => item.id === props.tutorialId))
+const previousLesson = computed(() => {
+  if (!lessonCopy.value || lessonPosition.value <= 0) return null
+  return LOCAL_LESSONS[lessonPosition.value - 1] ?? null
+})
 const nextLesson = computed(() => {
   if (!lessonCopy.value) return null
-  const position = LOCAL_LESSONS.findIndex((item) => item.id === props.tutorialId)
-  return position >= 0 ? (LOCAL_LESSONS[position + 1] ?? null) : null
+  return LOCAL_LESSONS[lessonPosition.value + 1] ?? null
 })
 const previewDistance = computed(() =>
   Math.min(3.2, 2.75 + Math.max(stage.value?.width ?? 2, stage.value?.height ?? 1) * 0.05),
@@ -101,6 +106,31 @@ function changeLayout(delta: number): void {
   layoutIndex.value = (layoutIndex.value + delta + field.value.layouts.length) % field.value.layouts.length
 }
 
+async function runProgram(): Promise<void> {
+  if (!field.value || !stage.value) return
+  layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
+  await nextTick()
+  sceneRef.value?.reset()
+  window.dispatchEvent(
+    new CustomEvent('robot-field:tutorial-run', {
+      detail: {
+        tutorialId: props.tutorialId,
+        layout: stage.value,
+        candidateIndex: layoutIndex.value,
+      },
+    }),
+  )
+}
+
+function resetProgram(): void {
+  sceneRef.value?.reset()
+  window.dispatchEvent(
+    new CustomEvent('robot-field:tutorial-reset', {
+      detail: { tutorialId: props.tutorialId },
+    }),
+  )
+}
+
 watch(() => props.tutorialId, load, { immediate: true })
 onBeforeUnmount(() => controller?.abort())
 </script>
@@ -110,6 +140,7 @@ onBeforeUnmount(() => controller?.abort())
     <section class="tutorial-stage" aria-label="教材のフィールド">
       <StageScene
         v-if="stage"
+        ref="sceneRef"
         :stage="stage"
         :mode="mode"
         :preview-distance="previewDistance"
@@ -172,22 +203,36 @@ onBeforeUnmount(() => controller?.abort())
           <h2 id="tutorial-note-title">この課題で考えること</h2>
           <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
         </section>
+        <div class="tutorial-program-actions" aria-label="プログラムの操作">
+          <button type="button" class="tutorial-run-button" :disabled="!stage" @click="runProgram">
+            <span aria-hidden="true">▶</span> プログラムを実行
+          </button>
+          <button type="button" class="tutorial-reset-button" :disabled="!stage" @click="resetProgram">
+            <span aria-hidden="true">↺</span> リセット
+          </button>
+        </div>
         <div v-if="(field?.layouts.length ?? 0) > 1" class="tutorial-layout-nav">
           <span>配置候補 {{ layoutIndex + 1 }} / {{ field?.layouts.length }}</span>
           <div>
             <button type="button" @click="changeLayout(-1)">前の配置</button
             ><button type="button" @click="changeLayout(1)">次の配置</button>
           </div>
-          <small>実行時に使う配置はサーバーが決定します。</small>
+          <small>個人の教材では、実行直前に候補から1つ選びます。</small>
         </div>
         <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
           <span>{{ loadMessage }}</span
           ><button type="button" @click="load(tutorialId)">再読み込み</button>
         </div>
         <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
-        <div class="tutorial-bottom-link">
-          <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`">次の課題を見る</a
-          ><a v-else href="/tutorials">教材一覧へ戻る</a>
+        <div class="tutorial-bottom-link" aria-label="課題の移動">
+          <a v-if="previousLesson" :href="`/tutorials/${previousLesson.id}`"
+            ><span aria-hidden="true">←</span> 前の課題を見る</a
+          ><span v-else class="tutorial-nav-unavailable" aria-disabled="true"
+            ><span aria-hidden="true">←</span> 前の課題を見る</span
+          >
+          <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
+            >次の課題を見る <span aria-hidden="true">→</span></a
+          ><a v-else href="/tutorials">教材一覧へ <span aria-hidden="true">→</span></a>
         </div>
       </template>
       <div v-else class="tutorial-load-message" role="alert">

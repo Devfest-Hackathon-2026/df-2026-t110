@@ -6,7 +6,9 @@
 
 ## 教材詳細
 
-`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` と `GET /api/field/{fieldId}` を読み、取得したフィールドを3D・カメラ表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。教材APIの説明文形式は未定なので、`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。プログラム編集・実行判定は別画面の担当作業と接続する段階です。
+`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` と `GET /api/field/{fieldId}` を読み、取得したフィールドを3D・カメラ表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。教材APIの説明文形式は未定なので、`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
+
+教材画面の「プログラムを実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex }` です。「リセット」はロボットの表示を初期位置に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。教育用エディタとゲームエンジンはこのイベントに接続する予定で、現時点では命令の実行・クリア判定は行いません。
 
 ## ARフィールド表示（issues #1–3）
 

@@ -17,11 +17,7 @@ const page = computed(() => {
   return 'missing'
 })
 
-document.title = isStage
-  ? 'ステージプレビュー | Robot Field'
-  : tutorialId
-    ? '教材 | Robot Field'
-    : 'Robot Field | ロボットを動かして学ぼう'
+document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Robot Field'
 </script>
 
 <template>

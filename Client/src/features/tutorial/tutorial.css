@@ -262,6 +262,39 @@
   font-size: 0.92rem;
   line-height: 1.75;
 }
+.tutorial-program-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+.tutorial-program-actions button {
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-accent-deep);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tutorial-program-actions button:focus-visible,
+.tutorial-bottom-link a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.tutorial-program-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tutorial-run-button {
+  flex: 1;
+  background: var(--color-accent-deep);
+  color: var(--color-accent-ink);
+}
+.tutorial-reset-button {
+  background: transparent;
+  color: var(--color-accent-deep);
+}
 .tutorial-layout-nav {
   display: grid;
   gap: 10px;
@@ -297,6 +330,9 @@
   cursor: pointer;
 }
 .tutorial-bottom-link {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 25px;
   padding-top: 16px;
   border-top: 1px solid var(--color-rule);
@@ -305,6 +341,14 @@
 .tutorial-bottom-link a {
   color: var(--color-accent-deep);
   text-underline-offset: 0.3em;
+}
+.tutorial-bottom-link a:last-child {
+  margin-left: auto;
+  text-align: right;
+}
+.tutorial-nav-unavailable {
+  color: var(--color-muted);
+  opacity: 0.55;
 }
 .tutorial-load-message {
   padding: 48px 0;
@@ -373,6 +417,9 @@
   }
   .tutor-speech p {
     font-size: 0.86rem;
+  }
+  .tutorial-program-actions button {
+    min-height: 44px;
   }
 }
 @media (max-width: 900px) and (max-height: 600px) {

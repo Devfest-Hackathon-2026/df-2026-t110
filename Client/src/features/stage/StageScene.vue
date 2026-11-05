@@ -33,7 +33,7 @@ let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell })
+defineExpose({ robotCell, reset: replaceStage })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
