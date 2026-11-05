@@ -11,7 +11,7 @@
     -  ()
 - field
     - リテラルなし
-- direction
+- rotation
     - left/right
 
 ### 組み込み関数
@@ -52,7 +52,7 @@
         - 移動した場合true
     - back: () -> bool
         - 移動した場合true
-    - rotate: direction -> ()
+    - rotate: rotation -> ()
     - wait: integer -> ()
     - pick_up: () -> bool
         - 拾った場合true
