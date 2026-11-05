@@ -7,6 +7,7 @@ ENV GOTOOLCHAIN=local
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,source=go.mod,target=go.mod \
+    --mount=type=bind,source=go.sum,target=go.sum \
     go mod download
 
 ARG TARGETARCH
