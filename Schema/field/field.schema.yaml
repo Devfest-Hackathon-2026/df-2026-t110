@@ -112,6 +112,7 @@ $defs:
     properties:
       type:
         description: オブジェクトがゴールであることを示す種別
+        type: string
         const: goal
       position:
         description: ゴールを配置するマスの座標
@@ -125,6 +126,7 @@ $defs:
     properties:
       type:
         description: オブジェクトがチェックポイントであることを示す種別
+        type: string
         const: checkpoint
       position:
         description: チェックポイントを配置するマスの座標
@@ -141,6 +143,7 @@ $defs:
     properties:
       type:
         description: オブジェクトが荷物であることを示す種別
+        type: string
         const: luggage
       id:
         description: 荷物を識別するための空でない文字列
