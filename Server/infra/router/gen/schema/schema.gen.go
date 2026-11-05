@@ -484,108 +484,16 @@ func (j *DeliverAndReachGoal) UnmarshalJSON(value []byte) error {
 
 type Direction string
 
-const DirectionDown Direction = "down"
-const DirectionLeft Direction = "left"
-
-// direction 型のリテラル
-type DirectionLiteral struct {
-	// HintId corresponds to the JSON schema field "hintId".
-	HintId HintId `json:"hintId"`
-
-	// Kind corresponds to the JSON schema field "kind".
-	Kind interface{} `json:"kind"`
-
-	// Type corresponds to the JSON schema field "type".
-	Type interface{} `json:"type"`
-
-	// Value corresponds to the JSON schema field "value".
-	Value DirectionLiteralValue `json:"value"`
-}
-
-const DirectionLiteralKind = "literal"
-const DirectionLiteralType = "direction"
-
-type DirectionLiteralValue string
-
-const DirectionLiteralValueLeft DirectionLiteralValue = "left"
-const DirectionLiteralValueRight DirectionLiteralValue = "right"
-
-var enumValues_DirectionLiteralValue = []interface{}{
-	"left",
-	"right",
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *DirectionLiteralValue) UnmarshalJSON(value []byte) error {
-	var v string
-	if err := json.Unmarshal(value, &v); err != nil {
-		return err
-	}
-	var ok bool
-	for _, expected := range enumValues_DirectionLiteralValue {
-		if reflect.DeepEqual(v, expected) {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DirectionLiteralValue, v)
-	}
-	*j = DirectionLiteralValue(v)
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *DirectionLiteral) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw DirectionLiteral: %w", err)
-	}
-	if _, ok := raw["hintId"]; raw != nil && !ok {
-		return fmt.Errorf("field hintId in DirectionLiteral: required")
-	}
-	if _, ok := raw["kind"]; raw != nil && !ok {
-		return fmt.Errorf("field kind in DirectionLiteral: required")
-	}
-	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in DirectionLiteral: required")
-	}
-	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in DirectionLiteral: required")
-	}
-	for fieldName, fieldValue := range raw {
-		if !strings.EqualFold(fieldName, "kind") {
-			continue
-		}
-		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
-			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
-		}
-	}
-	for fieldName, fieldValue := range raw {
-		if !strings.EqualFold(fieldName, "type") {
-			continue
-		}
-		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"direction\"" {
-			return fmt.Errorf("field %s: must be equal to %s", "type", "\"direction\"")
-		}
-	}
-	type Plain DirectionLiteral
-	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal DirectionLiteral: %w", err)
-	}
-	*j = DirectionLiteral(plain)
-	return nil
-}
-
-const DirectionRight Direction = "right"
-const DirectionUp Direction = "up"
+const DirectionEast Direction = "east"
+const DirectionNorth Direction = "north"
+const DirectionSouth Direction = "south"
+const DirectionWest Direction = "west"
 
 var enumValues_Direction = []interface{}{
-	"up",
-	"down",
-	"left",
-	"right",
+	"north",
+	"south",
+	"west",
+	"east",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
@@ -1107,7 +1015,7 @@ func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// bool、integer、unit、direction のリテラル。field 型にはリテラルがない
+// bool、integer、unit、rotation のリテラル。field 型にはリテラルがない
 type Literal struct {
 	Bool *BoolLiteral `json:"-" yaml:"-"`
 
@@ -1115,7 +1023,7 @@ type Literal struct {
 
 	Unit *UnitLiteral `json:"-" yaml:"-"`
 
-	Direction *DirectionLiteral `json:"-" yaml:"-"`
+	Rotation *RotationLiteral `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -1131,7 +1039,7 @@ func (j Literal) MarshalJSON() ([]byte, error) {
 	if j.Unit != nil {
 		set++
 	}
-	if j.Direction != nil {
+	if j.Rotation != nil {
 		set++
 	}
 	if set != 1 {
@@ -1146,8 +1054,8 @@ func (j Literal) MarshalJSON() ([]byte, error) {
 	if j.Unit != nil {
 		return json.Marshal(j.Unit)
 	}
-	if j.Direction != nil {
-		return json.Marshal(j.Direction)
+	if j.Rotation != nil {
+		return json.Marshal(j.Rotation)
 	}
 	return nil, nil // unreachable
 }
@@ -1196,12 +1104,12 @@ func (j *Literal) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("Literal.Unit: %w", err)
 		}
 		j.Unit = &v
-	case "direction":
-		var v DirectionLiteral
+	case "rotation":
+		var v RotationLiteral
 		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("Literal.Direction: %w", err)
+			return fmt.Errorf("Literal.Rotation: %w", err)
 		}
-		j.Direction = &v
+		j.Rotation = &v
 	default:
 		return fmt.Errorf("Literal: unknown type value %q", disc)
 	}
@@ -1512,6 +1420,97 @@ func (j *Return) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// rotation 型のリテラル
+type RotationLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value RotationLiteralValue `json:"value"`
+}
+
+const RotationLiteralKind = "literal"
+const RotationLiteralType = "rotation"
+
+type RotationLiteralValue string
+
+const RotationLiteralValueLeft RotationLiteralValue = "left"
+const RotationLiteralValueRight RotationLiteralValue = "right"
+
+var enumValues_RotationLiteralValue = []interface{}{
+	"left",
+	"right",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *RotationLiteralValue) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_RotationLiteralValue {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_RotationLiteralValue, v)
+	}
+	*j = RotationLiteralValue(v)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *RotationLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw RotationLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in RotationLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in RotationLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in RotationLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in RotationLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"rotation\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"rotation\"")
+		}
+	}
+	type Plain RotationLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal RotationLiteral: %w", err)
+	}
+	*j = RotationLiteral(plain)
+	return nil
+}
+
 // 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
 type StageDefinition struct {
 	// 全ての候補フィールドに共通するクリア条件
@@ -1598,9 +1597,9 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 type Type string
 
 const TypeBool Type = "bool"
-const TypeDirection Type = "direction"
 const TypeField Type = "field"
 const TypeInteger Type = "integer"
+const TypeRotation Type = "rotation"
 const TypeUnit Type = "unit"
 
 var enumValues_Type = []interface{}{
@@ -1608,7 +1607,7 @@ var enumValues_Type = []interface{}{
 	"integer",
 	"unit",
 	"field",
-	"direction",
+	"rotation",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
