@@ -172,7 +172,7 @@ func formatValue(value game.Value) string {
 	case game.Unit:
 		return "()"
 	case game.Field:
-		return fmt.Sprintf("field(%q)", value.Field)
+		return fmt.Sprintf("field(%+v)", value.Field)
 	default:
 		return "<invalid value>"
 	}

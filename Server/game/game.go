@@ -20,10 +20,22 @@ const (
 	Field   ValueKind = "field"
 )
 
-// FieldRef is an opaque reference issued and interpreted by a board. Robots may
-// retain it and pass it to is_* actions; the hub does not inspect it. It refers
-// to an immutable observation, rather than a cell's live state or a full board.
-type FieldRef string
+type Terrain string
+
+const (
+	Land Terrain = "land"
+	Rock Terrain = "rock"
+	Sea  Terrain = "sea"
+)
+
+// FieldValue stores one cell's terrain and object attributes at observation
+// time. It is copied by value so later board changes do not affect it.
+type FieldValue struct {
+	Terrain    Terrain
+	Goal       bool
+	Checkpoint bool
+	Luggage    bool
+}
 
 // Value is a builtin's return value, never a board snapshot or a tick. Kind
 // selects Bool, Integer, Field, or no payload for Unit.
@@ -31,7 +43,7 @@ type Value struct {
 	Kind    ValueKind
 	Bool    bool
 	Integer int64
-	Field   FieldRef
+	Field   FieldValue
 }
 
 type ActionKind string
@@ -75,7 +87,7 @@ type Action struct {
 	Rotation Rotation
 	Integer  int64
 	Bool     bool
-	Field    FieldRef
+	Field    FieldValue
 }
 
 // Step must contain exactly one of Action or Done.

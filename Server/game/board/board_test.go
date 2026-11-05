@@ -253,13 +253,14 @@ func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
 
 func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	t.Parallel()
+	field := game.FieldValue{Terrain: game.Land}
 	for _, action := range []game.Action{
 		{Kind: game.Wait, Integer: 7},
 		{Kind: game.PickUp}, {Kind: game.Release}, {Kind: game.Drill},
 		{Kind: game.Distance}, {Kind: game.SearchFront}, {Kind: game.SearchNow},
-		{Kind: game.IsLand, Field: "observation"}, {Kind: game.IsGoal, Field: "observation"},
-		{Kind: game.IsCheckpoint, Field: "observation"}, {Kind: game.IsLaggage, Field: "observation"},
-		{Kind: game.IsSea, Field: "observation"}, {Kind: game.IsRock, Field: "observation"},
+		{Kind: game.IsLand, Field: field}, {Kind: game.IsGoal, Field: field},
+		{Kind: game.IsCheckpoint, Field: field}, {Kind: game.IsLaggage, Field: field},
+		{Kind: game.IsSea, Field: field}, {Kind: game.IsRock, Field: field},
 		{Kind: game.PrintInteger, Integer: -42}, {Kind: game.PrintBool, Bool: true},
 	} {
 		t.Run(string(action.Kind), func(t *testing.T) {

@@ -325,7 +325,7 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 
 func TestRoutesAllActionBuiltins(t *testing.T) {
 	t.Parallel()
-	field := game.FieldRef("board-a:observation-1")
+	field := game.FieldValue{Terrain: game.Land, Goal: true, Checkpoint: true, Luggage: true}
 	boolean := game.Value{Kind: game.Bool, Bool: true}
 	integer := game.Value{Kind: game.Integer, Integer: 3}
 	unit := game.Value{Kind: game.Unit}
@@ -403,9 +403,10 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 	}
 }
 
-func TestFieldObservationRoundTrip(t *testing.T) {
+func TestFieldObservationSurvivesBoardChanges(t *testing.T) {
 	t.Parallel()
-	observation := game.FieldRef("board-a:immutable-observation")
+	cell := game.FieldValue{Terrain: game.Land, Goal: true, Checkpoint: true, Luggage: true}
+	observation := cell
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
 		boardCalls++
@@ -416,12 +417,17 @@ func TestFieldObservationRoundTrip(t *testing.T) {
 			if reply == nil || reply.Action == nil || reply.Action.Kind != game.SearchFront {
 				t.Error("expected search_front")
 			}
-			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Field, Field: observation}}}, nil
+			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Field, Field: cell}}}, nil
 		case 3:
+			// Change the live cell after search_front returned its observation.
+			cell = game.FieldValue{Terrain: game.Sea}
 			if reply == nil || reply.Action == nil || reply.Action.Kind != game.IsLand || reply.Action.Field != observation {
-				t.Errorf("field reference not returned to issuing board: %+v", reply)
+				t.Errorf("field observation changed in transit: %+v", reply)
 			}
-			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: true}}}, nil
+			if reply == nil || reply.Action == nil {
+				return game.Decision{}, errors.New("missing field predicate action")
+			}
+			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: reply.Action.Field.Terrain == game.Land}}}, nil
 		default:
 			return game.Decision{Done: true}, nil
 		}
@@ -450,5 +456,8 @@ func TestFieldObservationRoundTrip(t *testing.T) {
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
 	if _, err := h.Run(t.Context(), limits()); err != nil {
 		t.Error(err)
+	}
+	if cell.Terrain != game.Sea {
+		t.Errorf("live cell did not change: %+v", cell)
 	}
 }

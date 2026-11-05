@@ -89,8 +89,8 @@ func TestDisplaysFieldReturnValue(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
 	r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 done\n")), &output))
-	step, err := r.Next(t.Context(), &game.Value{Kind: game.Field, Field: "board-a:observation"})
-	if err != nil || !step.Done || !strings.Contains(output.String(), `p1 => field("board-a:observation")`) {
+	step, err := r.Next(t.Context(), &game.Value{Kind: game.Field, Field: game.FieldValue{Terrain: game.Land, Goal: true, Luggage: true}})
+	if err != nil || !step.Done || !strings.Contains(output.String(), `p1 => field({Terrain:land Goal:true Checkpoint:false Luggage:true})`) {
 		t.Errorf("field return value not displayed: %+v, %v, %s", step, err, output.String())
 	}
 }

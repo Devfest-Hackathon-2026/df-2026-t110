@@ -10,12 +10,12 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game"
 )
 
-type Terrain string
+type Terrain = game.Terrain
 
 const (
-	Land Terrain = "land"
-	Rock Terrain = "rock"
-	Sea  Terrain = "sea"
+	Land = game.Land
+	Rock = game.Rock
+	Sea  = game.Sea
 )
 
 type Direction string
