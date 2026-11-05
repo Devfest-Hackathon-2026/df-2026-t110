@@ -4,20 +4,33 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/pubsub"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
+	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/labstack/echo/v5"
 )
 
+type fixture struct {
+	e          *echo.Echo
+	broker     *pubsub.RoomBroker
+	roomEvents *usecase.RoomEvents
+}
+
+func newFixture(t *testing.T) *fixture {
+	t.Helper()
+	broker := pubsub.NewRoomBroker(0)
+	roomEvents := usecase.NewRoomEvents(broker)
+	r := NewRouter(roomEvents, Config{HeartbeatInterval: 20 * time.Millisecond})
+	e := echo.New()
+	api.RegisterHandlers(e, r)
+	return &fixture{e: e, broker: broker, roomEvents: roomEvents}
+}
+
 func TestRouterHandlersAreNotImplementedYet(t *testing.T) {
 	t.Parallel()
-
-	router, err := NewRouter()
-	if err != nil {
-		t.Fatalf("NewRouter() error = %v", err)
-	}
-	e := echo.New()
-	api.RegisterHandlers(e, router)
+	f := newFixture(t)
 
 	tests := []struct {
 		name   string
@@ -33,7 +46,7 @@ func TestRouterHandlersAreNotImplementedYet(t *testing.T) {
 			t.Parallel()
 
 			response := httptest.NewRecorder()
-			e.ServeHTTP(response, httptest.NewRequest(tt.method, tt.path, nil))
+			f.e.ServeHTTP(response, httptest.NewRequest(tt.method, tt.path, nil))
 			if response.Code != tt.want {
 				t.Errorf("%s %s status = %d, want %d", tt.method, tt.path, response.Code, tt.want)
 			}
