@@ -2,6 +2,7 @@
 
 ロボットの座標 (position) `r` $\in \{(x,y) \vert 0 \le x \lt W, \ 0 \lt y \lt H, \ x,y \in \mathbf{N} \}$
 ロボットの向き (direction) `d` $\in \{(0,1), (0,-1),(1,0),(-1,0) \}$
+盤面上の向きは `north` = (0,-1)、`south` = (0,1)、`west` = (-1,0)、`east` = (1,0) とする。
 
 特に記述が無い行動は、1単位時間かかる。
 

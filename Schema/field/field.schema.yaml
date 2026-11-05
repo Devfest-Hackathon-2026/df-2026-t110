@@ -78,13 +78,13 @@ $defs:
         minimum: 0
 
   Direction:
-    description: 向いている方向。up は上、down は下、left は左、right は右を表す
+    description: 盤面上の向き。north は上（y が減る）、south は下（y が増える）、west は左（x が減る）、east は右（x が増える）を表す
     type: string
     enum:
-      - up
-      - down
-      - left
-      - right
+      - north
+      - south
+      - west
+      - east
 
   Terrain:
     description: マスの地形。land は陸地、rock は岩、sea は海を表す
