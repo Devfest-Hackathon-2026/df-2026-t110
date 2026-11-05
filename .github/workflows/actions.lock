@@ -3,6 +3,8 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.3'
 workflows:
+    '.github/workflows/openapi-ci.yml':
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/server-ci.yml':
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'

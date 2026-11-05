@@ -1,0 +1,17 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: IntegerLiteral
+description: integer 型のリテラル
+
+type: object
+additionalProperties: false
+required: [kind, hintId, type, value]
+properties:
+  kind:
+    const: literal
+  hintId:
+    $ref: './hint-id.yaml'
+  type:
+    const: integer
+  value:
+    description: i64 の範囲外の値の扱いは未定義
+    type: integer

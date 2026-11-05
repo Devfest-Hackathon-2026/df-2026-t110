@@ -1,0 +1,26 @@
+name: CI (OpenAPI)
+
+on:
+  push:
+    paths:
+      - 'Schema/**'
+      - '.github/workflows/openapi-ci.yml'
+  pull_request:
+    paths:
+      - 'Schema/**'
+      - '.github/workflows/openapi-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Validate OpenAPI specification
+        run: npx --yes @redocly/cli@2.75.0 lint --extends=spec Schema/openapi.yaml
+      - name: Validate JSON Schemas
+        run: |
+          find Schema/field Schema/picolang -type f -name '*.yaml' -print0 |
+            xargs -0 pipx run --spec check-jsonschema==0.39.0 check-jsonschema --check-metaschema

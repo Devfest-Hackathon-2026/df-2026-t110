@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Param
+description: 関数の仮引数の名前と型
+
+type: object
+additionalProperties: false
+required: [kind, hintId, ident, type]
+properties:
+  kind:
+    const: param
+  hintId:
+    $ref: './hint-id.yaml'
+  ident:
+    $ref: './ident.yaml'
+  type:
+    $ref: './type.yaml'

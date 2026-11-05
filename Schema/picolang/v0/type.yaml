@@ -1,0 +1,11 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Type
+description: picolang の値の型。unit は () を表す
+
+type: string
+enum:
+  - bool
+  - integer
+  - unit
+  - field
+  - direction

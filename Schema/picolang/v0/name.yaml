@@ -1,0 +1,6 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Name
+description: 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
+
+type: string
+minLength: 1

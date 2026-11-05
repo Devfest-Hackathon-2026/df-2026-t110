@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: HintId
+description: 構文ノードに対応するデバッグ用 UUID。プログラム全体での一意性は意味解析で検査する
+
+type: string
+format: uuid
+minLength: 36
+maxLength: 36
+pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
