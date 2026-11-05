@@ -19,6 +19,7 @@ const loadedFieldId = ref(null)
 const phase = ref('preview')
 const animationEvent = ref(null)
 const sceneRef = ref(null)
+const mobileTab = ref('stage')
 let rouletteTimer = 0
 let matchController = null
 let rouletteGeneration = 0
@@ -82,6 +83,7 @@ async function runRoulette() {
       return
     }
     phase.value = 'running'
+    mobileTab.value = 'actions'
     rouletteTimer = 0
     window.dispatchEvent(new CustomEvent('robot-field:run', {
       detail: { fieldId: loadedFieldId.value ?? field.value.id, layout: layouts.value[winner], candidateIndex: winner, match },
@@ -148,9 +150,15 @@ async function loadField() {
       <h1>ステージを表示</h1>
       <p class="intro">1つのフィールドの盤面形状と岩の個数候補から、あり得る配置をすべて表示します。実行する配置を抽選し、GLBロボットの動作を確認できます。</p>
 
+      <div class="mobile-panel-tabs" role="tablist" aria-label="ステージ操作">
+        <button type="button" role="tab" aria-controls="stage-controls" :aria-selected="mobileTab === 'stage'" @click="mobileTab = 'stage'">配置</button>
+        <button type="button" role="tab" aria-controls="action-controls" :aria-selected="mobileTab === 'actions'" @click="mobileTab = 'actions'">動作</button>
+        <button type="button" role="tab" aria-controls="api-controls json-controls" :aria-selected="mobileTab === 'data'" @click="mobileTab = 'data'">データ</button>
+      </div>
       <div class="mode-switch"><button :class="{ active: mode === 'preview' }" @click="mode = 'preview'">3Dプレビュー</button><button :class="{ active: mode === 'camera' }" @click="mode = 'camera'">カメラに重ねる</button></div>
+      <p v-if="error" class="error" role="alert">{{ error }}</p>
 
-      <section class="panel-section">
+      <section id="stage-controls" class="panel-section" :class="{ 'mobile-active': mobileTab === 'stage' }" role="tabpanel">
         <div class="section-heading"><span>{{ field.title }}、配置候補 {{ layouts.length }} 通り</span><small>{{ source }}</small></div>
         <p class="stage-note">盤面 {{ field.width }} × {{ field.height }}。岩の個数候補 {{ field.rockCounts.join(' / ') }}。海や荷物も異なる配置を確認できます。</p>
         <div class="stage-list"><button v-for="(item, index) in layouts" :key="item.id + index" :class="{ active: selected === index, rolling: phase === 'rolling' && selected === index }" :disabled="phase === 'rolling'" @click="previewStage(index)"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ item.label }}<small>{{ item.width }} × {{ item.height }}</small></button></div>
@@ -159,22 +167,21 @@ async function loadField() {
         <p class="run-status" role="status">{{ phase === 'requesting' ? '実行する配置を問い合わせています' : phase === 'rolling' ? '配置を選んでいます' : phase === 'running' ? `実行対象: ${stage.label}` : '実行する配置は未決定です' }}</p>
       </section>
 
-      <section class="panel-section">
+      <section id="action-controls" class="panel-section" :class="{ 'mobile-active': mobileTab === 'actions' }" role="tabpanel">
         <div class="section-heading"><span>アニメーション確認</span><small>Issue 1、3</small></div>
         <p class="stage-note">抽選後にイベントを送って動作を確認できます。ゲームエンジンとの接続はイベント形式の確定後に行います。</p>
         <div class="event-actions"><button v-for="item in [{ type: 'move', label: '移動' }, { type: 'drill', label: '目のビーム' }, { type: 'get', label: '荷物回収' }, { type: 'clear', label: 'クリア' }]" :key="item.type" :disabled="phase !== 'running'" @click="playDemoEvent(item.type)">{{ item.label }}</button></div>
       </section>
 
-      <section class="panel-section">
+      <section id="api-controls" class="panel-section" :class="{ 'mobile-active': mobileTab === 'data' }" role="tabpanel">
         <label for="field-id" class="section-heading">APIから受け取る <small>GET /field/{id}</small></label>
         <div class="field-form"><input id="field-id" v-model="fieldId" placeholder="フィールドID" @keyup.enter="loadField" /><button @click="loadField">取得</button></div>
       </section>
 
-      <section class="panel-section">
+      <section id="json-controls" class="panel-section" :class="{ 'mobile-active': mobileTab === 'data' }" role="tabpanel">
         <label for="stage-json" class="section-heading">JSONを貼り付ける <small>API未接続時の確認用</small></label>
         <textarea id="stage-json" v-model="json" spellcheck="false" /><button class="apply-button" @click="loadJson">このデータを表示</button>
       </section>
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
       <p class="symbol-help">S スタート · G ゴール · . 陸 · # 岩 · _ 海 · O 荷物 · X 置き場 · ? 可変マス</p>
     </aside>
   </main>
