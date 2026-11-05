@@ -34,6 +34,7 @@ func stdio(t *testing.T, id game.RobotID, s *robot.Session) *robot.Stdio {
 }
 
 func TestInteractiveCommandsAndReturnValues(t *testing.T) {
+	t.Parallel()
 	var output bytes.Buffer
 	s := session(t, io.NopCloser(strings.NewReader("\nhelp\np2 forward\np1 rotate sideways\np1 forward extra\np1 drill_durability\np1 rotate left\np1 rotate right\np1 back\np1 forward\np1 done\np2 done\n")), &output)
 	p1, p2 := stdio(t, "p1", s), stdio(t, "p2", s)
@@ -50,16 +51,16 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 	for _, tt := range tests {
 		step, err := p1.Next(t.Context(), tt.value)
 		if err != nil || step.Done || step.Action == nil || *step.Action != tt.want {
-			t.Fatalf("got %+v, %v; want %+v", step, err, tt.want)
+			t.Errorf("got %+v, %v; want %+v", step, err, tt.want)
 		}
 	}
 	step, err := p1.Next(t.Context(), &game.Value{Kind: game.Bool, Bool: false})
 	if err != nil || !step.Done {
-		t.Fatalf("done not accepted: %+v, %v", step, err)
+		t.Errorf("done not accepted: %+v, %v", step, err)
 	}
 	step, err = p2.Next(t.Context(), nil)
 	if err != nil || !step.Done {
-		t.Fatalf("shared input not routed: %+v, %v", step, err)
+		t.Errorf("shared input not routed: %+v, %v", step, err)
 	}
 	for _, expected := range []string{"invalid command for p1", "p1 => 3", "p1 => ()", "p1 => true", "p1 => false", "p2> "} {
 		if !strings.Contains(output.String(), expected) {
@@ -69,26 +70,28 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 }
 
 func TestEOFAppliesToAllRobots(t *testing.T) {
+	t.Parallel()
 	s := session(t, io.NopCloser(strings.NewReader("p1 forward")), io.Discard)
 	p1, p2 := stdio(t, "p1", s), stdio(t, "p2", s)
 	step, err := p1.Next(t.Context(), nil)
 	if err != nil || step.Action == nil || step.Action.Kind != game.Forward {
-		t.Fatalf("unterminated last line not read: %+v, %v", step, err)
+		t.Errorf("unterminated last line not read: %+v, %v", step, err)
 	}
 	for _, r := range []*robot.Stdio{p2, p1} {
 		step, err := r.Next(t.Context(), nil)
 		if err != nil || !step.Done {
-			t.Fatalf("EOF not shared: %+v, %v", step, err)
+			t.Errorf("EOF not shared: %+v, %v", step, err)
 		}
 	}
 }
 
 func TestDisplaysFieldReturnValue(t *testing.T) {
+	t.Parallel()
 	var output bytes.Buffer
 	r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 done\n")), &output))
 	step, err := r.Next(t.Context(), &game.Value{Kind: game.Field, Field: "board-a:observation"})
 	if err != nil || !step.Done || !strings.Contains(output.String(), `p1 => field("board-a:observation")`) {
-		t.Fatalf("field return value not displayed: %+v, %v, %s", step, err, output.String())
+		t.Errorf("field return value not displayed: %+v, %v, %s", step, err, output.String())
 	}
 }
 
@@ -107,6 +110,7 @@ func (r *observedInput) Read(p []byte) (int, error) {
 }
 
 func TestCancellationUnblocksInput(t *testing.T) {
+	t.Parallel()
 	reader, writer := io.Pipe()
 	t.Cleanup(func() { _ = writer.Close() })
 	input := &observedInput{PipeReader: reader, entered: make(chan struct{}), returned: make(chan struct{})}
@@ -119,21 +123,21 @@ func TestCancellationUnblocksInput(t *testing.T) {
 	select {
 	case <-input.entered:
 	case <-time.After(2 * time.Second):
-		t.Fatal("input read did not start")
+		t.Error("input read did not start")
 	}
 	cancel()
 	select {
 	case err := <-result:
 		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("got %v, want cancellation", err)
+			t.Errorf("got %v, want cancellation", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("robot stayed blocked after cancellation")
+		t.Error("robot stayed blocked after cancellation")
 	}
 	select {
 	case <-input.returned:
 	case <-time.After(2 * time.Second):
-		t.Fatal("reader goroutine remained blocked")
+		t.Error("reader goroutine remained blocked")
 	}
 }
 
@@ -144,6 +148,7 @@ func (f failedIO) Write([]byte) (int, error) { return 0, f.err }
 func (f failedIO) Close() error              { return nil }
 
 func TestIOErrorsAndValidation(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("I/O failed")
 	for _, tc := range []struct {
 		input  io.ReadCloser
@@ -154,19 +159,19 @@ func TestIOErrorsAndValidation(t *testing.T) {
 	} {
 		r := stdio(t, "p1", session(t, tc.input, tc.output))
 		if _, err := r.Next(t.Context(), nil); !errors.Is(err, failure) {
-			t.Fatalf("I/O error lost: %v", err)
+			t.Errorf("I/O error lost: %v", err)
 		}
 	}
 	if _, err := robot.NewSession(nil, io.Discard); err == nil {
-		t.Fatal("nil input accepted")
+		t.Error("nil input accepted")
 	}
 	if _, err := robot.NewStdio("p1", nil); err == nil {
-		t.Fatal("nil session accepted")
+		t.Error("nil session accepted")
 	}
 	s := session(t, io.NopCloser(strings.NewReader("")), io.Discard)
 	for _, id := range []game.RobotID{"", "p 1", "p1\np2"} {
 		if _, err := robot.NewStdio(id, s); err == nil {
-			t.Fatalf("invalid ID %q accepted", id)
+			t.Errorf("invalid ID %q accepted", id)
 		}
 	}
 }

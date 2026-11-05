@@ -64,6 +64,7 @@ func grid(t *testing.T) *board.Board {
 }
 
 func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
+	t.Parallel()
 	// This substitute board finishes b's action at tick 2 and a's at tick 5.
 	// The hub has no knowledge of action durations or scheduling rules.
 	two, five := uint64(2), uint64(5)
@@ -87,12 +88,12 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 			if first {
 				first = false
 				if value != nil {
-					t.Fatal("initial robot input must be nil")
+					t.Error("initial robot input must be nil")
 				}
 				return game.Step{Action: &action}, nil
 			}
 			if value == nil || *value != want {
-				t.Fatalf("robot %s got %+v, want %+v", id, value, want)
+				t.Errorf("robot %s got %+v, want %+v", id, value, want)
 			}
 			return game.Step{Done: true}, nil
 		})
@@ -100,17 +101,21 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 	b := boardFunc{
 		start: func(_ context.Context, ids []game.RobotID) error {
 			if !reflect.DeepEqual(ids, []game.RobotID{"a", "b"}) {
-				t.Fatalf("registration order changed: %v", ids)
+				t.Errorf("registration order changed: %v", ids)
 			}
 			return nil
 		},
 		next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
+			if index >= len(events) {
+				t.Error("unexpected board call")
+				return game.Decision{}, errors.New("no more board events")
+			}
 			if index > 0 && events[index-1].Request != nil {
 				if reply == nil || reply.RobotID != events[index-1].Request.RobotID {
-					t.Fatalf("reply was not routed: %+v", reply)
+					t.Errorf("reply was not routed: %+v", reply)
 				}
 			} else if reply != nil {
-				t.Fatalf("unexpected reply: %+v", reply)
+				t.Errorf("unexpected reply: %+v", reply)
 			}
 			d := events[index]
 			index++
@@ -126,17 +131,18 @@ func TestBoardOwnsOrderAndMultiTickCompletion(t *testing.T) {
 	options.OnTick = func(update game.TickUpdate) error { ticks = append(ticks, update.Tick); return nil }
 	report, err := h.Run(t.Context(), options)
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if report.Tick != 5 || report.Resumes != 4 || !reflect.DeepEqual(calls, []game.RobotID{"b", "a", "b", "a"}) || !reflect.DeepEqual(ticks, []uint64{2, 5}) {
-		t.Fatalf("unexpected run: %+v, calls %v, ticks %v", report, calls, ticks)
+		t.Errorf("unexpected run: %+v, calls %v, ticks %v", report, calls, ticks)
 	}
 	if _, err := h.Run(t.Context(), options); err == nil {
-		t.Fatal("hub reused")
+		t.Error("hub reused")
 	}
 }
 
 func TestRobotFailureDoesNotStopOthers(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("robot failed")
 	b := grid(t)
 	failed := robotFunc(func(context.Context, *game.Value) (game.Step, error) { return game.Step{}, failure })
@@ -147,22 +153,24 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 			return game.Step{Action: &game.Action{Kind: game.Forward}}, nil
 		}
 		if value == nil || value.Kind != game.Bool || !value.Bool {
-			t.Fatalf("other robot got wrong result: %+v", value)
+			t.Errorf("other robot got wrong result: %+v", value)
 		}
 		return game.Step{Done: true}, nil
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: failed}, hub.Participant{ID: "b", Robot: other})
 	report, err := h.Run(t.Context(), limits())
 	if err != nil || report.Tick != 1 || !errors.Is(report.Outcomes["a"].Err, failure) || report.Outcomes["a"].Status != hub.Failed || report.Outcomes["b"].Status != hub.Completed {
-		t.Fatalf("got %+v, %v", report, err)
+		t.Errorf("got %+v, %v", report, err)
 	}
 	if b.Snapshot().Robots["a"].Position.X != 0 || b.Snapshot().Robots["b"].Position.X != 1 {
-		t.Fatal("unexpected final positions")
+		t.Error("unexpected final positions")
 	}
 }
 
 func TestLimits(t *testing.T) {
+	t.Parallel()
 	t.Run("zero-cost action loop", func(t *testing.T) {
+		t.Parallel()
 		b := grid(t)
 		query := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
 			return game.Step{Action: &game.Action{Kind: game.DrillDurability}}, nil
@@ -170,10 +178,11 @@ func TestLimits(t *testing.T) {
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: query}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 10, MaxResumes: 3})
 		if !errors.Is(err, hub.ErrResumeLimit) || report.Resumes != 3 || b.Snapshot().Tick != 0 {
-			t.Fatalf("got %+v, %v", report, err)
+			t.Errorf("got %+v, %v", report, err)
 		}
 	})
 	t.Run("before atomic commit", func(t *testing.T) {
+		t.Parallel()
 		b := grid(t)
 		move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
 			return game.Step{Action: &game.Action{Kind: game.Rotate, Turn: game.Right}}, nil
@@ -181,10 +190,11 @@ func TestLimits(t *testing.T) {
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: move})
 		report, err := h.Run(t.Context(), hub.Options{MaxTicks: 1, MaxResumes: 100})
 		if !errors.Is(err, hub.ErrTickLimit) || report.Tick != 1 || b.Snapshot().Tick != 1 || b.Snapshot().Robots["a"].Direction != board.Down {
-			t.Fatalf("got %+v, %v, board %+v", report, err, b.Snapshot())
+			t.Errorf("got %+v, %v, board %+v", report, err, b.Snapshot())
 		}
 	})
 	t.Run("future tick leap rejected", func(t *testing.T) {
+		t.Parallel()
 		calls := 0
 		five := uint64(5)
 		b := boardFunc{next: func(context.Context, *game.Reply) (game.Decision, error) {
@@ -194,12 +204,13 @@ func TestLimits(t *testing.T) {
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: doneRobot()})
 		_, err := h.Run(t.Context(), hub.Options{MaxTicks: 4, MaxResumes: 10})
 		if !errors.Is(err, hub.ErrTickLimit) || calls != 1 {
-			t.Fatalf("board called beyond limit: %d, %v", calls, err)
+			t.Errorf("board called beyond limit: %d, %v", calls, err)
 		}
 	})
 }
 
 func TestProtocolViolations(t *testing.T) {
+	t.Parallel()
 	one, two := uint64(1), uint64(2)
 	tests := map[string][]game.Decision{
 		"empty":              {{}},
@@ -214,10 +225,12 @@ func TestProtocolViolations(t *testing.T) {
 	}
 	for name, events := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			i := 0
 			b := boardFunc{next: func(context.Context, *game.Reply) (game.Decision, error) {
 				if i >= len(events) {
-					t.Fatal("protocol violation was not rejected")
+					t.Error("protocol violation was not rejected")
+					return game.Decision{}, errors.New("no more board events")
 				}
 				d := events[i]
 				i++
@@ -225,13 +238,14 @@ func TestProtocolViolations(t *testing.T) {
 			}}
 			h := newHub(t, b, hub.Participant{ID: "a", Robot: doneRobot()})
 			if _, err := h.Run(t.Context(), limits()); !errors.Is(err, hub.ErrProtocol) {
-				t.Fatalf("got %v, want protocol error", err)
+				t.Errorf("got %v, want protocol error", err)
 			}
 		})
 	}
 }
 
 func TestBoardAndCallbackErrors(t *testing.T) {
+	t.Parallel()
 	failure := errors.New("failure")
 	for _, start := range []bool{true, false} {
 		b := boardFunc{
@@ -245,7 +259,7 @@ func TestBoardAndCallbackErrors(t *testing.T) {
 		}
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: doneRobot()})
 		if _, err := h.Run(t.Context(), limits()); !errors.Is(err, failure) {
-			t.Fatalf("board error lost: %v", err)
+			t.Errorf("board error lost: %v", err)
 		}
 	}
 	b := grid(t)
@@ -257,11 +271,12 @@ func TestBoardAndCallbackErrors(t *testing.T) {
 	options.OnTick = func(game.TickUpdate) error { return failure }
 	report, err := h.Run(t.Context(), options)
 	if !errors.Is(err, failure) || report.Tick != 1 {
-		t.Fatalf("callback error lost: %+v, %v", report, err)
+		t.Errorf("callback error lost: %+v, %v", report, err)
 	}
 }
 
 func TestCancellationDiscardsPendingActions(t *testing.T) {
+	t.Parallel()
 	b := grid(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	move := robotFunc(func(context.Context, *game.Value) (game.Step, error) {
@@ -274,40 +289,42 @@ func TestCancellationDiscardsPendingActions(t *testing.T) {
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: move}, hub.Participant{ID: "b", Robot: interrupted})
 	report, err := h.Run(ctx, limits())
 	if !errors.Is(err, context.Canceled) || report.Tick != 0 || b.Snapshot().Robots["a"].Position.X != 0 {
-		t.Fatalf("got %+v, %v", report, err)
+		t.Errorf("got %+v, %v", report, err)
 	}
 }
 
 func TestNewValidationAndInvalidSteps(t *testing.T) {
+	t.Parallel()
 	b := grid(t)
 	for _, participants := range [][]hub.Participant{
 		nil, {{ID: "", Robot: doneRobot()}}, {{ID: "a"}},
 		{{ID: "a", Robot: doneRobot()}, {ID: "a", Robot: doneRobot()}},
 	} {
 		if _, err := hub.New(b, participants); err == nil {
-			t.Fatal("invalid participants accepted")
+			t.Error("invalid participants accepted")
 		}
 	}
 	if _, err := hub.New(nil, []hub.Participant{{ID: "a", Robot: doneRobot()}}); err == nil {
-		t.Fatal("nil board accepted")
+		t.Error("nil board accepted")
 	}
 	for _, step := range []game.Step{{}, {Done: true, Action: &game.Action{Kind: game.Forward}}} {
 		r := robotFunc(func(context.Context, *game.Value) (game.Step, error) { return step, nil })
 		h := newHub(t, grid(t), hub.Participant{ID: "a", Robot: r}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(t.Context(), limits())
 		if err != nil || report.Outcomes["a"].Status != hub.Failed || !errors.Is(report.Outcomes["a"].Err, hub.ErrProtocol) {
-			t.Fatalf("invalid step did not isolate robot: %+v, %v", report, err)
+			t.Errorf("invalid step did not isolate robot: %+v, %v", report, err)
 		}
 	}
 	for _, options := range []hub.Options{{}, {MaxTicks: 1}, {MaxResumes: 1}} {
 		h := newHub(t, grid(t), hub.Participant{ID: "a", Robot: doneRobot()}, hub.Participant{ID: "b", Robot: doneRobot()})
 		if _, err := h.Run(t.Context(), options); err == nil {
-			t.Fatal("zero limit accepted")
+			t.Error("zero limit accepted")
 		}
 	}
 }
 
 func TestRoutesAllActionBuiltins(t *testing.T) {
+	t.Parallel()
 	field := game.FieldRef("board-a:observation-1")
 	boolean := game.Value{Kind: game.Bool, Bool: true}
 	integer := game.Value{Kind: game.Integer, Integer: 3}
@@ -339,27 +356,28 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.action.Kind), func(t *testing.T) {
+			t.Parallel()
 			boardCalls, robotCalls := 0, 0
 			b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
 				boardCalls++
 				switch boardCalls {
 				case 1:
 					if reply != nil {
-						t.Fatal("initial reply must be nil")
+						t.Error("initial reply must be nil")
 					}
 					return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
 				case 2:
 					if reply == nil || reply.RobotID != "a" || reply.Action == nil || *reply.Action != tt.action || reply.Done || reply.Err != nil {
-						t.Fatalf("action or arguments lost in transit: %+v", reply)
+						t.Errorf("action or arguments lost in transit: %+v", reply)
 					}
 					return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &tt.result}}, nil
 				case 3:
 					if reply == nil || reply.RobotID != "a" || !reply.Done || reply.Action != nil || reply.Err != nil {
-						t.Fatalf("completion lost in transit: %+v", reply)
+						t.Errorf("completion lost in transit: %+v", reply)
 					}
 					return game.Decision{Done: true}, nil
 				default:
-					t.Fatal("unexpected board call")
+					t.Error("unexpected board call")
 					return game.Decision{}, nil
 				}
 			}}
@@ -367,25 +385,26 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 				robotCalls++
 				if robotCalls == 1 {
 					if value != nil {
-						t.Fatal("initial return value must be nil")
+						t.Error("initial return value must be nil")
 					}
 					return game.Step{Action: &tt.action}, nil
 				}
 				if value == nil || *value != tt.result {
-					t.Fatalf("return value lost in transit: got %+v, want %+v", value, tt.result)
+					t.Errorf("return value lost in transit: got %+v, want %+v", value, tt.result)
 				}
 				return game.Step{Done: true}, nil
 			})
 			h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
 			report, err := h.Run(t.Context(), limits())
 			if err != nil || report.Outcomes["a"].Status != hub.Completed || report.Resumes != 2 || boardCalls != 3 || robotCalls != 2 {
-				t.Fatalf("unexpected result: %+v, %v", report, err)
+				t.Errorf("unexpected result: %+v, %v", report, err)
 			}
 		})
 	}
 }
 
 func TestFieldObservationRoundTrip(t *testing.T) {
+	t.Parallel()
 	observation := game.FieldRef("board-a:immutable-observation")
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(_ context.Context, reply *game.Reply) (game.Decision, error) {
@@ -394,13 +413,13 @@ func TestFieldObservationRoundTrip(t *testing.T) {
 		case 1:
 			return game.Decision{Request: &game.Request{RobotID: "a"}}, nil
 		case 2:
-			if reply.Action == nil || reply.Action.Kind != game.SearchFront {
-				t.Fatal("expected search_front")
+			if reply == nil || reply.Action == nil || reply.Action.Kind != game.SearchFront {
+				t.Error("expected search_front")
 			}
 			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Field, Field: observation}}}, nil
 		case 3:
-			if reply.Action == nil || reply.Action.Kind != game.IsLand || reply.Action.Field != observation {
-				t.Fatalf("field reference not returned to issuing board: %+v", reply.Action)
+			if reply == nil || reply.Action == nil || reply.Action.Kind != game.IsLand || reply.Action.Field != observation {
+				t.Errorf("field reference not returned to issuing board: %+v", reply)
 			}
 			return game.Decision{Request: &game.Request{RobotID: "a", ReturnValue: &game.Value{Kind: game.Bool, Bool: true}}}, nil
 		default:
@@ -413,19 +432,23 @@ func TestFieldObservationRoundTrip(t *testing.T) {
 		case 1:
 			return game.Step{Action: &game.Action{Kind: game.SearchFront}}, nil
 		case 2:
-			if value == nil || value.Kind != game.Field {
-				t.Fatal("expected field return value")
+			if value == nil {
+				t.Error("expected field return value")
+				return game.Step{}, errors.New("missing field return value")
+			}
+			if value.Kind != game.Field {
+				t.Error("expected field return value")
 			}
 			return game.Step{Action: &game.Action{Kind: game.IsLand, Field: value.Field}}, nil
 		default:
 			if value == nil || value.Kind != game.Bool || !value.Bool {
-				t.Fatal("expected predicate result")
+				t.Error("expected predicate result")
 			}
 			return game.Step{Done: true}, nil
 		}
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
 	if _, err := h.Run(t.Context(), limits()); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 }
