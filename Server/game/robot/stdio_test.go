@@ -42,11 +42,11 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 		value *game.Value
 		want  game.Action
 	}{
-		{nil, game.Action{Kind: game.DrillDurability}},
-		{&game.Value{Kind: game.Integer, Integer: 3}, game.Action{Kind: game.Rotate, Rotation: game.Left}},
-		{&game.Value{Kind: game.Unit}, game.Action{Kind: game.Rotate, Rotation: game.Right}},
-		{&game.Value{Kind: game.Unit}, game.Action{Kind: game.Back}},
-		{&game.Value{Kind: game.Bool, Bool: true}, game.Action{Kind: game.Forward}},
+		{value: nil, want: game.Action{Kind: game.DrillDurability}},
+		{value: &game.Value{Kind: game.Integer, Integer: 3}, want: game.Action{Kind: game.Rotate, Rotation: game.Left}},
+		{value: &game.Value{Kind: game.Unit}, want: game.Action{Kind: game.Rotate, Rotation: game.Right}},
+		{value: &game.Value{Kind: game.Unit}, want: game.Action{Kind: game.Back}},
+		{value: &game.Value{Kind: game.Bool, Bool: true}, want: game.Action{Kind: game.Forward}},
 	}
 	for _, tt := range tests {
 		step, err := p1.Next(t.Context(), tt.value)
@@ -154,8 +154,8 @@ func TestIOErrorsAndValidation(t *testing.T) {
 		input  io.ReadCloser
 		output io.Writer
 	}{
-		{failedIO{failure}, io.Discard},
-		{io.NopCloser(strings.NewReader("p1 forward\n")), failedIO{failure}},
+		{input: failedIO{err: failure}, output: io.Discard},
+		{input: io.NopCloser(strings.NewReader("p1 forward\n")), output: failedIO{err: failure}},
 	} {
 		r := stdio(t, "p1", session(t, tc.input, tc.output))
 		if _, err := r.Next(t.Context(), nil); !errors.Is(err, failure) {

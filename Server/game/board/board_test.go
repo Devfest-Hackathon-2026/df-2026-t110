@@ -104,20 +104,78 @@ func TestAtomicMovement(t *testing.T) {
 		want    map[game.RobotID]board.RobotState
 		moved   map[game.RobotID]bool
 	}{
-		{"chain into empty cell", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}, []game.RobotID{"a", "b"}, nil,
-			map[game.RobotID]board.RobotState{"a": state(1, 0, board.East), "b": state(2, 0, board.East)}, map[game.RobotID]bool{"a": true, "b": true}},
-		{"swap", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)}, []game.RobotID{"b", "a"}, nil, nil, nil},
-		{"cycle", land(2, 2), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.South), "c": state(1, 1, board.West), "d": state(0, 1, board.North)}, []game.RobotID{"a", "b", "c", "d"}, nil, nil, nil},
-		{"conflict propagates", land(4, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East), "c": state(3, 0, board.West)}, []game.RobotID{"a", "b", "c"}, nil, nil, nil},
-		{"boundary propagates", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}, []game.RobotID{"a", "b"}, nil, nil, nil},
-		{"rock", [][]board.Terrain{{board.Land, board.Rock}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, []game.RobotID{"a"}, nil, nil, nil},
-		{"sea", [][]board.Terrain{{board.Land, board.Sea}}, map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, []game.RobotID{"a"}, nil, nil, nil},
-		{"back", land(2, 1), map[game.RobotID]board.RobotState{"a": state(1, 0, board.East)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Back}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}, map[game.RobotID]bool{"a": true}},
-		{"rotate blocks follower", land(2, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.North)}, []game.RobotID{"a", "b"}, map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)}, nil},
-		{"rotate right wraps", land(1, 1), map[game.RobotID]board.RobotState{"a": state(0, 0, board.West)}, []game.RobotID{"a"}, map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
-			map[game.RobotID]board.RobotState{"a": state(0, 0, board.North)}, nil},
+		{
+			name:   "chain into empty cell",
+			grid:   land(4, 1),
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)},
+			ids:    []game.RobotID{"a", "b"},
+			want:   map[game.RobotID]board.RobotState{"a": state(1, 0, board.East), "b": state(2, 0, board.East)},
+			moved:  map[game.RobotID]bool{"a": true, "b": true},
+		},
+		{
+			name:   "swap",
+			grid:   land(2, 1),
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)},
+			ids:    []game.RobotID{"b", "a"},
+		},
+		{
+			name: "cycle",
+			grid: land(2, 2),
+			robots: map[game.RobotID]board.RobotState{
+				"a": state(0, 0, board.East), "b": state(1, 0, board.South),
+				"c": state(1, 1, board.West), "d": state(0, 1, board.North),
+			},
+			ids: []game.RobotID{"a", "b", "c", "d"},
+		},
+		{
+			name:   "conflict propagates",
+			grid:   land(4, 1),
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East), "c": state(3, 0, board.West)},
+			ids:    []game.RobotID{"a", "b", "c"},
+		},
+		{
+			name:   "boundary propagates",
+			grid:   land(2, 1),
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)},
+			ids:    []game.RobotID{"a", "b"},
+		},
+		{
+			name:   "rock",
+			grid:   [][]board.Terrain{{board.Land, board.Rock}},
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+			ids:    []game.RobotID{"a"},
+		},
+		{
+			name:   "sea",
+			grid:   [][]board.Terrain{{board.Land, board.Sea}},
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+			ids:    []game.RobotID{"a"},
+		},
+		{
+			name:    "back",
+			grid:    land(2, 1),
+			robots:  map[game.RobotID]board.RobotState{"a": state(1, 0, board.East)},
+			ids:     []game.RobotID{"a"},
+			actions: map[game.RobotID]game.Action{"a": {Kind: game.Back}},
+			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+			moved:   map[game.RobotID]bool{"a": true},
+		},
+		{
+			name:    "rotate blocks follower",
+			grid:    land(2, 1),
+			robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.North)},
+			ids:     []game.RobotID{"a", "b"},
+			actions: map[game.RobotID]game.Action{"b": {Kind: game.Rotate, Rotation: game.Left}},
+			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.West)},
+		},
+		{
+			name:    "rotate right wraps",
+			grid:    land(1, 1),
+			robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.West)},
+			ids:     []game.RobotID{"a"},
+			actions: map[game.RobotID]game.Action{"a": {Kind: game.Rotate, Rotation: game.Right}},
+			want:    map[game.RobotID]board.RobotState{"a": state(0, 0, board.North)},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
