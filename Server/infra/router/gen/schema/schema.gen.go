@@ -1015,7 +1015,7 @@ func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// bool、integer、unit、rotation のリテラル。field 型にはリテラルがない
+// bool、integer、unit、rotation のリテラル。terrain 型にはリテラルがない
 type Literal struct {
 	Bool *BoolLiteral `json:"-" yaml:"-"`
 
@@ -1597,16 +1597,16 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 type Type string
 
 const TypeBool Type = "bool"
-const TypeField Type = "field"
 const TypeInteger Type = "integer"
 const TypeRotation Type = "rotation"
+const TypeTerrain Type = "terrain"
 const TypeUnit Type = "unit"
 
 var enumValues_Type = []interface{}{
 	"bool",
 	"integer",
 	"unit",
-	"field",
+	"terrain",
 	"rotation",
 }
 

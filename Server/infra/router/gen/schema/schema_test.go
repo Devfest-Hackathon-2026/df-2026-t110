@@ -13,8 +13,8 @@ func TestPicolangTypeNames(t *testing.T) {
 		name  string
 		valid bool
 	}{
-		{name: "terrain", valid: false},
-		{name: "field", valid: true},
+		{name: "terrain", valid: true},
+		{name: "field", valid: false},
 		{name: "rotation", valid: true},
 		{name: "direction", valid: false},
 	}

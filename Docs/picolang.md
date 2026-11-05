@@ -9,7 +9,7 @@
     - 整数リテラル
 - unit
     -  ()
-- field
+- terrain
     - リテラルなし
 - rotation
     - left/right
@@ -62,14 +62,14 @@
         - 壊した場合true
     - drill_durability: () -> integer
     - distance: () -> integer
-    - search_front: () -> field
-    - search_now: () -> field
-    - is_land: field -> bool
-    - is_goal: field -> bool
-    - is_checkpoint: field -> bool
-    - is_laggage: field -> bool
-    - is_sea: field -> bool
-    - is_rock: field -> bool
+    - search_front: () -> terrain
+    - search_now: () -> terrain
+    - is_land: terrain -> bool
+    - is_goal: terrain -> bool
+    - is_checkpoint: terrain -> bool
+    - is_laggage: terrain -> bool
+    - is_sea: terrain -> bool
+    - is_rock: terrain -> bool
     - print_integer: integer -> ()
     - print_bool: bool -> ()
 
