@@ -567,9 +567,10 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	main := b.function(nil, bot.UnitType{}, b.declare("moved", bot.BoolType{}, b.call("helper")), b.ret(b.unit()))
 	v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "helper": helper}), 0)
 	base := snapshot(v).MemoryBytes
+	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
 	field, err := board.New(board.Config{
-		Terrain:  [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}}},
-		Robots:   map[protocol.RobotID]board.RobotState{"robot": {Direction: board.East, DrillDurability: 3}},
+		Terrain:  [][]board.Terrain{{plain, plain}},
+		Robots:   map[protocol.RobotID]board.RobotState{"robot": board.NewRobotState(board.NewPosition(0, 0), board.East, 3)},
 		MaxTicks: 10,
 	})
 	if err != nil {
@@ -578,7 +579,7 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	observedMovement := false
 	robot := resumeObserver{VM: v, observe: func() {
 		state, exists := field.Snapshot().Robots["robot"]
-		if !exists || state.Position != (board.Position{X: 1, Y: 0}) {
+		if !exists || state.Position() != board.NewPosition(1, 0) {
 			t.Errorf("robot did not move before resumption: %+v, exists=%t", state, exists)
 		}
 		observedMovement = true
