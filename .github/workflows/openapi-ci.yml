@@ -4,11 +4,15 @@ on:
   push:
     paths:
       - 'Schema/**'
+      - 'mise.toml'
       - '.github/workflows/openapi-ci.yml'
+      - '.github/workflows/actions.lock'
   pull_request:
     paths:
       - 'Schema/**'
+      - 'mise.toml'
       - '.github/workflows/openapi-ci.yml'
+      - '.github/workflows/actions.lock'
 
 permissions:
   contents: read
@@ -18,8 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: node npm:@redocly/cli
       - name: Validate OpenAPI specification
-        run: npx --yes @redocly/cli@2.75.0 lint --extends=spec Schema/openapi.yaml
+        run: redocly lint --extends=spec Schema/openapi.yaml
       - name: Validate JSON Schemas
         run: |
           find Schema/field Schema/picolang -type f -name '*.yaml' -print0 |

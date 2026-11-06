@@ -4,6 +4,8 @@ golangci-lint = "2.15.0"
 lefthook = "2.2.2"
 oapi-codegen = "2.8.2"
 "go:github.com/plheide/go-jsonschema" = "0.28.0"
+node = "24.22.2"
+"npm:@redocly/cli" = "2.76.0"
 
 [tasks.generate]
 description = "Generate API models and Echo server from the shared schemas"
@@ -14,3 +16,8 @@ run = [
   "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/field/stage.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
 ]
+
+[tasks.redocly-preview]
+description = "Preview the OpenAPI schema with Redoc at http://127.0.0.1:8080"
+dir = "{{config_root}}"
+run = "redocly preview --project-dir Schema --port 8080"

@@ -1,0 +1,12 @@
+apis:
+  main:
+    root: openapi.yaml
+
+navbar:
+  items:
+    - page: openapi.yaml
+      label: API Reference
+
+redirects:
+  /:
+    to: /openapi
