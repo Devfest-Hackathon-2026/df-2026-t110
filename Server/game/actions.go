@@ -18,12 +18,6 @@ type DrillDurabilityAction struct{}
 type DistanceAction struct{}
 type SearchFrontAction struct{}
 type SearchNowAction struct{}
-type IsLandAction struct{ Terrain TerrainValue }
-type IsGoalAction struct{ Terrain TerrainValue }
-type IsCheckpointAction struct{ Terrain TerrainValue }
-type IsLaggageAction struct{ Terrain TerrainValue }
-type IsSeaAction struct{ Terrain TerrainValue }
-type IsRockAction struct{ Terrain TerrainValue }
 type PrintIntegerAction struct{ Integer int64 }
 type PrintBoolAction struct{ Bool bool }
 
@@ -38,12 +32,6 @@ func (DrillDurabilityAction) action() {}
 func (DistanceAction) action()        {}
 func (SearchFrontAction) action()     {}
 func (SearchNowAction) action()       {}
-func (IsLandAction) action()          {}
-func (IsGoalAction) action()          {}
-func (IsCheckpointAction) action()    {}
-func (IsLaggageAction) action()       {}
-func (IsSeaAction) action()           {}
-func (IsRockAction) action()          {}
 func (PrintIntegerAction) action()    {}
 func (PrintBoolAction) action()       {}
 
@@ -52,9 +40,7 @@ func ValidAction(action Action) bool {
 	switch action.(type) {
 	case ForwardAction, BackAction, RotateAction, WaitAction, PickUpAction,
 		ReleaseAction, DrillAction, DrillDurabilityAction, DistanceAction,
-		SearchFrontAction, SearchNowAction, IsLandAction, IsGoalAction,
-		IsCheckpointAction, IsLaggageAction, IsSeaAction, IsRockAction,
-		PrintIntegerAction, PrintBoolAction:
+		SearchFrontAction, SearchNowAction, PrintIntegerAction, PrintBoolAction:
 		return true
 	default:
 		return false
