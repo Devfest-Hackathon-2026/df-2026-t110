@@ -333,9 +333,12 @@ paths:
               properties:
                 username:
                   type: string
+                  description: self と std は名前空間の予約名のため使用不可
                   minLength: 1
                   maxLength: 32
                   pattern: '^[A-Za-z0-9_-]{1,32}$'
+                  not:
+                    enum: [self, std]
       responses:
         "204":
           description: ユーザー名を設定した

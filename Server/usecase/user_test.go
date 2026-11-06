@@ -41,6 +41,8 @@ func TestSetUsername(t *testing.T) {
 		{"empty", "", nil, usecase.ErrInvalidUsername, false},
 		{"invalid", "bad name", nil, usecase.ErrInvalidUsername, false},
 		{"too long", strings.Repeat("a", 33), nil, usecase.ErrInvalidUsername, false},
+		{"reserved self", "self", nil, usecase.ErrInvalidUsername, false},
+		{"reserved std", "std", nil, usecase.ErrInvalidUsername, false},
 		{"taken", "Alice", usecase.ErrUsernameTaken, usecase.ErrUsernameTaken, true},
 		{"already set", "Alice", usecase.ErrUsernameAlreadySet, usecase.ErrUsernameAlreadySet, true},
 		{"missing user", "Alice", usecase.ErrNotFound, usecase.ErrNotFound, true},

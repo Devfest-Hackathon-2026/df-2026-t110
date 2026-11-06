@@ -7,9 +7,9 @@ import (
 
 var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,32}$`)
 
-// IsValidUsername reports whether name is 1 to 32 permitted ASCII characters.
+// IsValidUsername reports whether name has a permitted format and is not reserved.
 func IsValidUsername(name string) bool {
-	return usernamePattern.MatchString(name)
+	return usernamePattern.MatchString(name) && name != "self" && name != "std"
 }
 
 // User is an account of this service, identified at Google by GoogleSubject.
