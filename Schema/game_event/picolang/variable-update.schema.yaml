@@ -38,13 +38,14 @@ $defs:
       - $ref: '#/$defs/CompoundUpdate'
 
   PrimitiveUpdate:
-    description: bool、integer、unit、terrain、rotation のいずれかの値全体の更新
+    description: 基本型の値全体の更新
     oneOf:
       - $ref: '#/$defs/BoolUpdate'
       - $ref: '#/$defs/IntegerUpdate'
       - $ref: '#/$defs/UnitUpdate'
       - $ref: '#/$defs/TerrainUpdate'
       - $ref: '#/$defs/RotationUpdate'
+      - $ref: '#/$defs/DistanceTargetUpdate'
 
   CompoundUpdate:
     description: 複合型の更新。現在は vector のみ
@@ -107,6 +108,17 @@ $defs:
         type: string
         enum: [left, right]
 
+  DistanceTargetUpdate:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: distance_target
+      value:
+        $ref: '../../picolang/v0/distance-target.yaml'
+
   VectorUpdate:
     description: 代入先の vector の現在値に対する更新。操作内容は update の内側に格納する
     type: object
@@ -161,99 +173,7 @@ $defs:
         const: pop_back
 
   Value:
-    description: 初期値と同じ表現の値全体。bool は真偽値、integer は整数、unit は null、rotation は left または right、terrain はオブジェクト、vector は配列で表す
-    oneOf:
-      - type: boolean
-      - type: integer
-        description: i64 の範囲外の値の扱いは picolang の仕様に従い未定義
-      - type: 'null'
-      - type: string
-        enum: [left, right]
-      - $ref: '#/$defs/Terrain'
-      - type: array
-        items:
-          $ref: '#/$defs/Value'
+    $ref: './variable-init.schema.yaml#/$defs/Value'
 
   Terrain:
-    description: 観測時点の地形種別
-    oneOf:
-      - $ref: '#/$defs/Land'
-      - $ref: '#/$defs/Rock'
-      - $ref: '#/$defs/Sea'
-
-  Land:
-    description: 陸。通常の陸、ゴール、チェックポイント、荷物のいずれか一つを kind に格納する
-    type: object
-    additionalProperties: false
-    required: [type, kind]
-    properties:
-      type:
-        type: string
-        const: land
-      kind:
-        oneOf:
-          - $ref: '#/$defs/PlainLand'
-          - $ref: '#/$defs/GoalLand'
-          - $ref: '#/$defs/CheckpointLand'
-          - $ref: '#/$defs/LuggageLand'
-
-  PlainLand:
-    description: 通常の陸
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: plain
-
-  GoalLand:
-    description: ゴールを表す特殊な陸
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: goal
-
-  CheckpointLand:
-    description: 通過順を表す番号を持つ特殊な陸
-    type: object
-    additionalProperties: false
-    required: [type, order]
-    properties:
-      type:
-        type: string
-        const: checkpoint
-      order:
-        description: チェックポイントを通過する順序
-        type: integer
-
-  LuggageLand:
-    description: 荷物を表す特殊な陸。ロボットは通行できる
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: luggage
-
-  Rock:
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: rock
-
-  Sea:
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: sea
+    $ref: './variable-init.schema.yaml#/$defs/Terrain'

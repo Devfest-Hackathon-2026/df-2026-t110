@@ -21,7 +21,7 @@ properties:
 
 $defs:
   Value:
-    description: 初期値全体。bool は真偽値、integer は整数、unit は null、rotation は left または right、terrain はオブジェクト、vector は配列で表す
+    description: 初期値全体
     oneOf:
       - type: boolean
       - type: integer
@@ -29,6 +29,7 @@ $defs:
       - type: 'null'
       - type: string
         enum: [left, right]
+      - $ref: '../../picolang/v0/distance-target.yaml'
       - $ref: '#/$defs/Terrain'
       - type: array
         items:
@@ -42,7 +43,7 @@ $defs:
       - $ref: '#/$defs/Sea'
 
   Land:
-    description: 陸。通常の陸、ゴール、チェックポイント、荷物のいずれか一つを kind に格納する
+    description: 陸の種別と、荷物・納品エリアの観測値
     type: object
     additionalProperties: false
     required: [type, kind]
@@ -55,7 +56,18 @@ $defs:
           - $ref: '#/$defs/PlainLand'
           - $ref: '#/$defs/GoalLand'
           - $ref: '#/$defs/CheckpointLand'
-          - $ref: '#/$defs/LuggageLand'
+      hasLuggage:
+        type: boolean
+      goalArea:
+        description: 観測したロボットから見た納品エリアの所属
+        type: string
+        enum: [own, enemy]
+    if:
+      required: [goalArea]
+    then:
+      properties:
+        kind:
+          $ref: '#/$defs/PlainLand'
 
   PlainLand:
     description: 通常の陸
@@ -89,16 +101,6 @@ $defs:
       order:
         description: チェックポイントを通過する順序
         type: integer
-
-  LuggageLand:
-    description: 荷物を表す特殊な陸。ロボットは通行できる
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: luggage
 
   Rock:
     type: object
