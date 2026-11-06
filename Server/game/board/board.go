@@ -69,9 +69,7 @@ func New(config Config) (*Board, error) {
 			return nil, errors.New("terrain must be rectangular")
 		}
 		for _, cell := range row {
-			switch cell.(type) {
-			case game.LandTerrain, game.RockTerrain, game.SeaTerrain:
-			default:
+			if !game.ValidValue(cell) {
 				return nil, fmt.Errorf("invalid terrain %T", cell)
 			}
 		}

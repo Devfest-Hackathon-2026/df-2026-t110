@@ -7,8 +7,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 )
+
+func TestRenderTerrainKinds(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	err := render(&output, board.Snapshot{
+		Tick: 7,
+		Terrain: [][]game.TerrainValue{{
+			game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}},
+			game.LandTerrain{Kind: game.LuggageLand{}}, game.RockTerrain{}, game.SeaTerrain{},
+		}},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	if want := "\ntick 7\n  .  G  C  L  #  ~\n"; output.String() != want {
+		t.Errorf("got terrain display %q, want %q", output.String(), want)
+	}
+}
 
 func TestInteractiveDemo(t *testing.T) {
 	t.Parallel()

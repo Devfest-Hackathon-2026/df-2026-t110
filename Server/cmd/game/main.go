@@ -29,11 +29,12 @@ func main() {
 }
 
 func run(ctx context.Context, input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) error {
+	plain := game.LandTerrain{Kind: game.PlainLand{}}
 	b, err := board.New(board.Config{
 		Terrain: [][]game.TerrainValue{
-			{game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
-			{game.LandTerrain{}, game.LandTerrain{}, game.RockTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
-			{game.LandTerrain{}, game.LandTerrain{}, game.SeaTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
+			{plain, plain, plain, plain, plain},
+			{plain, plain, game.RockTerrain{}, plain, plain},
+			{plain, plain, game.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[game.RobotID]board.RobotState{
 			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
@@ -99,9 +100,20 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 	for y, row := range snapshot.Terrain {
 		for x, terrain := range row {
 			var cell string
-			switch terrain.(type) {
+			switch terrain := terrain.(type) {
 			case game.LandTerrain:
-				cell = "."
+				switch terrain.Kind.(type) {
+				case game.PlainLand:
+					cell = "."
+				case game.GoalLand:
+					cell = "G"
+				case game.CheckpointLand:
+					cell = "C"
+				case game.LuggageLand:
+					cell = "L"
+				default:
+					return fmt.Errorf("invalid land kind %T", terrain.Kind)
+				}
 			case game.RockTerrain:
 				cell = "#"
 			case game.SeaTerrain:

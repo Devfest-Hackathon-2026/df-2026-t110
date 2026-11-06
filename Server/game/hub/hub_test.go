@@ -69,7 +69,7 @@ func newHub(t *testing.T, b game.Board, participants ...hub.Participant) *hub.Hu
 func grid(t *testing.T) *board.Board {
 	t.Helper()
 	b, err := board.New(board.Config{
-		Terrain: [][]game.TerrainValue{{game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}}},
+		Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.PlainLand{}}}},
 		Robots: map[game.RobotID]board.RobotState{
 			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
 			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.West, DrillDurability: 3},
@@ -358,7 +358,7 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 
 func TestRoutesAllActionBuiltins(t *testing.T) {
 	t.Parallel()
-	terrain := game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
+	terrain := game.LandTerrain{Kind: game.GoalLand{}}
 	boolean := game.BoolValue{Bool: true}
 	integer := game.IntegerValue{Integer: 3}
 	unit := game.UnitValue{}
@@ -432,7 +432,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 
 func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 	t.Parallel()
-	var cell game.TerrainValue = game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
+	var cell game.TerrainValue = game.LandTerrain{Kind: game.LuggageLand{}}
 	observation := cell
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(_ context.Context, reply game.Reply) (game.Decision, error) {
@@ -503,7 +503,7 @@ func TestStartsOnceThenResumesWithValue(t *testing.T) {
 	t.Parallel()
 	for _, value := range []game.Value{
 		game.BoolValue{Bool: false}, game.IntegerValue{Integer: -42}, game.UnitValue{},
-		game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}, game.RockTerrain{}, game.SeaTerrain{},
+		game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}, game.LandTerrain{Kind: game.LuggageLand{}}, game.RockTerrain{}, game.SeaTerrain{},
 	} {
 		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 			t.Parallel()
