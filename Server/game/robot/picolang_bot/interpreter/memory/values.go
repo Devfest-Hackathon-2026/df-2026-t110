@@ -19,6 +19,7 @@ type Integer struct{ Value int64 }
 type Unit struct{}
 type Terrain struct{ Value values.TerrainValue }
 type Rotation struct{ Value values.Rotation }
+type DistanceTarget struct{ Value values.DistanceTarget }
 
 type ListRoot struct{}
 
@@ -29,10 +30,11 @@ type ListNode struct {
 	Value ID
 }
 
-func (Bool) memoryValue()     {}
-func (Integer) memoryValue()  {}
-func (Unit) memoryValue()     {}
-func (Terrain) memoryValue()  {}
-func (Rotation) memoryValue() {}
-func (ListRoot) memoryValue() {}
-func (ListNode) memoryValue() {}
+func (Bool) memoryValue()           {}
+func (Integer) memoryValue()        {}
+func (Unit) memoryValue()           {}
+func (Terrain) memoryValue()        {}
+func (Rotation) memoryValue()       {}
+func (DistanceTarget) memoryValue() {}
+func (ListRoot) memoryValue()       {}
+func (ListNode) memoryValue()       {}

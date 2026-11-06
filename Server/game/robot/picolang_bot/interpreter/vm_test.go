@@ -46,6 +46,10 @@ func (b *builder) unit() expr {
 	return bot.LiteralExpr[bot.Name, bot.Untyped]{Source: b.source(), Value: bot.UnitLiteral{}}
 }
 
+func (b *builder) target(value values.DistanceTarget) expr {
+	return bot.LiteralExpr[bot.Name, bot.Untyped]{Source: b.source(), Value: bot.DistanceTargetLiteral{Value: value}}
+}
+
 func (b *builder) ref(name bot.Name) expr {
 	return bot.IdentExpr[bot.Name, bot.Untyped]{Ident: bot.Ident[bot.Name]{Source: b.source(), Variable: name}}
 }
@@ -326,7 +330,7 @@ func TestActionResultKindsReachExpressions(t *testing.T) {
 	b := &builder{}
 	main := b.function(nil, bot.UnitType{},
 		b.declare("terrain", bot.TerrainType{}, b.call("search_front")), b.call("print_bool", b.call("is_goal", b.ref("terrain"))),
-		b.declare("distance_value", bot.IntegerType{}, b.call("distance")), b.call("print_integer", b.ref("distance_value")), b.ret(b.unit()))
+		b.declare("distance_value", bot.IntegerType{}, b.call("distance", b.target(values.DistanceRock))), b.call("print_integer", b.ref("distance_value")), b.ret(b.unit()))
 	v := newVM(t, checked(t, map[bot.Name]fn{"main": main}), 0)
 	base := snapshot(v).MemoryBytes
 	output, err := v.Start()
@@ -334,12 +338,143 @@ func TestActionResultKindsReachExpressions(t *testing.T) {
 	output, err = v.Next(values.LandTerrain{Kind: values.GoalLand{}})
 	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: true}})
 	output, err = v.Next(values.UnitValue{})
-	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.DistanceAction{}})
+	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.DistanceAction{Target: values.DistanceRock}})
 	output, err = v.Next(values.IntegerValue{Integer: 8})
 	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: 8}})
 	output, err = v.Next(values.UnitValue{})
 	expectOutput(t, output, err, robotmsg.DoneStep{})
 	assertClean(t, v, base)
+}
+
+func TestAllDistanceTargetsFlowThroughCallsVectorsAndEvents(t *testing.T) {
+	t.Parallel()
+	for _, target := range []values.DistanceTarget{
+		values.DistanceRobot, values.DistanceAlly, values.DistanceEnemy, values.DistanceRock,
+		values.DistanceLuggage, values.DistanceSea, values.DistanceGoal, values.DistanceTerritory,
+	} {
+		t.Run(string(target), func(t *testing.T) {
+			t.Parallel()
+			b := &builder{}
+			targetType := bot.DistanceTargetType{}
+			vector := bot.VectorType{ElementType: targetType}
+			nestedType := bot.VectorType{ElementType: vector}
+			echo := b.function([]param{b.param("candidate", targetType)}, targetType, b.ret(b.ref("candidate")))
+			selected := b.declare("selected", targetType, b.target(values.DistanceRobot))
+			nested := b.declare("nested", nestedType, b.call("new"))
+			main := b.function(nil, bot.UnitType{}, selected,
+				b.assign("selected", b.call("echo_target", b.target(target))),
+				b.declare("items", vector, b.call("new")),
+				b.assign("items", b.call("push_back", b.ref("items"), b.ref("selected"))), nested,
+				b.assign("nested", b.call("push_back", b.ref("nested"), b.ref("items"))),
+				b.declare("extracted", targetType, b.call("echo_target", b.call("get_back", b.call("get_back", b.ref("nested"))))),
+				b.declare("distance_value", bot.IntegerType{}, b.call("distance", b.ref("extracted"))),
+				b.call("print_integer", b.ref("distance_value")), b.ret(b.unit()))
+			v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "echo_target": echo}), 0)
+			base := snapshot(v).MemoryBytes
+			output, err := v.Start()
+			expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.DistanceAction{Target: target}})
+			initialized, updated, nestedUpdated := false, false, false
+			for _, e := range output.Events {
+				switch e := e.(type) {
+				case robotevent.VariableInitEvent:
+					if e.HintID == selected.Ident.HintID {
+						initialized = true
+						if !reflect.DeepEqual(e.Value, values.DistanceRobot) {
+							t.Errorf("distance target initial value = %#v", e.Value)
+						}
+					}
+				case robotevent.VariableUpdateEvent:
+					if e.HintID == selected.Ident.HintID {
+						updated = true
+						data, err := json.Marshal(e)
+						want := fmt.Sprintf(`{"kind":"variable_update","hintId":"%s","diff":[{"type":"distance_target","value":%q}]}`, selected.Ident.HintID, target)
+						if err != nil || string(data) != want {
+							t.Errorf("distance target update = %s, %v; want %s", data, err, want)
+						}
+					}
+					if e.HintID == nested.Ident.HintID {
+						nestedUpdated = true
+						want := []robotevent.ValueUpdate{robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: []values.RecordValue{
+							values.VectorRecordValue{Elements: []values.RecordValue{target}},
+						}}}}
+						if !reflect.DeepEqual(e.Diff, want) {
+							t.Errorf("nested distance target snapshot = %#v, want %#v", e.Diff, want)
+						}
+					}
+				}
+			}
+			if !initialized || !updated || !nestedUpdated {
+				t.Errorf("missing events: initialized=%t updated=%t nestedUpdated=%t", initialized, updated, nestedUpdated)
+			}
+			output, err = v.Next(values.IntegerValue{Integer: -1})
+			expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: -1}})
+			output, err = v.Next(values.UnitValue{})
+			expectOutput(t, output, err, robotmsg.DoneStep{})
+			assertClean(t, v, base)
+		})
+	}
+}
+
+func TestTerrainAttributesSurviveActionResumptionAndReassignment(t *testing.T) {
+	t.Parallel()
+	b := &builder{}
+	vector := bot.VectorType{ElementType: bot.TerrainType{}}
+	observed := b.declare("observed", bot.TerrainType{}, b.call("search_front"))
+	saved := b.declare("saved", vector, b.call("new"))
+	main := b.function(nil, bot.UnitType{}, observed, saved,
+		b.assign("saved", b.call("push_back", b.ref("saved"), b.ref("observed"))),
+		b.assign("observed", b.call("search_now")),
+		b.call("print_bool", b.call("is_luggage", b.call("get_back", b.ref("saved")))),
+		b.call("print_bool", b.call("is_own_territory", b.call("get_back", b.ref("saved")))),
+		b.call("print_bool", b.call("is_enemy_territory", b.ref("observed"))),
+		b.call("print_bool", b.call("is_goal", b.ref("observed"))), b.ret(b.unit()))
+	v := newVM(t, checked(t, map[bot.Name]fn{"main": main}), 0)
+	base := snapshot(v).MemoryBytes
+	output, err := v.Start()
+	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.SearchFrontAction{}})
+	events := append([]robotevent.PicolangEvent(nil), output.Events...)
+	own := values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}
+	enemy := values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}
+	output, err = v.Next(own)
+	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.SearchNowAction{}})
+	events = append(events, output.Events...)
+	output, err = v.Next(enemy)
+	for _, want := range []bool{true, true, true, false} {
+		expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: want}})
+		events = append(events, output.Events...)
+		output, err = v.Next(values.UnitValue{})
+	}
+	expectOutput(t, output, err, robotmsg.DoneStep{})
+	assertClean(t, v, base)
+	initialized, updated, savedUpdated := false, false, false
+	for _, e := range events {
+		switch e := e.(type) {
+		case robotevent.VariableInitEvent:
+			if e.HintID == observed.Ident.HintID {
+				initialized = true
+				if !reflect.DeepEqual(e.Value, own) {
+					t.Errorf("initial terrain snapshot lost attributes: %#v", e.Value)
+				}
+			}
+		case robotevent.VariableUpdateEvent:
+			if e.HintID == observed.Ident.HintID {
+				updated = true
+				if !reflect.DeepEqual(e.Diff, []robotevent.ValueUpdate{robotevent.TerrainUpdate{Value: enemy}}) {
+					t.Errorf("terrain replacement lost attributes: %#v", e.Diff)
+				}
+			}
+			if e.HintID == saved.Ident.HintID {
+				savedUpdated = true
+				want := []robotevent.ValueUpdate{robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: []values.RecordValue{own}}}}
+				if !reflect.DeepEqual(e.Diff, want) {
+					t.Errorf("saved terrain snapshot changed after reassignment: %#v", e.Diff)
+				}
+			}
+		}
+	}
+	if !initialized || !updated || !savedUpdated {
+		t.Errorf("missing terrain events: initialized=%t updated=%t savedUpdated=%t", initialized, updated, savedUpdated)
+	}
 }
 
 func TestSeededStreamSurvivesCallsAndActionSuspensions(t *testing.T) {
@@ -433,14 +568,22 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "helper": helper}), 0)
 	base := snapshot(v).MemoryBytes
 	field, err := board.New(board.Config{
-		Terrain:  [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.PlainLand{}}}},
+		Terrain:  [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}}},
 		Robots:   map[protocol.RobotID]board.RobotState{"robot": {Direction: board.East, DrillDurability: 3}},
 		MaxTicks: 10,
 	})
 	if err != nil {
 		t.Fatalf("prepare board: %v", err)
 	}
-	h, err := hub.New(field, []hub.Participant{{ID: "robot", Robot: v}})
+	observedMovement := false
+	robot := resumeObserver{VM: v, observe: func() {
+		state, exists := field.Snapshot().Robots["robot"]
+		if !exists || state.Position != (board.Position{X: 1, Y: 0}) {
+			t.Errorf("robot did not move before resumption: %+v, exists=%t", state, exists)
+		}
+		observedMovement = true
+	}}
+	h, err := hub.New(field, []hub.Participant{{ID: "robot", Robot: robot}})
 	if err != nil {
 		t.Fatalf("prepare hub: %v", err)
 	}
@@ -452,8 +595,11 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	if report.Outcomes["robot"] != (hub.CompletedOutcome{}) || report.Resumes != 2 {
 		t.Errorf("report = %+v", report)
 	}
-	if position := field.Snapshot().Robots["robot"].Position; position.X != 1 || position.Y != 0 {
-		t.Errorf("robot did not move: %+v", position)
+	if !observedMovement {
+		t.Error("movement result did not resume the VM")
+	}
+	if robots := field.Snapshot().Robots; len(robots) != 0 {
+		t.Errorf("finished robots remained on the board: %+v", robots)
 	}
 	if _, err := json.Marshal(storage.Events); err != nil {
 		t.Errorf("history cannot be encoded: %v", err)
@@ -470,6 +616,16 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 		t.Error("VM event was not delivered to the recorder")
 	}
 	assertClean(t, v, base)
+}
+
+type resumeObserver struct {
+	*VM
+	observe func()
+}
+
+func (r resumeObserver) Next(value values.Value) (robotmsg.RobotOutput, error) {
+	r.observe()
+	return r.VM.Next(value)
 }
 
 func TestEntryPointAndZeroValueValidation(t *testing.T) {

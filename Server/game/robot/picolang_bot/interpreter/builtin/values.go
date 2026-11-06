@@ -99,7 +99,7 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 			id = node.Prev
 		}
 		result = memory.Integer{Value: count}
-	case "is_land", "is_goal", "is_checkpoint", "is_laggage", "is_sea", "is_rock":
+	case "is_land", "is_goal", "is_own_territory", "is_enemy_territory", "is_checkpoint", "is_luggage", "is_sea", "is_rock":
 		terrain := args[0].(memory.Terrain).Value
 		var match bool
 		switch name {
@@ -114,10 +114,14 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 				switch name {
 				case "is_goal":
 					_, match = land.Kind.(values.GoalLand)
+				case "is_own_territory":
+					match = land.Territory == values.OwnTerritory
+				case "is_enemy_territory":
+					match = land.Territory == values.EnemyTerritory
 				case "is_checkpoint":
 					_, match = land.Kind.(values.CheckpointLand)
-				case "is_laggage":
-					_, match = land.Kind.(values.LuggageLand)
+				case "is_luggage":
+					match = land.HasLuggage
 				}
 			}
 		}

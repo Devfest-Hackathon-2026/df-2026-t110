@@ -594,6 +594,32 @@ func TestNewAndResumeRejectInvalidInputs(t *testing.T) {
 	}
 }
 
+func TestDistanceTargetArgumentsAndCallResults(t *testing.T) {
+	t.Parallel()
+	vector := bot.VectorType{ElementType: bot.DistanceTargetType{}}
+	p := checked(t, []param{parameter("v", vector)}, bot.DistanceTargetType{}, ret(call("get_back", ref("v"))))
+	env := resources()
+	base := env.Memory.MemoryUsage()
+	target := add(t, env, memory.DistanceTarget{Value: values.DistanceEnemy})
+	list := add(t, env, memory.ListNode{Prev: memory.RootID, Value: target})
+	m := newMachine(t, p, []memory.ID{list}, env)
+	release(t, env, target)
+	release(t, env, list)
+	expectCall(t, m, "get_back")
+	wrong := add(t, env, memory.Integer{Value: 1})
+	before := env.Memory.MemoryUsage()
+	if err := m.Resume(wrong); err == nil {
+		t.Error("Resume accepted an integer as a distance target")
+	}
+	assertUsage(t, env, before)
+	release(t, env, wrong)
+	resume(t, m, env, memory.DistanceTarget{Value: values.DistanceEnemy})
+	result := run(t, m, env, p)
+	assertValue(t, env, result, memory.DistanceTarget{Value: values.DistanceEnemy})
+	release(t, env, result)
+	assertUsage(t, env, base)
+}
+
 func TestPrimitiveAssignmentsProduceRecordableEvents(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -607,6 +633,8 @@ func TestPrimitiveAssignmentsProduceRecordableEvents(t *testing.T) {
 		{"unit", bot.UnitType{}, memory.Unit{}, memory.Unit{}, robotevent.UnitUpdate{}},
 		{"terrain", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}, memory.Terrain{Value: values.SeaTerrain{}}, robotevent.TerrainUpdate{Value: values.SeaTerrain{}}},
 		{"rotation", bot.RotationType{}, memory.Rotation{Value: values.Left}, memory.Rotation{Value: values.Right}, robotevent.RotationUpdate{Value: values.Right}},
+		{"distance target", bot.DistanceTargetType{}, memory.DistanceTarget{Value: values.DistanceRobot}, memory.DistanceTarget{Value: values.DistanceTerritory}, robotevent.DistanceTargetUpdate{Value: values.DistanceTerritory}},
+		{"terrain attributes", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}, robotevent.TerrainUpdate{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

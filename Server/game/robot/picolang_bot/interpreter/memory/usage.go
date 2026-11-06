@@ -20,8 +20,11 @@ func entryBytes(value Value) uint64 {
 		size += uint64(reflect.TypeOf(v.Value).Size())
 		if land, ok := v.Value.(values.LandTerrain); ok {
 			size += uint64(reflect.TypeOf(land.Kind).Size())
+			size += uint64(len(land.Territory))
 		}
 	case Rotation:
+		size += uint64(len(v.Value))
+	case DistanceTarget:
 		size += uint64(len(v.Value))
 	}
 	return size

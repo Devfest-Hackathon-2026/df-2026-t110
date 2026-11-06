@@ -102,6 +102,9 @@ func matches(value memory.Value, typ bot.Type) bool {
 	case bot.RotationType:
 		_, ok := value.(memory.Rotation)
 		return ok
+	case bot.DistanceTargetType:
+		_, ok := value.(memory.DistanceTarget)
+		return ok
 	case bot.TerrainType:
 		_, ok := value.(memory.Terrain)
 		return ok

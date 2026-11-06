@@ -103,6 +103,8 @@ func (t evaluate) run(m *Machine) {
 			value = memory.Unit{}
 		case bot.RotationLiteral:
 			value = memory.Rotation{Value: literal.Value}
+		case bot.DistanceTargetLiteral:
+			value = memory.DistanceTarget{Value: literal.Value}
 		default:
 			panic(fmt.Errorf("invalid literal %T", n.Value))
 		}

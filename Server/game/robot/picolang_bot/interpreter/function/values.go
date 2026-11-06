@@ -31,6 +31,9 @@ func matches(store *memory.Store, id memory.ID, t bot.Type) bool {
 	case bot.RotationType:
 		_, ok := value.(memory.Rotation)
 		return ok
+	case bot.DistanceTargetType:
+		_, ok := value.(memory.DistanceTarget)
+		return ok
 	case bot.VectorType:
 		switch value.(type) {
 		case memory.ListRoot, memory.ListNode:
@@ -73,6 +76,8 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 		return v.Value
 	case memory.Rotation:
 		return values.RotationRecordValue{Rotation: v.Value}
+	case memory.DistanceTarget:
+		return v.Value
 	case memory.ListRoot:
 		return values.VectorRecordValue{}
 	case memory.ListNode:
@@ -108,6 +113,8 @@ func (m *Machine) replacement(id memory.ID) robotevent.ValueUpdate {
 		return robotevent.TerrainUpdate{Value: v}
 	case values.RotationRecordValue:
 		return robotevent.RotationUpdate{Value: v.Rotation}
+	case values.DistanceTarget:
+		return robotevent.DistanceTargetUpdate{Value: v}
 	case values.VectorRecordValue:
 		return robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: v.Elements}}
 	default:

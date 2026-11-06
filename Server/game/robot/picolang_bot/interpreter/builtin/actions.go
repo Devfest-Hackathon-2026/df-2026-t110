@@ -29,7 +29,7 @@ func actionFor(name bot.Name, args []memory.Value) actions.Action {
 	case "drill_durability":
 		return actions.DrillDurabilityAction{}
 	case "distance":
-		return actions.DistanceAction{}
+		return actions.DistanceAction{Target: args[0].(memory.DistanceTarget).Value}
 	case "search_front":
 		return actions.SearchFrontAction{}
 	case "search_now":

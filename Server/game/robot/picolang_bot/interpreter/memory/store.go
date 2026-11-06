@@ -34,9 +34,24 @@ func (s *Store) Add(value Value) (ID, error) {
 		if !values.ValidValue(v.Value) {
 			return 0, fmt.Errorf("invalid terrain value %T", v.Value)
 		}
+		// Terrain variants embed an interface to provide their marker methods.
+		// Preserve only observation data, never a reference hidden in that marker.
+		switch terrain := v.Value.(type) {
+		case values.LandTerrain:
+			v.Value = values.LandTerrain{Kind: terrain.Kind, HasLuggage: terrain.HasLuggage, Territory: terrain.Territory}
+		case values.RockTerrain:
+			v.Value = values.RockTerrain{}
+		case values.SeaTerrain:
+			v.Value = values.SeaTerrain{}
+		}
+		value = v
 	case Rotation:
 		if v.Value != values.Left && v.Value != values.Right {
 			return 0, fmt.Errorf("invalid rotation %q", v.Value)
+		}
+	case DistanceTarget:
+		if !v.Value.Valid() {
+			return 0, fmt.Errorf("invalid distance target %q", v.Value)
 		}
 	case ListRoot:
 		return RootID, s.Retain(RootID)

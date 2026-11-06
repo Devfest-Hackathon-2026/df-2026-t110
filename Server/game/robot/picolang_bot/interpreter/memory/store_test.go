@@ -65,11 +65,21 @@ func TestPrimitiveLifetimes(t *testing.T) {
 		{"plain", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}}}},
 		{"goal", memory.Terrain{Value: values.LandTerrain{Kind: values.GoalLand{}}}},
 		{"checkpoint", memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 3}}}},
-		{"luggage", memory.Terrain{Value: values.LandTerrain{Kind: values.LuggageLand{}}}},
+		{"luggage", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}}},
+		{"own territory with luggage", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}},
+		{"enemy territory", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}},
 		{"rock", memory.Terrain{Value: values.RockTerrain{}}},
 		{"sea", memory.Terrain{Value: values.SeaTerrain{}}},
 		{"left", memory.Rotation{Value: values.Left}},
 		{"right", memory.Rotation{Value: values.Right}},
+		{"distance robot", memory.DistanceTarget{Value: values.DistanceRobot}},
+		{"distance ally", memory.DistanceTarget{Value: values.DistanceAlly}},
+		{"distance enemy", memory.DistanceTarget{Value: values.DistanceEnemy}},
+		{"distance rock", memory.DistanceTarget{Value: values.DistanceRock}},
+		{"distance luggage", memory.DistanceTarget{Value: values.DistanceLuggage}},
+		{"distance sea", memory.DistanceTarget{Value: values.DistanceSea}},
+		{"distance goal", memory.DistanceTarget{Value: values.DistanceGoal}},
+		{"distance territory", memory.DistanceTarget{Value: values.DistanceTerritory}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -197,6 +207,33 @@ func TestStoredPayloadsAreImmutable(t *testing.T) {
 	assertCount(t, &s, valueID, 2)
 }
 
+func TestTerrainObservationsDoNotRetainReferenceMarkers(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"land", "rock", "sea"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			marker := &values.LandTerrain{Kind: values.GoalLand{}}
+			var input, want values.TerrainValue
+			switch name {
+			case "land":
+				input = values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory, TerrainValue: marker}
+				want = values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}
+			case "rock":
+				input, want = values.RockTerrain{TerrainValue: marker}, values.RockTerrain{}
+			case "sea":
+				input, want = values.SeaTerrain{TerrainValue: marker}, values.SeaTerrain{}
+			}
+			var s memory.Store
+			base := s.MemoryUsage()
+			id := add(t, &s, memory.Terrain{Value: input})
+			marker.Kind, marker.HasLuggage = values.CheckpointLand{Order: 7}, true
+			assertValue(t, &s, id, memory.Terrain{Value: want})
+			release(t, &s, id)
+			assertUsage(t, &s, base)
+		})
+	}
+}
+
 func TestRejectInvalidPayloads(t *testing.T) {
 	t.Parallel()
 	var nilBool *memory.Bool
@@ -211,6 +248,7 @@ func TestRejectInvalidPayloads(t *testing.T) {
 		{"unit pointer", &memory.Unit{}},
 		{"terrain pointer", &memory.Terrain{Value: values.SeaTerrain{}}},
 		{"rotation pointer", &memory.Rotation{Value: values.Left}},
+		{"distance target pointer", &memory.DistanceTarget{Value: values.DistanceRobot}},
 		{"root pointer", &memory.ListRoot{}},
 		{"node pointer", &memory.ListNode{}},
 		{"nil terrain", memory.Terrain{}},
@@ -218,6 +256,12 @@ func TestRejectInvalidPayloads(t *testing.T) {
 		{"missing land kind", memory.Terrain{Value: values.LandTerrain{}}},
 		{"land kind pointer", memory.Terrain{Value: values.LandTerrain{Kind: &values.CheckpointLand{Order: 1}}}},
 		{"invalid rotation", memory.Rotation{Value: "back"}},
+		{"missing distance target", memory.DistanceTarget{}},
+		{"unknown distance target", memory.DistanceTarget{Value: "invalid"}},
+		{"rotation as distance target", memory.DistanceTarget{Value: "left"}},
+		{"unknown territory", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: "invalid"}}},
+		{"goal as territory", memory.Terrain{Value: values.LandTerrain{Kind: values.GoalLand{}, Territory: values.OwnTerritory}}},
+		{"checkpoint as territory", memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 1}, Territory: values.EnemyTerritory}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

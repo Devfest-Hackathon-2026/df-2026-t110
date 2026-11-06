@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"slices"
 	"testing"
 
 	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
@@ -139,21 +140,26 @@ func TestIntegerAndCastBuiltins(t *testing.T) {
 func TestTerrainPredicates(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name      string
-		terrain   values.TerrainValue
-		predicate bot.Name
+		name    string
+		terrain values.TerrainValue
+		want    []bot.Name
 	}{
-		{"plain", values.LandTerrain{Kind: values.PlainLand{}}, "is_land"},
-		{"goal", values.LandTerrain{Kind: values.GoalLand{}}, "is_goal"},
-		{"checkpoint", values.LandTerrain{Kind: values.CheckpointLand{Order: 3}}, "is_checkpoint"},
-		{"luggage", values.LandTerrain{Kind: values.LuggageLand{}}, "is_laggage"},
-		{"sea", values.SeaTerrain{}, "is_sea"}, {"rock", values.RockTerrain{}, "is_rock"},
+		{"plain", values.LandTerrain{Kind: values.PlainLand{}}, []bot.Name{"is_land"}},
+		{"luggage", values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}, []bot.Name{"is_land", "is_luggage"}},
+		{"own territory", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.OwnTerritory}, []bot.Name{"is_land", "is_own_territory"}},
+		{"own territory with luggage", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.OwnTerritory, HasLuggage: true}, []bot.Name{"is_land", "is_own_territory", "is_luggage"}},
+		{"enemy territory", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}, []bot.Name{"is_land", "is_enemy_territory"}},
+		{"enemy territory with luggage", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory, HasLuggage: true}, []bot.Name{"is_land", "is_enemy_territory", "is_luggage"}},
+		{"goal", values.LandTerrain{Kind: values.GoalLand{}}, []bot.Name{"is_land", "is_goal"}},
+		{"goal with luggage", values.LandTerrain{Kind: values.GoalLand{}, HasLuggage: true}, []bot.Name{"is_land", "is_goal", "is_luggage"}},
+		{"checkpoint", values.LandTerrain{Kind: values.CheckpointLand{Order: 3}}, []bot.Name{"is_land", "is_checkpoint"}},
+		{"checkpoint with luggage", values.LandTerrain{Kind: values.CheckpointLand{Order: 3}, HasLuggage: true}, []bot.Name{"is_land", "is_checkpoint", "is_luggage"}},
+		{"sea", values.SeaTerrain{}, []bot.Name{"is_sea"}}, {"rock", values.RockTerrain{}, []bot.Name{"is_rock"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, land := tc.terrain.(values.LandTerrain)
-			for _, name := range []bot.Name{"is_land", "is_goal", "is_checkpoint", "is_laggage", "is_sea", "is_rock"} {
-				want := name == tc.predicate || name == "is_land" && land
+			for _, name := range []bot.Name{"is_land", "is_goal", "is_own_territory", "is_enemy_territory", "is_checkpoint", "is_luggage", "is_sea", "is_rock"} {
+				want := slices.Contains(tc.want, name)
 				scalar(t, name, []memory.Value{memory.Terrain{Value: tc.terrain}}, memory.Bool{Value: want})
 			}
 		})
@@ -257,9 +263,10 @@ func TestActionRequestsAndResults(t *testing.T) {
 		{"release", nil, actions.ReleaseAction{}, values.BoolValue{}, memory.Bool{}},
 		{"drill", nil, actions.DrillAction{}, values.BoolValue{Bool: true}, memory.Bool{Value: true}},
 		{"drill_durability", nil, actions.DrillDurabilityAction{}, values.IntegerValue{Integer: 3}, memory.Integer{Value: 3}},
-		{"distance", nil, actions.DistanceAction{}, values.IntegerValue{Integer: 42}, memory.Integer{Value: 42}},
+		{"distance", []memory.Value{memory.DistanceTarget{Value: values.DistanceEnemy}}, actions.DistanceAction{Target: values.DistanceEnemy}, values.IntegerValue{Integer: 42}, memory.Integer{Value: 42}},
 		{"search_front", nil, actions.SearchFrontAction{}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}, memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}},
 		{"search_now", nil, actions.SearchNowAction{}, values.SeaTerrain{}, memory.Terrain{Value: values.SeaTerrain{}}},
+		{"search_now", nil, actions.SearchNowAction{}, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}},
 		{"print_integer", []memory.Value{memory.Integer{Value: -42}}, actions.PrintIntegerAction{Integer: -42}, values.UnitValue{}, memory.Unit{}},
 		{"print_bool", []memory.Value{memory.Bool{Value: true}}, actions.PrintBoolAction{Bool: true}, values.UnitValue{}, memory.Unit{}},
 	} {
@@ -319,6 +326,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 					value = memory.Integer{Value: 1}
 				case bot.RotationType:
 					value = memory.Rotation{Value: values.Left}
+				case bot.DistanceTargetType:
+					value = memory.DistanceTarget{Value: values.DistanceTerritory}
 				case bot.TerrainType:
 					value = memory.Terrain{Value: values.SeaTerrain{}}
 				case bot.VectorType:
@@ -366,6 +375,9 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 		{"or", []memory.Value{memory.Bool{Value: true}, memory.Integer{Value: 1}}},
 		{"add", []memory.Value{memory.Integer{Value: 1}}}, {"size", []memory.Value{memory.Unit{}}},
 		{"rotate", []memory.Value{memory.Integer{Value: 1}}},
+		{"distance", nil},
+		{"distance", []memory.Value{memory.Integer{Value: 1}}},
+		{"distance", []memory.Value{memory.Rotation{Value: values.Left}}},
 	} {
 		t.Run(string(tc.name), func(t *testing.T) {
 			t.Parallel()
@@ -388,6 +400,9 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 	_, e := setup(t, 0)
 	if _, err := e.Evaluate("user_function", nil); !errors.Is(err, builtin.ErrUnknownFunction) {
 		t.Errorf("unknown function: %v", err)
+	}
+	if _, err := e.Evaluate("is_laggage", nil); !errors.Is(err, builtin.ErrUnknownFunction) {
+		t.Errorf("obsolete terrain predicate is still recognized: %v", err)
 	}
 	if _, err := e.Evaluate("not", []memory.ID{999}); err == nil {
 		t.Error("unknown argument ID accepted")
