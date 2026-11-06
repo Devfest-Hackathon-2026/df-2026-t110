@@ -8,6 +8,7 @@ import plusIcon from '@iconify-icons/lucide/plus'
 import PicoCondition from './PicoCondition.vue'
 import PicoExpression from './PicoExpression.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
+import { dragVariable, endPicoDrag } from './picoDrag.ts'
 import {
   PICO_BUILTINS,
   block as makeBlock,
@@ -15,6 +16,7 @@ import {
   type PicoBlock,
   type PicoFunction,
   type PicoStatement,
+  type PicoType,
   type PicoVariableOption,
 } from './picolang.ts'
 
@@ -23,11 +25,13 @@ const props = defineProps<{
   block: PicoBlock
   functions: Record<string, PicoFunction>
   variables?: PicoVariableOption[]
+  returnType?: PicoType
   terminalReturn?: boolean
   emptyHint?: string
 }>()
 const statements = computed(() => props.block.stmts)
 const choice = ref('forward')
+const dragInsert = ref<{ index: number; after: boolean } | null>(null)
 const controlChoices = [
   { value: 'if', label: 'もし' },
   { value: 'if-else', label: 'もし／でなければ' },
@@ -77,6 +81,32 @@ function drop(event: DragEvent): void {
   )
     append(value)
 }
+function dragOverAt(index: number, event: DragEvent): void {
+  if (!event.dataTransfer?.types.includes('application/x-picolang-choice')) return
+  const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  dragInsert.value = { index, after: event.clientY >= bounds.top + bounds.height / 2 }
+}
+function dropAt(index: number, event: DragEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+  const value = event.dataTransfer?.getData('application/x-picolang-choice')
+  const after = dragInsert.value?.index === index && dragInsert.value.after
+  dragInsert.value = null
+  if (
+    !value ||
+    !(
+      controlChoices.some((item) => item.value === value) ||
+      PICO_BUILTINS.some((item) => item.name === value) ||
+      value in props.functions
+    )
+  )
+    return
+  const position = Math.min(
+    index + (after ? 1 : 0),
+    props.terminalReturn ? statements.value.length - 1 : statements.value.length,
+  )
+  statements.value.splice(position, 0, makeStatement(value, props.functions))
+}
 function dropInto(target: PicoBlock, event: DragEvent): void {
   event.preventDefault()
   event.stopPropagation()
@@ -110,10 +140,19 @@ function remove(index: number): void {
       v-for="(stmt, index) in statements"
       :key="stmt.hintId"
       class="pico-statement"
-      :class="`pico-statement--${stmt.kind}`"
+      :class="[
+        `pico-statement--${stmt.kind}`,
+        dragInsert?.index === index
+          ? dragInsert.after
+            ? 'pico-statement--drop-after'
+            : 'pico-statement--drop-before'
+          : '',
+      ]"
+      @dragover.stop.prevent="dragOverAt(index, $event)"
+      @drop.stop.prevent="dropAt(index, $event)"
+      @dragleave="dragInsert = null"
     >
       <div class="pico-statement-toolbar">
-        <span class="pico-statement-order">{{ index + 1 }}</span>
         <div>
           <button
             type="button"
@@ -169,6 +208,7 @@ function remove(index: number): void {
               :block="stmt.then"
               :functions="functions"
               :variables="variablesBefore(index)"
+              :return-type="returnType"
               empty-hint="条件が成り立ったときの命令をここに追加"
             />
           </div>
@@ -188,6 +228,7 @@ function remove(index: number): void {
                 :block="stmt.else"
                 :functions="functions"
                 :variables="variablesBefore(index)"
+                :return-type="returnType"
                 empty-hint="条件が成り立たないときの命令をここに追加"
               />
             </div>
@@ -219,7 +260,12 @@ function remove(index: number): void {
             @drop="dropInto(stmt.body, $event)"
           >
             <span class="pico-scope-label">くり返す処理</span>
-            <PicoBlock :block="stmt.body" :functions="functions" :variables="variablesBefore(index)" />
+            <PicoBlock
+              :block="stmt.body"
+              :functions="functions"
+              :variables="variablesBefore(index)"
+              :return-type="returnType"
+            />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
         </div>
@@ -237,6 +283,16 @@ function remove(index: number): void {
                 class="pico-name-input"
                 placeholder="i"
               />
+              <button
+                type="button"
+                class="pico-variable-token"
+                draggable="true"
+                :aria-label="`変数 ${stmt.ident.name} をドラッグ`"
+                @dragstart="dragVariable($event, stmt.ident.name)"
+                @dragend="endPicoDrag"
+              >
+                {{ stmt.ident.name }}
+              </button>
             </div>
             <div class="pico-control-field" role="group" aria-label="最初の値">
               <span class="pico-control-field-label">最初の値</span>
@@ -244,6 +300,7 @@ function remove(index: number): void {
                 :node="stmt.start"
                 :functions="functions"
                 :variables="variablesBefore(index)"
+                expected-type="integer"
                 @replace="stmt.start = $event"
               />
             </div>
@@ -253,6 +310,7 @@ function remove(index: number): void {
                 :node="stmt.end"
                 :functions="functions"
                 :variables="variablesBefore(index)"
+                expected-type="integer"
                 @replace="stmt.end = $event"
               />
             </div>
@@ -270,6 +328,7 @@ function remove(index: number): void {
               :block="stmt.body"
               :functions="functions"
               :variables="[...variablesBefore(index), { name: stmt.ident.name, type: 'integer' }]"
+              :return-type="returnType"
             />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
@@ -291,10 +350,21 @@ function remove(index: number): void {
             :node="stmt.value"
             :functions="functions"
             :variables="variablesBefore(index)"
+            :expected-type="stmt.type"
             @replace="stmt.value = $event"
           />
           <small class="pico-variable-tip">
-            下の入力欄で「作った変数」を選ぶと {{ stmt.ident.name || 'この変数' }} を使えます。
+            <button
+              type="button"
+              class="pico-variable-token"
+              draggable="true"
+              :aria-label="`変数 ${stmt.ident.name} をドラッグ`"
+              @dragstart="dragVariable($event, stmt.ident.name)"
+              @dragend="endPicoDrag"
+            >
+              {{ stmt.ident.name || '変数' }}
+            </button>
+            を入力欄へドラッグして使えます。
           </small>
         </template>
         <template v-else-if="stmt.kind === 'assign'">
@@ -318,6 +388,9 @@ function remove(index: number): void {
             :node="stmt.value"
             :functions="functions"
             :variables="variablesBefore(index)"
+            :expected-type="
+              variablesBefore(index).find((variable) => variable.name === stmt.ident.name)?.type
+            "
             @replace="stmt.value = $event"
           />
         </template>
@@ -327,6 +400,7 @@ function remove(index: number): void {
             :node="stmt.value"
             :functions="functions"
             :variables="variablesBefore(index)"
+            :expected-type="returnType"
             @replace="stmt.value = $event"
           />
         </template>

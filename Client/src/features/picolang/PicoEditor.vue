@@ -21,6 +21,7 @@ import uploadIcon from '@iconify-icons/lucide/upload'
 import xIcon from '@iconify-icons/lucide/x'
 import PicoBlock from './PicoBlock.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
+import { beginPicoDrag, dragVariable, endPicoDrag } from './picoDrag.ts'
 import {
   PICO_BUILTINS,
   block,
@@ -136,6 +137,7 @@ function addChoice(name: string): void {
   message.value = ''
 }
 function dragChoice(event: DragEvent, name: string): void {
+  beginPicoDrag()
   event.dataTransfer?.setData('application/x-picolang-choice', name)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy'
 }
@@ -219,7 +221,7 @@ function importJson(): void {
     </nav>
     <aside class="pico-palette" aria-label="命令パレット">
       <h3>{{ category }}</h3>
-      <p>タップで追加。ドラッグしてブロック内にも置けます。</p>
+      <p>タップで命令を追加。ドラッグすると命令間や式の入力欄に置けます。</p>
       <button
         v-for="item in palette"
         :key="item.name"
@@ -228,6 +230,7 @@ function importJson(): void {
         :class="`pico-palette-item--${category}`"
         @click="addChoice(item.name)"
         @dragstart="dragChoice($event, item.name)"
+        @dragend="endPicoDrag"
       >
         <Icon :icon="plusIcon" aria-hidden="true" />
         <span>{{ item.label }}</span>
@@ -291,6 +294,16 @@ function importJson(): void {
             <PicoTypeInput v-model="param.type" />
             <button
               type="button"
+              class="pico-variable-token"
+              draggable="true"
+              :aria-label="`引数 ${param.ident.name} をドラッグ`"
+              @dragstart="dragVariable($event, param.ident.name)"
+              @dragend="endPicoDrag"
+            >
+              {{ param.ident.name }}
+            </button>
+            <button
+              type="button"
               :aria-label="`引数${index + 1}を削除`"
               @click="currentFunction.params.splice(index, 1)"
             >
@@ -303,6 +316,7 @@ function importJson(): void {
           :block="currentFunction.body"
           :functions="functions"
           :variables="currentFunction.params.map((param) => ({ name: param.ident.name, type: param.type }))"
+          :return-type="currentFunction.returnType"
           terminal-return
         />
       </div>

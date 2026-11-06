@@ -133,6 +133,7 @@ function restoreNumber(event: FocusEvent): void {
       :node="node"
       :functions="functions"
       :variables="variables"
+      expected-type="bool"
       default-call="is_rock"
       @replace="emit('replace', $event)"
     />

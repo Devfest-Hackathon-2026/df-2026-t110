@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { expressionFromDrop, PICO_VARIABLE_MIME } from './picoDrag.ts'
 import {
   PICO_BUILTINS,
   defaultExpr,
@@ -7,6 +8,7 @@ import {
   makeCall,
   type PicoExpr,
   type PicoFunction,
+  type PicoType,
   type PicoVariableOption,
 } from './picolang.ts'
 
@@ -16,8 +18,11 @@ const props = defineProps<{
   variables?: PicoVariableOption[]
   statement?: boolean
   defaultCall?: string
+  expectedType?: PicoType
 }>()
 const emit = defineEmits<{ replace: [node: PicoExpr] }>()
+const dragActive = ref(false)
+const dropError = ref('')
 const mode = computed(() => (props.node.kind === 'literal' ? props.node.type : props.node.kind))
 const identifierName = computed(() => (props.node.kind === 'ident' ? props.node.name : ''))
 const options = computed(() => [
@@ -59,12 +64,51 @@ function replaceArg(index: number, expr: PicoExpr): void {
   if (props.node.kind === 'call')
     emit('replace', { ...props.node, args: props.node.args.map((arg, i) => (i === index ? expr : arg)) })
 }
+function argumentType(index: number): PicoType | undefined {
+  const node = props.node
+  if (node.kind !== 'call') return undefined
+  return options.value.find((item) => item.name === node.func)?.args[index]
+}
+function dragOver(event: DragEvent): void {
+  if (
+    props.statement ||
+    !event.dataTransfer?.types.some(
+      (type) => type === PICO_VARIABLE_MIME || type === 'application/x-picolang-choice',
+    )
+  )
+    return
+  event.preventDefault()
+  event.stopPropagation()
+  dragActive.value = true
+}
+function dropExpression(event: DragEvent): void {
+  if (props.statement) return
+  event.preventDefault()
+  event.stopPropagation()
+  dragActive.value = false
+  const expression = expressionFromDrop(
+    event.dataTransfer,
+    props.expectedType,
+    props.functions,
+    props.variables ?? [],
+  )
+  if (expression) {
+    dropError.value = ''
+    emit('replace', expression)
+  } else dropError.value = 'この入力欄には置けません。値の種類を確認してください。'
+}
 </script>
 
 <template>
   <span
     class="pico-expression"
-    :class="[`pico-expression--${mode}`, { 'pico-expression--statement': statement }]"
+    :class="[
+      `pico-expression--${mode}`,
+      { 'pico-expression--statement': statement, 'pico-expression--drop-target': dragActive },
+    ]"
+    @dragover="dragOver"
+    @dragleave="dragActive = false"
+    @drop="dropExpression"
   >
     <select
       v-if="!statement"
@@ -157,9 +201,11 @@ function replaceArg(index: number, expr: PicoExpr): void {
           :node="arg"
           :functions="functions"
           :variables="variables"
+          :expected-type="argumentType(index)"
           @replace="replaceArg(index, $event)"
         />
       </span>
     </template>
+    <small v-if="dropError" class="pico-expression-drop-error" role="status">{{ dropError }}</small>
   </span>
 </template>
