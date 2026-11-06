@@ -100,7 +100,8 @@ func TestDisplaysTerrainReturnValue(t *testing.T) {
 		{name: "land", value: game.LandTerrain{Kind: game.PlainLand{}}, want: "terrain(land)"},
 		{name: "goal", value: game.LandTerrain{Kind: game.GoalLand{}}, want: "terrain(land, goal)"},
 		{name: "checkpoint", value: game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}, want: "terrain(land, checkpoint=2)"},
-		{name: "luggage", value: game.LandTerrain{Kind: game.LuggageLand{}}, want: "terrain(land, luggage)"},
+		{name: "luggage", value: game.LandTerrain{Kind: game.PlainLand{}, HasLuggage: true}, want: "terrain(land, luggage)"},
+		{name: "goal area with luggage", value: game.LandTerrain{Kind: game.PlainLand{}, HasLuggage: true, GoalArea: game.OwnGoalArea}, want: "terrain(land, luggage, goal_area=own)"},
 		{name: "rock", value: game.RockTerrain{}, want: "terrain(rock)"},
 		{name: "sea", value: game.SeaTerrain{}, want: "terrain(sea)"},
 	}
@@ -138,10 +139,10 @@ func TestStartAndResumeLifecycle(t *testing.T) {
 		game.LandTerrain{Kind: &game.PlainLand{}},
 		game.LandTerrain{Kind: &game.GoalLand{}},
 		game.LandTerrain{Kind: &game.CheckpointLand{Order: 2}},
-		game.LandTerrain{Kind: &game.LuggageLand{}},
 		game.LandTerrain{Kind: (*game.GoalLand)(nil)}, &game.LandTerrain{Kind: game.GoalLand{}},
 		game.LandTerrain{Kind: (*game.CheckpointLand)(nil)}, &game.LandTerrain{Kind: game.CheckpointLand{Order: 2}},
-		game.LandTerrain{Kind: (*game.LuggageLand)(nil)}, &game.LandTerrain{Kind: game.LuggageLand{}},
+		game.LandTerrain{Kind: game.GoalLand{}, GoalArea: game.OwnGoalArea},
+		game.LandTerrain{Kind: game.PlainLand{}, GoalArea: "other"},
 	} {
 		if _, err := r.Next(t.Context(), value); err == nil {
 			t.Errorf("invalid resume value was accepted: %T", value)

@@ -109,10 +109,11 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 					cell = "G"
 				case game.CheckpointLand:
 					cell = "C"
-				case game.LuggageLand:
-					cell = "L"
 				default:
 					return fmt.Errorf("invalid land kind %T", terrain.Kind)
+				}
+				if terrain.HasLuggage {
+					cell = "L"
 				}
 			case game.RockTerrain:
 				cell = "#"

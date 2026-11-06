@@ -11,20 +11,31 @@ func (IntegerValue) value() {}
 func (UnitValue) value()    {}
 
 // TerrainValue is a cell observation copied by value. Each cell is land, rock,
-// or sea. Land contains one LandKind. Subsequent board changes do not affect the
-// observation.
+// or sea. Subsequent board changes do not affect the observation.
 type TerrainValue interface {
 	Value
 	terrain()
 }
 
-// LandTerrain contains exactly one non-nil, non-pointer LandKind.
-type LandTerrain struct{ Kind LandKind }
+// LandTerrain has one base kind and independent luggage and goal area attributes.
+// GoalArea is relative to the robot that observed the cell.
+type LandTerrain struct {
+	Kind       LandKind
+	HasLuggage bool
+	GoalArea   GoalAreaRelation
+}
 type RockTerrain struct{}
 type SeaTerrain struct{}
 
-// LandKind describes one mutually exclusive kind of land, following Docs/field.md.
-// PlainLand is ordinary land; goal, checkpoint, and luggage are special land.
+type GoalAreaRelation string
+
+const (
+	NoGoalArea    GoalAreaRelation = ""
+	OwnGoalArea   GoalAreaRelation = "own"
+	EnemyGoalArea GoalAreaRelation = "enemy"
+)
+
+// LandKind distinguishes ordinary land from tutorial goals and checkpoints.
 type LandKind interface {
 	landKind()
 }
@@ -32,7 +43,6 @@ type LandKind interface {
 type PlainLand struct{}
 type GoalLand struct{}
 type CheckpointLand struct{ Order int64 }
-type LuggageLand struct{}
 
 func (LandTerrain) value()       {}
 func (RockTerrain) value()       {}
@@ -43,7 +53,6 @@ func (SeaTerrain) terrain()      {}
 func (PlainLand) landKind()      {}
 func (GoalLand) landKind()       {}
 func (CheckpointLand) landKind() {}
-func (LuggageLand) landKind()    {}
 
 // ValidValue rejects nil, pointer variants, and unset land kinds at protocol boundaries.
 func ValidValue(value Value) bool {
@@ -51,8 +60,12 @@ func ValidValue(value Value) bool {
 	case BoolValue, IntegerValue, UnitValue, RockTerrain, SeaTerrain:
 		return true
 	case LandTerrain:
+		if value.GoalArea != NoGoalArea {
+			_, plain := value.Kind.(PlainLand)
+			return plain && (value.GoalArea == OwnGoalArea || value.GoalArea == EnemyGoalArea)
+		}
 		switch value.Kind.(type) {
-		case PlainLand, GoalLand, CheckpointLand, LuggageLand:
+		case PlainLand, GoalLand, CheckpointLand:
 			return true
 		default:
 			return false

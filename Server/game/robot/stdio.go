@@ -204,16 +204,20 @@ func formatValue(value game.Value) string {
 	case game.UnitValue:
 		return "()"
 	case game.LandTerrain:
+		attributes := []string{"land"}
 		switch kind := value.Kind.(type) {
-		case game.PlainLand:
-			return "terrain(land)"
 		case game.GoalLand:
-			return "terrain(land, goal)"
+			attributes = append(attributes, "goal")
 		case game.CheckpointLand:
-			return fmt.Sprintf("terrain(land, checkpoint=%d)", kind.Order)
-		case game.LuggageLand:
-			return "terrain(land, luggage)"
+			attributes = append(attributes, fmt.Sprintf("checkpoint=%d", kind.Order))
 		}
+		if value.HasLuggage {
+			attributes = append(attributes, "luggage")
+		}
+		if value.GoalArea != game.NoGoalArea {
+			attributes = append(attributes, "goal_area="+string(value.GoalArea))
+		}
+		return "terrain(" + strings.Join(attributes, ", ") + ")"
 	case game.RockTerrain:
 		return "terrain(rock)"
 	case game.SeaTerrain:

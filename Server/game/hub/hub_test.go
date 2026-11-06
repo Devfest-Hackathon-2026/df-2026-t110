@@ -435,7 +435,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 
 func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 	t.Parallel()
-	var cell game.TerrainValue = game.LandTerrain{Kind: game.LuggageLand{}}
+	var cell game.TerrainValue = game.LandTerrain{Kind: game.PlainLand{}, HasLuggage: true}
 	observation := cell
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(_ context.Context, reply game.Reply) (game.Decision, error) {
@@ -506,7 +506,7 @@ func TestStartsOnceThenResumesWithValue(t *testing.T) {
 	t.Parallel()
 	for _, value := range []game.Value{
 		game.BoolValue{Bool: false}, game.IntegerValue{Integer: -42}, game.UnitValue{},
-		game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}, game.LandTerrain{Kind: game.LuggageLand{}}, game.RockTerrain{}, game.SeaTerrain{},
+		game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}, game.LandTerrain{Kind: game.PlainLand{}, HasLuggage: true}, game.RockTerrain{}, game.SeaTerrain{},
 	} {
 		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 			t.Parallel()
