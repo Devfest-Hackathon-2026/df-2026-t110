@@ -1,0 +1,120 @@
+[
+  {
+    "type": "field",
+    "tick": 0,
+    "state": {}
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "current_node",
+      "hintId": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "current_node",
+      "hintId": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "variable_init",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "value": [
+        0,
+        1
+      ]
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "variable_init",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "value": {
+        "type": "land",
+        "kind": {
+          "type": "checkpoint",
+          "order": 2
+        }
+      }
+    }
+  },
+  {
+    "type": "field",
+    "tick": 1,
+    "state": {}
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "variable_update",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "diff": [
+        {
+          "type": "vector",
+          "update": {
+            "op": "push_back",
+            "value": 2
+          }
+        },
+        {
+          "type": "vector",
+          "update": {
+            "op": "push_back",
+            "value": 3
+          }
+        },
+        {
+          "type": "vector",
+          "update": {
+            "op": "pop_back"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "variable_update",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "diff": [
+        {
+          "type": "terrain",
+          "value": {
+            "type": "land",
+            "kind": {
+              "type": "goal"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "variable_drop",
+      "hintId": "00000000-0000-4000-8000-000000000002"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "variable_drop",
+      "hintId": "00000000-0000-4000-8000-000000000002"
+    }
+  }
+]

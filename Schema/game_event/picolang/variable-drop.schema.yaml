@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangVariableDropEvent
+description: 初期化時に紐づけた hintId をキーに変数の drop を報告する
+
+type: object
+additionalProperties: false
+required: [kind, hintId]
+properties:
+  kind:
+    type: string
+    const: variable_drop
+  hintId:
+    description: drop する変数に初期化時に紐づけた hintId
+    $ref: '../../picolang/v0/hint-id.yaml'

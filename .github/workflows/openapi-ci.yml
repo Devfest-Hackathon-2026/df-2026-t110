@@ -29,5 +29,10 @@ jobs:
         run: redocly lint --extends=spec Schema/openapi.yaml
       - name: Validate JSON Schemas
         run: |
-          find Schema/field Schema/picolang -type f -name '*.yaml' -print0 |
+          find Schema/field Schema/picolang Schema/game_event -type f -name '*.yaml' -print0 |
             xargs -0 pipx run --spec check-jsonschema==0.39.0 check-jsonschema --check-metaschema
+      - name: Validate game history examples
+        run: |
+          pipx run --spec check-jsonschema==0.39.0 check-jsonschema \
+            --base-uri "file://${GITHUB_WORKSPACE}/Schema/game_event/history.schema.yaml" \
+            --schemafile Schema/game_event/history.schema.yaml Schema/game_event/examples/*.json
