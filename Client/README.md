@@ -10,7 +10,7 @@
 
 ## 教材詳細
 
-`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` と `GET /api/field/{fieldId}` を読み、取得したフィールドを3D・カメラ表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。教材APIの説明文形式は未定なので、`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
+`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
 
 教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex }` です。「リセット」はロボットの表示を初期位置に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。教育用エディタとゲームエンジンはこのイベントに接続する予定で、現時点では命令の実行・クリア判定は行いません。
 
@@ -18,7 +18,7 @@ iPad横向きのような横長画面では、左にカテゴリ・命令見本�
 
 ## ARフィールド表示（issues #1–3）
 
-1つのフィールドに属する配置候補をすべて見られる3D/カメラビュー、実行前の抽選、Blender製GLBロボットとイベント別アニメーションを含みます。
+1つのフィールドに属する配置候補をすべて見られる3D/カメラビュー、実行前の抽選、Blender製GLBロボットとイベント別アニメーションを含みます。盤面には `public/stage-assets` の床・岩・ゴール・チェックポイント・荷物・スタート・旧デモ用置き場・海の枠を使います。Blenderから書き出したGLBには画像テクスチャが埋め込まれ、編集用PNGは `public/stage-assets/textures`、開いて編集できる `.blend` 原本は `assets/blender` にあります。再生成スクリプトは `scripts/build_stage_assets.py` です。再生成後の `.blend` は `scripts/finalize_stage_blend.py` を Blender のバックグラウンド実行で各ファイルへ適用します。
 
 ```bash
 cd Client
@@ -36,7 +36,7 @@ pnpm dev
 
 ## ステージデータ
 
-いったん仮ですすめる、jsonが確定したらそっちに合わせる
+以下は旧デモ用の記号マップです。現在の `Schema/field/field.schema.yaml` と `stage.schema.yaml` の形式も受け付けます。
 
 ```json
 {
@@ -59,19 +59,19 @@ pnpm dev
 
 記号は `S` スタート、`G` ゴール、`.` 陸、`#` 岩、`_` 海、`O` 荷物、`X` 置き場、`?` 可変マスです。行幅は同一、`S` は1個です。配置候補の `map` に `?` は使いません。
 
-APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [stage.ts](src/features/stage/stage.ts) の `normalizeField` で変換します。表示は [StageScene.vue](src/features/stage/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
+現行schemaでは `terrain[y][x]` が `land / rock / sea`、`objects` が `goal / checkpoint / luggage`、`robot` が初期座標と方向です。`Stage.variants` の各 `Field` と単独の `Field` を [stage.ts](src/features/stage/stage.ts) の `normalizeField` で表示用に変換します。チェックポイントの `order` は盤面上の番号として表示します。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。表示は [StageScene.vue](src/features/stage/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
 
 ## 抽選と動作イベント
 
 配置を切り替えて、そのフィールドの全候補を確認できます。サンプルと貼り付けJSONはローカルで配置を抽選します。APIから取得したフィールドでは、`POST /field/{id}/match` のレスポンスにある0始まりの `candidateIndex` または `selectedLayoutId` で結果を決めます。クライアントはその結果へルーレットを止めます。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex, match }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
 
-`StageScene` の `animationEvent` prop に `{ id, type, to? }` を渡すと、ロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `move`（`to: {x,y}` が必要）、`drill`（目のビーム）、`get` / `put`（腕を待機姿勢から Rx +30°）、`clear`（ジャンプと一回転）です。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作ります。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
+`StageScene` の `animationEvent` prop に `{ id, type, to?, direction?, ticks?, success? }` を渡すとロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `forward` / `back`（現在の向きに1マス進む）、`rotate`（`direction: 'left' | 'right'` で90°回る）、`wait`（`ticks` 単位時間待つ）、`pick_up` / `release`（念動力）、`drill`（目のビーム）、`clear`（クリア演出）です。これらの基本動作は1単位時間を1秒として描画します。移動先が岩・海・盤外なら進まず、`success: false` を渡した動作も失敗として演出します。旧形式の `move`（`to: {x,y}`）、`get`、`put` も受け付けます。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作り、念動力の瞬間は腕の絶対角度 Rx=-90°にします。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
 
-海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用します。カメラ表示は現時点ではカメラ映像への重ね合わせです。平面検出と空間固定は今後の作業です。
+海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用し、Blender製の立体的な枠を重ねます。カメラ表示は現時点ではカメラ映像への重ね合わせです。平面検出と空間固定は今後の作業です。
 
 ## 接続時に確定する項目
 
-- `GET /field/{id}` が固定マスを示す `template`、岩の個数候補 `rockCounts`、全配置の `candidates` をどう返すか。海・荷物なども変わるため、具体的な候補マップが必要です。
+- 現行schemaの `Stage.variants` に一意の配置IDを持たせるか。現時点ではIDが無い場合、表示側で `layout-1` などを付けます。
 - `POST /field/{id}/match` のレスポンス形式。現状は0始まりの `candidateIndex`、または候補の `id` と一致する `selectedLayoutId` を受け取ります。対戦ではサーバーの選択を唯一の結果として扱います。
 - ゲームエンジンからの動作イベントに含めるロボットID、tick、座標、向き、および対戦相手への配信方法。現在は描画確認用の仮形式です。
 

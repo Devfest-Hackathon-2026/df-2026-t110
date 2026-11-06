@@ -79,10 +79,10 @@ function ease(t: number): number {
   return (1 - Math.cos(Math.PI * t)) / 2
 }
 
-// 読み込んだ姿勢からの差分角。約 0.8 秒で 1 tick 内に収める。
+// GLBの腕は約 -120°。肩を +30°回すと、相互作用時に約 -90°を向く。
 export function armAngleAt(elapsedMs: number, deltaRadians: number): number {
-  if (elapsedMs <= 0 || elapsedMs >= 800) return 0
-  if (elapsedMs < 280) return deltaRadians * ease(elapsedMs / 280)
-  if (elapsedMs < 420) return deltaRadians
-  return deltaRadians * (1 - ease((elapsedMs - 420) / 380))
+  if (elapsedMs <= 0 || elapsedMs >= 1000) return 0
+  if (elapsedMs < 250) return deltaRadians * ease(elapsedMs / 250)
+  if (elapsedMs < 700) return deltaRadians
+  return deltaRadians * (1 - ease((elapsedMs - 700) / 300))
 }

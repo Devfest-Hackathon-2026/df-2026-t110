@@ -107,11 +107,11 @@ async function load(id: string): Promise<void> {
       if (!local) loadState.value = 'not-found'
       return
     }
-    if (typeof remote.title !== 'string' || typeof remote.fieldId !== 'string')
-      throw new Error('教材データに title または fieldId がありません')
+    if (typeof remote.title !== 'string' || (!remote.stage && typeof remote.fieldId !== 'string'))
+      throw new Error('教材データに title または stage / fieldId がありません')
     tutorial.value = remote.fieldId === local?.fieldId ? { ...local, ...remote } : remote
     source.value = 'APIから取得'
-    const remoteField = await getTutorialField(remote.fieldId, signal)
+    const remoteField = remote.stage ?? (await getTutorialField(remote.fieldId!, signal))
     if (signal.aborted) return
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
       throw new Error('教材のフィールドが見つかりません')

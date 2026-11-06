@@ -1,4 +1,13 @@
 import * as THREE from 'three'
+import { stageAsset } from './stageAssets.ts'
+import type { StageAssets, StageAssetName } from './stageAssets.ts'
+import type { StageLayout, StageObject } from './stage.ts'
+
+export interface StageAnimationTarget {
+  object: THREE.Object3D
+  kind: 'spin' | 'hover'
+  baseY: number
+}
 
 const WATER_VERTEX = `
   uniform float uTime;
@@ -109,8 +118,8 @@ function addRock(group: THREE.Group, seed: number): void {
   }
 }
 
-function addSea(group: THREE.Group): void {
-  mesh(group, new THREE.BoxGeometry(0.96, 0.2, 0.96), edgeMaterial, [0, -0.1, 0])
+function addSea(group: THREE.Group, hasFrame = false): void {
+  if (!hasFrame) mesh(group, new THREE.BoxGeometry(0.96, 0.2, 0.96), edgeMaterial, [0, -0.1, 0])
   mesh(group, new THREE.PlaneGeometry(0.84, 0.84, 20, 20), waterMaterial, [0, 0.035, 0], [-Math.PI / 2, 0, 0])
   for (const offset of [-0.25, 0.05, 0.34]) {
     mesh(
@@ -120,6 +129,31 @@ function addSea(group: THREE.Group): void {
       [offset, 0.055, offset * 0.4],
       [-Math.PI / 2, 0, 0],
     )
+  }
+}
+
+function placeAsset(group: THREE.Group, assets: StageAssets, name: StageAssetName): THREE.Group {
+  const instance = stageAsset(assets, name)
+  group.add(instance)
+  return instance
+}
+
+function addSchemaObject(
+  group: THREE.Group,
+  object: StageObject,
+  assets: StageAssets,
+  animated: StageAnimationTarget[],
+): void {
+  const model = placeAsset(group, assets, object.type === 'dock' ? 'dock' : object.type)
+  if (object.type === 'luggage') {
+    animated.push({ object: model, kind: 'hover', baseY: model.position.y })
+  } else if (object.type === 'checkpoint') {
+    const core = model.getObjectByName('RF_checkpoint-core')
+    if (core) animated.push({ object: core, kind: 'hover', baseY: core.position.y })
+    label(group, String(object.order ?? '?'), '#c9e9ff', [0, 0.88, 0])
+  } else if (object.type === 'goal') {
+    const halo = model.getObjectByName('RF_goal-halo')
+    if (halo) animated.push({ object: halo, kind: 'spin', baseY: halo.position.y })
   }
 }
 
@@ -149,23 +183,52 @@ function addMarker(group: THREE.Group, symbol: string, animated: THREE.Mesh[]): 
   }
 }
 
-export function createStageVisuals(stage: import('./stage.ts').StageLayout): {
+export function createStageVisuals(
+  stage: StageLayout,
+  assets?: StageAssets,
+): {
   root: THREE.Group
-  animated: THREE.Mesh[]
+  animated: StageAnimationTarget[]
 } {
   const root = new THREE.Group()
-  const animated: THREE.Mesh[] = []
+  const animated: StageAnimationTarget[] = []
+  const fallbackAnimated: THREE.Mesh[] = []
   for (const cell of stage.cells) {
     const tile = new THREE.Group()
     tile.position.set(cell.x - (stage.width - 1) / 2, 0, cell.y - (stage.height - 1) / 2)
-    if (cell.symbol === '_') addSea(tile)
-    else {
-      addFloor(tile)
-      if (cell.symbol === '#') addRock(tile, cell.x + cell.y * stage.width)
-      else addMarker(tile, cell.symbol, animated)
+    if (cell.terrain === 'sea') {
+      if (assets) placeAsset(tile, assets, 'sea-frame')
+      addSea(tile, Boolean(assets))
+    } else {
+      if (assets) placeAsset(tile, assets, 'floor')
+      else addFloor(tile)
+      if (cell.terrain === 'rock') {
+        if (assets) {
+          const rock = placeAsset(tile, assets, 'rock')
+          rock.rotation.y = ((cell.x + cell.y * stage.width) % 7) * 0.28
+        } else addRock(tile, cell.x + cell.y * stage.width)
+      } else if (assets) {
+        if (cell.start) {
+          placeAsset(tile, assets, 'start')
+        }
+        for (const object of cell.objects) addSchemaObject(tile, object, assets, animated)
+      } else {
+        if (cell.start) addMarker(tile, 'S', fallbackAnimated)
+        for (const object of cell.objects) {
+          const symbol = { goal: 'G', checkpoint: 'G', luggage: 'O', dock: 'X' }[object.type]
+          addMarker(tile, symbol, fallbackAnimated)
+          if (object.type === 'checkpoint') label(tile, String(object.order ?? '?'), '#c9e9ff', [0, 0.9, 0])
+        }
+      }
     }
     root.add(tile)
   }
+  for (const object of fallbackAnimated)
+    animated.push({
+      object,
+      kind: object.geometry.type === 'OctahedronGeometry' ? 'hover' : 'spin',
+      baseY: object.position.y,
+    })
   // The board stays a manageable size in the camera view even for long tutorial maps.
   root.scale.setScalar(2.15 / Math.max(stage.width, stage.height))
   return { root, animated }
@@ -176,7 +239,7 @@ export function disposeStageVisuals(root: THREE.Group): void {
     if (object instanceof THREE.Sprite) {
       object.material.map?.dispose()
       object.material.dispose()
-    } else if (object instanceof THREE.Mesh) {
+    } else if (object instanceof THREE.Mesh && !object.userData.sharedStageAsset) {
       object.geometry.dispose()
     }
   })
