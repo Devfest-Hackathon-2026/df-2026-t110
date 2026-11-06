@@ -43,7 +43,7 @@ $defs:
       - $ref: '#/$defs/Sea'
 
   Land:
-    description: 陸の種別と、荷物・納品エリアの観測値
+    description: 陸の種別と、荷物・テリトリーの観測値
     type: object
     additionalProperties: false
     required: [type, kind]
@@ -58,12 +58,12 @@ $defs:
           - $ref: '#/$defs/CheckpointLand'
       hasLuggage:
         type: boolean
-      goalArea:
-        description: 観測したロボットから見た納品エリアの所属
+      territory:
+        description: 観測したロボットから見たテリトリーの所属
         type: string
         enum: [own, enemy]
     if:
-      required: [goalArea]
+      required: [territory]
     then:
       properties:
         kind:

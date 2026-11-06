@@ -3,4 +3,4 @@ title: DistanceTarget
 description: distance で探す対象の種類
 
 type: string
-enum: [robot, ally, enemy, rock, luggage, sea, goal, goal_area]
+enum: [robot, ally, enemy, rock, luggage, sea, goal, territory]

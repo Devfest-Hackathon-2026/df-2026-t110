@@ -19,21 +19,21 @@ type TerrainValue interface {
 }
 
 // LandTerrain has one base kind and independent luggage and goal area attributes.
-// GoalArea is relative to the robot that observed the cell.
+// Territory is relative to the robot that observed the cell.
 type LandTerrain struct {
 	Kind       LandKind
 	HasLuggage bool
-	GoalArea   GoalAreaRelation
+	Territory  TerritoryRelation
 }
 type RockTerrain struct{}
 type SeaTerrain struct{}
 
-type GoalAreaRelation string
+type TerritoryRelation string
 
 const (
-	NoGoalArea    GoalAreaRelation = ""
-	OwnGoalArea   GoalAreaRelation = "own"
-	EnemyGoalArea GoalAreaRelation = "enemy"
+	NoTerritory    TerritoryRelation = ""
+	OwnTerritory   TerritoryRelation = "own"
+	EnemyTerritory TerritoryRelation = "enemy"
 )
 
 // LandKind distinguishes ordinary land from tutorial goals and checkpoints.
@@ -61,9 +61,9 @@ func ValidValue(value Value) bool {
 	case BoolValue, IntegerValue, UnitValue, RockTerrain, SeaTerrain:
 		return true
 	case LandTerrain:
-		if value.GoalArea != NoGoalArea {
+		if value.Territory != NoTerritory {
 			_, plain := value.Kind.(PlainLand)
-			return plain && (value.GoalArea == OwnGoalArea || value.GoalArea == EnemyGoalArea)
+			return plain && (value.Territory == OwnTerritory || value.Territory == EnemyTerritory)
 		}
 		switch value.Kind.(type) {
 		case PlainLand, GoalLand, CheckpointLand:

@@ -174,8 +174,8 @@ func formatValue(value values.Value) string {
 		if value.HasLuggage {
 			attributes = append(attributes, "luggage")
 		}
-		if value.GoalArea != values.NoGoalArea {
-			attributes = append(attributes, "goal_area="+string(value.GoalArea))
+		if value.Territory != values.NoTerritory {
+			attributes = append(attributes, "territory="+string(value.Territory))
 		}
 		return "terrain(" + strings.Join(attributes, ", ") + ")"
 	case values.RockTerrain:

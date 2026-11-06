@@ -45,11 +45,11 @@ func marshalRecordValue(value values.RecordValue) ([]byte, error) {
 			return nil, err
 		}
 		return json.Marshal(struct {
-			Type       string                  `json:"type"`
-			Kind       json.RawMessage         `json:"kind"`
-			HasLuggage bool                    `json:"hasLuggage,omitempty"`
-			GoalArea   values.GoalAreaRelation `json:"goalArea,omitempty"`
-		}{Type: "land", Kind: kind, HasLuggage: value.HasLuggage, GoalArea: value.GoalArea})
+			Type       string                   `json:"type"`
+			Kind       json.RawMessage          `json:"kind"`
+			HasLuggage bool                     `json:"hasLuggage,omitempty"`
+			Territory  values.TerritoryRelation `json:"territory,omitempty"`
+		}{Type: "land", Kind: kind, HasLuggage: value.HasLuggage, Territory: value.Territory})
 	case values.RockTerrain:
 		return []byte(`{"type":"rock"}`), nil
 	case values.SeaTerrain:

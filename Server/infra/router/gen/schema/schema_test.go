@@ -124,11 +124,11 @@ func TestRotationLiteral(t *testing.T) {
 func TestDistanceTargetLiteral(t *testing.T) {
 	t.Parallel()
 	var got schema.Literal
-	data := []byte(`{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000001","type":"distance_target","value":"goal_area"}`)
+	data := []byte(`{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000001","type":"distance_target","value":"territory"}`)
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Error(err)
 	}
-	if got.DistanceTarget == nil || got.DistanceTarget.Value != schema.DistanceTargetGoalArea {
+	if got.DistanceTarget == nil || got.DistanceTarget.Value != schema.DistanceTargetTerritory {
 		t.Errorf("unexpected distance target literal: %+v", got)
 	}
 	data = []byte(`{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000001","type":"distance_target","value":"left"}`)

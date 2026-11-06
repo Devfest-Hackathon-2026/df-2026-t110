@@ -229,7 +229,7 @@ func TestWalkableTerrainKinds(t *testing.T) {
 	t.Parallel()
 	for _, terrain := range []values.LandTerrain{
 		{Kind: values.PlainLand{}}, {Kind: values.GoalLand{}}, {Kind: values.CheckpointLand{Order: 2}},
-		{Kind: values.PlainLand{}, HasLuggage: true, GoalArea: values.OwnGoalArea},
+		{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory},
 	} {
 		t.Run(fmt.Sprintf("%T(luggage=%t)", terrain.Kind, terrain.HasLuggage), func(t *testing.T) {
 			t.Parallel()
@@ -288,7 +288,7 @@ func TestValidationAndCopies(t *testing.T) {
 		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: (*values.CheckpointLand)(nil)}}}, Robots: initial.Robots},
 		{Terrain: [][]values.TerrainValue{{&values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
 		{Terrain: [][]values.TerrainValue{{&values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.GoalLand{}, GoalArea: values.OwnGoalArea}}}, Robots: initial.Robots},
+		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.GoalLand{}, Territory: values.OwnTerritory}}}, Robots: initial.Robots},
 		{Terrain: [][]values.TerrainValue{{values.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},

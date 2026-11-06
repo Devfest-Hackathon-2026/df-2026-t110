@@ -521,7 +521,6 @@ type DistanceTarget string
 const DistanceTargetAlly DistanceTarget = "ally"
 const DistanceTargetEnemy DistanceTarget = "enemy"
 const DistanceTargetGoal DistanceTarget = "goal"
-const DistanceTargetGoalArea DistanceTarget = "goal_area"
 
 // distance_target 型のリテラル
 type DistanceTargetLiteral struct {
@@ -588,6 +587,7 @@ const DistanceTargetLuggage DistanceTarget = "luggage"
 const DistanceTargetRobot DistanceTarget = "robot"
 const DistanceTargetRock DistanceTarget = "rock"
 const DistanceTargetSea DistanceTarget = "sea"
+const DistanceTargetTerritory DistanceTarget = "territory"
 
 var enumValues_DistanceTarget = []interface{}{
 	"robot",
@@ -597,7 +597,7 @@ var enumValues_DistanceTarget = []interface{}{
 	"luggage",
 	"sea",
 	"goal",
-	"goal_area",
+	"territory",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

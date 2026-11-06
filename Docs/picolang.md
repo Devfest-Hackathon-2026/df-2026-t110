@@ -16,7 +16,7 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
 - rotation
     - left/right
 - distance_target
-    - `robot`、`ally`、`enemy`、`rock`、`luggage`、`sea`, `goal`、`goal_area`
+    - `robot`、`ally`、`enemy`、`rock`、`luggage`、`sea`, `goal`、`territory`
 - vector\<T>
     - 型Tの要素を持つ連結リスト
     - 同じvectorの要素はすべて同じ型
@@ -69,13 +69,13 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool
-    - is_own_goal_area: terrain -> bool
-    - is_enemy_goal_area: terrain -> bool
+    - is_own_territory: terrain -> bool
+    - is_enemy_territory: terrain -> bool
     - is_checkpoint: terrain -> bool
     - is_luggage: terrain -> bool
     - is_sea: terrain -> bool
     - is_rock: terrain -> bool
-    - 納品エリアでは `is_goal` は `false`。`is_luggage` はエリア内外を問わず荷物の有無を返す
+    - テリトリーでは `is_goal` は `false`。`is_luggage` はテリトリー内外を問わず荷物の有無を返す
 - action
     - forward: () -> bool
         - 移動した場合true

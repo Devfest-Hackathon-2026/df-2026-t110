@@ -34,7 +34,7 @@ func builtinCases() []builtinCase {
 		{"new", nil, vector}, {"push_back", []bot.Type{vector, i}, vector}, {"pop_back", []bot.Type{vector}, vector},
 		{"get_back", []bot.Type{vector}, i}, {"size", []bot.Type{vector}, i},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
-		{"is_own_goal_area", []bot.Type{terrain}, b}, {"is_enemy_goal_area", []bot.Type{terrain}, b},
+		{"is_own_territory", []bot.Type{terrain}, b}, {"is_enemy_territory", []bot.Type{terrain}, b},
 		{"is_luggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
 		{"forward", nil, b}, {"back", nil, b}, {"rotate", []bot.Type{rotation}, u}, {"wait", []bot.Type{i}, u},
 		{"pick_up", nil, b}, {"release", nil, b}, {"drill", nil, b}, {"drill_durability", nil, i},
