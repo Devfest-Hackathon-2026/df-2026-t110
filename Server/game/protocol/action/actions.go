@@ -1,4 +1,8 @@
-package game
+package action
+
+import (
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+)
 
 // Action covers the action builtins in Docs/picolang.md. Each concrete type
 // carries only its builtin's arguments. Tick costs and execution belong to the
@@ -9,7 +13,7 @@ type Action interface {
 
 type ForwardAction struct{}
 type BackAction struct{}
-type RotateAction struct{ Rotation Rotation }
+type RotateAction struct{ Rotation values.Rotation }
 type WaitAction struct{ Integer int64 }
 type PickUpAction struct{}
 type ReleaseAction struct{}

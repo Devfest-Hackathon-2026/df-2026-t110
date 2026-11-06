@@ -1,12 +1,16 @@
 package board
 
-import "github.com/dvpico/Programming-Learning-AR/Server/game"
+import (
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+)
 
 type control interface{ control() }
 
 type unstartedControl struct{}
-type readyControl struct{ value game.Value }
-type pendingControl struct{ action game.Action }
+type readyControl struct{ value values.Value }
+type pendingControl struct{ action actions.Action }
 type finishedControl struct{}
 
 func (unstartedControl) control() {}
@@ -18,12 +22,10 @@ type phase interface{ phase() }
 
 type unstartedBoard struct{}
 type collectingBoard struct{}
-type awaitingReplyBoard struct{ robotID game.RobotID }
-type awaitingCommitBoard struct{}
+type awaitingReplyBoard struct{ robotID protocol.RobotID }
 type finishedBoard struct{}
 
-func (unstartedBoard) phase()      {}
-func (collectingBoard) phase()     {}
-func (awaitingReplyBoard) phase()  {}
-func (awaitingCommitBoard) phase() {}
-func (finishedBoard) phase()       {}
+func (unstartedBoard) phase()     {}
+func (collectingBoard) phase()    {}
+func (awaitingReplyBoard) phase() {}
+func (finishedBoard) phase()      {}

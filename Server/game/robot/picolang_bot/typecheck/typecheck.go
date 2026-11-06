@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	bot "github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot"
 )
 
@@ -232,7 +232,7 @@ func (c *typeChecker) literalType(value bot.Literal, source bot.Source) bot.Type
 	case bot.UnitLiteral:
 		return bot.UnitType{}
 	case bot.RotationLiteral:
-		if value.Value == game.Left || value.Value == game.Right {
+		if value.Value == values.Left || value.Value == values.Right {
 			return bot.RotationType{}
 		}
 		c.Report(source, bot.CodeInvalidAST, "invalid rotation literal %q; expected left or right", value.Value)
