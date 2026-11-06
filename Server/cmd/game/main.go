@@ -102,6 +102,12 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 			switch terrain.(type) {
 			case game.LandTerrain:
 				cell = "."
+			case game.GoalTerrain:
+				cell = "G"
+			case game.CheckpointTerrain:
+				cell = "C"
+			case game.LuggageTerrain:
+				cell = "L"
 			case game.RockTerrain:
 				cell = "#"
 			case game.SeaTerrain:

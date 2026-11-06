@@ -358,7 +358,7 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 
 func TestRoutesAllActionBuiltins(t *testing.T) {
 	t.Parallel()
-	terrain := game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
+	terrain := game.GoalTerrain{}
 	boolean := game.BoolValue{Bool: true}
 	integer := game.IntegerValue{Integer: 3}
 	unit := game.UnitValue{}
@@ -432,7 +432,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 
 func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 	t.Parallel()
-	var cell game.TerrainValue = game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
+	var cell game.TerrainValue = game.LuggageTerrain{}
 	observation := cell
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(_ context.Context, reply game.Reply) (game.Decision, error) {
@@ -477,7 +477,7 @@ func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 				t.Errorf("terrain observation changed in transit: %+v", terrain)
 			}
 			// Terrain predicates are evaluated inside the robot without an action.
-			if _, isLand := terrain.(game.LandTerrain); !isLand {
+			if _, isLand := terrain.(game.LandTerrainValue); !isLand {
 				t.Error("expected local is_land result to be true")
 			}
 			return game.DoneStep{}, nil
@@ -503,7 +503,7 @@ func TestStartsOnceThenResumesWithValue(t *testing.T) {
 	t.Parallel()
 	for _, value := range []game.Value{
 		game.BoolValue{Bool: false}, game.IntegerValue{Integer: -42}, game.UnitValue{},
-		game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}, game.RockTerrain{}, game.SeaTerrain{},
+		game.LandTerrain{}, game.GoalTerrain{}, game.CheckpointTerrain{}, game.LuggageTerrain{}, game.RockTerrain{}, game.SeaTerrain{},
 	} {
 		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 			t.Parallel()

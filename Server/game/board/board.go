@@ -70,7 +70,8 @@ func New(config Config) (*Board, error) {
 		}
 		for _, cell := range row {
 			switch cell.(type) {
-			case game.LandTerrain, game.RockTerrain, game.SeaTerrain:
+			case game.LandTerrain, game.GoalTerrain, game.CheckpointTerrain,
+				game.LuggageTerrain, game.RockTerrain, game.SeaTerrain:
 			default:
 				return nil, fmt.Errorf("invalid terrain %T", cell)
 			}
@@ -83,7 +84,7 @@ func New(config Config) (*Board, error) {
 			p.X < 0 || p.Y < 0 || p.X >= width || p.Y >= len(config.Terrain) {
 			return nil, fmt.Errorf("invalid robot %q", id)
 		}
-		_, isLand := config.Terrain[p.Y][p.X].(game.LandTerrain)
+		_, isLand := config.Terrain[p.Y][p.X].(game.LandTerrainValue)
 		if _, exists := occupied[p]; !isLand || exists {
 			return nil, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
@@ -313,7 +314,7 @@ func (b *Board) land(p Position) bool {
 	if p.Y < 0 || p.Y >= len(b.state.Terrain) || p.X < 0 || p.X >= len(b.state.Terrain[0]) {
 		return false
 	}
-	_, isLand := b.state.Terrain[p.Y][p.X].(game.LandTerrain)
+	_, isLand := b.state.Terrain[p.Y][p.X].(game.LandTerrainValue)
 	return isLand
 }
 

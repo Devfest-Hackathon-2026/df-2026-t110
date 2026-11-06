@@ -97,7 +97,10 @@ func TestDisplaysTerrainReturnValue(t *testing.T) {
 		value game.TerrainValue
 		want  string
 	}{
-		{name: "land", value: game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}, want: "terrain(land, goal=true, checkpoint=true, luggage=true)"},
+		{name: "land", value: game.LandTerrain{}, want: "terrain(land)"},
+		{name: "goal", value: game.GoalTerrain{}, want: "terrain(goal)"},
+		{name: "checkpoint", value: game.CheckpointTerrain{}, want: "terrain(checkpoint)"},
+		{name: "luggage", value: game.LuggageTerrain{}, want: "terrain(luggage)"},
 		{name: "rock", value: game.RockTerrain{}, want: "terrain(rock)"},
 		{name: "sea", value: game.SeaTerrain{}, want: "terrain(sea)"},
 	}
@@ -129,7 +132,12 @@ func TestStartAndResumeLifecycle(t *testing.T) {
 	if _, err := r.Start(t.Context()); err == nil {
 		t.Error("second start was accepted")
 	}
-	for _, value := range []game.Value{nil, (*game.BoolValue)(nil), &game.LandTerrain{}} {
+	for _, value := range []game.Value{
+		nil, (*game.BoolValue)(nil), &game.LandTerrain{},
+		(*game.GoalTerrain)(nil), &game.GoalTerrain{},
+		(*game.CheckpointTerrain)(nil), &game.CheckpointTerrain{},
+		(*game.LuggageTerrain)(nil), &game.LuggageTerrain{},
+	} {
 		if _, err := r.Next(t.Context(), value); err == nil {
 			t.Errorf("invalid resume value was accepted: %T", value)
 		}

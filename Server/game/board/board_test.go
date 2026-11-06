@@ -140,10 +140,10 @@ func TestAtomicMovement(t *testing.T) {
 			ids:    []game.RobotID{"a", "b"},
 		},
 		{
-			name: "land with objects",
+			name: "goal",
 			grid: [][]game.TerrainValue{{
 				game.LandTerrain{},
-				game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true},
+				game.GoalTerrain{},
 			}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
@@ -231,10 +231,43 @@ func TestAtomicMovement(t *testing.T) {
 	}
 }
 
+func TestWalkableTerrainKinds(t *testing.T) {
+	t.Parallel()
+	for _, terrain := range []game.TerrainValue{
+		game.LandTerrain{}, game.GoalTerrain{}, game.CheckpointTerrain{}, game.LuggageTerrain{},
+	} {
+		t.Run(fmt.Sprintf("%T", terrain), func(t *testing.T) {
+			t.Parallel()
+			b := newBoard(t, board.Config{
+				Terrain: [][]game.TerrainValue{{terrain, terrain}},
+				Robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+			}, []game.RobotID{"a"})
+			next(t, b, nil)
+			next(t, b, game.ActionReply{RobotID: "a", Action: game.ForwardAction{}})
+			d := next(t, b, nil)
+			update, ok := d.(game.UpdateDecision)
+			if !ok || len(update.Update.Results) != 1 {
+				t.Errorf("unexpected commit: %+v", d)
+				return
+			}
+			if update.Update.Results[0].Value != (game.BoolValue{Bool: true}) {
+				t.Errorf("move onto %T failed: %+v", terrain, update.Update.Results[0])
+			}
+			snapshot := b.Snapshot()
+			if snapshot.Robots["a"].Position != (board.Position{X: 1, Y: 0}) {
+				t.Errorf("robot did not move onto %T: %+v", terrain, snapshot.Robots["a"])
+			}
+			if snapshot.Terrain[0][0] != terrain || snapshot.Terrain[0][1] != terrain {
+				t.Errorf("movement changed terrain: %+v", snapshot.Terrain)
+			}
+		})
+	}
+}
+
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
 	valid := board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
-	valid.Terrain[0][0] = game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
+	valid.Terrain[0][0] = game.GoalTerrain{}
 	b, err := board.New(valid)
 	if err != nil {
 		t.Fatal(err)
@@ -253,6 +286,12 @@ func TestValidationAndCopies(t *testing.T) {
 		{Terrain: [][]game.TerrainValue{{game.LandTerrain{}}, {}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{nil}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{(*game.LandTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{(*game.GoalTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.GoalTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{(*game.CheckpointTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.CheckpointTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{(*game.LuggageTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.LuggageTerrain{}}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{game.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},
