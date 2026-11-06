@@ -214,7 +214,6 @@ func (b *Board) accept(id game.RobotID, reply game.Reply) error {
 }
 
 // commit resolves movement dependencies against one immutable starting state.
-// A visiting dependency denotes a swap/cycle; failure propagates to followers.
 func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]game.RobotID, robotCount)
@@ -253,15 +252,20 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			return movable[id]
 		}
 		if _, exists := visiting[id]; exists {
-			return false
+			// Swaps are rejected below, so this is a longer cycle.
+			return true
 		}
 		target, ok := targets[id]
 		if !ok || counts[target] != 1 {
 			resolved[id] = struct{}{}
 			return false
 		}
-		visiting[id] = struct{}{}
 		other, occupied := occupied[target]
+		if reverse, moving := targets[other]; occupied && moving && reverse == b.state.Robots[id].Position {
+			resolved[id] = struct{}{}
+			return false
+		}
+		visiting[id] = struct{}{}
 		movable[id] = !occupied || canMove(other)
 		delete(visiting, id)
 		resolved[id] = struct{}{}

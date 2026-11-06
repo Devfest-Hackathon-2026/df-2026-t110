@@ -126,6 +126,11 @@ func TestAtomicMovement(t *testing.T) {
 				"c": state(1, 1, board.West), "d": state(0, 1, board.North),
 			},
 			ids: []game.RobotID{"a", "b", "c", "d"},
+			want: map[game.RobotID]board.RobotState{
+				"a": state(1, 0, board.East), "b": state(1, 1, board.South),
+				"c": state(0, 1, board.West), "d": state(0, 0, board.North),
+			},
+			moved: map[game.RobotID]bool{"a": true, "b": true, "c": true, "d": true},
 		},
 		{
 			name:   "conflict propagates",
