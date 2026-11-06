@@ -214,6 +214,90 @@
   text-underline-offset: 0.3em;
   cursor: pointer;
 }
+.room-marker-open {
+  display: block;
+  margin-top: var(--space-md);
+}
+.room-marker-scanner {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  overflow: hidden;
+  background: #102f2e;
+  color: #f1f8f2;
+}
+.room-marker-camera,
+.room-marker-camera a-scene,
+.room-marker-camera .room-marker-video {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.room-marker-camera .room-marker-video {
+  z-index: 0 !important;
+  object-fit: cover;
+}
+.room-marker-camera a-scene {
+  z-index: 1;
+}
+.room-marker-top,
+.room-marker-bottom {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 14px 16px;
+  background: rgb(8 34 33 / 88%);
+  border: 1px solid rgb(241 248 242 / 24%);
+}
+.room-marker-top {
+  top: max(16px, env(safe-area-inset-top));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.room-marker-top button {
+  min-height: 36px;
+  padding-inline: 12px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  cursor: pointer;
+}
+.room-marker-bottom {
+  bottom: max(16px, env(safe-area-inset-bottom));
+}
+.room-marker-bottom p {
+  margin: 0;
+  color: #f1f8f2;
+  line-height: 1.5;
+}
+.room-marker-statuses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-block: 12px;
+}
+.room-marker-statuses span {
+  padding: 10px;
+  border: 1px solid rgb(241 248 242 / 30%);
+}
+.room-marker-statuses .is-found {
+  border-color: #9bead0;
+  background: rgb(64 150 126 / 30%);
+}
+.room-marker-bottom .room-marker-result {
+  font-weight: 700;
+}
+.room-marker-bottom .room-marker-note {
+  margin-top: 6px;
+  font-size: var(--type-small);
+  color: #d0e0db;
+}
 @media (max-width: 700px) {
   .rooms-main {
     padding-block: var(--space-xl);

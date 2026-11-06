@@ -7,16 +7,16 @@
 | A | [Hiro](room-marker-hiro.png) | [marker-hiro.patt](marker-hiro.patt) |
 | B | [Kanji](room-marker-kanji.png) | [marker-kanji.patt](marker-kanji.patt) |
 
-2枚を同じ物理サイズで、白い余白を残して印刷してください。黒い正方形の一辺を同じ長さに揃えると、AR.jsの `size` に同じ実測値（メートル）を設定できます。最初は2枚を同時にカメラへ収めて認識を確認します。
+2枚を同じ物理サイズで、白い余白を残して印刷してください。今回のA3版を100%で印刷した場合、黒い正方形の一辺は14 cmです。印刷時の拡縮があれば、実測値に合わせて `size` を変更してください。iPhoneではHTTPSで開いてカメラを許可してください。
 
 ```html
 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false">
-  <a-marker id="room-corner-a" type="pattern" url="/markers/marker-hiro.patt" size="0.10" emitevents="true"></a-marker>
-  <a-marker id="room-corner-b" type="pattern" url="/markers/marker-kanji.patt" size="0.10" emitevents="true"></a-marker>
+  <a-marker id="room-corner-a" type="pattern" url="/markers/marker-hiro.patt" size="0.14" emitevents="true"></a-marker>
+  <a-marker id="room-corner-b" type="pattern" url="/markers/marker-kanji.patt" size="0.14" emitevents="true"></a-marker>
   <a-entity camera></a-entity>
 </a-scene>
 ```
 
-上記の `/markers/` は、実装時に `.patt` を公開するパスの例です。`size="0.10"` は黒い正方形の一辺を10 cmで印刷した場合の値です。
+`.patt` は `Client/public/markers` で公開しています。`size="0.14"` は黒い正方形の一辺を14 cmで印刷した場合の値です。検出処理は `Client/src/features/rooms/roomMarkerTracking.ts` の `mountRoomMarkerTracker` にまとめています。確認専用ページは実機での動作確認後に削除しました。ルーム作成への接続はまだありません。
 
 これらは位置と向きを追跡するARマーカーです。ルームIDを格納するQRコードではありません。QRによるルーム参加を追加する場合は、QR読み取りを別に組み合わせます。
