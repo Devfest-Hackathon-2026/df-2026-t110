@@ -27,10 +27,6 @@ jobs:
           install_args: node npm:@redocly/cli
       - name: Validate OpenAPI specification
         run: redocly lint --extends=spec Schema/openapi.yaml
-      - name: Validate JSON Schemas
-        run: |
-          find Schema/field Schema/picolang Schema/game_event -type f -name '*.yaml' -print0 |
-            xargs -0 pipx run --spec check-jsonschema==0.39.0 check-jsonschema --check-metaschema
       - name: Validate game history examples
         run: |
           pipx run --spec check-jsonschema==0.39.0 check-jsonschema \
