@@ -9,10 +9,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
 
-const (
-	DefaultLoginAttemptTTL = 10 * time.Minute
-	DefaultSessionTTL      = 7 * 24 * time.Hour
-)
+const DefaultLoginAttemptTTL = 10 * time.Minute
 
 // AuthorizationRequest is one sign-in attempt issued by an IdentityProvider.
 // Only URL may be sent to the browser; the rest must stay server-side.
@@ -26,7 +23,6 @@ type AuthorizationRequest struct {
 // Identity is a user identity verified by an IdentityProvider.
 type Identity struct {
 	Subject string
-	Name    string
 }
 
 // IdentityProvider runs an OpenID Connect authorization code flow.
@@ -51,37 +47,28 @@ type LoginAttemptRepository interface {
 	Consume(ctx context.Context, id string) (LoginAttempt, error)
 }
 
-// UserRepository stores users.
-type UserRepository interface {
-	// CreateIfAbsentByGoogleSubject stores candidate unless a user with the same
-	// GoogleSubject exists, and returns the stored user either way.
-	CreateIfAbsentByGoogleSubject(ctx context.Context, candidate domain.User) (domain.User, error)
-	// Get returns the user or ErrNotFound.
-	Get(ctx context.Context, id string) (domain.User, error)
+// AuthUsers is the user functionality needed when establishing a session.
+type AuthUsers interface {
+	ResolveGoogleIdentity(ctx context.Context, subject string) (domain.User, error)
 }
 
-// SessionRepository stores sessions.
-type SessionRepository interface {
-	Save(ctx context.Context, session domain.Session) error
-	// Get returns the session or ErrNotFound.
-	Get(ctx context.Context, id string) (domain.Session, error)
-	// Delete removes the session; deleting a missing session is not an error.
-	Delete(ctx context.Context, id string) error
+// AuthSessions starts a session after successful authentication.
+type AuthSessions interface {
+	Start(ctx context.Context, subject string) (domain.Session, error)
 }
 
-// AuthDeps are the dependencies of Auth. Now, LoginAttemptTTL, and SessionTTL
+// AuthDeps are the dependencies of Auth. Now and LoginAttemptTTL
 // fall back to time.Now and the package defaults when zero.
 type AuthDeps struct {
 	Provider        IdentityProvider
 	LoginAttempts   LoginAttemptRepository
-	Users           UserRepository
-	Sessions        SessionRepository
+	Users           AuthUsers
+	Sessions        AuthSessions
 	Now             func() time.Time
 	LoginAttemptTTL time.Duration
-	SessionTTL      time.Duration
 }
 
-// Auth signs users in with an external identity provider and manages sessions.
+// Auth signs users in with an external identity provider.
 type Auth struct {
 	deps AuthDeps
 }
@@ -92,9 +79,6 @@ func NewAuth(deps AuthDeps) *Auth {
 	}
 	if deps.LoginAttemptTTL <= 0 {
 		deps.LoginAttemptTTL = DefaultLoginAttemptTTL
-	}
-	if deps.SessionTTL <= 0 {
-		deps.SessionTTL = DefaultSessionTTL
 	}
 	return &Auth{deps: deps}
 }
@@ -156,61 +140,13 @@ func (a *Auth) CompleteLogin(ctx context.Context, callback LoginCallback) (domai
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("%w: %w", ErrInvalidLogin, err)
 	}
-
-	candidateID, err := newRandomID()
-	if err != nil {
-		return domain.Session{}, fmt.Errorf("generate user ID: %w", err)
+	if identity.Subject == "" {
+		return domain.Session{}, fmt.Errorf("%w: missing subject", ErrInvalidLogin)
 	}
-	user, err := a.deps.Users.CreateIfAbsentByGoogleSubject(ctx, domain.User{ID: candidateID, GoogleSubject: identity.Subject, Name: identity.Name})
+
+	user, err := a.deps.Users.ResolveGoogleIdentity(ctx, identity.Subject)
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("save user: %w", err)
 	}
-	sessionID, err := newRandomID()
-	if err != nil {
-		return domain.Session{}, fmt.Errorf("generate session ID: %w", err)
-	}
-	session := domain.Session{ID: sessionID, UserID: user.ID, ExpiresAt: a.deps.Now().Add(a.deps.SessionTTL)}
-	if err := a.deps.Sessions.Save(ctx, session); err != nil {
-		return domain.Session{}, fmt.Errorf("save session: %w", err)
-	}
-	return session, nil
-}
-
-// Logout ends the session. It succeeds even when the session does not exist.
-func (a *Auth) Logout(ctx context.Context, sessionID string) error {
-	if sessionID == "" {
-		return nil
-	}
-	if err := a.deps.Sessions.Delete(ctx, sessionID); err != nil {
-		return fmt.Errorf("delete session: %w", err)
-	}
-	return nil
-}
-
-// CurrentUser returns the user of a live session, or ErrUnauthenticated.
-func (a *Auth) CurrentUser(ctx context.Context, sessionID string) (domain.User, error) {
-	if sessionID == "" {
-		return domain.User{}, ErrUnauthenticated
-	}
-	session, err := a.deps.Sessions.Get(ctx, sessionID)
-	if errors.Is(err, ErrNotFound) {
-		return domain.User{}, ErrUnauthenticated
-	}
-	if err != nil {
-		return domain.User{}, fmt.Errorf("get session: %w", err)
-	}
-	if session.Expired(a.deps.Now()) {
-		if err := a.deps.Sessions.Delete(ctx, sessionID); err != nil {
-			return domain.User{}, fmt.Errorf("delete expired session: %w", err)
-		}
-		return domain.User{}, ErrUnauthenticated
-	}
-	user, err := a.deps.Users.Get(ctx, session.UserID)
-	if errors.Is(err, ErrNotFound) {
-		return domain.User{}, ErrUnauthenticated
-	}
-	if err != nil {
-		return domain.User{}, fmt.Errorf("get user: %w", err)
-	}
-	return user, nil
+	return a.deps.Sessions.Start(ctx, user.GoogleSubject)
 }

@@ -13,4 +13,10 @@ var (
 	ErrInvalidLogin = errors.New("invalid login")
 	// ErrLoginUnavailable reports that no identity provider is configured.
 	ErrLoginUnavailable = errors.New("login unavailable")
+	// ErrInvalidUsername reports a name outside the allowed format.
+	ErrInvalidUsername = errors.New("invalid username")
+	// ErrUsernameTaken reports a name assigned to another user.
+	ErrUsernameTaken = errors.New("username already taken")
+	// ErrUsernameAlreadySet reports that the user's name cannot be changed.
+	ErrUsernameAlreadySet = errors.New("username already set")
 )

@@ -9,6 +9,13 @@ pre-push:
       group:
         parallel: true
         jobs:
+          - name: gofmt
+            run: |
+              unformatted_files=$(gofmt -l .) || exit 1
+              if [ -n "$unformatted_files" ]; then
+                printf 'Run gofmt on these files:\n%s\n' "$unformatted_files"
+                exit 1
+              fi
           - name: test
             run: go test ./...
           - name: lint

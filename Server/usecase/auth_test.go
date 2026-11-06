@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
-	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
@@ -47,6 +46,63 @@ type clock struct {
 	now time.Time
 }
 
+type loginAttemptsStub struct {
+	attempts map[string]usecase.LoginAttempt
+}
+
+func (s *loginAttemptsStub) Save(_ context.Context, attempt usecase.LoginAttempt) error {
+	s.attempts[attempt.ID] = attempt
+	return nil
+}
+
+func (s *loginAttemptsStub) Consume(_ context.Context, id string) (usecase.LoginAttempt, error) {
+	attempt, ok := s.attempts[id]
+	if !ok {
+		return usecase.LoginAttempt{}, usecase.ErrNotFound
+	}
+	delete(s.attempts, id)
+	return attempt, nil
+}
+
+type usersStub struct{ users map[string]domain.User }
+
+func (s *usersStub) ResolveGoogleIdentity(_ context.Context, subject string) (domain.User, error) {
+	if user, ok := s.users[subject]; ok {
+		return user, nil
+	}
+	user := domain.User{GoogleSubject: subject}
+	s.users[subject] = user
+	return user, nil
+}
+
+func (s *usersStub) Get(_ context.Context, subject string) (domain.User, error) {
+	user, ok := s.users[subject]
+	if !ok {
+		return domain.User{}, usecase.ErrNotFound
+	}
+	return user, nil
+}
+
+type sessionsStub struct{ sessions map[string]domain.Session }
+
+func (s *sessionsStub) Save(_ context.Context, session domain.Session) error {
+	s.sessions[session.ID] = session
+	return nil
+}
+
+func (s *sessionsStub) Get(_ context.Context, id string) (domain.Session, error) {
+	session, ok := s.sessions[id]
+	if !ok {
+		return domain.Session{}, usecase.ErrNotFound
+	}
+	return session, nil
+}
+
+func (s *sessionsStub) Delete(_ context.Context, id string) error {
+	delete(s.sessions, id)
+	return nil
+}
+
 func (c *clock) Now() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -63,23 +119,25 @@ type authFixture struct {
 	auth     *usecase.Auth
 	provider *fakeProvider
 	clock    *clock
-	sessions *repo.Sessions
+	sessions *sessionsStub
+	session  *usecase.Session
 }
 
 func newAuthFixture() *authFixture {
 	c := &clock{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-	p := &fakeProvider{identity: usecase.Identity{Subject: "google-subject", Name: "Alice"}}
-	sessions := repo.NewSessions()
+	p := &fakeProvider{identity: usecase.Identity{Subject: "google-subject"}}
+	sessions := &sessionsStub{sessions: map[string]domain.Session{}}
+	users := &usersStub{users: map[string]domain.User{}}
+	session := usecase.NewSession(usecase.SessionDeps{Sessions: sessions, Users: users, Now: c.Now, TTL: time.Hour})
 	auth := usecase.NewAuth(usecase.AuthDeps{
 		Provider:        p,
-		LoginAttempts:   repo.NewLoginAttempts(c.Now),
-		Users:           repo.NewUsers(),
-		Sessions:        sessions,
+		LoginAttempts:   &loginAttemptsStub{attempts: map[string]usecase.LoginAttempt{}},
+		Users:           users,
+		Sessions:        session,
 		Now:             c.Now,
 		LoginAttemptTTL: time.Minute,
-		SessionTTL:      time.Hour,
 	})
-	return &authFixture{auth: auth, provider: p, clock: c, sessions: sessions}
+	return &authFixture{auth: auth, provider: p, clock: c, sessions: sessions, session: session}
 }
 
 func (f *authFixture) login(t *testing.T) domain.Session {
@@ -123,7 +181,7 @@ func TestBeginLoginStoresAttemptWithProviderURL(t *testing.T) {
 
 func TestLoginWithoutProviderIsUnavailable(t *testing.T) {
 	t.Parallel()
-	auth := usecase.NewAuth(usecase.AuthDeps{LoginAttempts: repo.NewLoginAttempts(nil), Users: repo.NewUsers(), Sessions: repo.NewSessions()})
+	auth := usecase.NewAuth(usecase.AuthDeps{})
 
 	if _, err := auth.BeginLogin(context.Background()); !errors.Is(err, usecase.ErrLoginUnavailable) {
 		t.Errorf("BeginLogin() error = %v, want ErrLoginUnavailable", err)
@@ -145,12 +203,12 @@ func TestCompleteLoginStartsSessionForIdentifiedUser(t *testing.T) {
 	if want := f.clock.Now().Add(time.Hour); !session.ExpiresAt.Equal(want) {
 		t.Errorf("session expires at %v, want %v", session.ExpiresAt, want)
 	}
-	user, err := f.auth.CurrentUser(context.Background(), session.ID)
+	user, err := f.session.CurrentUser(context.Background(), session.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.ID != session.UserID || user.GoogleSubject != "google-subject" || user.Name != "Alice" {
-		t.Errorf("CurrentUser() = %+v, session user %q", user, session.UserID)
+	if user.GoogleSubject != session.GoogleSubject || user.GoogleSubject != "google-subject" || user.Name != nil {
+		t.Errorf("CurrentUser() = %+v, session user %q", user, session.GoogleSubject)
 	}
 }
 
@@ -158,22 +216,21 @@ func TestCompleteLoginReusesUserOfSameSubject(t *testing.T) {
 	t.Parallel()
 	f := newAuthFixture()
 	first := f.login(t)
-	f.provider.identity.Name = "Renamed"
 
 	second := f.login(t)
 
 	if second.ID == first.ID {
 		t.Error("second login reused the session ID")
 	}
-	if second.UserID != first.UserID {
-		t.Errorf("user ID = %q, want %q", second.UserID, first.UserID)
+	if second.GoogleSubject != first.GoogleSubject {
+		t.Errorf("user subject = %q, want %q", second.GoogleSubject, first.GoogleSubject)
 	}
-	user, err := f.auth.CurrentUser(context.Background(), second.ID)
+	user, err := f.session.CurrentUser(context.Background(), second.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if user.Name != "Alice" {
-		t.Errorf("user name = %q, want the name stored at first login", user.Name)
+	if user.Name != nil {
+		t.Errorf("user name = %v, want no name", *user.Name)
 	}
 }
 
@@ -267,72 +324,5 @@ func TestFailedLoginConsumesAttempt(t *testing.T) {
 
 	if !errors.Is(err, usecase.ErrInvalidLogin) {
 		t.Errorf("retry error = %v, want ErrInvalidLogin", err)
-	}
-}
-
-func TestCurrentUser(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name    string
-		arrange func(t *testing.T, f *authFixture, sessionID string) string
-		wantErr error
-	}{
-		{name: "live session", arrange: func(_ *testing.T, _ *authFixture, id string) string { return id }},
-		{name: "just before expiry", arrange: func(_ *testing.T, f *authFixture, id string) string {
-			f.clock.Advance(time.Hour - time.Nanosecond)
-			return id
-		}},
-		{name: "expired exactly at its TTL", arrange: func(_ *testing.T, f *authFixture, id string) string { f.clock.Advance(time.Hour); return id }, wantErr: usecase.ErrUnauthenticated},
-		{name: "no session cookie", arrange: func(_ *testing.T, _ *authFixture, _ string) string { return "" }, wantErr: usecase.ErrUnauthenticated},
-		{name: "unknown session", arrange: func(_ *testing.T, _ *authFixture, _ string) string { return "unknown" }, wantErr: usecase.ErrUnauthenticated},
-		{
-			name: "logged out",
-			arrange: func(t *testing.T, f *authFixture, id string) string {
-				t.Helper()
-				if err := f.auth.Logout(context.Background(), id); err != nil {
-					t.Fatalf("Logout() error = %v", err)
-				}
-				return id
-			},
-			wantErr: usecase.ErrUnauthenticated,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			f := newAuthFixture()
-			session := f.login(t)
-
-			_, err := f.auth.CurrentUser(context.Background(), tt.arrange(t, f, session.ID))
-
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("CurrentUser() error = %v, want %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestCurrentUserDeletesExpiredSession(t *testing.T) {
-	t.Parallel()
-	f := newAuthFixture()
-	session := f.login(t)
-	f.clock.Advance(time.Hour)
-
-	if _, err := f.auth.CurrentUser(context.Background(), session.ID); !errors.Is(err, usecase.ErrUnauthenticated) {
-		t.Errorf("CurrentUser() error = %v, want ErrUnauthenticated", err)
-	}
-	if _, err := f.sessions.Get(context.Background(), session.ID); !errors.Is(err, usecase.ErrNotFound) {
-		t.Errorf("expired session still stored: err = %v", err)
-	}
-}
-
-func TestLogoutWithoutSessionSucceeds(t *testing.T) {
-	t.Parallel()
-	f := newAuthFixture()
-
-	for _, id := range []string{"", "unknown"} {
-		if err := f.auth.Logout(context.Background(), id); err != nil {
-			t.Errorf("Logout(%q) error = %v", id, err)
-		}
 	}
 }

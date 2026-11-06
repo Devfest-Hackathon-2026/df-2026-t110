@@ -1,27 +1,28 @@
-package domain
+package domain_test
 
 import (
+	"strings"
 	"testing"
-	"time"
+
+	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
 
-func TestSessionExpired(t *testing.T) {
+func TestIsValidUsername(t *testing.T) {
 	t.Parallel()
-	expiresAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	tests := []struct {
-		name string
-		now  time.Time
-		want bool
+	for _, tt := range []struct {
+		name  string
+		valid bool
 	}{
-		{name: "before expiry", now: expiresAt.Add(-time.Nanosecond), want: false},
-		{name: "at expiry", now: expiresAt, want: true},
-		{name: "after expiry", now: expiresAt.Add(time.Nanosecond), want: true},
-	}
-	for _, tt := range tests {
+		{"a", true}, {"AZaz09_-", true}, {strings.Repeat("a", 32), true},
+		{"", false}, {strings.Repeat("a", 33), false}, {"a b", false},
+		{"a.b", false}, {"日本語", false}, {"a\n", false},
+		{"self", false}, {"SELF", false}, {"SeLf", false},
+		{"std", false}, {"STD", false}, {"sTd", false}, {"std_user", true},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := (Session{ExpiresAt: expiresAt}).Expired(tt.now); got != tt.want {
-				t.Errorf("Expired(%v) = %v, want %v", tt.now, got, tt.want)
+			if got := domain.IsValidUsername(tt.name); got != tt.valid {
+				t.Errorf("IsValidUsername(%q) = %v, want %v", tt.name, got, tt.valid)
 			}
 		})
 	}
