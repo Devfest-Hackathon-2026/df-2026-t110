@@ -26,20 +26,30 @@ func marshalRecordValue(value values.RecordValue) ([]byte, error) {
 		return json.Marshal(value.Integer)
 	case values.UnitValue:
 		return []byte("null"), nil
+	case values.DistanceTarget:
+		if !value.Valid() {
+			return nil, fmt.Errorf("invalid recording distance target %q", value)
+		}
+		return json.Marshal(value)
 	case values.RotationRecordValue:
 		if value.Rotation != values.Left && value.Rotation != values.Right {
 			return nil, fmt.Errorf("invalid recording rotation %q", value.Rotation)
 		}
 		return json.Marshal(value.Rotation)
 	case values.LandTerrain:
+		if !values.ValidValue(value) {
+			return nil, fmt.Errorf("invalid recording land terrain %+v", value)
+		}
 		kind, err := marshalLandKind(value.Kind)
 		if err != nil {
 			return nil, err
 		}
 		return json.Marshal(struct {
-			Type string          `json:"type"`
-			Kind json.RawMessage `json:"kind"`
-		}{Type: "land", Kind: kind})
+			Type       string                   `json:"type"`
+			Kind       json.RawMessage          `json:"kind"`
+			HasLuggage bool                     `json:"hasLuggage,omitempty"`
+			Territory  values.TerritoryRelation `json:"territory,omitempty"`
+		}{Type: "land", Kind: kind, HasLuggage: value.HasLuggage, Territory: value.Territory})
 	case values.RockTerrain:
 		return []byte(`{"type":"rock"}`), nil
 	case values.SeaTerrain:
@@ -57,8 +67,6 @@ func marshalLandKind(kind values.LandKind) ([]byte, error) {
 		return []byte(`{"type":"plain"}`), nil
 	case values.GoalLand:
 		return []byte(`{"type":"goal"}`), nil
-	case values.LuggageLand:
-		return []byte(`{"type":"luggage"}`), nil
 	case values.CheckpointLand:
 		return json.Marshal(struct {
 			Type  string `json:"type"`
@@ -91,6 +99,8 @@ func marshalValueUpdate(update ValueUpdate) ([]byte, error) {
 		return marshalPrimitiveUpdate("unit", values.UnitValue{})
 	case TerrainUpdate:
 		return marshalPrimitiveUpdate("terrain", update.Value)
+	case DistanceTargetUpdate:
+		return marshalPrimitiveUpdate("distance_target", update.Value)
 	case RotationUpdate:
 		return marshalPrimitiveUpdate("rotation", values.RotationRecordValue{Rotation: update.Value})
 	case VectorUpdate:

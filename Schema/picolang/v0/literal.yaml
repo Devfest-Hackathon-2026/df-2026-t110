@@ -1,9 +1,10 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Literal
-description: bool、integer、unit、rotation のリテラル。terrain 型にはリテラルがない
+description: bool、integer、unit、rotation、distance_target のリテラル。terrain 型にはリテラルがない
 
 oneOf:
   - $ref: './bool-literal.yaml'
   - $ref: './integer-literal.yaml'
   - $ref: './unit-literal.yaml'
   - $ref: './rotation-literal.yaml'
+  - $ref: './distance-target-literal.yaml'

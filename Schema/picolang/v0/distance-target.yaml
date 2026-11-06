@@ -1,0 +1,6 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: DistanceTarget
+description: distance で探す対象の種類
+
+type: string
+enum: [robot, ally, enemy, rock, luggage, sea, goal, territory]
