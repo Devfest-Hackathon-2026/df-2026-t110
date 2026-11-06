@@ -8,10 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
 	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	bot "github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/internal/testutil"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/builtin"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/event"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/function"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/memory"
@@ -145,6 +147,10 @@ func assertUsage(t *testing.T, env function.Resources, want uint64) {
 // executes no builtins and never recurses into another machine itself.
 func run(t *testing.T, root *function.Machine, env function.Resources, p bot.TypedProgram) memory.ID {
 	t.Helper()
+	evaluator, err := builtin.New(env.Memory, 0)
+	if err != nil {
+		t.Fatalf("prepare builtin evaluator: %v", err)
+	}
 	stack := []*function.Machine{root}
 	for range 10000 {
 		m := stack[len(stack)-1]
@@ -163,28 +169,18 @@ func run(t *testing.T, root *function.Machine, env function.Resources, p bot.Typ
 				stack = append(stack, callee)
 				continue
 			}
-			arg := func(i int) int64 {
-				v, _ := env.Memory.Get(state.Args[i])
-				return v.(memory.Integer).Value
+			result, err := evaluator.Evaluate(state.Func, state.Args)
+			if err != nil {
+				t.Fatalf("evaluate builtin %s: %v", state.Func, err)
 			}
-			var result memory.Value
-			switch state.Func {
-			case "add":
-				result = memory.Integer{Value: arg(0) + arg(1)}
-			case "sub":
-				result = memory.Integer{Value: arg(0) - arg(1)}
-			case "mul":
-				result = memory.Integer{Value: arg(0) * arg(1)}
-			case "integer_eq":
-				result = memory.Bool{Value: arg(0) == arg(1)}
-			case "leq":
-				result = memory.Bool{Value: arg(0) <= arg(1)}
-			case "new":
-				result = memory.ListRoot{}
-			default:
-				t.Fatalf("unexpected builtin %q", state.Func)
+			immediate, ok := result.(builtin.Immediate)
+			if !ok {
+				t.Fatalf("unexpected action result %T", result)
 			}
-			resume(t, m, env, result)
+			if err := m.Resume(immediate.Value); err != nil {
+				t.Fatalf("resume builtin result: %v", err)
+			}
+			release(t, env, immediate.Value)
 		case function.Returned:
 			stack = stack[:len(stack)-1]
 			if len(stack) == 0 {
@@ -649,5 +645,112 @@ func TestPrimitiveAssignmentsProduceRecordableEvents(t *testing.T) {
 				t.Errorf("got %d updates, want 1", updates)
 			}
 		})
+	}
+}
+
+func TestBooleanBuiltinsEvaluateActionArgumentsWithoutShortCircuit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name              bot.Name
+		left, reply, want bool
+	}{
+		{"and", false, true, false}, {"or", true, false, true},
+	} {
+		t.Run(string(tc.name), func(t *testing.T) {
+			t.Parallel()
+			p := checked(t, nil, bot.BoolType{}, ret(call(tc.name, boolean(tc.left), call("forward"))))
+			env := resources()
+			base := env.Memory.MemoryUsage()
+			m := newMachine(t, p, nil, env)
+			evaluator, err := builtin.New(env.Memory, 5)
+			if err != nil {
+				t.Fatalf("prepare evaluator: %v", err)
+			}
+			request := expectCall(t, m, "forward")
+			result, err := evaluator.Evaluate(request.Func, request.Args)
+			if err != nil {
+				t.Fatalf("evaluate action: %v", err)
+			}
+			action, ok := result.(builtin.Action)
+			if !ok || action.Action != (actions.ForwardAction{}) {
+				t.Fatalf("action = %#v", result)
+			}
+			// Invalid board output can be rejected without consuming the pending call.
+			if _, err := evaluator.Complete(action, values.UnitValue{}); err == nil {
+				t.Error("accepted wrong action result type")
+			}
+			id, err := evaluator.Complete(action, values.BoolValue{Bool: tc.reply})
+			if err != nil {
+				t.Fatalf("complete action: %v", err)
+			}
+			if err := m.Resume(id); err != nil {
+				t.Fatalf("resume action: %v", err)
+			}
+			release(t, env, id)
+			request = expectCall(t, m, tc.name)
+			result, err = evaluator.Evaluate(request.Func, request.Args)
+			if err != nil {
+				t.Fatalf("evaluate boolean builtin: %v", err)
+			}
+			value, ok := result.(builtin.Immediate)
+			if !ok {
+				t.Fatalf("boolean result = %T", result)
+			}
+			if err := m.Resume(value.Value); err != nil {
+				t.Fatalf("resume boolean result: %v", err)
+			}
+			release(t, env, value.Value)
+			returned := run(t, m, env, p)
+			assertValue(t, env, returned, memory.Bool{Value: tc.want})
+			release(t, env, returned)
+			assertUsage(t, env, base)
+		})
+	}
+}
+
+func TestBuiltinVectorUpdatesUseReplaceEvents(t *testing.T) {
+	t.Parallel()
+	v := bot.VectorType{ElementType: bot.IntegerType{}}
+	p := checked(t, nil, bot.IntegerType{},
+		decl("v", v, call("new")),
+		call("push_back", ref("v"), integer(99)), // A discarded result does not update v.
+		assign("v", call("push_back", ref("v"), integer(1))),
+		assign("v", call("push_back", ref("v"), integer(2))),
+		decl("last", bot.IntegerType{}, call("get_back", ref("v"))),
+		assign("v", call("pop_back", ref("v"))),
+		ret(call("add", ref("last"), call("size", ref("v")))))
+	env := resources()
+	base := env.Memory.MemoryUsage()
+	result := run(t, newMachine(t, p, nil, env), env, p)
+	assertValue(t, env, result, memory.Integer{Value: 3})
+	release(t, env, result)
+	assertUsage(t, env, base)
+	var replacements [][]values.RecordValue
+	for _, e := range env.Events.Collect() {
+		if update, ok := e.(robotevent.VariableUpdateEvent); ok && update.HintID == "v-definition" {
+			if len(update.Diff) != 1 {
+				t.Errorf("unexpected vector diff: %#v", update.Diff)
+				continue
+			}
+			vector, ok := update.Diff[0].(robotevent.VectorUpdate)
+			if !ok {
+				t.Errorf("unexpected update kind: %T", update.Diff[0])
+				continue
+			}
+			replacement, ok := vector.Update.(robotevent.VectorReplace)
+			if !ok {
+				t.Errorf("vector update is %T, want replace", vector.Update)
+				continue
+			}
+			replacements = append(replacements, replacement.Value)
+		}
+	}
+	want := [][]values.RecordValue{
+		{values.IntegerValue{Integer: 1}},
+		{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}},
+		{values.IntegerValue{Integer: 1}},
+	}
+	if !reflect.DeepEqual(replacements, want) {
+		t.Errorf("vector snapshots = %#v, want %#v", replacements, want)
 	}
 }
