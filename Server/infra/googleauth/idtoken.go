@@ -8,8 +8,7 @@ import (
 
 // User identifies an account by Google's stable OIDC subject.
 type User struct {
-	ID   string
-	Name string
+	Subject string
 }
 
 func (c *Client) verifyIDToken(ctx context.Context, raw, nonce, accessToken string) (User, error) {
@@ -26,7 +25,6 @@ func (c *Client) verifyIDToken(ctx context.Context, raw, nonce, accessToken stri
 		}
 	}
 	var claims struct {
-		Name            string `json:"name"`
 		AuthorizedParty string `json:"azp"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
@@ -35,5 +33,5 @@ func (c *Client) verifyIDToken(ctx context.Context, raw, nonce, accessToken stri
 	if (len(idToken.Audience) > 1 && claims.AuthorizedParty == "") || (claims.AuthorizedParty != "" && claims.AuthorizedParty != c.oauth.ClientID) {
 		return User{}, errors.New("invalid Google ID token authorized party")
 	}
-	return User{ID: idToken.Subject, Name: claims.Name}, nil
+	return User{Subject: idToken.Subject}, nil
 }

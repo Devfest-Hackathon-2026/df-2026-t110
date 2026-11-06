@@ -23,7 +23,7 @@ type Authorization struct {
 }
 
 func identityScopes() []string {
-	return []string{oidc.ScopeOpenID, "profile"}
+	return []string{oidc.ScopeOpenID}
 }
 
 func randomString() (string, error) {

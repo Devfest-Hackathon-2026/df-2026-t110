@@ -316,23 +316,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
-    post:
-      summary: 自分の情報を登録または更新
-      operationId: saveMe
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/User"
-      responses:
-        "200":
-          description: 保存したユーザー情報
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-
   /tutorial:
     get:
       summary: チュートリアル一覧を取得

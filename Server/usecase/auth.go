@@ -9,9 +9,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
 
-const (
-	DefaultLoginAttemptTTL = 10 * time.Minute
-)
+const DefaultLoginAttemptTTL = 10 * time.Minute
 
 // AuthorizationRequest is one sign-in attempt issued by an IdentityProvider.
 // Only URL may be sent to the browser; the rest must stay server-side.
@@ -25,7 +23,6 @@ type AuthorizationRequest struct {
 // Identity is a user identity verified by an IdentityProvider.
 type Identity struct {
 	Subject string
-	Name    string
 }
 
 // IdentityProvider runs an OpenID Connect authorization code flow.
@@ -50,18 +47,14 @@ type LoginAttemptRepository interface {
 	Consume(ctx context.Context, id string) (LoginAttempt, error)
 }
 
-// UserRepository stores users.
-type UserRepository interface {
-	// CreateIfAbsentByGoogleSubject stores candidate unless a user with the same
-	// GoogleSubject exists, and returns the stored user either way.
-	CreateIfAbsentByGoogleSubject(ctx context.Context, candidate domain.User) (domain.User, error)
-	// Get returns the user or ErrNotFound.
-	Get(ctx context.Context, id string) (domain.User, error)
+// AuthUsers is the user functionality needed when establishing a session.
+type AuthUsers interface {
+	ResolveGoogleIdentity(ctx context.Context, subject string) (domain.User, error)
 }
 
-// AuthSessions creates sessions for authenticated users.
+// AuthSessions starts a session after successful authentication.
 type AuthSessions interface {
-	Start(ctx context.Context, userID string) (domain.Session, error)
+	Start(ctx context.Context, subject string) (domain.Session, error)
 }
 
 // AuthDeps are the dependencies of Auth. Now and LoginAttemptTTL
@@ -69,13 +62,13 @@ type AuthSessions interface {
 type AuthDeps struct {
 	Provider        IdentityProvider
 	LoginAttempts   LoginAttemptRepository
-	Users           UserRepository
+	Users           AuthUsers
 	Sessions        AuthSessions
 	Now             func() time.Time
 	LoginAttemptTTL time.Duration
 }
 
-// Auth signs users in with an external identity provider and manages sessions.
+// Auth signs users in with an external identity provider.
 type Auth struct {
 	deps AuthDeps
 }
@@ -147,14 +140,13 @@ func (a *Auth) CompleteLogin(ctx context.Context, callback LoginCallback) (domai
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("%w: %w", ErrInvalidLogin, err)
 	}
-
-	candidateID, err := newRandomID()
-	if err != nil {
-		return domain.Session{}, fmt.Errorf("generate user ID: %w", err)
+	if identity.Subject == "" {
+		return domain.Session{}, fmt.Errorf("%w: missing subject", ErrInvalidLogin)
 	}
-	user, err := a.deps.Users.CreateIfAbsentByGoogleSubject(ctx, domain.User{ID: candidateID, GoogleSubject: identity.Subject, Name: identity.Name})
+
+	user, err := a.deps.Users.ResolveGoogleIdentity(ctx, identity.Subject)
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("save user: %w", err)
 	}
-	return a.deps.Sessions.Start(ctx, user.ID)
+	return a.deps.Sessions.Start(ctx, user.GoogleSubject)
 }

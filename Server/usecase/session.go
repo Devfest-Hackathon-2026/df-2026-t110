@@ -41,12 +41,12 @@ func NewSession(deps SessionDeps) *Session {
 }
 
 // Start creates a session for an authenticated subject.
-func (s *Session) Start(ctx context.Context, userID string) (domain.Session, error) {
+func (s *Session) Start(ctx context.Context, subject string) (domain.Session, error) {
 	id, err := newRandomID()
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("generate session ID: %w", err)
 	}
-	session := domain.Session{ID: id, UserID: userID, ExpiresAt: s.deps.Now().Add(s.deps.TTL)}
+	session := domain.Session{ID: id, GoogleSubject: subject, ExpiresAt: s.deps.Now().Add(s.deps.TTL)}
 	if err := s.deps.Sessions.Save(ctx, session); err != nil {
 		return domain.Session{}, fmt.Errorf("save session: %w", err)
 	}
@@ -82,7 +82,7 @@ func (s *Session) CurrentUser(ctx context.Context, sessionID string) (domain.Use
 		}
 		return domain.User{}, ErrUnauthenticated
 	}
-	user, err := s.deps.Users.Get(ctx, session.UserID)
+	user, err := s.deps.Users.Get(ctx, session.GoogleSubject)
 	if errors.Is(err, ErrNotFound) {
 		return domain.User{}, ErrUnauthenticated
 	}

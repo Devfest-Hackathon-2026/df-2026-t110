@@ -52,7 +52,7 @@ func TestBeginRequestsOnlyIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if q := u.Query(); q.Get("scope") != "openid profile" || q.Has("access_type") {
+	if q := u.Query(); q.Get("scope") != "openid" || q.Has("access_type") {
 		t.Fatalf("authorization URL requests more than identity: %s", u.RawQuery)
 	}
 }
