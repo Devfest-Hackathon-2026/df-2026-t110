@@ -67,11 +67,11 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 		}
 		// Unsigned arithmetic covers inclusive intervals crossing zero and the
 		// full int64 domain. Only that full-domain interval has width zero.
-		width := uint64(last) - uint64(first) + 1
+		width := uint64(last) - uint64(first) + 1 //nolint:gosec // Interval arithmetic intentionally wraps modulo 2^64 to cover signed ranges.
 		if width == 0 {
-			result = memory.Integer{Value: int64(e.random.Uint64())}
+			result = memory.Integer{Value: int64(e.random.Uint64())} //nolint:gosec // All 64 random bits intentionally represent the full signed int64 domain.
 		} else {
-			result = memory.Integer{Value: int64(uint64(first) + e.random.Uint64N(width))}
+			result = memory.Integer{Value: int64(uint64(first) + e.random.Uint64N(width))} //nolint:gosec // Modulo arithmetic maps the unsigned offset into the signed interval.
 		}
 	case "new":
 		result = memory.ListRoot{}

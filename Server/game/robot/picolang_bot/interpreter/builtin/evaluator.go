@@ -45,7 +45,7 @@ func New(store *memory.Store, seed uint64) (*Evaluator, error) {
 	if store == nil {
 		return nil, errors.New("memory store is required")
 	}
-	return &Evaluator{memory: store, random: rand.New(rand.NewPCG(seed, 0))}, nil
+	return &Evaluator{memory: store, random: rand.New(rand.NewPCG(seed, 0))}, nil //nolint:gosec // Seeded gameplay randomness must remain reproducible.
 }
 
 // Evaluate borrows args; it never consumes or mutates their values. All argument

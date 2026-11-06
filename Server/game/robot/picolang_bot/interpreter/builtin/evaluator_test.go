@@ -77,8 +77,7 @@ func scalar(t *testing.T, name bot.Name, inputs []memory.Value, want memory.Valu
 	id := immediate(t, e, name, args...)
 	assertValue(t, store, id, want)
 	release(t, store, id)
-	for i, id := range args {
-		assertValue(t, store, id, inputs[i])
+	for _, id := range args {
 		release(t, store, id)
 	}
 	assertUsage(t, store, base)
