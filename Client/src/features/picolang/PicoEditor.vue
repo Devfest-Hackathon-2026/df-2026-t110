@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import moveIcon from '@iconify-icons/lucide/move'
 import mousePointerIcon from '@iconify-icons/lucide/mouse-pointer-2'
@@ -19,6 +19,8 @@ import copyIcon from '@iconify-icons/lucide/copy'
 import fileJsonIcon from '@iconify-icons/lucide/file-json'
 import uploadIcon from '@iconify-icons/lucide/upload'
 import xIcon from '@iconify-icons/lucide/x'
+import undoIcon from '@iconify-icons/lucide/undo-2'
+import redoIcon from '@iconify-icons/lucide/redo-2'
 import PicoBlock from './PicoBlock.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
 import { beginPicoDrag, dragVariable, endPicoDrag } from './picoDrag.ts'
@@ -47,6 +49,10 @@ const newFunctionInput = ref<HTMLInputElement | null>(null)
 const message = ref('')
 const showJson = ref(false)
 const jsonInput = ref('')
+const history = ref<string[]>([])
+const historyIndex = ref(0)
+const canUndo = computed(() => historyIndex.value > 0)
+const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 const functions = computed(() => programFunctions(program.value))
 const currentFunction = computed(() => functions.value[activeFunctionName.value] ?? functions.value.main)
 const categories = [
@@ -113,6 +119,8 @@ watch(
       program.value = newProgram()
     }
     activeFunctionName.value = 'main'
+    history.value = [JSON.stringify(program.value)]
+    historyIndex.value = 0
   },
   { immediate: true },
 )
@@ -120,15 +128,53 @@ watch(
 watch(
   program,
   (value) => {
+    const snapshot = JSON.stringify(value)
+    if (snapshot !== history.value[historyIndex.value]) {
+      history.value.splice(historyIndex.value + 1)
+      history.value.push(snapshot)
+      if (history.value.length > 101) history.value.shift()
+      historyIndex.value = history.value.length - 1
+    }
     emit('update:program', value)
     try {
-      localStorage.setItem(`picolang:draft:${props.tutorialId}`, JSON.stringify(value))
+      localStorage.setItem(`picolang:draft:${props.tutorialId}`, snapshot)
     } catch {
       /* Storage may be disabled. */
     }
   },
   { deep: true, immediate: true },
 )
+
+function restoreHistory(index: number): void {
+  const snapshot = history.value[index]
+  if (!snapshot) return
+  historyIndex.value = index
+  program.value = JSON.parse(snapshot) as PicoProgram
+  if (!programFunctions(program.value)[activeFunctionName.value]) activeFunctionName.value = 'main'
+  message.value = ''
+}
+function undo(): void {
+  if (canUndo.value) restoreHistory(historyIndex.value - 1)
+}
+function redo(): void {
+  if (canRedo.value) restoreHistory(historyIndex.value + 1)
+}
+function handleHistoryKeydown(event: KeyboardEvent): void {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+  const target = event.target
+  if (target instanceof Element && target.closest('input, textarea, [contenteditable]')) return
+  const key = event.key.toLowerCase()
+  if (key === 'z') {
+    event.preventDefault()
+    if (event.shiftKey) redo()
+    else undo()
+  } else if (key === 'y') {
+    event.preventDefault()
+    redo()
+  }
+}
+onMounted(() => document.addEventListener('keydown', handleHistoryKeydown))
+onUnmounted(() => document.removeEventListener('keydown', handleHistoryKeydown))
 
 function addChoice(name: string): void {
   const stmts = currentFunction.value.body.stmts
@@ -237,41 +283,63 @@ function importJson(): void {
       </button>
     </aside>
     <div class="pico-workspace">
-      <div class="pico-functions" aria-label="関数を選択">
-        <button
-          v-for="name in Object.keys(functions)"
-          :key="name"
-          type="button"
-          :aria-pressed="activeFunctionName === name"
-          @click="activeFunctionName = name"
-        >
-          {{ name }}
-        </button>
-        <button
-          v-if="!showNewFunction"
-          type="button"
-          class="pico-function-add-button"
-          aria-label="関数を追加"
-          title="関数を追加"
-          @click="openNewFunction"
-        >
-          <Icon :icon="plusIcon" aria-hidden="true" />
-        </button>
-        <form v-else class="pico-new-function" @submit.prevent="addFunction">
-          <input
-            ref="newFunctionInput"
-            v-model="newFunctionName"
-            aria-label="新しい関数名"
-            placeholder="関数名"
-            @keydown.esc="closeNewFunction"
-          />
-          <button type="submit" aria-label="関数を作成" title="関数を作成">
-            <Icon :icon="plusIcon" aria-hidden="true" />追加
+      <div class="pico-workspace-toolbar">
+        <div class="pico-functions" aria-label="関数を選択">
+          <button
+            v-for="name in Object.keys(functions)"
+            :key="name"
+            type="button"
+            :aria-pressed="activeFunctionName === name"
+            @click="activeFunctionName = name"
+          >
+            {{ name }}
           </button>
-          <button type="button" aria-label="キャンセル" title="キャンセル" @click="closeNewFunction">
-            <Icon :icon="xIcon" aria-hidden="true" />
+          <button
+            v-if="!showNewFunction"
+            type="button"
+            class="pico-function-add-button"
+            aria-label="関数を追加"
+            title="関数を追加"
+            @click="openNewFunction"
+          >
+            <Icon :icon="plusIcon" aria-hidden="true" />
           </button>
-        </form>
+          <form v-else class="pico-new-function" @submit.prevent="addFunction">
+            <input
+              ref="newFunctionInput"
+              v-model="newFunctionName"
+              aria-label="新しい関数名"
+              placeholder="関数名"
+              @keydown.esc="closeNewFunction"
+            />
+            <button type="submit" aria-label="関数を作成" title="関数を作成">
+              <Icon :icon="plusIcon" aria-hidden="true" />追加
+            </button>
+            <button type="button" aria-label="キャンセル" title="キャンセル" @click="closeNewFunction">
+              <Icon :icon="xIcon" aria-hidden="true" />
+            </button>
+          </form>
+        </div>
+        <div class="pico-history-controls" aria-label="編集履歴">
+          <button
+            type="button"
+            aria-label="元に戻す"
+            title="元に戻す (Ctrl+Z)"
+            :disabled="!canUndo"
+            @click="undo"
+          >
+            <Icon :icon="undoIcon" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="やり直す"
+            title="やり直す (Ctrl+Shift+Z)"
+            :disabled="!canRedo"
+            @click="redo"
+          >
+            <Icon :icon="redoIcon" aria-hidden="true" />
+          </button>
+        </div>
       </div>
       <div class="pico-function-card">
         <div class="pico-function-header">
