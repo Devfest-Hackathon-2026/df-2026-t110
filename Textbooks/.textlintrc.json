@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "preset-japanese": true,
+    "ja-grade-kanji": {
+      "grade": 6
+    }
+  }
+}

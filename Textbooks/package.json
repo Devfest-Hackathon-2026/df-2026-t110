@@ -1,0 +1,15 @@
+{
+  "name": "programming-learning-ar-textbooks",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "textlint ."
+  },
+  "devDependencies": {
+    "textlint": "^15.8.0",
+    "textlint-rule-ja-grade-kanji": "^1.0.0",
+    "textlint-rule-preset-japanese": "^10.0.4"
+  }
+}
