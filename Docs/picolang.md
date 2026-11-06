@@ -47,6 +47,13 @@
     - random_integer: (integer, integer) -> integer
         - 閉区間[fst, snd]上の一様分布
         - snd < fstの場合はパニック
+- terrain
+    - is_land: terrain -> bool
+    - is_goal: terrain -> bool
+    - is_checkpoint: terrain -> bool
+    - is_laggage: terrain -> bool
+    - is_sea: terrain -> bool
+    - is_rock: terrain -> bool
 - action
     - forward: () -> bool
         - 移動した場合true
@@ -64,12 +71,6 @@
     - distance: () -> integer
     - search_front: () -> terrain
     - search_now: () -> terrain
-    - is_land: terrain -> bool
-    - is_goal: terrain -> bool
-    - is_checkpoint: terrain -> bool
-    - is_laggage: terrain -> bool
-    - is_sea: terrain -> bool
-    - is_rock: terrain -> bool
     - print_integer: integer -> ()
     - print_bool: bool -> ()
 
