@@ -141,7 +141,6 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - vectorの値は、入れ子のvectorを含めてそれぞれ独立している。一方の値への更新は、別の変数や取得済みの値に伝播しない。
 - 関数内での引数への再代入は、その関数のローカルな値にだけ反映される。
 - push_back、pop_backの結果を元の変数に反映するには、`v = push_back(v, x)`のように戻り値を代入する。
-- 末尾の要素を取り出して残りのvectorに更新する場合は、`x = get_back(v)`の後に`v = pop_back(v)`を行う。
 
 ### VM
 - VMのパニックはgoのerrに変換する
