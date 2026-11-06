@@ -3,7 +3,7 @@
 ## 仕様
 ### 型
 
-bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound typeとする。
+bool、integer、unit、terrain、rotation、distance_target は primitive type、vector は compound type とする。
 
 - bool
     - true/false
@@ -15,6 +15,8 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
     - リテラルなし
 - rotation
     - left/right
+- distance_target
+    - `robot`、`ally`、`enemy`、`rock`、`luggage`、`sea`, `goal`、`goal_area`
 - vector\<T>
     - 型Tの要素を持つ可変長配列
     - 同じvectorの要素はすべて同じ型
@@ -66,10 +68,13 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool
+    - is_own_goal_area: terrain -> bool
+    - is_enemy_goal_area: terrain -> bool
     - is_checkpoint: terrain -> bool
-    - is_laggage: terrain -> bool
+    - is_luggage: terrain -> bool
     - is_sea: terrain -> bool
     - is_rock: terrain -> bool
+    - 納品エリアでは `is_goal` は `false`。`is_luggage` はエリア内外を問わず荷物の有無を返す
 - action
     - forward: () -> bool
         - 移動した場合true
@@ -84,7 +89,7 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
     - drill: () -> bool
         - 壊した場合true
     - drill_durability: () -> integer
-    - distance: () -> integer
+    - distance: distance_target -> integer
     - search_front: () -> terrain
     - search_now: () -> terrain
     - print_integer: integer -> ()
