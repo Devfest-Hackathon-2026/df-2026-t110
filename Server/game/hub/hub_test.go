@@ -81,11 +81,12 @@ func newHub(t *testing.T, b game.Board, participants ...hub.Participant) *hub.Hu
 
 func grid(t *testing.T) *board.Board {
 	t.Helper()
+	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
 	b, err := board.New(board.Config{
-		Terrain: [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}}},
+		Terrain: [][]board.Terrain{{plain, plain, plain}},
 		Robots: map[protocol.RobotID]board.RobotState{
-			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
-			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.West, DrillDurability: 3},
+			"a": board.NewRobotState(board.NewPosition(0, 0), board.East, 3),
+			"b": board.NewRobotState(board.NewPosition(2, 0), board.West, 3),
 		},
 	})
 	if err != nil {
@@ -186,7 +187,7 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 		if value != (values.BoolValue{Bool: true}) {
 			t.Errorf("other robot got wrong result: %+v", value)
 		}
-		if robots := b.Snapshot().Robots; len(robots) != 1 || robots["b"].Position.X != 1 {
+		if robots := b.Snapshot().Robots; len(robots) != 1 || robots["b"].Position().X() != 1 {
 			t.Errorf("unexpected robots after the first tick: %+v", robots)
 		}
 		return robotmsg.DoneStep{}, nil

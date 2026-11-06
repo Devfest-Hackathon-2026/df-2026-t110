@@ -31,7 +31,7 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if maxTicks == 0 {
 		return fmt.Errorf("max-ticks must be positive")
 	}
-	plain := board.LandTerrain{Kind: board.PlainLand{}}
+	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
 	b, err := board.New(board.Config{
 		MaxTicks: maxTicks,
 		Terrain: [][]board.Terrain{
@@ -40,8 +40,8 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[protocol.RobotID]board.RobotState{
-			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
-			"p2": {Position: board.Position{X: 4, Y: 0}, Direction: board.West, DrillDurability: 3},
+			"p1": board.NewRobotState(board.NewPosition(0, 0), board.East, 3),
+			"p2": board.NewRobotState(board.NewPosition(4, 0), board.West, 3),
 		},
 	})
 	if err != nil {
@@ -102,7 +102,7 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 			var cell string
 			switch terrain := terrain.(type) {
 			case board.LandTerrain:
-				switch terrain.Kind.(type) {
+				switch kind := terrain.Kind().(type) {
 				case board.PlainLand:
 					cell = "."
 				case board.GoalLand:
@@ -110,9 +110,9 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 				case board.CheckpointLand:
 					cell = "C"
 				default:
-					return fmt.Errorf("invalid land kind %T", terrain.Kind)
+					return fmt.Errorf("invalid land kind %T", kind)
 				}
-				if terrain.HasLuggage {
+				if terrain.HasLuggage() {
 					cell = "L"
 				}
 			case board.RockTerrain:
@@ -123,7 +123,7 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 				return fmt.Errorf("invalid terrain %T", terrain)
 			}
 			for id, robot := range snapshot.Robots {
-				if robot.Position == (board.Position{X: x, Y: y}) {
+				if robot.Position() == board.NewPosition(x, y) {
 					cell = string(id)
 				}
 			}
@@ -142,7 +142,8 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, id := range ids {
 		r := snapshot.Robots[id]
-		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s\n", id, r.Position.X, r.Position.Y, r.Direction); err != nil {
+		position := r.Position()
+		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s\n", id, position.X(), position.Y(), r.Direction()); err != nil {
 			return err
 		}
 	}
