@@ -51,13 +51,13 @@ type RobotState struct {
 type Config struct {
 	// MaxTicks bounds committed ticks; zero means unlimited.
 	MaxTicks uint64
-	Terrain  [][]values.TerrainValue
+	Terrain  [][]Terrain
 	Robots   map[protocol.RobotID]RobotState
 }
 
 type Snapshot struct {
 	Tick    uint64
-	Terrain [][]values.TerrainValue
+	Terrain [][]Terrain
 	Robots  map[protocol.RobotID]RobotState
 }
 
@@ -79,7 +79,7 @@ func New(config Config) (*Board, error) {
 			return nil, errors.New("terrain must be rectangular")
 		}
 		for _, cell := range row {
-			if !values.ValidValue(cell) {
+			if !validTerrain(cell) {
 				return nil, fmt.Errorf("invalid terrain %T", cell)
 			}
 		}
@@ -91,7 +91,7 @@ func New(config Config) (*Board, error) {
 			p.X < 0 || p.Y < 0 || p.X >= width || p.Y >= len(config.Terrain) {
 			return nil, fmt.Errorf("invalid robot %q", id)
 		}
-		_, isLand := config.Terrain[p.Y][p.X].(values.LandTerrain)
+		_, isLand := config.Terrain[p.Y][p.X].(LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {
 			return nil, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
@@ -328,7 +328,7 @@ func (b *Board) land(p Position) bool {
 	if p.Y < 0 || p.Y >= len(b.state.Terrain) || p.X < 0 || p.X >= len(b.state.Terrain[0]) {
 		return false
 	}
-	_, isLand := b.state.Terrain[p.Y][p.X].(values.LandTerrain)
+	_, isLand := b.state.Terrain[p.Y][p.X].(LandTerrain)
 	return isLand
 }
 
@@ -340,9 +340,9 @@ func directionIndex(d Direction) int {
 }
 
 func clone(state Snapshot) Snapshot {
-	copy := Snapshot{Tick: state.Tick, Terrain: make([][]values.TerrainValue, len(state.Terrain)), Robots: make(map[protocol.RobotID]RobotState, len(state.Robots))}
+	copy := Snapshot{Tick: state.Tick, Terrain: make([][]Terrain, len(state.Terrain)), Robots: make(map[protocol.RobotID]RobotState, len(state.Robots))}
 	for y, row := range state.Terrain {
-		copy.Terrain[y] = append([]values.TerrainValue(nil), row...)
+		copy.Terrain[y] = append([]Terrain(nil), row...)
 	}
 	for id, robot := range state.Robots {
 		copy.Robots[id] = robot

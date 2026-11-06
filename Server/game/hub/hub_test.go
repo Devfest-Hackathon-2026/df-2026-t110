@@ -82,7 +82,7 @@ func newHub(t *testing.T, b game.Board, participants ...hub.Participant) *hub.Hu
 func grid(t *testing.T) *board.Board {
 	t.Helper()
 	b, err := board.New(board.Config{
-		Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.PlainLand{}}}},
+		Terrain: [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}}},
 		Robots: map[protocol.RobotID]board.RobotState{
 			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
 			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.West, DrillDurability: 3},

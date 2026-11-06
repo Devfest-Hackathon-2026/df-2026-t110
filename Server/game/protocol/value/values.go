@@ -18,15 +18,16 @@ type TerrainValue interface {
 	terrain()
 }
 
-// LandTerrain has one base kind and independent luggage and goal area attributes.
+// LandTerrain has one base kind and independent luggage and territory attributes.
 // Territory is relative to the robot that observed the cell.
 type LandTerrain struct {
 	Kind       LandKind
 	HasLuggage bool
 	Territory  TerritoryRelation
+	TerrainValue
 }
-type RockTerrain struct{}
-type SeaTerrain struct{}
+type RockTerrain struct{ TerrainValue }
+type SeaTerrain struct{ TerrainValue }
 
 type TerritoryRelation string
 
@@ -45,12 +46,6 @@ type PlainLand struct{}
 type GoalLand struct{}
 type CheckpointLand struct{ Order int64 }
 
-func (LandTerrain) value()       {}
-func (RockTerrain) value()       {}
-func (SeaTerrain) value()        {}
-func (LandTerrain) terrain()     {}
-func (RockTerrain) terrain()     {}
-func (SeaTerrain) terrain()      {}
 func (PlainLand) landKind()      {}
 func (GoalLand) landKind()       {}
 func (CheckpointLand) landKind() {}

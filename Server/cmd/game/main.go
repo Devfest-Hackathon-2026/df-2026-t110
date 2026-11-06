@@ -11,7 +11,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+
 	"github.com/dvpico/Programming-Learning-AR/Server/game/recorder"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 )
@@ -31,13 +31,13 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if maxTicks == 0 {
 		return fmt.Errorf("max-ticks must be positive")
 	}
-	plain := values.LandTerrain{Kind: values.PlainLand{}}
+	plain := board.LandTerrain{Kind: board.PlainLand{}}
 	b, err := board.New(board.Config{
 		MaxTicks: maxTicks,
-		Terrain: [][]values.TerrainValue{
+		Terrain: [][]board.Terrain{
 			{plain, plain, plain, plain, plain},
-			{plain, plain, values.RockTerrain{}, plain, plain},
-			{plain, plain, values.SeaTerrain{}, plain, plain},
+			{plain, plain, board.RockTerrain{}, plain, plain},
+			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[protocol.RobotID]board.RobotState{
 			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
@@ -101,13 +101,13 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 		for x, terrain := range row {
 			var cell string
 			switch terrain := terrain.(type) {
-			case values.LandTerrain:
+			case board.LandTerrain:
 				switch terrain.Kind.(type) {
-				case values.PlainLand:
+				case board.PlainLand:
 					cell = "."
-				case values.GoalLand:
+				case board.GoalLand:
 					cell = "G"
-				case values.CheckpointLand:
+				case board.CheckpointLand:
 					cell = "C"
 				default:
 					return fmt.Errorf("invalid land kind %T", terrain.Kind)
@@ -115,9 +115,9 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 				if terrain.HasLuggage {
 					cell = "L"
 				}
-			case values.RockTerrain:
+			case board.RockTerrain:
 				cell = "#"
-			case values.SeaTerrain:
+			case board.SeaTerrain:
 				cell = "~"
 			default:
 				return fmt.Errorf("invalid terrain %T", terrain)

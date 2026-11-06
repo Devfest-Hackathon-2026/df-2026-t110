@@ -15,12 +15,12 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-func land(width, height int) [][]values.TerrainValue {
-	grid := make([][]values.TerrainValue, height)
+func land(width, height int) [][]board.Terrain {
+	grid := make([][]board.Terrain, height)
 	for y := range grid {
-		grid[y] = make([]values.TerrainValue, width)
+		grid[y] = make([]board.Terrain, width)
 		for x := range grid[y] {
-			grid[y][x] = values.LandTerrain{Kind: values.PlainLand{}}
+			grid[y][x] = board.LandTerrain{Kind: board.PlainLand{}}
 		}
 	}
 	return grid
@@ -90,7 +90,7 @@ func TestAtomicMovement(t *testing.T) {
 	forward := actions.ForwardAction{}
 	tests := []struct {
 		name    string
-		grid    [][]values.TerrainValue
+		grid    [][]board.Terrain
 		robots  map[protocol.RobotID]board.RobotState
 		ids     []protocol.RobotID
 		actions map[protocol.RobotID]actions.Action
@@ -139,9 +139,9 @@ func TestAtomicMovement(t *testing.T) {
 		},
 		{
 			name: "goal",
-			grid: [][]values.TerrainValue{{
-				values.LandTerrain{Kind: values.PlainLand{}},
-				values.LandTerrain{Kind: values.GoalLand{}},
+			grid: [][]board.Terrain{{
+				board.LandTerrain{Kind: board.PlainLand{}},
+				board.LandTerrain{Kind: board.GoalLand{}},
 			}},
 			robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []protocol.RobotID{"a"},
@@ -150,13 +150,13 @@ func TestAtomicMovement(t *testing.T) {
 		},
 		{
 			name:   "rock",
-			grid:   [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}, values.RockTerrain{}}},
+			grid:   [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.RockTerrain{}}},
 			robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []protocol.RobotID{"a"},
 		},
 		{
 			name:   "sea",
-			grid:   [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}, values.SeaTerrain{}}},
+			grid:   [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.SeaTerrain{}}},
 			robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []protocol.RobotID{"a"},
 		},
@@ -227,17 +227,17 @@ func TestAtomicMovement(t *testing.T) {
 
 func TestWalkableTerrainKinds(t *testing.T) {
 	t.Parallel()
-	for _, terrain := range []values.LandTerrain{
-		{Kind: values.PlainLand{}}, {Kind: values.GoalLand{}}, {Kind: values.CheckpointLand{Order: 2}},
-		{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory},
+	for _, terrain := range []board.LandTerrain{
+		{Kind: board.PlainLand{}}, {Kind: board.GoalLand{}}, {Kind: board.CheckpointLand{Order: 2}},
+		{Kind: board.PlainLand{}, HasLuggage: true, TerritoryOwner: 1},
 	} {
 		t.Run(fmt.Sprintf("%T(luggage=%t)", terrain.Kind, terrain.HasLuggage), func(t *testing.T) {
 			t.Parallel()
-			if _, isTerrain := any(terrain.Kind).(values.TerrainValue); isTerrain {
+			if _, isTerrain := any(terrain.Kind).(board.Terrain); isTerrain {
 				t.Errorf("%T must be nested inside LandTerrain, not used as terrain directly", terrain.Kind)
 			}
 			b := newBoard(t, board.Config{
-				Terrain: [][]values.TerrainValue{{terrain, terrain}},
+				Terrain: [][]board.Terrain{{terrain, terrain}},
 				Robots:  map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			}, []protocol.RobotID{"a"})
 			next(t, b, nil)
@@ -259,37 +259,37 @@ func TestWalkableTerrainKinds(t *testing.T) {
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
 	valid := board.Config{Terrain: land(2, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
-	valid.Terrain[0][0] = values.LandTerrain{Kind: values.GoalLand{}}
+	valid.Terrain[0][0] = board.LandTerrain{Kind: board.GoalLand{}}
 	b, err := board.New(valid)
 	if err != nil {
 		t.Fatal(err)
 	}
 	initial := b.Snapshot()
-	valid.Terrain[0][0] = values.SeaTerrain{}
+	valid.Terrain[0][0] = board.SeaTerrain{}
 	valid.Robots["a"] = state(1, 0, board.West)
 	copy := b.Snapshot()
-	copy.Terrain[0][0] = values.RockTerrain{}
+	copy.Terrain[0][0] = board.RockTerrain{}
 	delete(copy.Robots, "a")
 	if !reflect.DeepEqual(b.Snapshot(), initial) {
 		t.Error("constructor or snapshot aliases caller data")
 	}
 	invalid := []board.Config{
 		{}, {Terrain: land(2, 1)},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}}, {}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{nil}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{(*values.LandTerrain)(nil)}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: (*values.PlainLand)(nil)}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: &values.PlainLand{}}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: &values.GoalLand{}}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: &values.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: (*values.GoalLand)(nil)}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{&values.LandTerrain{Kind: values.GoalLand{}}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: (*values.CheckpointLand)(nil)}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{&values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{&values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.GoalLand{}, Territory: values.OwnTerritory}}}, Robots: initial.Robots},
-		{Terrain: [][]values.TerrainValue{{values.SeaTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}}, {}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{nil}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{(*board.LandTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: (*board.PlainLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: &board.PlainLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: &board.GoalLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: &board.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: (*board.GoalLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{&board.LandTerrain{Kind: board.GoalLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: (*board.CheckpointLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{&board.LandTerrain{Kind: board.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{&board.LandTerrain{Kind: board.PlainLand{}, HasLuggage: true}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.LandTerrain{Kind: board.GoalLand{}, TerritoryOwner: 1}}}, Robots: initial.Robots},
+		{Terrain: [][]board.Terrain{{board.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"": state(0, 0, board.North)}},

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
 func TestRenderTerrainKinds(t *testing.T) {
@@ -16,9 +15,9 @@ func TestRenderTerrainKinds(t *testing.T) {
 	var output bytes.Buffer
 	err := render(&output, board.Snapshot{
 		Tick: 7,
-		Terrain: [][]values.TerrainValue{{
-			values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.GoalLand{}}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}},
-			values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}, values.RockTerrain{}, values.SeaTerrain{},
+		Terrain: [][]board.Terrain{{
+			board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.GoalLand{}}, board.LandTerrain{Kind: board.CheckpointLand{Order: 2}},
+			board.LandTerrain{Kind: board.PlainLand{}, HasLuggage: true}, board.RockTerrain{}, board.SeaTerrain{},
 		}},
 	})
 	if err != nil {
