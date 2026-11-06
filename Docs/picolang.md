@@ -55,12 +55,16 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
         - snd < fstの場合はパニック
 - vector
     - new: () -> vector\<T>
-    - push_back: (vector\<T>, T) -> ()
-    - pop_back: vector\<T> -> ()
+    - push_back: (vector\<T>, T) -> vector\<T>
+        - 末尾に要素のコピーを追加した新しいvectorを返す
+    - pop_back: vector\<T> -> vector\<T>
+        - 末尾の要素を取り除いた新しいvectorを返す
         - 要素数が0の場合はパニック
     - get: (vector\<T>, integer) -> T
+        - 要素の値をコピーして返す。入れ子のvectorも再帰的にコピーする
         - インデックスが0未満、または要素数以上の場合はパニック
-    - set: (vector\<T>, integer, T) -> ()
+    - set: (vector\<T>, integer, T) -> vector\<T>
+        - 指定したインデックスの要素を値のコピーで置き換えた新しいvectorを返す
         - インデックスが0未満、または要素数以上の場合はパニック
     - size: vector\<T> -> integer
 - terrain
@@ -137,8 +141,11 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - 関数以外の値のスコープは関数全体かブロック全体のスコープを持つ。
 - shadowing, 型エラーは実行前に弾く。
 - 関数の引数は先頭から評価される。
-- 変数定義・代入、引数・戻り値、vectorの要素の受け渡しでは、primitive typeは値をコピーし、compound typeは参照をコピーする。
-- compound typeの変更は同じ実体を参照する側にも反映される。変数への再代入はその変数だけに反映される。
+- primitive type、compound typeを問わず、変数定義・代入、引数・戻り値、vectorの要素の受け渡しはすべて値渡しとし、値をコピーする。
+- vectorのコピーでは、入れ子のvectorを含むすべての要素を再帰的にコピーする。コピーした値はそれぞれ独立している。
+- 関数内での引数への再代入は、その関数のローカルな値にだけ反映される。
+- push_back、pop_back、setの結果を元の変数に反映するには、`v = push_back(v, x)`のように戻り値を代入する。
+- 入れ子のvectorの更新も戻り値の代入で明示する。例えば、`rows = set(rows, i, push_back(get(rows, i), x))`は、i番目のvectorに要素を追加した結果をrowsに代入する。
 
 ### VM
 - VMのパニックはgoのerrに変換する
@@ -165,11 +172,11 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
         - すでに同じ変数名が存在する場合はエラー
         - 同名の関数が存在する場合はエラー
     - スコープから抜けるときにpopする
-    - 変数参照時に補助的なmapを使ってインデックスを取得する
+    - 変数の読み出し時に補助的なmapを使ってインデックスを取得する
         - 存在しない場合エラー
 - 型付けを行う
     - 変数宣言時に型を付ける
-    - 変数参照時に型を確認する
+    - 変数の読み出し時に型を確認する
     - 変数の型が異なる場合エラー
     - 関数全体のブロックの末尾にreturn文がない場合エラー
         - return文以降に文がある場合やif-elseの両方にreturn文がある場合など、return文が必ず実行されることを保証する条件はほかにもあるが、末尾にreturn文がある条件を満たさない限りエラーとする
@@ -188,7 +195,7 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 以下の操作はステップ数のコストを消費する
 - 関数呼び出し
 - 変数定義
-- 変数参照
+- 変数の読み出し
 - 変数代入
 - ブロックの開始
 
@@ -196,7 +203,7 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - 変数定義
 - 値の生成・コピー
 
-メモリコストは値のサイズに応じた推定値を使う。compound typeは参照と実体を分けて計上し、参照のコピーでは実体を重複計上しない。スコープ終了時に値・参照をdropし、compound typeの実体は最後の参照がなくなった時点で減算する。GCによる実際の解放時期は考慮しない。
+メモリコストは値のサイズに応じた推定値を使う。vectorのサイズはコンテナと入れ子を含む全要素のサイズを再帰的に合計し、コピーで生成された値もそれぞれ別々に計上する。スコープ終了、再代入、式評価の完了などで不要になった値をdropし、その値が保持していたメモリコストを減算する。GCによる実際の解放時期は考慮しない。
 
 保持中の値の合計が上限を超える場合はVMを停止する。中断・再開時もコストを引き継ぐ。
 
