@@ -41,7 +41,7 @@ let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell, reset: replaceStage, resetRobot })
+defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
@@ -85,6 +85,25 @@ function replaceStage() {
     positionRobot(start)
   }
   board.position.z = 0
+  setView()
+}
+
+function refreshVisuals(): void {
+  if (!scene || !board) return
+  const currentYaw = robotRig?.rotation.y
+  robotAnimator?.stop()
+  if (robotRig) board.remove(robotRig)
+  scene.remove(board)
+  disposeStageVisuals(board)
+  const visuals = createStageVisuals(props.stage, stageAssets ?? undefined)
+  board = visuals.root
+  animated = visuals.animated
+  scene.add(board)
+  if (robotRig) {
+    board.add(robotRig)
+    positionRobot(robotCell.value)
+    if (currentYaw !== undefined) robotRig.rotation.y = currentYaw
+  }
   setView()
 }
 

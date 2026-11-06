@@ -133,6 +133,21 @@
 .tutorial-stage-caption strong {
   font-size: var(--type-body);
 }
+.tutorial-run-feedback {
+  position: absolute;
+  z-index: 3;
+  top: 24px;
+  right: 24px;
+  max-width: min(48%, 280px);
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--color-field-rule);
+  border-radius: 4px;
+  background: rgb(8 49 47 / 88%);
+  color: var(--color-field-ink);
+  font-size: var(--type-small);
+  line-height: 1.4;
+}
 .tutorial-stage-toolbar {
   position: absolute;
   z-index: 2;
@@ -272,6 +287,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  container: editor / inline-size;
 }
 .tutorial-editor-mock {
   display: grid;
@@ -347,9 +363,7 @@
 .tutorial-editor-workspace {
   min-width: 0;
   overflow: auto;
-  background-color: #f5f7f5;
-  background-image: radial-gradient(#d5dfdb 1px, transparent 1px);
-  background-size: 18px 18px;
+  background: var(--color-paper);
 }
 .tutorial-editor-placeholder {
   display: flex;
@@ -399,26 +413,10 @@
   font-size: var(--type-small);
 }
 .tutor-speech {
-  position: relative;
   min-width: 0;
   min-height: 68px;
-  padding: 10px 12px;
-  border: 1px solid var(--tutor-edge);
-  border-radius: 8px;
-  background: var(--tutor-bubble);
+  padding: 4px 0;
   color: var(--color-ink);
-}
-.tutor-speech::before {
-  content: '';
-  position: absolute;
-  left: -7px;
-  bottom: 21px;
-  width: 12px;
-  height: 12px;
-  rotate: 45deg;
-  border-left: 1px solid var(--tutor-edge);
-  border-bottom: 1px solid var(--tutor-edge);
-  background: var(--tutor-bubble);
 }
 .tutor-speech span {
   display: block;
@@ -442,8 +440,7 @@
 .tutorial-layout-nav button {
   min-height: 40px;
   padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--color-rule);
-  border-radius: 3px;
+  border: 0;
   background: transparent;
   color: var(--color-ink);
   font-size: var(--type-small);
@@ -489,18 +486,26 @@
   pointer-events: none;
 }
 .tutorial-program-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   width: 100%;
   min-height: 34px;
   padding: 5px 6px;
-  border: 1px solid var(--color-accent-deep);
-  border-radius: 4px;
+  border: 0;
+  border-radius: 2px;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 2px 8px #102b2833;
+}
+.tutorial-program-actions button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
 .tutorial-program-actions button:focus-visible,
 .tutorial-bottom-link a:focus-visible {
@@ -527,6 +532,8 @@
   min-width: 0;
   padding: 0;
   place-items: center;
+  background: transparent;
+  color: var(--color-field-ink);
 }
 .tutorial-fullscreen-button svg {
   width: 18px;
@@ -576,8 +583,22 @@
   font-size: var(--type-small);
 }
 .tutorial-bottom-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-accent-deep);
   text-underline-offset: 0.3em;
+}
+.tutorial-bottom-link svg,
+.tutorial-nav-unavailable svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.tutorial-nav-unavailable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .tutorial-bottom-link a:last-child {
   margin-left: auto;
@@ -672,7 +693,7 @@
   }
   .tutor-speech {
     min-height: 58px;
-    padding: 8px 10px;
+    padding: 4px 0;
   }
   .tutor-speech p {
     font-size: var(--type-body);
