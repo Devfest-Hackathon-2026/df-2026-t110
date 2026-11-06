@@ -173,7 +173,7 @@ type LoginCallbackParams struct {
 
 // SetMyUsernameJSONBody defines parameters for SetMyUsername.
 type SetMyUsernameJSONBody struct {
-	// Username self と std は名前空間の予約名のため使用不可
+	// Username self と std は大文字・小文字を問わず名前空間の予約名のため使用不可
 	Username string `json:"username"`
 }
 

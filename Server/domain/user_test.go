@@ -16,7 +16,8 @@ func TestIsValidUsername(t *testing.T) {
 		{"a", true}, {"AZaz09_-", true}, {strings.Repeat("a", 32), true},
 		{"", false}, {strings.Repeat("a", 33), false}, {"a b", false},
 		{"a.b", false}, {"日本語", false}, {"a\n", false},
-		{"self", false}, {"std", false}, {"Self", true}, {"std_user", true},
+		{"self", false}, {"SELF", false}, {"SeLf", false},
+		{"std", false}, {"STD", false}, {"sTd", false}, {"std_user", true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
