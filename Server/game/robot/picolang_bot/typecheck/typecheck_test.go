@@ -30,8 +30,8 @@ func builtinCases() []builtinCase {
 		{"gt", []bot.Type{i, i}, b}, {"lt", []bot.Type{i, i}, b}, {"geq", []bot.Type{i, i}, b}, {"leq", []bot.Type{i, i}, b},
 		{"bool_to_integer", []bot.Type{b}, i}, {"integer_to_bool", []bot.Type{i}, b},
 		{"random_bool", nil, b}, {"random_integer", []bot.Type{i, i}, i},
-		{"new", nil, vector}, {"push_back", []bot.Type{vector, i}, u}, {"pop_back", []bot.Type{vector}, u},
-		{"get", []bot.Type{vector, i}, i}, {"set", []bot.Type{vector, i, i}, u}, {"size", []bot.Type{vector}, i},
+		{"new", nil, vector}, {"push_back", []bot.Type{vector, i}, vector}, {"pop_back", []bot.Type{vector}, vector},
+		{"get_back", []bot.Type{vector}, i}, {"size", []bot.Type{vector}, i},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
 		{"is_laggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
 		{"forward", nil, b}, {"back", nil, b}, {"rotate", []bot.Type{rotation}, u}, {"wait", []bot.Type{i}, u},
@@ -110,6 +110,52 @@ func TestTypeCheckBuiltinArgumentErrors(t *testing.T) {
 				}
 				testutil.RequireDiagnostic(t, ds, bot.CodeTypeMismatch, "probe", "arg-0")
 			}
+		})
+	}
+}
+
+func TestTypeCheckRemovedVectorBuiltins(t *testing.T) {
+	t.Parallel()
+	for _, name := range []bot.Name{"get", "set"} {
+		t.Run(string(name), func(t *testing.T) {
+			t.Parallel()
+			args := []bot.Expr[bot.VariableIndex, bot.Untyped]{
+				testutil.Call[bot.VariableIndex]("new", "new"),
+				testutil.Literal[bot.VariableIndex]("index", bot.IntegerLiteral{}),
+			}
+			if name == "set" {
+				args = append(args, testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1}))
+			}
+			_, err := typecheck.TypeCheck(testutil.MainProgram[bot.VariableIndex](
+				testutil.Call[bot.VariableIndex]("removed", name, args...),
+				testutil.UnitReturn[bot.VariableIndex](),
+			))
+			ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
+			if len(ds) != 1 {
+				t.Errorf("expected one undefined-function error, got %v", ds)
+			}
+			testutil.RequireDiagnostic(t, ds, bot.CodeUndefinedFunction, "main", "removed")
+		})
+	}
+}
+
+func TestTypeCheckVectorResultErrors(t *testing.T) {
+	t.Parallel()
+	i := bot.IntegerType{}
+	v := bot.VectorType{ElementType: i}
+	for _, tc := range []builtinCase{
+		{"push_back", []bot.Type{v, i}, bot.UnitType{}},
+		{"pop_back", []bot.Type{v}, bot.UnitType{}},
+		{"get_back", []bot.Type{v}, bot.BoolType{}},
+	} {
+		t.Run(string(tc.name), func(t *testing.T) {
+			t.Parallel()
+			_, err := typecheck.TypeCheck(builtinProgram(tc, tc.params))
+			ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
+			if len(ds) != 1 {
+				t.Errorf("expected one result-type error, got %v", ds)
+			}
+			testutil.RequireDiagnostic(t, ds, bot.CodeTypeMismatch, "probe", "call")
 		})
 	}
 }

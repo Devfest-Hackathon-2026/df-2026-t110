@@ -88,10 +88,14 @@ func TestVectorTypeInference(t *testing.T) {
 	vi := bot.VectorType{ElementType: bot.IntegerType{}}
 	vb := bot.VectorType{ElementType: bot.BoolType{}}
 	vvi, vvb := bot.VectorType{ElementType: vi}, bot.VectorType{ElementType: vb}
-	returnContext := testutil.MainProgram[bot.VariableIndex](testutil.UnitReturn[bot.VariableIndex]())
-	returnContext.Functions["make_vector"] = bot.Function[bot.VariableIndex, bot.Untyped]{ReturnType: vvb, Body: bot.Block[bot.VariableIndex, bot.Untyped]{Stmts: []bot.Stmt[bot.VariableIndex, bot.Untyped]{
-		bot.Return[bot.VariableIndex, bot.Untyped]{Value: testutil.Call[bot.VariableIndex]("return-new", "new")},
-	}}}
+	returning := func(result bot.Type, value bot.Expr[bot.VariableIndex, bot.Untyped]) bot.IndexedProgram {
+		program := testutil.MainProgram[bot.VariableIndex](testutil.UnitReturn[bot.VariableIndex]())
+		program.Functions["make_vector"] = bot.Function[bot.VariableIndex, bot.Untyped]{ReturnType: result, Body: bot.Block[bot.VariableIndex, bot.Untyped]{Stmts: []bot.Stmt[bot.VariableIndex, bot.Untyped]{
+			bot.Return[bot.VariableIndex, bot.Untyped]{Value: value},
+		}}}
+		return program
+	}
+	returnContext := returning(vvb, testutil.Call[bot.VariableIndex]("return-new", "new"))
 	argumentContext := testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("consume", "consume", testutil.Call[bot.VariableIndex]("argument-new", "new")), testutil.UnitReturn[bot.VariableIndex]())
 	argumentContext.Functions["consume"] = bot.Function[bot.VariableIndex, bot.Untyped]{Params: []bot.Param[bot.VariableIndex]{{Ident: testutil.Ident("param", bot.VariableIndex(0)), Type: vi}}, ReturnType: bot.UnitType{}, Body: bot.Block[bot.VariableIndex, bot.Untyped]{Stmts: []bot.Stmt[bot.VariableIndex, bot.Untyped]{testutil.UnitReturn[bot.VariableIndex]()}}}
 	tests := []struct {
@@ -103,10 +107,58 @@ func TestVectorTypeInference(t *testing.T) {
 		{"assignment", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("initial", "new")), bot.Assignment[bot.VariableIndex, bot.Untyped]{Ident: testutil.Ident("target", bot.VariableIndex(0)), Value: testutil.Call[bot.VariableIndex]("assigned", "new")}, testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"initial": vi, "assigned": vi}},
 		{"return", returnContext, map[bot.HintID]bot.Type{"return-new": vvb}},
 		{"user argument", argumentContext, map[bot.HintID]bot.Type{"argument-new": vi}},
-		{"later argument", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vi, "push": bot.UnitType{}}},
-		{"set argument", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("set", "set", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("index", bot.IntegerLiteral{}), testutil.Literal[bot.VariableIndex]("value", bot.BoolLiteral{})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vb, "set": bot.UnitType{}}},
-		{"nested vectors", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vvb, testutil.Call[bot.VariableIndex]("outer", "new")), testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Call[bot.VariableIndex]("inner", "new")), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"outer": vvb, "inner": vb}},
-		{"outer result", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("get", "get", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("zero", bot.IntegerLiteral{}))), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"get": vi, "new": vvi}},
+		{"later argument", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vi, "push": vi}},
+		{"bool element", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.BoolLiteral{})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vb, "push": vb}},
+		{"nested vectors", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vvb, testutil.Call[bot.VariableIndex]("outer", "new")), testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Call[bot.VariableIndex]("inner", "new")), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"outer": vvb, "inner": vb, "push": vvb}},
+		{"outer result", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("get-back", "get_back", testutil.Call[bot.VariableIndex]("new", "new"))), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"get-back": vi, "new": vvi}},
+		{
+			"push assignment",
+			testutil.MainProgram[bot.VariableIndex](
+				declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("initial", "new")),
+				bot.Assignment[bot.VariableIndex, bot.Untyped]{
+					Ident: testutil.Ident("target", bot.VariableIndex(0)),
+					Value: testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1})),
+				},
+				testutil.UnitReturn[bot.VariableIndex](),
+			),
+			map[bot.HintID]bot.Type{"push": vi},
+		},
+		{
+			"pop assignment",
+			testutil.MainProgram[bot.VariableIndex](
+				declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("initial", "new")),
+				bot.Assignment[bot.VariableIndex, bot.Untyped]{
+					Ident: testutil.Ident("target", bot.VariableIndex(0)),
+					Value: testutil.Call[bot.VariableIndex]("pop", "pop_back", testutil.Reference("v", bot.VariableIndex(0))),
+				},
+				testutil.UnitReturn[bot.VariableIndex](),
+			),
+			map[bot.HintID]bot.Type{"pop": vi},
+		},
+		{"pop initializer", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("pop", "pop_back", testutil.Call[bot.VariableIndex]("new", "new"))), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vi, "pop": vi}},
+		{"push return", returning(vi, testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1}))), map[bot.HintID]bot.Type{"new": vi, "push": vi}},
+		{"pop return", returning(vvb, testutil.Call[bot.VariableIndex]("pop", "pop_back", testutil.Call[bot.VariableIndex]("new", "new"))), map[bot.HintID]bot.Type{"new": vvb, "pop": vvb}},
+		{
+			"get_back of push result",
+			testutil.MainProgram[bot.VariableIndex](
+				declaration("last", 0, bot.IntegerType{}, testutil.Call[bot.VariableIndex]("get-back", "get_back",
+					testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1})),
+				)),
+				testutil.UnitReturn[bot.VariableIndex](),
+			),
+			map[bot.HintID]bot.Type{"new": vi, "push": vi, "get-back": bot.IntegerType{}},
+		},
+		{
+			"independent get_back instantiations",
+			testutil.MainProgram[bot.VariableIndex](
+				declaration("i", 0, vi, testutil.Call[bot.VariableIndex]("int-new", "new")),
+				declaration("b", 1, vb, testutil.Call[bot.VariableIndex]("bool-new", "new")),
+				testutil.Call[bot.VariableIndex]("int-back", "get_back", testutil.Reference("i", bot.VariableIndex(0))),
+				testutil.Call[bot.VariableIndex]("bool-back", "get_back", testutil.Reference("b", bot.VariableIndex(1))),
+				testutil.UnitReturn[bot.VariableIndex](),
+			),
+			map[bot.HintID]bot.Type{"int-back": bot.IntegerType{}, "bool-back": bot.BoolType{}},
+		},
 		{"independent instantiations", testutil.MainProgram[bot.VariableIndex](declaration("i", 0, vi, testutil.Call[bot.VariableIndex]("int-new", "new")), declaration("b", 1, vb, testutil.Call[bot.VariableIndex]("bool-new", "new")), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"int-new": vi, "bool-new": vb}},
 	}
 	for _, tt := range tests {
@@ -128,7 +180,7 @@ func TestVectorInferenceFailures(t *testing.T) {
 	}{
 		{"standalone", testutil.Call[bot.VariableIndex]("new", "new")},
 		{"size", testutil.Call[bot.VariableIndex]("size", "size", testutil.Call[bot.VariableIndex]("new", "new"))},
-		{"get", testutil.Call[bot.VariableIndex]("get", "get", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("zero", bot.IntegerLiteral{}))},
+		{"get_back", testutil.Call[bot.VariableIndex]("get-back", "get_back", testutil.Call[bot.VariableIndex]("new", "new"))},
 		{"pop", testutil.Call[bot.VariableIndex]("pop", "pop_back", testutil.Call[bot.VariableIndex]("new", "new"))},
 		{"nested unconstrained", testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("outer-new", "new"), testutil.Call[bot.VariableIndex]("new", "new"))},
 	} {
