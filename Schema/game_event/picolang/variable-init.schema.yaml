@@ -1,0 +1,119 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangVariableInitEvent
+description: |
+  変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
+  変数の型との一致および vector の要素の型の統一は生成側で保証する。
+  入れ子の vector を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+
+type: object
+additionalProperties: false
+required: [kind, hintId, value]
+properties:
+  kind:
+    type: string
+    const: variable_init
+  hintId:
+    description: 初期化した変数に紐づける hintId。以後の更新・drop でこの値をキーとして使う
+    $ref: '../../picolang/v0/hint-id.yaml'
+  value:
+    description: 初期化された変数の値
+    $ref: '#/$defs/Value'
+
+$defs:
+  Value:
+    description: 初期値全体。bool は真偽値、integer は整数、unit は null、rotation は left または right、terrain はオブジェクト、vector は配列で表す
+    oneOf:
+      - type: boolean
+      - type: integer
+        description: i64 の範囲外の値の扱いは picolang の仕様に従い未定義
+      - type: 'null'
+      - type: string
+        enum: [left, right]
+      - $ref: '#/$defs/Terrain'
+      - type: array
+        items:
+          $ref: '#/$defs/Value'
+
+  Terrain:
+    description: 観測時点の地形種別
+    oneOf:
+      - $ref: '#/$defs/Land'
+      - $ref: '#/$defs/Rock'
+      - $ref: '#/$defs/Sea'
+
+  Land:
+    description: 陸。通常の陸、ゴール、チェックポイント、荷物のいずれか一つを kind に格納する
+    type: object
+    additionalProperties: false
+    required: [type, kind]
+    properties:
+      type:
+        type: string
+        const: land
+      kind:
+        oneOf:
+          - $ref: '#/$defs/PlainLand'
+          - $ref: '#/$defs/GoalLand'
+          - $ref: '#/$defs/CheckpointLand'
+          - $ref: '#/$defs/LuggageLand'
+
+  PlainLand:
+    description: 通常の陸
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: plain
+
+  GoalLand:
+    description: ゴールを表す特殊な陸
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: goal
+
+  CheckpointLand:
+    description: 通過順を表す番号を持つ特殊な陸
+    type: object
+    additionalProperties: false
+    required: [type, order]
+    properties:
+      type:
+        type: string
+        const: checkpoint
+      order:
+        description: チェックポイントを通過する順序
+        type: integer
+
+  LuggageLand:
+    description: 荷物を表す特殊な陸。ロボットは通行できる
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: luggage
+
+  Rock:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: rock
+
+  Sea:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: sea

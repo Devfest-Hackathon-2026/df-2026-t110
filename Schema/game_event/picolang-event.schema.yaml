@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangEvent
+description: 複数台の実行を扱う history 上の picolang イベント。イベント種別と出力元の interpreter を指定し、1台分のデバッグ情報を event に格納する
+
+type: object
+additionalProperties: false
+required: [type, interpreterId, event]
+properties:
+  type:
+    description: picolang interpreter のイベントを表す種別
+    type: string
+    const: picolang
+  interpreterId:
+    description: この実行内で interpreter を一意に識別する ID。異なる interpreter が同じプログラムを実行する場合も別の ID を使う
+    type: string
+    minLength: 1
+  event:
+    description: 指定した interpreter が出力したデバッグ情報。hintId は interpreterId が示すプログラム内のノードを指す
+    $ref: './picolang/event.schema.yaml'

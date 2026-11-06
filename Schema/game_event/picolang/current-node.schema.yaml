@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangCurrentNodeEvent
+description: 現在処理中の構文ノードを報告する
+
+type: object
+additionalProperties: false
+required: [kind, hintId]
+properties:
+  kind:
+    type: string
+    const: current_node
+  hintId:
+    description: 現在処理中の構文ノードの hintId
+    $ref: '../../picolang/v0/hint-id.yaml'

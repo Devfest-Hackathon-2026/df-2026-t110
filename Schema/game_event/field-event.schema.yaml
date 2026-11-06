@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: FieldEvent
+description: フィールドの状態遷移イベント。状態の詳細な形式は今後定義する
+
+type: object
+additionalProperties: false
+required: [type, tick, state]
+properties:
+  type:
+    description: フィールドのイベントを表す種別
+    type: string
+    const: field
+  tick:
+    description: このイベントが発生したゲーム内の論理時刻。初期状態は 0
+    type: integer
+    minimum: 0
+  state:
+    description: フィールドの状態を格納する placeholder。内部構造は未定義
+    type: object
+    additionalProperties: true

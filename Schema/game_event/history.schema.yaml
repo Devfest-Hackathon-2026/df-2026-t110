@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: GameHistory
+description: |
+  フロントエンドで実行を再生するための、単一の時系列イベントリスト。
+  各要素は field または一つの picolang interpreter のイベントで、配列の順序が発生順序を表す。
+  tick は field イベントのみが持つゲーム内の論理時刻であり、picolang イベントは tick に関する情報を持たない。
+  field と picolang のイベントは配列の順序で再生する。
+  空のリストはイベントがまだない状態を表す。
+  完全な実行履歴では最初に tick 0 の field イベントで初期状態を記録し、以後の field イベントの tick は非減少とする。
+  field イベントの tick の順序と interpreterId の対応は履歴の生成側で保証する。
+
+type: array
+items:
+  oneOf:
+    - $ref: './field-event.schema.yaml'
+    - $ref: './picolang-event.schema.yaml'
