@@ -75,9 +75,12 @@ func TestIndexNameErrors(t *testing.T) {
 		{"read before declaration", testutil.MainProgram[bot.Name](testutil.Reference("early", bot.Name("x")), declare("x", "x", one)), bot.CodeUndefinedVariable, "early"},
 		{"duplicate", testutil.MainProgram[bot.Name](declare("first", "x", one), declare("second", "x", one)), bot.CodeDuplicateVariable, "second-ident"},
 		{"builtin conflict", testutil.MainProgram[bot.Name](declare("var", "add", one)), bot.CodeFunctionNameConflict, "var-ident"},
+		{"get_back conflict", testutil.MainProgram[bot.Name](declare("var", "get_back", one)), bot.CodeFunctionNameConflict, "var-ident"},
 		{"user function conflict", testutil.MainProgram[bot.Name](declare("var", "main", one)), bot.CodeFunctionNameConflict, "var-ident"},
 		{"empty variable", testutil.MainProgram[bot.Name](declare("var", "", one)), bot.CodeInvalidName, "var-ident"},
 		{"undefined function", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "absent")), bot.CodeUndefinedFunction, "call"},
+		{"removed get", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "get")), bot.CodeUndefinedFunction, "call"},
+		{"removed set", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "set")), bot.CodeUndefinedFunction, "call"},
 		{"nil statement", testutil.MainProgram[bot.Name](nil), bot.CodeInvalidAST, "body"},
 		{"nil pointer statement", testutil.MainProgram[bot.Name]((*bot.Return[bot.Name, bot.Untyped])(nil)), bot.CodeInvalidAST, "body"},
 		{"nil expression", testutil.MainProgram[bot.Name](bot.Return[bot.Name, bot.Untyped]{Source: testutil.Source("return")}), bot.CodeInvalidAST, "return"},
@@ -139,14 +142,50 @@ func TestIndexParametersAndGlobalNames(t *testing.T) {
 		bot.Declaration[bot.Name, bot.Untyped]{Ident: testutil.Ident("shadow-param", bot.Name("p")), Value: testutil.Literal[bot.Name]("false", bot.BoolLiteral{})},
 	}}}
 	program.Functions["add"] = bot.Function[bot.Name, bot.Untyped]{Source: testutil.Source("add-definition")}
+	program.Functions["get_back"] = bot.Function[bot.Name, bot.Untyped]{Source: testutil.Source("get-back-definition")}
 	program.Functions[""] = bot.Function[bot.Name, bot.Untyped]{Source: testutil.Source("empty-definition")}
 	_, err := index.Index(program)
 	ds := testutil.Diagnostics(t, err, bot.IndexStage)
 	testutil.RequireDiagnostic(t, ds, bot.CodeFunctionConflict, "add", "add-definition")
+	testutil.RequireDiagnostic(t, ds, bot.CodeFunctionConflict, "get_back", "get-back-definition")
 	testutil.RequireDiagnostic(t, ds, bot.CodeInvalidName, "", "empty-definition")
 	testutil.RequireDiagnostic(t, ds, bot.CodeDuplicateVariable, "helper", "p2")
 	testutil.RequireDiagnostic(t, ds, bot.CodeFunctionNameConflict, "helper", "global")
 	testutil.RequireDiagnostic(t, ds, bot.CodeDuplicateVariable, "helper", "shadow-param")
+}
+
+func TestRemovedVectorBuiltinNamesAreAvailable(t *testing.T) {
+	t.Parallel()
+	for _, name := range []bot.Name{"get", "set"} {
+		t.Run(string(name)+"/function", func(t *testing.T) {
+			t.Parallel()
+			program := testutil.MainProgram[bot.Name](
+				testutil.Call[bot.Name]("call", name),
+				testutil.UnitReturn[bot.Name](),
+			)
+			program.Functions[name] = bot.Function[bot.Name, bot.Untyped]{
+				Source:     testutil.Source("definition"),
+				ReturnType: bot.UnitType{},
+				Body: bot.Block[bot.Name, bot.Untyped]{Stmts: []bot.Stmt[bot.Name, bot.Untyped]{
+					testutil.UnitReturn[bot.Name](),
+				}},
+			}
+			testutil.Typed(t, testutil.Indexed(t, program))
+		})
+		t.Run(string(name)+"/variable", func(t *testing.T) {
+			t.Parallel()
+			program := testutil.MainProgram[bot.Name](
+				bot.Declaration[bot.Name, bot.Untyped]{
+					Type:  bot.IntegerType{},
+					Ident: testutil.Ident("variable", name),
+					Value: testutil.Literal[bot.Name]("value", bot.IntegerLiteral{Value: 1}),
+				},
+				testutil.Reference("read", name),
+				testutil.UnitReturn[bot.Name](),
+			)
+			testutil.Typed(t, testutil.Indexed(t, program))
+		})
+	}
 }
 
 func TestIndexAcceptsPointerNodes(t *testing.T) {
