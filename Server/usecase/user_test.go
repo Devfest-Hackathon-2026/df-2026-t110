@@ -2,6 +2,8 @@ package usecase_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
@@ -9,13 +11,55 @@ import (
 )
 
 type userRepositoryStub struct {
-	candidate domain.User
-	result    domain.User
+	candidate  domain.User
+	result     domain.User
+	setSubject string
+	setName    string
+	setCalled  bool
+	setErr     error
+}
+
+func (s *userRepositoryStub) SetNameIfAbsent(_ context.Context, subject, name string) (domain.User, error) {
+	s.setCalled = true
+	s.setSubject, s.setName = subject, name
+	return s.result, s.setErr
 }
 
 func (s *userRepositoryStub) CreateIfAbsentByGoogleSubject(_ context.Context, candidate domain.User) (domain.User, error) {
 	s.candidate = candidate
 	return s.result, nil
+}
+
+func TestSetUsername(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		label, name      string
+		repoErr, wantErr error
+		wantCall         bool
+	}{
+		{"valid", "Alice_01", nil, nil, true},
+		{"empty", "", nil, usecase.ErrInvalidUsername, false},
+		{"invalid", "bad name", nil, usecase.ErrInvalidUsername, false},
+		{"too long", strings.Repeat("a", 33), nil, usecase.ErrInvalidUsername, false},
+		{"taken", "Alice", usecase.ErrUsernameTaken, usecase.ErrUsernameTaken, true},
+		{"already set", "Alice", usecase.ErrUsernameAlreadySet, usecase.ErrUsernameAlreadySet, true},
+		{"missing user", "Alice", usecase.ErrNotFound, usecase.ErrNotFound, true},
+	} {
+		t.Run(tt.label, func(t *testing.T) {
+			t.Parallel()
+			repo := &userRepositoryStub{setErr: tt.repoErr}
+			_, err := usecase.NewUser(repo).SetUsername(context.Background(), "subject", tt.name)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("error = %v, want %v", err, tt.wantErr)
+			}
+			if repo.setCalled != tt.wantCall {
+				t.Errorf("repository called = %v, want %v", repo.setCalled, tt.wantCall)
+			}
+			if repo.setCalled && (repo.setSubject != "subject" || repo.setName != tt.name) {
+				t.Errorf("repository got %q, %q", repo.setSubject, repo.setName)
+			}
+		})
+	}
 }
 
 func (s *userRepositoryStub) Get(_ context.Context, _ string) (domain.User, error) {

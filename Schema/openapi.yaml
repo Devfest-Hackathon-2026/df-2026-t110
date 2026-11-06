@@ -316,6 +316,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+  /me/username:
+    post:
+      summary: ユーザー名を一度だけ設定
+      operationId: setMyUsername
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [username]
+              properties:
+                username:
+                  type: string
+                  minLength: 1
+                  maxLength: 32
+                  pattern: '^[A-Za-z0-9_-]{1,32}$'
+      responses:
+        "204":
+          description: ユーザー名を設定した
+        "400":
+          description: 不正なユーザー名またはリクエスト
+        "401":
+          description: 認証されていない
+        "409":
+          description: ユーザー名が使用済み、または既に設定済み
+        "501":
+          description: ユーザー管理が設定されていない
+
   /tutorial:
     get:
       summary: チュートリアル一覧を取得

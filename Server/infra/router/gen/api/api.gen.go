@@ -171,6 +171,11 @@ type LoginCallbackParams struct {
 	Error *string `form:"error,omitempty" json:"error,omitempty"`
 }
 
+// SetMyUsernameJSONBody defines parameters for SetMyUsername.
+type SetMyUsernameJSONBody struct {
+	Username string `json:"username"`
+}
+
 // CreateMatchJSONRequestBody defines body for CreateMatch for application/json ContentType.
 type CreateMatchJSONRequestBody CreateMatchJSONBody
 
@@ -182,6 +187,9 @@ type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
 type UpdateProgramJSONRequestBody = Program
+
+// SetMyUsernameJSONRequestBody defines body for SetMyUsername for application/json ContentType.
+type SetMyUsernameJSONRequestBody SetMyUsernameJSONBody
 
 // Getter for additional properties for Tutorial. Returns the specified
 // element and whether it was found
@@ -384,6 +392,9 @@ type ServerInterface interface {
 	// GetMe 自分の情報を取得
 	// (GET /me)
 	GetMe(ctx *echo.Context) error
+	// SetMyUsername ユーザー名を一度だけ設定
+	// (POST /me/username)
+	SetMyUsername(ctx *echo.Context) error
 	// GetRanking ランキングを取得
 	// (GET /ranking)
 	GetRanking(ctx *echo.Context) error
@@ -599,6 +610,15 @@ func (w *ServerInterfaceWrapper) GetMe(ctx *echo.Context) error {
 	return err
 }
 
+// SetMyUsername converts echo context to params.
+func (w *ServerInterfaceWrapper) SetMyUsername(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetMyUsername(ctx)
+	return err
+}
+
 // GetRanking converts echo context to params.
 func (w *ServerInterfaceWrapper) GetRanking(ctx *echo.Context) error {
 	var err error
@@ -756,6 +776,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/login/callback", wrapper.LoginCallback, options.OperationMiddlewares["loginCallback"]...)
 	router.POST(options.BaseURL+"/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
+	router.POST(options.BaseURL+"/me/username", wrapper.SetMyUsername, options.OperationMiddlewares["setMyUsername"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
 	router.GET(options.BaseURL+"/room", wrapper.ListRooms, options.OperationMiddlewares["listRooms"]...)
 	router.GET(options.BaseURL+"/room/:roomId", wrapper.GetRoom, options.OperationMiddlewares["getRoom"]...)

@@ -1,9 +1,11 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"time"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/labstack/echo/v5"
@@ -19,6 +21,16 @@ const DefaultHeartbeatInterval = 15 * time.Second
 type Config struct {
 	// HeartbeatInterval defaults to DefaultHeartbeatInterval when not positive.
 	HeartbeatInterval time.Duration
+	Sessions          SessionUserLookup
+	Users             UsernameSetter
+}
+
+type SessionUserLookup interface {
+	CurrentUser(ctx context.Context, sessionID string) (domain.User, error)
+}
+
+type UsernameSetter interface {
+	SetUsername(ctx context.Context, subject, name string) (domain.User, error)
 }
 
 // Router translates HTTP requests into use case calls.
