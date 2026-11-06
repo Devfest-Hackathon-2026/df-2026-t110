@@ -59,6 +59,9 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
     - pop_back: vector\<T> -> vector\<T>
         - 末尾の要素を取り除いた新しいvectorを返す
         - 要素数が0の場合はパニック
+    - back: vector\<T> -> T
+        - 末尾の要素を独立した値として返す。元のvectorの要素数は変わらない
+        - 要素数が0の場合はパニック
     - size: vector\<T> -> integer
 - terrain
     - is_land: terrain -> bool
@@ -138,6 +141,7 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - vectorの値は、入れ子のvectorを含めてそれぞれ独立している。一方の値への更新は、別の変数や取得済みの値に伝播しない。
 - 関数内での引数への再代入は、その関数のローカルな値にだけ反映される。
 - push_back、pop_backの結果を元の変数に反映するには、`v = push_back(v, x)`のように戻り値を代入する。
+- 末尾の要素を取り出して残りのvectorに更新する場合は、`x = back(v)`の後に`v = pop_back(v)`を行う。
 
 ### VM
 - VMのパニックはgoのerrに変換する
@@ -154,7 +158,9 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 
 ### 意味解析
 
-関数名と型の情報を持つmapを用意し、あらかじめ関数のシグネチャを入れておく。関数名が重複する、あるいは組み込み関数と同じ名前の関数を定義する場合はエラー。
+関数名と型の情報を持つmapを用意し、あらかじめ関数のシグネチャを入れておく。プログラム内の関数名が重複する、あるいは組み込み関数と同じ名前の関数を定義する場合はエラー。
+
+組み込み関数のbackには2つのシグネチャを登録し、引数なしの呼び出しは後退アクション、vectorを1つ渡す呼び出しは末尾要素の取得として解決する。それ以外の引数の個数・型はエラーにする。
 
 ここから先は関数ごとに実行する(関数ごとに分離してよい)。
 
