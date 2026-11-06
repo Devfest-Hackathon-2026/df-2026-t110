@@ -378,12 +378,6 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 		{action: game.DistanceAction{}, result: integer},
 		{action: game.SearchFrontAction{}, result: observation},
 		{action: game.SearchNowAction{}, result: observation},
-		{action: game.IsLandAction{Terrain: terrain}, result: boolean},
-		{action: game.IsGoalAction{Terrain: terrain}, result: boolean},
-		{action: game.IsCheckpointAction{Terrain: terrain}, result: boolean},
-		{action: game.IsLaggageAction{Terrain: terrain}, result: boolean},
-		{action: game.IsSeaAction{Terrain: terrain}, result: boolean},
-		{action: game.IsRockAction{Terrain: terrain}, result: boolean},
 		{action: game.PrintIntegerAction{Integer: -42}, result: unit},
 		{action: game.PrintBoolAction{Bool: true}, result: unit},
 	}
@@ -450,27 +444,18 @@ func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 			if reply != (game.ActionReply{RobotID: "a", Action: game.SearchFrontAction{}}) {
 				t.Error("expected search_front")
 			}
-			return game.ResumeDecision{RobotID: "a", ReturnValue: cell}, nil
-		case 3:
-			// Change the live cell after search_front returned its observation.
+			// Copy the observation before the live cell changes.
+			result := cell
 			cell = game.SeaTerrain{}
-			r, hasAction := reply.(game.ActionReply)
-			if !hasAction {
-				t.Error("missing terrain predicate action")
-				return nil, errors.New("missing terrain predicate action")
+			return game.ResumeDecision{RobotID: "a", ReturnValue: result}, nil
+		case 3:
+			if reply != (game.DoneReply{RobotID: "a"}) {
+				t.Errorf("expected completion after local terrain predicate, got %+v", reply)
 			}
-			action, ok := r.Action.(game.IsLandAction)
-			if !ok {
-				t.Errorf("expected is_land, got %T", r.Action)
-				return nil, errors.New("unexpected terrain predicate action")
-			}
-			if action.Terrain != observation {
-				t.Errorf("terrain observation changed in transit: %+v", action.Terrain)
-			}
-			_, isLand := action.Terrain.(game.LandTerrain)
-			return game.ResumeDecision{RobotID: "a", ReturnValue: game.BoolValue{Bool: isLand}}, nil
-		default:
 			return game.DoneDecision{}, nil
+		default:
+			t.Error("unexpected board call")
+			return nil, errors.New("unexpected board call")
 		}
 	}}
 	r := robotFunc(func(_ context.Context, value game.Value) (game.Step, error) {
@@ -488,17 +473,26 @@ func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 				t.Error("expected terrain return value")
 				return nil, errors.New("unexpected terrain return value")
 			}
-			return game.ActionStep{Action: game.IsLandAction{Terrain: terrain}}, nil
-		default:
-			if value != (game.BoolValue{Bool: true}) {
-				t.Error("expected predicate result")
+			if terrain != observation {
+				t.Errorf("terrain observation changed in transit: %+v", terrain)
+			}
+			// Terrain predicates are evaluated inside the robot without an action.
+			if _, isLand := terrain.(game.LandTerrain); !isLand {
+				t.Error("expected local is_land result to be true")
 			}
 			return game.DoneStep{}, nil
+		default:
+			t.Error("unexpected robot call")
+			return nil, errors.New("unexpected robot call")
 		}
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
-	if _, err := h.Run(t.Context(), limits()); err != nil {
+	report, err := h.Run(t.Context(), limits())
+	if err != nil {
 		t.Error(err)
+	}
+	if report.Outcomes["a"] != (hub.CompletedOutcome{}) || report.Resumes != 2 || boardCalls != 3 || robotCalls != 2 {
+		t.Errorf("local terrain predicate caused unexpected execution: %+v, board calls=%d, robot calls=%d", report, boardCalls, robotCalls)
 	}
 	if cell != (game.SeaTerrain{}) {
 		t.Errorf("live cell did not change: %+v", cell)
