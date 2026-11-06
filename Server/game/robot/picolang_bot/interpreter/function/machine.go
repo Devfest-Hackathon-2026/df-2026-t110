@@ -129,6 +129,7 @@ func (m *Machine) Resume(result memory.ID) error {
 	for _, id := range m.waiting.Args {
 		m.drop(id)
 	}
+	m.current(m.waiting.Source)
 	m.waiting = Call{}
 	m.operands = append(m.operands, result)
 	m.phase = executing
