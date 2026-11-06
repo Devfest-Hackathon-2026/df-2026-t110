@@ -1,0 +1,11 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PrimitiveType
+description: picolang の基本型。unit は () を表す
+
+type: string
+enum:
+  - bool
+  - integer
+  - unit
+  - terrain
+  - rotation

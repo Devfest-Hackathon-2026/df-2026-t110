@@ -13,6 +13,10 @@
     - リテラルなし
 - rotation
     - left/right
+- vector\<T>
+    - 型Tの要素を持つ可変長配列
+    - 同じvectorの要素はすべて同じ型
+    - インデックスは0から始まる
 
 ### 組み込み関数
 
@@ -47,6 +51,16 @@
     - random_integer: (integer, integer) -> integer
         - 閉区間[fst, snd]上の一様分布
         - snd < fstの場合はパニック
+- vector
+    - new: () -> vector\<T>
+    - push_back: (vector\<T>, T) -> ()
+    - pop_back: vector\<T> -> ()
+        - 要素数が0の場合はパニック
+    - get: (vector\<T>, integer) -> T
+        - インデックスが0未満、または要素数以上の場合はパニック
+    - set: (vector\<T>, integer, T) -> ()
+        - インデックスが0未満、または要素数以上の場合はパニック
+    - size: vector\<T> -> integer
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool
