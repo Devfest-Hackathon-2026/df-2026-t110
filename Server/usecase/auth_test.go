@@ -64,22 +64,24 @@ type authFixture struct {
 	provider *fakeProvider
 	clock    *clock
 	sessions *repo.Sessions
+	session  *usecase.Session
 }
 
 func newAuthFixture() *authFixture {
 	c := &clock{now: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
 	p := &fakeProvider{identity: usecase.Identity{Subject: "google-subject", Name: "Alice"}}
 	sessions := repo.NewSessions()
+	users := repo.NewUsers()
+	session := usecase.NewSession(usecase.SessionDeps{Sessions: sessions, Users: users, Now: c.Now, TTL: time.Hour})
 	auth := usecase.NewAuth(usecase.AuthDeps{
 		Provider:        p,
 		LoginAttempts:   repo.NewLoginAttempts(c.Now),
-		Users:           repo.NewUsers(),
-		Sessions:        sessions,
+		Users:           users,
+		Sessions:        session,
 		Now:             c.Now,
 		LoginAttemptTTL: time.Minute,
-		SessionTTL:      time.Hour,
 	})
-	return &authFixture{auth: auth, provider: p, clock: c, sessions: sessions}
+	return &authFixture{auth: auth, provider: p, clock: c, sessions: sessions, session: session}
 }
 
 func (f *authFixture) login(t *testing.T) domain.Session {
@@ -123,7 +125,7 @@ func TestBeginLoginStoresAttemptWithProviderURL(t *testing.T) {
 
 func TestLoginWithoutProviderIsUnavailable(t *testing.T) {
 	t.Parallel()
-	auth := usecase.NewAuth(usecase.AuthDeps{LoginAttempts: repo.NewLoginAttempts(nil), Users: repo.NewUsers(), Sessions: repo.NewSessions()})
+	auth := usecase.NewAuth(usecase.AuthDeps{})
 
 	if _, err := auth.BeginLogin(context.Background()); !errors.Is(err, usecase.ErrLoginUnavailable) {
 		t.Errorf("BeginLogin() error = %v, want ErrLoginUnavailable", err)
@@ -145,7 +147,7 @@ func TestCompleteLoginStartsSessionForIdentifiedUser(t *testing.T) {
 	if want := f.clock.Now().Add(time.Hour); !session.ExpiresAt.Equal(want) {
 		t.Errorf("session expires at %v, want %v", session.ExpiresAt, want)
 	}
-	user, err := f.auth.CurrentUser(context.Background(), session.ID)
+	user, err := f.session.CurrentUser(context.Background(), session.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +170,7 @@ func TestCompleteLoginReusesUserOfSameSubject(t *testing.T) {
 	if second.UserID != first.UserID {
 		t.Errorf("user ID = %q, want %q", second.UserID, first.UserID)
 	}
-	user, err := f.auth.CurrentUser(context.Background(), second.ID)
+	user, err := f.session.CurrentUser(context.Background(), second.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +291,7 @@ func TestCurrentUser(t *testing.T) {
 			name: "logged out",
 			arrange: func(t *testing.T, f *authFixture, id string) string {
 				t.Helper()
-				if err := f.auth.Logout(context.Background(), id); err != nil {
+				if err := f.session.Logout(context.Background(), id); err != nil {
 					t.Fatalf("Logout() error = %v", err)
 				}
 				return id
@@ -303,7 +305,7 @@ func TestCurrentUser(t *testing.T) {
 			f := newAuthFixture()
 			session := f.login(t)
 
-			_, err := f.auth.CurrentUser(context.Background(), tt.arrange(t, f, session.ID))
+			_, err := f.session.CurrentUser(context.Background(), tt.arrange(t, f, session.ID))
 
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("CurrentUser() error = %v, want %v", err, tt.wantErr)
@@ -318,7 +320,7 @@ func TestCurrentUserDeletesExpiredSession(t *testing.T) {
 	session := f.login(t)
 	f.clock.Advance(time.Hour)
 
-	if _, err := f.auth.CurrentUser(context.Background(), session.ID); !errors.Is(err, usecase.ErrUnauthenticated) {
+	if _, err := f.session.CurrentUser(context.Background(), session.ID); !errors.Is(err, usecase.ErrUnauthenticated) {
 		t.Errorf("CurrentUser() error = %v, want ErrUnauthenticated", err)
 	}
 	if _, err := f.sessions.Get(context.Background(), session.ID); !errors.Is(err, usecase.ErrNotFound) {
@@ -331,7 +333,7 @@ func TestLogoutWithoutSessionSucceeds(t *testing.T) {
 	f := newAuthFixture()
 
 	for _, id := range []string{"", "unknown"} {
-		if err := f.auth.Logout(context.Background(), id); err != nil {
+		if err := f.session.Logout(context.Background(), id); err != nil {
 			t.Errorf("Logout(%q) error = %v", id, err)
 		}
 	}
