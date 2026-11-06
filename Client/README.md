@@ -91,3 +91,7 @@ pnpm build
 - `src/styles`: サイト共通のスタイル
 
 `pnpm format` はClient内のソースと設定をPrettierで整形します。ESLintとTypeScriptの設定もClient内で完結しています。
+
+## 印刷マーカーの読み取り
+
+`/rooms` の「ARマーカーを読み取る」から、Hiro（A）とKanji（B）の検出状態を確認できます。確認専用ページはありません。`src/features/rooms/roomMarkerTracking.ts` の `mountRoomMarkerTracker(container, callbacks)` は個別の検出状態、カメラ準備完了、カメラエラーをコールバックで通知します。戻り値の `markers` から各マーカーの座標を取得でき、`stop()` でカメラを停止します。印刷した黒い正方形の一辺が14 cmの場合、`size="0.14"` です。異なる倍率で印刷した場合は `MARKER_SIZE_METERS` を実測値（メートル）へ変更してください。AR.jsとA-Frame本体は配布済みJavaScriptとして `public/vendor`、パターンは `public/markers` に置いています。2点からの盤面配置やルーム作成には未接続です。
