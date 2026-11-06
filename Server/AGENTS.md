@@ -18,6 +18,10 @@
   - ex: the repository interfaces a use case needs live in `usecase`, & `infra` implements them.
 - Wire implementations together (construction & injection) in `cmd`.
 
+## Goのmap
+
+- 集合として使い、値自体に意味を持たせないmapには `map[T]struct{}` を使うこと（例: `map[game.RobotID]struct{}`）。
+
 ## Goのテスト
 
 - `t.Fatal` / `t.Fatalf` はテスト準備の失敗など、テストを続行できない場合にのみ使うこと。
