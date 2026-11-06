@@ -2,13 +2,20 @@
 package board
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
+	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
+	robotmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
+
+var ErrTickLimit = errors.New("tick limit reached")
 
 type Direction string
 
@@ -42,20 +49,23 @@ type RobotState struct {
 }
 
 type Config struct {
-	Terrain [][]game.TerrainValue
-	Robots  map[game.RobotID]RobotState
+	// MaxTicks bounds committed ticks; zero means unlimited.
+	MaxTicks uint64
+	Terrain  [][]values.TerrainValue
+	Robots   map[protocol.RobotID]RobotState
 }
 
 type Snapshot struct {
 	Tick    uint64
-	Terrain [][]game.TerrainValue
-	Robots  map[game.RobotID]RobotState
+	Terrain [][]values.TerrainValue
+	Robots  map[protocol.RobotID]RobotState
 }
 
 type Board struct {
+	maxTicks uint64
 	state    Snapshot
-	order    []game.RobotID
-	controls map[game.RobotID]control
+	order    []protocol.RobotID
+	controls map[protocol.RobotID]control
 	phase    phase
 }
 
@@ -69,7 +79,7 @@ func New(config Config) (*Board, error) {
 			return nil, errors.New("terrain must be rectangular")
 		}
 		for _, cell := range row {
-			if !game.ValidValue(cell) {
+			if !values.ValidValue(cell) {
 				return nil, fmt.Errorf("invalid terrain %T", cell)
 			}
 		}
@@ -81,102 +91,103 @@ func New(config Config) (*Board, error) {
 			p.X < 0 || p.Y < 0 || p.X >= width || p.Y >= len(config.Terrain) {
 			return nil, fmt.Errorf("invalid robot %q", id)
 		}
-		_, isLand := config.Terrain[p.Y][p.X].(game.LandTerrain)
+		_, isLand := config.Terrain[p.Y][p.X].(values.LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {
 			return nil, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
 		occupied[p] = struct{}{}
 	}
 	state := Snapshot{Terrain: config.Terrain, Robots: config.Robots}
-	return &Board{state: clone(state), phase: unstartedBoard{}}, nil
+	return &Board{maxTicks: config.MaxTicks, state: clone(state), phase: unstartedBoard{}}, nil
 }
 
 func (b *Board) Snapshot() Snapshot { return clone(b.state) }
 
-func (b *Board) Start(ctx context.Context, ids []game.RobotID) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (b *Board) Start(ids []protocol.RobotID) ([]fieldevent.FieldEvent, error) {
 	if _, fresh := b.phase.(unstartedBoard); !fresh || len(ids) != len(b.state.Robots) {
-		return errors.New("board is single-use and robot IDs must match its configuration")
+		return nil, errors.New("board is single-use and robot IDs must match its configuration")
 	}
-	controls := make(map[game.RobotID]control, len(ids))
+	controls := make(map[protocol.RobotID]control, len(ids))
 	for _, id := range ids {
 		if _, ok := b.state.Robots[id]; !ok || controls[id] != nil {
-			return fmt.Errorf("unknown or duplicate robot %q", id)
+			return nil, fmt.Errorf("unknown or duplicate robot %q", id)
 		}
 		controls[id] = unstartedControl{}
 	}
-	b.controls, b.order, b.phase = controls, append([]game.RobotID(nil), ids...), collectingBoard{}
-	return nil
+	b.controls, b.order, b.phase = controls, append([]protocol.RobotID(nil), ids...), collectingBoard{}
+	return b.events(), nil
 }
 
-func (b *Board) Next(ctx context.Context, reply game.Reply) (game.Decision, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
+func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 	switch phase := b.phase.(type) {
 	case unstartedBoard:
-		return nil, errors.New("board has not started")
+		return boardmsg.BoardOutput{}, errors.New("board has not started")
 	case awaitingReplyBoard:
 		if err := b.accept(phase.robotID, reply); err != nil {
-			return nil, err
+			return boardmsg.BoardOutput{}, err
 		}
 		b.phase = collectingBoard{}
-	case collectingBoard, awaitingCommitBoard, finishedBoard:
+	case collectingBoard, finishedBoard:
 		if reply != nil {
-			return nil, errors.New("unexpected robot reply")
+			return boardmsg.BoardOutput{}, errors.New("unexpected robot reply")
 		}
 	default:
-		return nil, errors.New("invalid board phase")
+		return boardmsg.BoardOutput{}, errors.New("invalid board phase")
 	}
-	switch b.phase.(type) {
-	case awaitingCommitBoard:
-		update, err := b.commit(ctx)
-		if err != nil {
-			return nil, err
+	var output boardmsg.BoardOutput
+	for {
+		if _, finished := b.phase.(finishedBoard); finished {
+			output.Decision = boardmsg.DoneDecision{}
+			return output, nil
 		}
-		b.phase = collectingBoard{}
-		return game.UpdateDecision{Update: update}, nil
-	case finishedBoard:
-		return game.DoneDecision{}, nil
-	}
-	pending := false
-	for _, id := range b.order {
-		switch c := b.controls[id].(type) {
-		case pendingControl:
-			pending = true
-		case unstartedControl:
-			b.phase = awaitingReplyBoard{robotID: id}
-			return game.StartDecision{RobotID: id}, nil
-		case readyControl:
-			b.phase = awaitingReplyBoard{robotID: id}
-			return game.ResumeDecision{RobotID: id, ReturnValue: c.value}, nil
-		case finishedControl:
-		default:
-			return nil, fmt.Errorf("invalid control for robot %q", id)
+		pending := false
+		for _, id := range b.order {
+			switch c := b.controls[id].(type) {
+			case pendingControl:
+				pending = true
+			case unstartedControl:
+				b.phase = awaitingReplyBoard{robotID: id}
+				output.Decision = boardmsg.StartDecision{RobotID: id}
+				return output, nil
+			case readyControl:
+				b.phase = awaitingReplyBoard{robotID: id}
+				output.Decision = boardmsg.ResumeDecision{RobotID: id, ReturnValue: c.value}
+				return output, nil
+			case finishedControl:
+			default:
+				return output, fmt.Errorf("invalid control for robot %q", id)
+			}
 		}
-	}
-	if pending {
+		if !pending {
+			b.phase = finishedBoard{}
+			output.Decision = boardmsg.DoneDecision{}
+			return output, nil
+		}
 		if b.state.Tick == math.MaxUint64 {
-			return nil, errors.New("tick overflow")
+			return output, errors.New("tick overflow")
 		}
-		tick := b.state.Tick + 1
-		b.phase = awaitingCommitBoard{}
-		return game.AdvanceDecision{Tick: tick}, nil
+		if b.maxTicks != 0 && b.state.Tick >= b.maxTicks {
+			return output, ErrTickLimit
+		}
+		if err := b.commit(); err != nil {
+			return output, err
+		}
+		output.Events = append(output.Events, b.events()...)
 	}
-	b.phase = finishedBoard{}
-	return game.DoneDecision{}, nil
 }
 
-func (b *Board) accept(id game.RobotID, reply game.Reply) error {
-	var robotID game.RobotID
+func (b *Board) events() []fieldevent.FieldEvent {
+	return []fieldevent.FieldEvent{{Tick: b.state.Tick}}
+}
+
+func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
+	var robotID protocol.RobotID
 	switch r := reply.(type) {
-	case game.ActionReply:
+	case robotmsg.ActionReply:
 		robotID = r.RobotID
-	case game.DoneReply:
+	case robotmsg.DoneReply:
 		robotID = r.RobotID
-	case game.ErrorReply:
+	case robotmsg.ErrorReply:
 		robotID = r.RobotID
 	default:
 		return errors.New("reply must contain an action, completion, or error")
@@ -185,26 +196,26 @@ func (b *Board) accept(id game.RobotID, reply game.Reply) error {
 		return errors.New("reply must match the requested robot")
 	}
 	switch r := reply.(type) {
-	case game.ActionReply:
+	case robotmsg.ActionReply:
 		if r.Action == nil {
 			return errors.New("action reply must contain an action")
 		}
 		switch a := r.Action.(type) {
-		case game.DrillDurabilityAction:
-			b.controls[id] = readyControl{value: game.IntegerValue{Integer: b.state.Robots[id].DrillDurability}}
-		case game.ForwardAction, game.BackAction:
+		case actions.DrillDurabilityAction:
+			b.controls[id] = readyControl{value: values.IntegerValue{Integer: b.state.Robots[id].DrillDurability}}
+		case actions.ForwardAction, actions.BackAction:
 			b.controls[id] = pendingControl{action: a}
-		case game.RotateAction:
-			if a.Rotation != game.Left && a.Rotation != game.Right {
+		case actions.RotateAction:
+			if a.Rotation != values.Left && a.Rotation != values.Right {
 				return errors.New("rotate requires left or right")
 			}
 			b.controls[id] = pendingControl{action: a}
 		default:
 			return fmt.Errorf("%w: action %T", game.ErrNotSupported, a)
 		}
-	case game.DoneReply:
+	case robotmsg.DoneReply:
 		b.controls[id] = finishedControl{}
-	case game.ErrorReply:
+	case robotmsg.ErrorReply:
 		if r.Err == nil {
 			return errors.New("error reply must contain an error")
 		}
@@ -215,10 +226,10 @@ func (b *Board) accept(id game.RobotID, reply game.Reply) error {
 
 // commit resolves movement dependencies against one immutable starting state.
 // A visiting dependency denotes a swap/cycle; failure propagates to followers.
-func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
+func (b *Board) commit() error {
 	robotCount := len(b.state.Robots)
-	occupied := make(map[Position]game.RobotID, robotCount)
-	targets := make(map[game.RobotID]Position, robotCount)
+	occupied := make(map[Position]protocol.RobotID, robotCount)
+	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
 	for id, robot := range b.state.Robots {
 		occupied[robot.Position] = id
@@ -232,8 +243,8 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 		robot := b.state.Robots[id]
 		delta := directionDeltas[robot.Direction]
 		switch a.(type) {
-		case game.ForwardAction:
-		case game.BackAction:
+		case actions.ForwardAction:
+		case actions.BackAction:
 			delta.X, delta.Y = -delta.X, -delta.Y
 		default:
 			continue
@@ -244,11 +255,11 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 			counts[target]++
 		}
 	}
-	visiting := make(map[game.RobotID]struct{}, robotCount)
-	resolved := make(map[game.RobotID]struct{}, robotCount)
-	movable := make(map[game.RobotID]bool, robotCount)
-	var canMove func(game.RobotID) bool
-	canMove = func(id game.RobotID) bool {
+	visiting := make(map[protocol.RobotID]struct{}, robotCount)
+	resolved := make(map[protocol.RobotID]struct{}, robotCount)
+	movable := make(map[protocol.RobotID]bool, robotCount)
+	var canMove func(protocol.RobotID) bool
+	canMove = func(id protocol.RobotID) bool {
 		if _, exists := resolved[id]; exists {
 			return movable[id]
 		}
@@ -269,7 +280,7 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 	}
 	next := clone(b.state)
 	next.Tick++
-	update := game.TickUpdate{Tick: next.Tick}
+	var results []robotmsg.ActionResult
 	for _, id := range b.order {
 		c, pending := b.controls[id].(pendingControl)
 		if !pending {
@@ -277,41 +288,38 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 		}
 		a := c.action
 		robot := next.Robots[id]
-		var value game.Value = game.UnitValue{}
+		var value values.Value = values.UnitValue{}
 		switch action := a.(type) {
-		case game.RotateAction:
+		case actions.RotateAction:
 			rotation := 1
-			if action.Rotation == game.Left {
+			if action.Rotation == values.Left {
 				rotation = 3
 			}
 			robot.Direction = [...]Direction{North, East, South, West}[(directionIndex(robot.Direction)+rotation)%4]
-		case game.ForwardAction, game.BackAction:
+		case actions.ForwardAction, actions.BackAction:
 			moved := canMove(id)
-			value = game.BoolValue{Bool: moved}
+			value = values.BoolValue{Bool: moved}
 			if moved {
 				robot.Position = targets[id]
 			}
 		default:
-			return game.TickUpdate{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, a)
+			return fmt.Errorf("%w: pending action %T", game.ErrNotSupported, a)
 		}
 		next.Robots[id] = robot
-		update.Results = append(update.Results, game.ActionResult{RobotID: id, Action: a, Value: value})
-	}
-	if err := ctx.Err(); err != nil {
-		return game.TickUpdate{}, err
+		results = append(results, robotmsg.ActionResult{RobotID: id, Action: a, Value: value})
 	}
 	b.state = next
-	for _, result := range update.Results {
+	for _, result := range results {
 		b.controls[result.RobotID] = readyControl{value: result.Value}
 	}
-	return update, nil
+	return nil
 }
 
 func (b *Board) land(p Position) bool {
 	if p.Y < 0 || p.Y >= len(b.state.Terrain) || p.X < 0 || p.X >= len(b.state.Terrain[0]) {
 		return false
 	}
-	_, isLand := b.state.Terrain[p.Y][p.X].(game.LandTerrain)
+	_, isLand := b.state.Terrain[p.Y][p.X].(values.LandTerrain)
 	return isLand
 }
 
@@ -323,9 +331,9 @@ func directionIndex(d Direction) int {
 }
 
 func clone(state Snapshot) Snapshot {
-	copy := Snapshot{Tick: state.Tick, Terrain: make([][]game.TerrainValue, len(state.Terrain)), Robots: make(map[game.RobotID]RobotState, len(state.Robots))}
+	copy := Snapshot{Tick: state.Tick, Terrain: make([][]values.TerrainValue, len(state.Terrain)), Robots: make(map[protocol.RobotID]RobotState, len(state.Robots))}
 	for y, row := range state.Terrain {
-		copy.Terrain[y] = append([]game.TerrainValue(nil), row...)
+		copy.Terrain[y] = append([]values.TerrainValue(nil), row...)
 	}
 	for id, robot := range state.Robots {
 		copy.Robots[id] = robot

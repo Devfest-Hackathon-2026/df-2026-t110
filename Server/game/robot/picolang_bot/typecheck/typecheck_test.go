@@ -6,7 +6,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	bot "github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/internal/testutil"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/typecheck"
@@ -247,8 +247,8 @@ func TestTypeCheckLiteralsAndPointers(t *testing.T) {
 		{"bool", &bot.BoolLiteral{Value: true}, &bot.BoolType{}},
 		{"integer", &bot.IntegerLiteral{Value: -1}, &bot.IntegerType{}},
 		{"unit", &bot.UnitLiteral{}, &bot.UnitType{}},
-		{"left", &bot.RotationLiteral{Value: game.Left}, &bot.RotationType{}},
-		{"right", bot.RotationLiteral{Value: game.Right}, bot.RotationType{}},
+		{"left", &bot.RotationLiteral{Value: values.Left}, &bot.RotationType{}},
+		{"right", bot.RotationLiteral{Value: values.Right}, bot.RotationType{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

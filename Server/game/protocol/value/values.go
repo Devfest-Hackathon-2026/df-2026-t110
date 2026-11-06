@@ -1,4 +1,4 @@
-package game
+package value
 
 type Value interface{ value() }
 
@@ -15,6 +15,7 @@ func (UnitValue) value()    {}
 // observation.
 type TerrainValue interface {
 	Value
+	RecordValue
 	terrain()
 }
 

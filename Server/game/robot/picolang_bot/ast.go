@@ -3,9 +3,13 @@
 // and type checking produces TypedProgram. Execution will consume TypedProgram.
 package picolangbot
 
+import (
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+)
+
 // HintID identifies the corresponding source node throughout all AST stages.
 // UUID validity and program-wide uniqueness are checked before execution.
-type HintID string
+type HintID = protocol.HintID
 
 type Source struct {
 	HintID HintID
