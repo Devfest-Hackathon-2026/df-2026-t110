@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -40,6 +41,7 @@ func TestReferenceCountOverflowIsAtomic(t *testing.T) {
 			}
 			s.entries[id].references = math.MaxUint64
 			s.entries[RootID].references = tc.rootCount
+			before := s.MemoryUsage()
 			if err := tc.operation(&s, id); err == nil {
 				t.Error("operation accepted reference count overflow")
 			}
@@ -48,6 +50,9 @@ func TestReferenceCountOverflowIsAtomic(t *testing.T) {
 			}
 			if s.entries[id].references != math.MaxUint64 || s.entries[RootID].references != tc.rootCount {
 				t.Error("failed operation changed reference counts")
+			}
+			if got := s.MemoryUsage(); got != before {
+				t.Errorf("failed operation changed memory usage from %d to %d", before, got)
 			}
 		})
 	}
@@ -58,10 +63,38 @@ func TestIDExhaustionDoesNotRetainEdges(t *testing.T) {
 	var s Store
 	s.initialize()
 	s.nextID = math.MaxUint64
+	before := s.MemoryUsage()
 	if _, err := s.Add(ListNode{Prev: RootID, Value: RootID}); err == nil {
 		t.Error("Add accepted exhausted IDs")
 	}
 	if len(s.entries) != 1 || s.entries[RootID].references != 1 {
 		t.Error("failed allocation retained outgoing edges")
+	}
+	if got := s.MemoryUsage(); got != before {
+		t.Errorf("failed allocation changed memory usage from %d to %d", before, got)
+	}
+}
+
+func TestMemoryUsageOverflowIsAtomic(t *testing.T) {
+	t.Parallel()
+	for _, value := range []Value{Unit{}, ListNode{Prev: RootID, Value: RootID}} {
+		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
+			t.Parallel()
+			var s Store
+			s.initialize()
+			s.memoryUsage = math.MaxUint64
+			if _, err := s.Add(value); err == nil {
+				t.Error("Add accepted memory usage overflow")
+			}
+			if len(s.entries) != 1 || s.nextID != 0 || s.entries[RootID].references != 1 {
+				t.Error("failed allocation changed entries, IDs, or reference counts")
+			}
+			if got := s.MemoryUsage(); got != math.MaxUint64 {
+				t.Errorf("failed allocation changed memory usage to %d", got)
+			}
+			if _, err := s.Add(ListRoot{}); err != nil {
+				t.Errorf("retaining the shared root allocated memory: %v", err)
+			}
+		})
 	}
 }

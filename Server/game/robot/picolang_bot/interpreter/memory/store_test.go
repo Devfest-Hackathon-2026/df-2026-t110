@@ -95,6 +95,7 @@ func TestPrimitiveLifetimes(t *testing.T) {
 func TestStoreOwnsCommonRoot(t *testing.T) {
 	t.Parallel()
 	var s memory.Store
+	rootBytes := s.MemoryUsage()
 	assertValue(t, &s, memory.RootID, memory.ListRoot{})
 	assertCount(t, &s, memory.RootID, 1)
 	if err := s.Release(memory.RootID); err == nil {
@@ -107,15 +108,19 @@ func TestStoreOwnsCommonRoot(t *testing.T) {
 		t.Errorf("roots = %d, %d; want common ID %d", a, b, memory.RootID)
 	}
 	assertCount(t, &s, memory.RootID, 3)
+	assertUsage(t, &s, rootBytes)
 	release(t, &s, a)
 	release(t, &s, b)
 	assertValue(t, &s, memory.RootID, memory.ListRoot{})
 	assertCount(t, &s, memory.RootID, 1)
+	assertUsage(t, &s, rootBytes)
 }
 
 func TestSharedAndNestedLists(t *testing.T) {
 	t.Parallel()
 	var s memory.Store
+	rootBytes := s.MemoryUsage()
+	primitiveBytes, nodeBytes := rootBytes+8, rootBytes+16
 	a := add(t, &s, memory.Integer{Value: 1})
 	b := add(t, &s, memory.Integer{Value: 2})
 	prefix := add(t, &s, memory.ListNode{Prev: memory.RootID, Value: a})
@@ -125,6 +130,7 @@ func TestSharedAndNestedLists(t *testing.T) {
 	assertCount(t, &s, a, 2)
 	assertCount(t, &s, b, 3)
 	assertCount(t, &s, prefix, 3)
+	assertUsage(t, &s, rootBytes+2*primitiveBytes+3*nodeBytes)
 	// Only the two branch heads retain the list and its elements now.
 	release(t, &s, a)
 	release(t, &s, b)
@@ -134,6 +140,7 @@ func TestSharedAndNestedLists(t *testing.T) {
 	assertCount(t, &s, prefix, 1)
 	assertCount(t, &s, a, 1)
 	assertCount(t, &s, b, 1)
+	assertUsage(t, &s, rootBytes+2*primitiveBytes+2*nodeBytes)
 	assertValue(t, &s, prefix, memory.ListNode{Prev: memory.RootID, Value: a})
 	assertValue(t, &s, right, memory.ListNode{Prev: prefix, Value: b})
 	nested := add(t, &s, memory.ListNode{Prev: memory.RootID, Value: right})
@@ -142,9 +149,11 @@ func TestSharedAndNestedLists(t *testing.T) {
 	release(t, &s, right)
 	assertValue(t, &s, nested, memory.ListNode{Prev: memory.RootID, Value: right})
 	assertCount(t, &s, right, 1)
+	assertUsage(t, &s, rootBytes+2*primitiveBytes+3*nodeBytes)
 	release(t, &s, nested)
 	assertFreed(t, &s, a, b, prefix, left, right, nested)
 	assertCount(t, &s, memory.RootID, 1)
+	assertUsage(t, &s, rootBytes)
 }
 
 func TestBothNodeEdgesRetainSameValue(t *testing.T) {
@@ -213,10 +222,12 @@ func TestRejectInvalidPayloads(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var s memory.Store
+			before := s.MemoryUsage()
 			if _, err := s.Add(tc.value); err == nil {
 				t.Errorf("Add accepted invalid value %#v", tc.value)
 			}
 			assertCount(t, &s, memory.RootID, 1)
+			assertUsage(t, &s, before)
 		})
 	}
 }
@@ -239,12 +250,14 @@ func TestRejectInvalidReferencesWithoutRetaining(t *testing.T) {
 			value := add(t, &s, memory.Unit{})
 			freed := add(t, &s, memory.ListNode{Prev: memory.RootID, Value: value})
 			release(t, &s, freed)
+			before := s.MemoryUsage()
 			if _, err := s.Add(tc.node(value, freed)); err == nil {
 				t.Error("Add accepted invalid references")
 			}
 			assertCount(t, &s, memory.RootID, 1)
 			assertCount(t, &s, value, 1)
 			assertFreed(t, &s, freed)
+			assertUsage(t, &s, before)
 		})
 	}
 }
@@ -258,6 +271,7 @@ func TestRejectUnknownAndReleasedIDs(t *testing.T) {
 	if next == freed {
 		t.Error("Add reused a freed ID")
 	}
+	before := s.MemoryUsage()
 	for _, id := range []memory.ID{freed, 999, math.MaxUint64} {
 		assertFreed(t, &s, id)
 		if err := s.Retain(id); err == nil {
@@ -269,11 +283,13 @@ func TestRejectUnknownAndReleasedIDs(t *testing.T) {
 	}
 	assertCount(t, &s, next, 1)
 	assertCount(t, &s, memory.RootID, 1)
+	assertUsage(t, &s, before)
 }
 
 func TestReleaseLongList(t *testing.T) {
 	t.Parallel()
 	var s memory.Store
+	rootBytes := s.MemoryUsage()
 	value := add(t, &s, memory.Unit{})
 	tail := add(t, &s, memory.ListRoot{})
 	const length = 10000
@@ -283,10 +299,12 @@ func TestReleaseLongList(t *testing.T) {
 		tail = next
 	}
 	assertCount(t, &s, value, length+1)
+	assertUsage(t, &s, 2*rootBytes+length*(rootBytes+16))
 	release(t, &s, value)
 	release(t, &s, tail)
 	for id := memory.ID(1); id <= tail; id++ {
 		assertFreed(t, &s, id)
 	}
 	assertCount(t, &s, memory.RootID, 1)
+	assertUsage(t, &s, rootBytes)
 }

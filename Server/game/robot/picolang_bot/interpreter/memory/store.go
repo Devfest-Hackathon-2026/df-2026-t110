@@ -17,8 +17,9 @@ type entry struct {
 // Value payloads never change; reference counts are separate bookkeeping.
 // The common root always has one reference owned by the store itself.
 type Store struct {
-	entries map[ID]*entry
-	nextID  ID
+	entries     map[ID]*entry
+	nextID      ID
+	memoryUsage uint64
 }
 
 // Add stores a copy of value with one owned reference for the caller. List nodes
@@ -65,23 +66,38 @@ func (s *Store) Add(value Value) (ID, error) {
 	if s.nextID == math.MaxUint64 {
 		return 0, fmt.Errorf("memory value IDs exhausted")
 	}
+	size := entryBytes(value)
+	if size > math.MaxUint64-s.memoryUsage {
+		return 0, fmt.Errorf("memory usage overflow")
+	}
 	if node, ok := value.(ListNode); ok {
 		s.entries[node.Prev].references++
 		s.entries[node.Value].references++
 	}
 	s.nextID++
-	s.insert(s.nextID, value)
+	s.insert(s.nextID, value, size)
 	return s.nextID, nil
 }
 
 func (s *Store) initialize() {
 	if s.entries == nil {
-		s.entries = map[ID]*entry{RootID: {value: ListRoot{}, references: 1}}
+		s.entries = make(map[ID]*entry)
+		s.insert(RootID, ListRoot{}, entryBytes(ListRoot{}))
 	}
 }
 
-func (s *Store) insert(id ID, value Value) {
+func (s *Store) insert(id ID, value Value, size uint64) {
 	s.entries[id] = &entry{value: value, references: 1}
+	s.memoryUsage += size
+}
+
+// MemoryUsage returns an O(1) estimate in bytes of the live entries, including
+// the common root, IDs, entry pointers, reference counts, and value payloads.
+// Shared IDs are counted once. Store itself, map capacity, and Go allocator
+// overhead are excluded. Usage is updated on insertion and final release.
+func (s *Store) MemoryUsage() uint64 {
+	s.initialize()
+	return s.memoryUsage
 }
 
 // Get returns a copy of the payload without acquiring a reference. The caller
@@ -149,6 +165,7 @@ func (s *Store) Release(id ID) error {
 			continue
 		}
 		delete(s.entries, id)
+		s.memoryUsage -= entryBytes(e.value)
 		if node, ok := e.value.(ListNode); ok {
 			pending = append(pending, node.Prev, node.Value)
 		}
