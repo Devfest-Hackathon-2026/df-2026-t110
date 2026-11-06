@@ -65,7 +65,7 @@ APIが用意されたら画面のフィールドIDから `GET /field/{id}` を�
 
 配置を切り替えて、そのフィールドの全候補を確認できます。サンプルと貼り付けJSONはローカルで配置を抽選します。APIから取得したフィールドでは、`POST /field/{id}/match` のレスポンスにある0始まりの `candidateIndex` または `selectedLayoutId` で結果を決めます。クライアントはその結果へルーレットを止めます。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex, match }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
 
-`StageScene` の `animationEvent` prop に `{ id, type, to? }` を渡すと、ロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `move`（`to: {x,y}` が必要）、`drill`（目のビーム）、`get` / `put`（腕を待機姿勢から Rx +30°）、`clear`（ジャンプと一回転）です。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作ります。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
+`StageScene` の `animationEvent` prop に `{ id, type, to?, direction?, ticks?, success? }` を渡すとロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `forward` / `back`（現在の向きに1マス進む）、`rotate`（`direction: 'left' | 'right'` で90°回る）、`wait`（`ticks` 単位時間待つ）、`pick_up` / `release`（念動力）、`drill`（目のビーム）、`clear`（クリア演出）です。これらの基本動作は1単位時間を1秒として描画します。移動先が岩・海・盤外なら進まず、`success: false` を渡した動作も失敗として演出します。旧形式の `move`（`to: {x,y}`）、`get`、`put` も受け付けます。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作り、念動力の瞬間は腕の絶対角度 Rx=-90°にします。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
 
 海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用します。カメラ表示は現時点ではカメラ映像への重ね合わせです。平面検出と空間固定は今後の作業です。
 

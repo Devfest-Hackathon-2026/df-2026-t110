@@ -132,6 +132,18 @@ function loadRobot() {
   )
 }
 
+function gridDirection(yaw: number): { x: number; y: number } {
+  return { x: Math.round(-Math.sin(yaw)), y: Math.round(-Math.cos(yaw)) }
+}
+
+function facingForStep(dx: number, dy: number): number | null {
+  if (dx === 1 && dy === 0) return -Math.PI / 2
+  if (dx === -1 && dy === 0) return Math.PI / 2
+  if (dx === 0 && dy === 1) return Math.PI
+  if (dx === 0 && dy === -1) return 0
+  return null
+}
+
 function playAnimationEvent(event: AnimationEvent | null): void {
   if (!event) return
   if (!robotAnimator) {
@@ -139,22 +151,33 @@ function playAnimationEvent(event: AnimationEvent | null): void {
     return
   }
   if (!robotRig) return
-  let destination
-  if (event.type === 'move') {
-    const { x, y } = event.to ?? {}
-    if (typeof x !== 'number' || typeof y !== 'number') return
-    const cell = props.stage.cells.find((item) => item.x === x && item.y === y)
-    if (!cell || ['#', '_'].includes(cell.symbol)) return
+  let destination: THREE.Vector3 | undefined
+  let targetYaw: number | undefined
+  let animation = event
+  if (event.type === 'move' || event.type === 'forward' || event.type === 'back') {
     const previous = robotCell.value
     if (!previous) return
-    if (x > previous.x) robotRig.rotation.y = -Math.PI / 2
-    else if (x < previous.x) robotRig.rotation.y = Math.PI / 2
-    else if (y > previous.y) robotRig.rotation.y = Math.PI
-    else if (y < previous.y) robotRig.rotation.y = 0
-    destination = new THREE.Vector3(x - (props.stage.width - 1) / 2, 0.07, y - (props.stage.height - 1) / 2)
-    robotCell.value = { x, y }
+    const facing = gridDirection(robotRig.rotation.y)
+    const sign = event.type === 'back' ? -1 : 1
+    const x = event.to?.x ?? previous.x + facing.x * sign
+    const y = event.to?.y ?? previous.y + facing.y * sign
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return
+    const cell = props.stage.cells.find((item) => item.x === x && item.y === y)
+    const canMove = Boolean(cell && !['#', '_'].includes(cell.symbol) && event.success !== false)
+    const next = canMove ? { x, y } : previous
+    destination = new THREE.Vector3(
+      next.x - (props.stage.width - 1) / 2,
+      0.07,
+      next.y - (props.stage.height - 1) / 2,
+    )
+    if (canMove) robotCell.value = next
+    if (event.type === 'move') targetYaw = facingForStep(x - previous.x, y - previous.y) ?? undefined
+    animation = { ...event, success: canMove }
+  } else if (event.type === 'rotate') {
+    if (event.direction !== 'left' && event.direction !== 'right') return
+    targetYaw = robotRig.rotation.y + (event.direction === 'left' ? Math.PI / 2 : -Math.PI / 2)
   }
-  robotAnimator.play(event, destination)
+  robotAnimator.play(animation, destination, targetYaw)
 }
 
 function resizeImmediately() {

@@ -20,8 +20,18 @@ const sourceType = ref<'sample' | 'json' | 'api'>('sample')
 const loadedFieldId = ref<string | null>(null)
 const phase = ref<'preview' | 'requesting' | 'rolling' | 'running'>('preview')
 const animationEvent = ref<AnimationEvent | null>(null)
-const sceneRef = ref<{ robotCell: { x: number; y: number } | null } | null>(null)
 const mobileTab = ref('stage')
+const demoActions: Array<{ type: AnimationEvent['type']; label: string; direction?: 'left' | 'right' }> = [
+  { type: 'forward', label: '前進' },
+  { type: 'back', label: '後退' },
+  { type: 'rotate', direction: 'left', label: '左回転' },
+  { type: 'rotate', direction: 'right', label: '右回転' },
+  { type: 'wait', label: '待機' },
+  { type: 'pick_up', label: '拾う' },
+  { type: 'release', label: '置く' },
+  { type: 'drill', label: '目のビーム' },
+  { type: 'clear', label: 'クリア' },
+]
 let rouletteTimer: ReturnType<typeof setTimeout> | null = null
 let matchController: AbortController | null = null
 let rouletteGeneration = 0
@@ -103,17 +113,9 @@ async function runRoulette() {
   rouletteTimer = setTimeout(advance, 80)
 }
 
-function playDemoEvent(type: AnimationEvent['type']): void {
+function playDemoEvent(action: (typeof demoActions)[number]): void {
   if (phase.value !== 'running') return
-  const current = sceneRef.value?.robotCell ?? stage.value.cells.find((cell) => cell.symbol === 'S')
-  if (!current) return
-  const event: AnimationEvent = { id: ++eventId, type }
-  if (type === 'move') {
-    const next = stage.value.cells.find((cell) => cell.x === current.x + 1 && cell.y === current.y)
-    event.to =
-      next && !['#', '_'].includes(next.symbol) ? { x: next.x, y: next.y } : { x: current.x, y: current.y }
-  }
-  animationEvent.value = event
+  animationEvent.value = { id: ++eventId, type: action.type, direction: action.direction }
 }
 
 function receiveStageData(
@@ -162,13 +164,7 @@ async function loadField() {
 <template>
   <main class="app-shell">
     <div class="viewer">
-      <StageScene
-        ref="sceneRef"
-        :stage="stage"
-        :mode="mode"
-        :animation-event="animationEvent"
-        @error="error = $event"
-      />
+      <StageScene :stage="stage" :mode="mode" :animation-event="animationEvent" @error="error = $event" />
       <div class="scene-caption">
         <span>{{ field.title }}　配置 {{ selected + 1 }} / {{ layouts.length }}</span
         ><strong>{{ stage.label }}</strong
@@ -289,15 +285,10 @@ async function loadField() {
         </p>
         <div class="event-actions">
           <button
-            v-for="item in [
-              { type: 'move', label: '移動' },
-              { type: 'drill', label: '目のビーム' },
-              { type: 'get', label: '荷物回収' },
-              { type: 'clear', label: 'クリア' },
-            ]"
-            :key="item.type"
+            v-for="item in demoActions"
+            :key="`${item.type}-${item.direction ?? ''}`"
             :disabled="phase !== 'running'"
-            @click="playDemoEvent(item.type)"
+            @click="playDemoEvent(item)"
           >
             {{ item.label }}
           </button>
