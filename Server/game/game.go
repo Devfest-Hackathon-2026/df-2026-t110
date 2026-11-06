@@ -11,41 +11,6 @@ var ErrNotSupported = errors.New("not supported")
 
 type RobotID string
 
-type ValueKind string
-
-const (
-	Bool    ValueKind = "bool"
-	Integer ValueKind = "integer"
-	Unit    ValueKind = "unit"
-	Field   ValueKind = "field"
-)
-
-type Terrain string
-
-const (
-	Land Terrain = "land"
-	Rock Terrain = "rock"
-	Sea  Terrain = "sea"
-)
-
-// FieldValue stores one cell's terrain and object attributes at observation
-// time. It is copied by value so later board changes do not affect it.
-type FieldValue struct {
-	Terrain    Terrain
-	Goal       bool
-	Checkpoint bool
-	Luggage    bool
-}
-
-// Value is a builtin's return value, never a board snapshot or a tick. Kind
-// selects Bool, Integer, Field, or no payload for Unit.
-type Value struct {
-	Kind    ValueKind
-	Bool    bool
-	Integer int64
-	Field   FieldValue
-}
-
 // Rotation is a relative quarter-turn, matching picolang's rotation type.
 type Rotation string
 
@@ -54,28 +19,38 @@ const (
 	Right Rotation = "right"
 )
 
-// Step must contain exactly one of Action or Done.
-type Step struct {
-	Action Action
-	Done   bool
-}
+type Step interface{ step() }
 
+type ActionStep struct{ Action Action }
+type DoneStep struct{}
+
+func (ActionStep) step() {}
+func (DoneStep) step()   {}
+
+// Start runs a robot without an input value. Next resumes it with the return
+// value of its previous action.
 type Robot interface {
-	Next(context.Context, *Value) (Step, error)
+	Start(context.Context) (Step, error)
+	Next(context.Context, Value) (Step, error)
 }
 
-// Reply must contain exactly one of Action, Done, or Err.
-type Reply struct {
+type Reply interface{ reply() }
+
+type ActionReply struct {
 	RobotID RobotID
 	Action  Action
-	Done    bool
+}
+
+type DoneReply struct{ RobotID RobotID }
+
+type ErrorReply struct {
+	RobotID RobotID
 	Err     error
 }
 
-type Request struct {
-	RobotID     RobotID
-	ReturnValue *Value
-}
+func (ActionReply) reply() {}
+func (DoneReply) reply()   {}
+func (ErrorReply) reply()  {}
 
 type ActionResult struct {
 	RobotID RobotID
@@ -88,20 +63,33 @@ type TickUpdate struct {
 	Results []ActionResult
 }
 
-// Decision contains exactly one event. AdvanceTo proposes a future tick;
+// Decision describes one board event. AdvanceDecision proposes a future tick;
 // calling Next(ctx, nil) authorizes its atomic commit. This lets the hub check
 // its tick budget and cancellation before any pending changes are applied.
-type Decision struct {
-	Request   *Request
-	AdvanceTo *uint64
-	Update    *TickUpdate
-	Done      bool
+type Decision interface{ decision() }
+
+type StartDecision struct{ RobotID RobotID }
+
+type ResumeDecision struct {
+	RobotID     RobotID
+	ReturnValue Value
 }
 
-// Board selects robots and owns the clock. After a Request, Next requires that
-// robot's Reply. After AdvanceTo or Update, Next requires nil. The first Next
-// after Start also requires nil. Instances are used for one run only.
+type AdvanceDecision struct{ Tick uint64 }
+type UpdateDecision struct{ Update TickUpdate }
+type DoneDecision struct{}
+
+func (StartDecision) decision()   {}
+func (ResumeDecision) decision()  {}
+func (AdvanceDecision) decision() {}
+func (UpdateDecision) decision()  {}
+func (DoneDecision) decision()    {}
+
+// Board selects robots and owns the clock. After StartDecision or
+// ResumeDecision, Next requires that robot's Reply. After AdvanceDecision or
+// UpdateDecision, Next requires nil. The first Next after Start also requires
+// nil. Instances are used for one run only.
 type Board interface {
 	Start(context.Context, []RobotID) error
-	Next(context.Context, *Reply) (Decision, error)
+	Next(context.Context, Reply) (Decision, error)
 }

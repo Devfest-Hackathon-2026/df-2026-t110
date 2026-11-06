@@ -18,12 +18,12 @@ type DrillDurabilityAction struct{}
 type DistanceAction struct{}
 type SearchFrontAction struct{}
 type SearchNowAction struct{}
-type IsLandAction struct{ Field FieldValue }
-type IsGoalAction struct{ Field FieldValue }
-type IsCheckpointAction struct{ Field FieldValue }
-type IsLaggageAction struct{ Field FieldValue }
-type IsSeaAction struct{ Field FieldValue }
-type IsRockAction struct{ Field FieldValue }
+type IsLandAction struct{ Terrain TerrainValue }
+type IsGoalAction struct{ Terrain TerrainValue }
+type IsCheckpointAction struct{ Terrain TerrainValue }
+type IsLaggageAction struct{ Terrain TerrainValue }
+type IsSeaAction struct{ Terrain TerrainValue }
+type IsRockAction struct{ Terrain TerrainValue }
 type PrintIntegerAction struct{ Integer int64 }
 type PrintBoolAction struct{ Bool bool }
 
@@ -46,3 +46,17 @@ func (IsSeaAction) action()           {}
 func (IsRockAction) action()          {}
 func (PrintIntegerAction) action()    {}
 func (PrintBoolAction) action()       {}
+
+// ValidAction rejects nil and pointer variants at protocol boundaries.
+func ValidAction(action Action) bool {
+	switch action.(type) {
+	case ForwardAction, BackAction, RotateAction, WaitAction, PickUpAction,
+		ReleaseAction, DrillAction, DrillDurabilityAction, DistanceAction,
+		SearchFrontAction, SearchNowAction, IsLandAction, IsGoalAction,
+		IsCheckpointAction, IsLaggageAction, IsSeaAction, IsRockAction,
+		PrintIntegerAction, PrintBoolAction:
+		return true
+	default:
+		return false
+	}
+}

@@ -38,28 +38,31 @@ func TestInteractiveCommandsAndReturnValues(t *testing.T) {
 	var output bytes.Buffer
 	s := session(t, io.NopCloser(strings.NewReader("\nhelp\np2 forward\np1 rotate sideways\np1 forward extra\np1 drill_durability\np1 rotate left\np1 rotate right\np1 back\np1 forward\np1 done\np2 done\n")), &output)
 	p1, p2 := stdio(t, "p1", s), stdio(t, "p2", s)
+	step, err := p1.Start(t.Context())
+	if err != nil || step != (game.ActionStep{Action: game.DrillDurabilityAction{}}) {
+		t.Errorf("unexpected initial step: %+v, %v", step, err)
+	}
 	tests := []struct {
-		value *game.Value
+		value game.Value
 		want  game.Action
 	}{
-		{value: nil, want: game.DrillDurabilityAction{}},
-		{value: &game.Value{Kind: game.Integer, Integer: 3}, want: game.RotateAction{Rotation: game.Left}},
-		{value: &game.Value{Kind: game.Unit}, want: game.RotateAction{Rotation: game.Right}},
-		{value: &game.Value{Kind: game.Unit}, want: game.BackAction{}},
-		{value: &game.Value{Kind: game.Bool, Bool: true}, want: game.ForwardAction{}},
+		{value: game.IntegerValue{Integer: 3}, want: game.RotateAction{Rotation: game.Left}},
+		{value: game.UnitValue{}, want: game.RotateAction{Rotation: game.Right}},
+		{value: game.UnitValue{}, want: game.BackAction{}},
+		{value: game.BoolValue{Bool: true}, want: game.ForwardAction{}},
 	}
 	for _, tt := range tests {
 		step, err := p1.Next(t.Context(), tt.value)
-		if err != nil || step.Done || step.Action == nil || step.Action != tt.want {
+		if err != nil || step != (game.ActionStep{Action: tt.want}) {
 			t.Errorf("got %+v, %v; want %+v", step, err, tt.want)
 		}
 	}
-	step, err := p1.Next(t.Context(), &game.Value{Kind: game.Bool, Bool: false})
-	if err != nil || !step.Done {
+	step, err = p1.Next(t.Context(), game.BoolValue{Bool: false})
+	if err != nil || step != (game.DoneStep{}) {
 		t.Errorf("done not accepted: %+v, %v", step, err)
 	}
-	step, err = p2.Next(t.Context(), nil)
-	if err != nil || !step.Done {
+	step, err = p2.Start(t.Context())
+	if err != nil || step != (game.DoneStep{}) {
 		t.Errorf("shared input not routed: %+v, %v", step, err)
 	}
 	for _, expected := range []string{"invalid command for p1", "p1 => 3", "p1 => ()", "p1 => true", "p1 => false", "p2> "} {
@@ -73,25 +76,72 @@ func TestEOFAppliesToAllRobots(t *testing.T) {
 	t.Parallel()
 	s := session(t, io.NopCloser(strings.NewReader("p1 forward")), io.Discard)
 	p1, p2 := stdio(t, "p1", s), stdio(t, "p2", s)
-	step, err := p1.Next(t.Context(), nil)
-	if err != nil || step.Action != (game.ForwardAction{}) {
+	step, err := p1.Start(t.Context())
+	if err != nil || step != (game.ActionStep{Action: game.ForwardAction{}}) {
 		t.Errorf("unterminated last line not read: %+v, %v", step, err)
 	}
-	for _, r := range []*robot.Stdio{p2, p1} {
-		step, err := r.Next(t.Context(), nil)
-		if err != nil || !step.Done {
-			t.Errorf("EOF not shared: %+v, %v", step, err)
-		}
+	step, err = p2.Start(t.Context())
+	if err != nil || step != (game.DoneStep{}) {
+		t.Errorf("EOF not shared with unstarted robot: %+v, %v", step, err)
+	}
+	step, err = p1.Next(t.Context(), game.BoolValue{Bool: true})
+	if err != nil || step != (game.DoneStep{}) {
+		t.Errorf("EOF not shared with running robot: %+v, %v", step, err)
 	}
 }
 
-func TestDisplaysFieldReturnValue(t *testing.T) {
+func TestDisplaysTerrainReturnValue(t *testing.T) {
 	t.Parallel()
-	var output bytes.Buffer
-	r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 done\n")), &output))
-	step, err := r.Next(t.Context(), &game.Value{Kind: game.Field, Field: game.FieldValue{Terrain: game.Land, Goal: true, Luggage: true}})
-	if err != nil || !step.Done || !strings.Contains(output.String(), `p1 => field({Terrain:land Goal:true Checkpoint:false Luggage:true})`) {
-		t.Errorf("field return value not displayed: %+v, %v, %s", step, err, output.String())
+	tests := []struct {
+		name  string
+		value game.TerrainValue
+		want  string
+	}{
+		{name: "land", value: game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}, want: "terrain(land, goal=true, checkpoint=true, luggage=true)"},
+		{name: "rock", value: game.RockTerrain{}, want: "terrain(rock)"},
+		{name: "sea", value: game.SeaTerrain{}, want: "terrain(sea)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var output bytes.Buffer
+			r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 forward\np1 done\n")), &output))
+			if step, err := r.Start(t.Context()); err != nil || step != (game.ActionStep{Action: game.ForwardAction{}}) {
+				t.Errorf("unexpected initial step: %+v, %v", step, err)
+			}
+			step, err := r.Next(t.Context(), tt.value)
+			if err != nil || step != (game.DoneStep{}) || !strings.Contains(output.String(), "p1 => "+tt.want) {
+				t.Errorf("terrain return value not displayed: %+v, %v, %s", step, err, output.String())
+			}
+		})
+	}
+}
+
+func TestStartAndResumeLifecycle(t *testing.T) {
+	t.Parallel()
+	r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader("p1 forward\np1 done\n")), io.Discard))
+	if _, err := r.Next(t.Context(), game.UnitValue{}); err == nil {
+		t.Error("resume before start was accepted")
+	}
+	if step, err := r.Start(t.Context()); err != nil || step != (game.ActionStep{Action: game.ForwardAction{}}) {
+		t.Errorf("unexpected initial step: %+v, %v", step, err)
+	}
+	if _, err := r.Start(t.Context()); err == nil {
+		t.Error("second start was accepted")
+	}
+	for _, value := range []game.Value{nil, (*game.BoolValue)(nil), &game.LandTerrain{}} {
+		if _, err := r.Next(t.Context(), value); err == nil {
+			t.Errorf("invalid resume value was accepted: %T", value)
+		}
+	}
+	if step, err := r.Next(t.Context(), game.BoolValue{Bool: true}); err != nil || step != (game.DoneStep{}) {
+		t.Errorf("invalid requests consumed input: %+v, %v", step, err)
+	}
+	if _, err := r.Start(t.Context()); err == nil {
+		t.Error("completed robot was restarted")
+	}
+	if _, err := r.Next(t.Context(), game.UnitValue{}); err == nil {
+		t.Error("completed robot was resumed")
 	}
 }
 
@@ -119,7 +169,7 @@ func TestCancellationUnblocksInput(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { _, err := r.Next(ctx, nil); result <- err }()
+	go func() { _, err := r.Start(ctx); result <- err }()
 	select {
 	case <-input.entered:
 	case <-time.After(2 * time.Second):
@@ -158,7 +208,7 @@ func TestIOErrorsAndValidation(t *testing.T) {
 		{input: io.NopCloser(strings.NewReader("p1 forward\n")), output: failedIO{err: failure}},
 	} {
 		r := stdio(t, "p1", session(t, tc.input, tc.output))
-		if _, err := r.Next(t.Context(), nil); !errors.Is(err, failure) {
+		if _, err := r.Start(t.Context()); !errors.Is(err, failure) {
 			t.Errorf("I/O error lost: %v", err)
 		}
 	}

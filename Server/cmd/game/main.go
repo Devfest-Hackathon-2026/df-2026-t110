@@ -30,10 +30,10 @@ func main() {
 
 func run(ctx context.Context, input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) error {
 	b, err := board.New(board.Config{
-		Terrain: [][]board.Terrain{
-			{board.Land, board.Land, board.Land, board.Land, board.Land},
-			{board.Land, board.Land, board.Rock, board.Land, board.Land},
-			{board.Land, board.Land, board.Sea, board.Land, board.Land},
+		Terrain: [][]game.TerrainValue{
+			{game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
+			{game.LandTerrain{}, game.LandTerrain{}, game.RockTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
+			{game.LandTerrain{}, game.LandTerrain{}, game.SeaTerrain{}, game.LandTerrain{}, game.LandTerrain{}},
 		},
 		Robots: map[game.RobotID]board.RobotState{
 			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
@@ -74,16 +74,18 @@ func run(ctx context.Context, input io.ReadCloser, output io.Writer, maxTicks, m
 		return err
 	}
 	for _, p := range participants {
-		outcome := report.Outcomes[p.ID]
-		if _, err := fmt.Fprintf(output, "%s: %s", p.ID, outcome.Status); err != nil {
-			return err
+		var status string
+		switch outcome := report.Outcomes[p.ID].(type) {
+		case hub.UnstartedOutcome, hub.StoppedOutcome:
+			status = "stopped"
+		case hub.CompletedOutcome:
+			status = "completed"
+		case hub.FailedOutcome:
+			status = fmt.Sprintf("failed (%v)", outcome.Err)
+		default:
+			return fmt.Errorf("invalid outcome for robot %q", p.ID)
 		}
-		if outcome.Err != nil {
-			if _, err := fmt.Fprintf(output, " (%v)", outcome.Err); err != nil {
-				return err
-			}
-		}
-		if _, err := fmt.Fprintln(output); err != nil {
+		if _, err := fmt.Fprintf(output, "%s: %s\n", p.ID, status); err != nil {
 			return err
 		}
 	}
@@ -96,7 +98,17 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 	}
 	for y, row := range snapshot.Terrain {
 		for x, terrain := range row {
-			cell := map[board.Terrain]string{board.Land: ".", board.Rock: "#", board.Sea: "~"}[terrain]
+			var cell string
+			switch terrain.(type) {
+			case game.LandTerrain:
+				cell = "."
+			case game.RockTerrain:
+				cell = "#"
+			case game.SeaTerrain:
+				cell = "~"
+			default:
+				return fmt.Errorf("invalid terrain %T", terrain)
+			}
 			for id, robot := range snapshot.Robots {
 				if robot.Position == (board.Position{X: x, Y: y}) {
 					cell = string(id)

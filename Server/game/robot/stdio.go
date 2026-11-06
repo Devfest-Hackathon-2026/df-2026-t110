@@ -22,8 +22,8 @@ type line struct {
 	err  error
 }
 
-// Session owns input and shares it between robots. Calls to Robot.Next must be
-// sequential. Closing input must unblock Read (as os.File and io.PipeReader do).
+// Session owns input and shares it between robots. Calls to Robot.Start and
+// Robot.Next must be sequential. Closing input must unblock Read.
 // One reader goroutine is created lazily; Close or cancellation releases it.
 type Session struct {
 	input     io.ReadCloser
@@ -88,31 +88,57 @@ func (s *Session) readLine(ctx context.Context) (string, error) {
 type Stdio struct {
 	id      game.RobotID
 	session *Session
-	done    bool
+	phase   stdioPhase
 }
+
+type stdioPhase interface{ stdioPhase() }
+
+type unstartedStdio struct{}
+type runningStdio struct{}
+type finishedStdio struct{}
+
+func (unstartedStdio) stdioPhase() {}
+func (runningStdio) stdioPhase()   {}
+func (finishedStdio) stdioPhase()  {}
 
 func NewStdio(id game.RobotID, session *Session) (*Stdio, error) {
 	if id == "" || strings.IndexFunc(string(id), unicode.IsSpace) >= 0 || session == nil {
 		return nil, errors.New("a nonempty whitespace-free robot ID and session are required")
 	}
-	return &Stdio{id: id, session: session}, nil
+	return &Stdio{id: id, session: session, phase: unstartedStdio{}}, nil
 }
 
-func (r *Stdio) Next(ctx context.Context, value *game.Value) (game.Step, error) {
+func (r *Stdio) Start(ctx context.Context) (game.Step, error) {
 	if err := ctx.Err(); err != nil {
-		return game.Step{}, err
+		return nil, err
 	}
-	if r.done {
-		return game.Step{Done: true}, nil
+	if _, fresh := r.phase.(unstartedStdio); !fresh {
+		return nil, errors.New("robot has already started")
 	}
-	if value != nil {
-		if _, err := fmt.Fprintf(r.session.output, "%s => %s\n", r.id, formatValue(*value)); err != nil {
-			return game.Step{}, err
-		}
+	r.phase = runningStdio{}
+	return r.readStep(ctx)
+}
+
+func (r *Stdio) Next(ctx context.Context, value game.Value) (game.Step, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
+	if _, running := r.phase.(runningStdio); !running {
+		return nil, errors.New("robot must be running to resume")
+	}
+	if !game.ValidValue(value) {
+		return nil, errors.New("resume requires a return value")
+	}
+	if _, err := fmt.Fprintf(r.session.output, "%s => %s\n", r.id, formatValue(value)); err != nil {
+		return nil, err
+	}
+	return r.readStep(ctx)
+}
+
+func (r *Stdio) readStep(ctx context.Context) (game.Step, error) {
 	for !r.session.eof {
 		if _, err := fmt.Fprintf(r.session.output, "%s> ", r.id); err != nil {
-			return game.Step{}, err
+			return nil, err
 		}
 		text, err := r.session.readLine(ctx)
 		if errors.Is(err, io.EOF) {
@@ -120,63 +146,69 @@ func (r *Stdio) Next(ctx context.Context, value *game.Value) (game.Step, error) 
 			break
 		}
 		if err != nil {
-			return game.Step{}, err
+			return nil, err
 		}
 		if err := ctx.Err(); err != nil {
-			return game.Step{}, err
+			return nil, err
 		}
 		fields := strings.Fields(text)
 		if len(fields) == 1 && fields[0] == "help" {
 			if _, err := io.WriteString(r.session.output, help); err != nil {
-				return game.Step{}, err
+				return nil, err
 			}
 			continue
 		}
 		step, ok := parse(r.id, fields)
 		if ok {
-			r.done = step.Done
+			if _, done := step.(game.DoneStep); done {
+				r.phase = finishedStdio{}
+			}
 			return step, nil
 		}
 		if _, err := fmt.Fprintf(r.session.output, "invalid command for %s; %s", r.id, help); err != nil {
-			return game.Step{}, err
+			return nil, err
 		}
 	}
-	r.done = true
-	return game.Step{Done: true}, nil
+	r.phase = finishedStdio{}
+	return game.DoneStep{}, nil
 }
 
 func parse(id game.RobotID, fields []string) (game.Step, bool) {
 	if len(fields) < 2 || fields[0] != string(id) {
-		return game.Step{}, false
+		return nil, false
 	}
 	if len(fields) == 2 {
 		switch fields[1] {
 		case "done":
-			return game.Step{Done: true}, true
+			return game.DoneStep{}, true
 		case "forward":
-			return game.Step{Action: game.ForwardAction{}}, true
+			return game.ActionStep{Action: game.ForwardAction{}}, true
 		case "back":
-			return game.Step{Action: game.BackAction{}}, true
+			return game.ActionStep{Action: game.BackAction{}}, true
 		case "drill_durability":
-			return game.Step{Action: game.DrillDurabilityAction{}}, true
+			return game.ActionStep{Action: game.DrillDurabilityAction{}}, true
 		}
 	}
 	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(game.Left) || fields[2] == string(game.Right)) {
-		return game.Step{Action: game.RotateAction{Rotation: game.Rotation(fields[2])}}, true
+		return game.ActionStep{Action: game.RotateAction{Rotation: game.Rotation(fields[2])}}, true
 	}
-	return game.Step{}, false
+	return nil, false
 }
 
 func formatValue(value game.Value) string {
-	switch value.Kind {
-	case game.Bool:
+	switch value := value.(type) {
+	case game.BoolValue:
 		return strconv.FormatBool(value.Bool)
-	case game.Integer:
+	case game.IntegerValue:
 		return strconv.FormatInt(value.Integer, 10)
-	case game.Unit:
+	case game.UnitValue:
 		return "()"
-	case game.Field:
-		return fmt.Sprintf("field(%+v)", value.Field)
+	case game.LandTerrain:
+		return fmt.Sprintf("terrain(land, goal=%t, checkpoint=%t, luggage=%t)", value.Goal, value.Checkpoint, value.Luggage)
+	case game.RockTerrain:
+		return "terrain(rock)"
+	case game.SeaTerrain:
+		return "terrain(sea)"
 	default:
 		return "<invalid value>"
 	}

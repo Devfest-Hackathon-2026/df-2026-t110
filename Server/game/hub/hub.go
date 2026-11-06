@@ -21,22 +21,10 @@ type Participant struct {
 }
 
 type Options struct {
-	MaxTicks   uint64
+	MaxTicks uint64
+	// MaxResumes counts both Start and Next calls.
 	MaxResumes uint64
 	OnTick     func(game.TickUpdate) error
-}
-
-type Status string
-
-const (
-	Stopped   Status = "stopped"
-	Completed Status = "completed"
-	Failed    Status = "failed"
-)
-
-type Outcome struct {
-	Status Status
-	Err    error
 }
 
 type Report struct {
@@ -72,12 +60,11 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 	}
 	h.used = true
 	robots := make(map[game.RobotID]game.Robot, len(h.participants))
-	resumed := make(map[game.RobotID]struct{}, len(h.participants))
 	ids := make([]game.RobotID, 0, len(h.participants))
 	for _, p := range h.participants {
 		robots[p.ID] = p.Robot
 		ids = append(ids, p.ID)
-		report.Outcomes[p.ID] = Outcome{Status: Stopped}
+		report.Outcomes[p.ID] = UnstartedOutcome{}
 	}
 	if err := ctx.Err(); err != nil {
 		return report, err
@@ -85,7 +72,7 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 	if err := h.board.Start(ctx, ids); err != nil {
 		return report, fmt.Errorf("start board: %w", err)
 	}
-	var reply *game.Reply
+	var reply game.Reply
 	var proposed *uint64
 	for {
 		if err := ctx.Err(); err != nil {
@@ -96,15 +83,14 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 			return report, fmt.Errorf("advance board: %w", err)
 		}
 		reply = nil
-		if !validDecision(decision) {
-			return report, ErrProtocol
+		if proposed != nil {
+			if _, committing := decision.(game.UpdateDecision); !committing {
+				return report, fmt.Errorf("%w: expected tick commit", ErrProtocol)
+			}
 		}
-		if proposed != nil && decision.Update == nil {
-			return report, fmt.Errorf("%w: expected tick commit", ErrProtocol)
-		}
-		switch {
-		case decision.AdvanceTo != nil:
-			tick := *decision.AdvanceTo
+		switch decision := decision.(type) {
+		case game.AdvanceDecision:
+			tick := decision.Tick
 			if tick <= report.Tick {
 				return report, fmt.Errorf("%w: tick must increase", ErrProtocol)
 			}
@@ -112,65 +98,84 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 				return report, ErrTickLimit
 			}
 			proposed = &tick
-		case decision.Update != nil:
+		case game.UpdateDecision:
 			if proposed == nil || decision.Update.Tick != *proposed {
 				return report, fmt.Errorf("%w: unexpected tick commit", ErrProtocol)
 			}
 			proposed = nil
 			report.Tick = decision.Update.Tick
 			if options.OnTick != nil {
-				if err := options.OnTick(*decision.Update); err != nil {
+				if err := options.OnTick(decision.Update); err != nil {
 					return report, fmt.Errorf("tick callback: %w", err)
 				}
 			}
-		case decision.Request != nil:
-			request := decision.Request
-			robot, ok := robots[request.RobotID]
-			if !ok || report.Outcomes[request.RobotID].Status != Stopped {
-				return report, fmt.Errorf("%w: unavailable robot %q", ErrProtocol, request.RobotID)
+		case game.StartDecision, game.ResumeDecision:
+			var id game.RobotID
+			switch request := decision.(type) {
+			case game.StartDecision:
+				id = request.RobotID
+			case game.ResumeDecision:
+				id = request.RobotID
 			}
-			if _, exists := resumed[request.RobotID]; exists != (request.ReturnValue != nil) {
-				return report, fmt.Errorf("%w: unexpected or missing return value for %q", ErrProtocol, request.RobotID)
+			robot, exists := robots[id]
+			if !exists {
+				return report, fmt.Errorf("%w: unavailable robot %q", ErrProtocol, id)
 			}
-			if value := request.ReturnValue; value != nil && value.Kind != game.Bool && value.Kind != game.Integer && value.Kind != game.Unit && value.Kind != game.Field {
-				return report, fmt.Errorf("%w: unknown return value type %q", ErrProtocol, value.Kind)
+			switch request := decision.(type) {
+			case game.StartDecision:
+				if _, fresh := report.Outcomes[id].(UnstartedOutcome); !fresh {
+					return report, fmt.Errorf("%w: robot %q already started", ErrProtocol, id)
+				}
+			case game.ResumeDecision:
+				if _, stopped := report.Outcomes[id].(StoppedOutcome); !stopped || !game.ValidValue(request.ReturnValue) {
+					return report, fmt.Errorf("%w: invalid resume for robot %q", ErrProtocol, id)
+				}
 			}
 			if report.Resumes == options.MaxResumes {
 				return report, ErrResumeLimit
 			}
 			report.Resumes++
-			resumed[request.RobotID] = struct{}{}
-			step, err := robot.Next(ctx, request.ReturnValue)
+			report.Outcomes[id] = StoppedOutcome{}
+			var step game.Step
+			var err error
+			switch request := decision.(type) {
+			case game.StartDecision:
+				step, err = robot.Start(ctx)
+			case game.ResumeDecision:
+				step, err = robot.Next(ctx, request.ReturnValue)
+			}
 			if cancelErr := ctx.Err(); cancelErr != nil {
 				return report, cancelErr
 			}
-			if err == nil && (step.Done == (step.Action != nil)) {
-				err = fmt.Errorf("%w: robot must return an action or completion", ErrProtocol)
+			if err == nil {
+				switch step := step.(type) {
+				case game.ActionStep:
+					if !game.ValidAction(step.Action) {
+						err = fmt.Errorf("%w: invalid robot action %T", ErrProtocol, step.Action)
+					} else {
+						reply = game.ActionReply{RobotID: id, Action: step.Action}
+					}
+				case game.DoneStep:
+					reply = game.DoneReply{RobotID: id}
+					report.Outcomes[id] = CompletedOutcome{}
+				default:
+					err = fmt.Errorf("%w: invalid robot step %T", ErrProtocol, step)
+				}
 			}
-			reply = &game.Reply{RobotID: request.RobotID, Action: step.Action, Done: step.Done, Err: err}
 			if err != nil {
-				reply.Action, reply.Done = nil, false
-				report.Outcomes[request.RobotID] = Outcome{Status: Failed, Err: err}
-			} else if step.Done {
-				report.Outcomes[request.RobotID] = Outcome{Status: Completed}
+				reply = game.ErrorReply{RobotID: id, Err: err}
+				report.Outcomes[id] = FailedOutcome{Err: err}
 			}
-		case decision.Done:
+		case game.DoneDecision:
 			for _, outcome := range report.Outcomes {
-				if outcome.Status == Stopped {
+				switch outcome.(type) {
+				case UnstartedOutcome, StoppedOutcome:
 					return report, fmt.Errorf("%w: board finished with active robots", ErrProtocol)
 				}
 			}
 			return report, nil
+		default:
+			return report, fmt.Errorf("%w: invalid board decision %T", ErrProtocol, decision)
 		}
 	}
-}
-
-func validDecision(d game.Decision) bool {
-	count := 0
-	for _, set := range []bool{d.Request != nil, d.AdvanceTo != nil, d.Update != nil, d.Done} {
-		if set {
-			count++
-		}
-	}
-	return count == 1
 }

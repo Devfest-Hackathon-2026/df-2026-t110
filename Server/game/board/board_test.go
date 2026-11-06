@@ -11,12 +11,12 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
 )
 
-func land(width, height int) [][]board.Terrain {
-	grid := make([][]board.Terrain, height)
+func land(width, height int) [][]game.TerrainValue {
+	grid := make([][]game.TerrainValue, height)
 	for y := range grid {
-		grid[y] = make([]board.Terrain, width)
+		grid[y] = make([]game.TerrainValue, width)
 		for x := range grid[y] {
-			grid[y][x] = board.Land
+			grid[y][x] = game.LandTerrain{}
 		}
 	}
 	return grid
@@ -38,7 +38,7 @@ func newBoard(t *testing.T, config board.Config, ids []game.RobotID) *board.Boar
 	return b
 }
 
-func next(t *testing.T, b *board.Board, reply *game.Reply) game.Decision {
+func next(t *testing.T, b *board.Board, reply game.Reply) game.Decision {
 	t.Helper()
 	d, err := b.Next(t.Context(), reply)
 	if err != nil {
@@ -54,13 +54,13 @@ func TestBarrierAndImmutableQueries(t *testing.T) {
 	}}, []game.RobotID{"p1", "p2"})
 	initial := b.Snapshot()
 	d := next(t, b, nil)
-	if d.Request == nil || d.Request.RobotID != "p1" || d.Request.ReturnValue != nil {
+	if d != (game.StartDecision{RobotID: "p1"}) {
 		t.Errorf("unexpected initial decision: %+v", d)
 	}
 	query := game.DrillDurabilityAction{}
 	for range 3 {
-		d = next(t, b, &game.Reply{RobotID: "p1", Action: query})
-		if d.Request == nil || d.Request.RobotID != "p1" || d.Request.ReturnValue == nil || *d.Request.ReturnValue != (game.Value{Kind: game.Integer, Integer: 3}) {
+		d = next(t, b, game.ActionReply{RobotID: "p1", Action: query})
+		if d != (game.ResumeDecision{RobotID: "p1", ReturnValue: game.IntegerValue{Integer: 3}}) {
 			t.Errorf("unexpected query result: %+v", d)
 		}
 		if !reflect.DeepEqual(initial, b.Snapshot()) {
@@ -68,27 +68,26 @@ func TestBarrierAndImmutableQueries(t *testing.T) {
 		}
 	}
 	move := game.ForwardAction{}
-	d = next(t, b, &game.Reply{RobotID: "p1", Action: move})
-	if d.Request == nil || d.Request.RobotID != "p2" {
+	d = next(t, b, game.ActionReply{RobotID: "p1", Action: move})
+	if d != (game.StartDecision{RobotID: "p2"}) {
 		t.Errorf("expected p2, got %+v", d)
 	}
-	d = next(t, b, &game.Reply{RobotID: "p2", Action: move})
-	if d.AdvanceTo == nil || *d.AdvanceTo != 1 || !reflect.DeepEqual(initial, b.Snapshot()) {
+	d = next(t, b, game.ActionReply{RobotID: "p2", Action: move})
+	if d != (game.AdvanceDecision{Tick: 1}) || !reflect.DeepEqual(initial, b.Snapshot()) {
 		t.Error("board must wait for commit authorization")
 	}
 	d = next(t, b, nil)
-	if d.Update == nil || d.Update.Tick != 1 || len(d.Update.Results) != 2 {
+	update, committed := d.(game.UpdateDecision)
+	if !committed || update.Update.Tick != 1 || len(update.Update.Results) != 2 {
 		t.Errorf("unexpected commit: %+v", d)
 	}
-	if d.Update != nil {
-		for _, result := range d.Update.Results {
-			if result.Value.Kind != game.Bool || result.Value.Bool {
-				t.Error("same destination must reject both movements")
-			}
+	for _, result := range update.Update.Results {
+		if result.Value != (game.BoolValue{Bool: false}) {
+			t.Error("same destination must reject both movements")
 		}
 	}
 	d = next(t, b, nil)
-	if d.Request == nil || d.Request.RobotID != "p1" || d.Request.ReturnValue == nil || d.Request.ReturnValue.Kind != game.Bool || d.Request.ReturnValue.Bool {
+	if d != (game.ResumeDecision{RobotID: "p1", ReturnValue: game.BoolValue{Bool: false}}) {
 		t.Error("move result was not delivered")
 	}
 }
@@ -98,7 +97,7 @@ func TestAtomicMovement(t *testing.T) {
 	forward := game.ForwardAction{}
 	tests := []struct {
 		name    string
-		grid    [][]board.Terrain
+		grid    [][]game.TerrainValue
 		robots  map[game.RobotID]board.RobotState
 		ids     []game.RobotID
 		actions map[game.RobotID]game.Action
@@ -141,14 +140,25 @@ func TestAtomicMovement(t *testing.T) {
 			ids:    []game.RobotID{"a", "b"},
 		},
 		{
+			name: "land with objects",
+			grid: [][]game.TerrainValue{{
+				game.LandTerrain{},
+				game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true},
+			}},
+			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+			ids:    []game.RobotID{"a"},
+			want:   map[game.RobotID]board.RobotState{"a": state(1, 0, board.East)},
+			moved:  map[game.RobotID]bool{"a": true},
+		},
+		{
 			name:   "rock",
-			grid:   [][]board.Terrain{{board.Land, board.Rock}},
+			grid:   [][]game.TerrainValue{{game.LandTerrain{}, game.RockTerrain{}}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
 		},
 		{
 			name:   "sea",
-			grid:   [][]board.Terrain{{board.Land, board.Sea}},
+			grid:   [][]game.TerrainValue{{game.LandTerrain{}, game.SeaTerrain{}}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
 		},
@@ -184,20 +194,21 @@ func TestAtomicMovement(t *testing.T) {
 			b := newBoard(t, board.Config{Terrain: tt.grid, Robots: tt.robots}, tt.ids)
 			d := next(t, b, nil)
 			for _, id := range tt.ids {
-				if d.Request == nil || d.Request.RobotID != id {
+				if d != (game.StartDecision{RobotID: id}) {
 					t.Errorf("unexpected request: %+v", d)
 				}
 				var a game.Action = forward
 				if custom, ok := tt.actions[id]; ok {
 					a = custom
 				}
-				d = next(t, b, &game.Reply{RobotID: id, Action: a})
+				d = next(t, b, game.ActionReply{RobotID: id, Action: a})
 			}
-			if d.AdvanceTo == nil {
+			if d != (game.AdvanceDecision{Tick: 1}) {
 				t.Error("missing advance proposal")
 			}
 			d = next(t, b, nil)
-			if d.Update == nil || b.Snapshot().Tick != 1 {
+			update, committed := d.(game.UpdateDecision)
+			if !committed || b.Snapshot().Tick != 1 {
 				t.Error("missing tick commit")
 			}
 			want := tt.want
@@ -207,15 +218,13 @@ func TestAtomicMovement(t *testing.T) {
 			if !reflect.DeepEqual(b.Snapshot().Robots, want) {
 				t.Errorf("got %+v, want %+v", b.Snapshot().Robots, want)
 			}
-			if d.Update != nil {
-				for _, result := range d.Update.Results {
-					if _, rotating := result.Action.(game.RotateAction); rotating {
-						if result.Value.Kind != game.Unit {
-							t.Error("rotation must return unit")
-						}
-					} else if result.Value.Kind != game.Bool || result.Value.Bool != tt.moved[result.RobotID] {
-						t.Errorf("unexpected movement result: %+v", result)
+			for _, result := range update.Update.Results {
+				if _, rotating := result.Action.(game.RotateAction); rotating {
+					if result.Value != (game.UnitValue{}) {
+						t.Error("rotation must return unit")
 					}
+				} else if result.Value != (game.BoolValue{Bool: tt.moved[result.RobotID]}) {
+					t.Errorf("unexpected movement result: %+v", result)
 				}
 			}
 		})
@@ -225,24 +234,26 @@ func TestAtomicMovement(t *testing.T) {
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
 	valid := board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
+	valid.Terrain[0][0] = game.LandTerrain{Goal: true, Checkpoint: true, Luggage: true}
 	b, err := board.New(valid)
 	if err != nil {
 		t.Fatal(err)
 	}
 	initial := b.Snapshot()
-	valid.Terrain[0][0] = board.Sea
+	valid.Terrain[0][0] = game.SeaTerrain{}
 	valid.Robots["a"] = state(1, 0, board.West)
 	copy := b.Snapshot()
-	copy.Terrain[0][0] = board.Rock
+	copy.Terrain[0][0] = game.RockTerrain{}
 	delete(copy.Robots, "a")
 	if !reflect.DeepEqual(b.Snapshot(), initial) {
 		t.Error("constructor or snapshot aliases caller data")
 	}
 	invalid := []board.Config{
 		{}, {Terrain: land(2, 1)},
-		{Terrain: [][]board.Terrain{{board.Land}, {}}, Robots: initial.Robots},
-		{Terrain: [][]board.Terrain{{"unknown"}}, Robots: initial.Robots},
-		{Terrain: [][]board.Terrain{{board.Sea}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{}}, {}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{nil}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{(*game.LandTerrain)(nil)}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"": state(0, 0, board.North)}},
@@ -269,11 +280,13 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}, []game.RobotID{"a"})
 	initial := b.Snapshot()
 	next(t, b, nil)
-	for _, reply := range []*game.Reply{
-		nil, {RobotID: "other", Done: true}, {RobotID: "a"},
-		{RobotID: "a", Action: game.RotateAction{}},
-		{RobotID: "a", Action: game.RotateAction{Rotation: "sideways"}},
-		{RobotID: "a", Done: true, Err: errors.New("error")},
+	for _, reply := range []game.Reply{
+		nil, (*game.ActionReply)(nil),
+		game.DoneReply{RobotID: "other"},
+		game.ActionReply{RobotID: "a"},
+		game.ActionReply{RobotID: "a", Action: game.RotateAction{}},
+		game.ActionReply{RobotID: "a", Action: game.RotateAction{Rotation: "sideways"}},
+		game.ErrorReply{RobotID: "a"},
 	} {
 		if _, err := b.Next(t.Context(), reply); err == nil {
 			t.Error("invalid reply accepted")
@@ -282,7 +295,7 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 			t.Error("invalid reply changed board")
 		}
 	}
-	next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
+	next(t, b, game.ActionReply{RobotID: "a", Action: game.ForwardAction{}})
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if _, err := b.Next(ctx, nil); !errors.Is(err, context.Canceled) {
@@ -291,34 +304,41 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 	if !reflect.DeepEqual(initial, b.Snapshot()) {
 		t.Error("cancellation committed pending action")
 	}
+	if _, committed := next(t, b, nil).(game.UpdateDecision); !committed {
+		t.Error("canceled commit could not be retried")
+	}
+	if b.Snapshot().Tick != 1 || b.Snapshot().Robots["a"].Position.X != 1 {
+		t.Errorf("retry did not commit exactly once: %+v", b.Snapshot())
+	}
 }
 
 func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
 	t.Parallel()
 	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}}, []game.RobotID{"a", "b"})
 	next(t, b, nil)
-	next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
-	next(t, b, &game.Reply{RobotID: "b", Done: true})
+	next(t, b, game.ActionReply{RobotID: "a", Action: game.ForwardAction{}})
+	next(t, b, game.DoneReply{RobotID: "b"})
 	d := next(t, b, nil)
-	if d.Update == nil || len(d.Update.Results) != 1 || d.Update.Results[0].Value.Bool {
+	update, committed := d.(game.UpdateDecision)
+	if !committed || len(update.Update.Results) != 1 || update.Update.Results[0].Value != (game.BoolValue{Bool: false}) {
 		t.Error("finished robot did not block movement")
 	}
 	next(t, b, nil)
-	if !next(t, b, &game.Reply{RobotID: "a", Done: true}).Done {
+	if next(t, b, game.DoneReply{RobotID: "a"}) != (game.DoneDecision{}) {
 		t.Error("board did not finish")
 	}
 }
 
 func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	t.Parallel()
-	field := game.FieldValue{Terrain: game.Land}
+	terrain := game.LandTerrain{}
 	for _, action := range []game.Action{
 		game.WaitAction{Integer: 7},
 		game.PickUpAction{}, game.ReleaseAction{}, game.DrillAction{},
 		game.DistanceAction{}, game.SearchFrontAction{}, game.SearchNowAction{},
-		game.IsLandAction{Field: field}, game.IsGoalAction{Field: field},
-		game.IsCheckpointAction{Field: field}, game.IsLaggageAction{Field: field},
-		game.IsSeaAction{Field: field}, game.IsRockAction{Field: field},
+		game.IsLandAction{Terrain: terrain}, game.IsGoalAction{Terrain: terrain},
+		game.IsCheckpointAction{Terrain: terrain}, game.IsLaggageAction{Terrain: terrain},
+		game.IsSeaAction{Terrain: terrain}, game.IsRockAction{Terrain: terrain},
 		game.PrintIntegerAction{Integer: -42}, game.PrintBoolAction{Bool: true},
 	} {
 		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {
@@ -330,8 +350,8 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 			next(t, b, nil)
 			// A valid action is already pending when the other robot sends an
 			// unimplemented action; neither action may mutate the board.
-			next(t, b, &game.Reply{RobotID: "a", Action: game.ForwardAction{}})
-			_, err := b.Next(t.Context(), &game.Reply{RobotID: "b", Action: action})
+			next(t, b, game.ActionReply{RobotID: "a", Action: game.ForwardAction{}})
+			_, err := b.Next(t.Context(), game.ActionReply{RobotID: "b", Action: action})
 			if !errors.Is(err, game.ErrNotSupported) {
 				t.Errorf("got %v, want ErrNotSupported", err)
 			}
@@ -339,5 +359,44 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 				t.Error("unsupported action committed pending changes")
 			}
 		})
+	}
+}
+
+func TestBoardLifecycle(t *testing.T) {
+	t.Parallel()
+	b, err := board.New(board.Config{
+		Terrain: land(1, 1),
+		Robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.North)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial := b.Snapshot()
+	if _, err := b.Next(t.Context(), nil); err == nil {
+		t.Error("unstarted board advanced")
+	}
+	if err := b.Start(t.Context(), []game.RobotID{"a"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Next(t.Context(), game.DoneReply{RobotID: "a"}); err == nil {
+		t.Error("unsolicited reply was accepted")
+	}
+	if decision := next(t, b, nil); decision != (game.StartDecision{RobotID: "a"}) {
+		t.Errorf("unexpected initial decision: %+v", decision)
+	}
+	if decision := next(t, b, game.ErrorReply{RobotID: "a", Err: errors.New("robot failed")}); decision != (game.DoneDecision{}) {
+		t.Errorf("failed robot did not finish: %+v", decision)
+	}
+	if decision := next(t, b, nil); decision != (game.DoneDecision{}) {
+		t.Errorf("completed board did not remain complete: %+v", decision)
+	}
+	if err := b.Start(t.Context(), []game.RobotID{"a"}); err == nil {
+		t.Error("completed board restarted")
+	}
+	if _, err := b.Next(t.Context(), game.DoneReply{RobotID: "a"}); err == nil {
+		t.Error("completed board accepted a reply")
+	}
+	if !reflect.DeepEqual(initial, b.Snapshot()) {
+		t.Errorf("lifecycle checks changed the board: %+v", b.Snapshot())
 	}
 }
