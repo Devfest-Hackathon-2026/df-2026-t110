@@ -366,20 +366,29 @@ func TestRejectedRepliesAndCancellationDoNotCommit(t *testing.T) {
 	}
 }
 
-func TestFinishedRobotRemainsAnObstacle(t *testing.T) {
+func TestFinishedRobotRemovedAtCommit(t *testing.T) {
 	t.Parallel()
 	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}}, []game.RobotID{"a", "b"})
+	initial := b.Snapshot()
 	next(t, b, nil)
 	next(t, b, game.ActionReply{RobotID: "a", Action: game.ForwardAction{}})
-	next(t, b, game.DoneReply{RobotID: "b"})
+	if d := next(t, b, game.DoneReply{RobotID: "b"}); d != (game.AdvanceDecision{Tick: 1}) || !reflect.DeepEqual(b.Snapshot(), initial) {
+		t.Errorf("robot stop changed the board before commit: %+v", d)
+	}
 	d := next(t, b, nil)
 	update, committed := d.(game.UpdateDecision)
-	if !committed || len(update.Update.Results) != 1 || update.Update.Results[0].Value != (game.BoolValue{Bool: false}) {
-		t.Error("finished robot did not block movement")
+	if !committed || len(update.Update.Results) != 1 || update.Update.Results[0].Value != (game.BoolValue{Bool: true}) {
+		t.Errorf("move into the vacated cell failed: %+v", d)
+	}
+	if robots := b.Snapshot().Robots; len(robots) != 1 || robots["a"].Position != initial.Robots["b"].Position {
+		t.Errorf("unexpected robots after commit: %+v", robots)
 	}
 	next(t, b, nil)
 	if next(t, b, game.DoneReply{RobotID: "a"}) != (game.DoneDecision{}) {
 		t.Error("board did not finish")
+	}
+	if snapshot := b.Snapshot(); snapshot.Tick != 1 || len(snapshot.Robots) != 0 {
+		t.Errorf("unexpected state after all robots stopped: %+v", snapshot)
 	}
 }
 
@@ -446,7 +455,8 @@ func TestBoardLifecycle(t *testing.T) {
 	if _, err := b.Next(t.Context(), game.DoneReply{RobotID: "a"}); err == nil {
 		t.Error("completed board accepted a reply")
 	}
-	if !reflect.DeepEqual(initial, b.Snapshot()) {
-		t.Errorf("lifecycle checks changed the board: %+v", b.Snapshot())
+	clear(initial.Robots)
+	if snapshot := b.Snapshot(); !reflect.DeepEqual(snapshot, initial) {
+		t.Errorf("expected only the stopped robot to be removed: %+v", snapshot)
 	}
 }

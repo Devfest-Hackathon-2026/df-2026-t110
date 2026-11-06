@@ -182,6 +182,9 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 		if value != (game.BoolValue{Bool: true}) {
 			t.Errorf("other robot got wrong result: %+v", value)
 		}
+		if robots := b.Snapshot().Robots; len(robots) != 1 || robots["b"].Position.X != 1 {
+			t.Errorf("unexpected robots after the first tick: %+v", robots)
+		}
 		return game.DoneStep{}, nil
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: failed}, hub.Participant{ID: "b", Robot: other})
@@ -190,8 +193,8 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 	if err != nil || report.Tick != 1 || !failedOK || !errors.Is(failedOutcome.Err, failure) || report.Outcomes["b"] != (hub.CompletedOutcome{}) {
 		t.Errorf("got %+v, %v", report, err)
 	}
-	if b.Snapshot().Robots["a"].Position.X != 0 || b.Snapshot().Robots["b"].Position.X != 1 {
-		t.Error("unexpected final positions")
+	if robots := b.Snapshot().Robots; len(robots) != 0 {
+		t.Errorf("stopped robots remained on the board: %+v", robots)
 	}
 }
 

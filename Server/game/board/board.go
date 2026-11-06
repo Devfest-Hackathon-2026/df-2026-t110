@@ -165,6 +165,11 @@ func (b *Board) Next(ctx context.Context, reply game.Reply) (game.Decision, erro
 		b.phase = awaitingCommitBoard{}
 		return game.AdvanceDecision{Tick: tick}, nil
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	// Finish any remaining stops without advancing the clock.
+	clear(b.state.Robots)
 	b.phase = finishedBoard{}
 	return game.DoneDecision{}, nil
 }
@@ -219,7 +224,13 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 	occupied := make(map[Position]game.RobotID, robotCount)
 	targets := make(map[game.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
+	next := clone(b.state)
+	next.Tick++
 	for id, robot := range b.state.Robots {
+		if _, stopped := b.controls[id].(finishedControl); stopped {
+			delete(next.Robots, id)
+			continue
+		}
 		occupied[robot.Position] = id
 	}
 	for _, id := range b.order {
@@ -271,8 +282,6 @@ func (b *Board) commit(ctx context.Context) (game.TickUpdate, error) {
 		resolved[id] = struct{}{}
 		return movable[id]
 	}
-	next := clone(b.state)
-	next.Tick++
 	update := game.TickUpdate{Tick: next.Tick}
 	for _, id := range b.order {
 		c, pending := b.controls[id].(pendingControl)
