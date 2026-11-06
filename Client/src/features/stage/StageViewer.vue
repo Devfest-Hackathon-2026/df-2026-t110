@@ -229,8 +229,7 @@ async function loadField() {
           <span>{{ field.title }}、配置候補 {{ layouts.length }} 通り</span><small>{{ source }}</small>
         </div>
         <p class="stage-note">
-          盤面 {{ field.width }} × {{ field.height }}。岩の個数候補
-          {{ field.rockCounts.join(' / ') }}。海や荷物も異なる配置を確認できます。
+          盤面 {{ field.width }} × {{ field.height }}。岩の個数候補 {{ field.rockCounts.join(' / ') }}。
         </p>
         <div class="stage-list">
           <button

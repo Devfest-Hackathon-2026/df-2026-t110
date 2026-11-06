@@ -63,3 +63,48 @@ test('不正な行幅、記号、別ステージの配列を拒否する', () =>
   assert.throws(() => normalizeStage({ map: ['S?G'] }), /記号/)
   assert.throws(() => normalizeField({ stages: [{ map: ['SG'] }] }), /1つのフィールド/)
 })
+
+test('現行Stage/Field schemaの地形・配置物・初期方向を表示データに変換する', () => {
+  const field = normalizeField({
+    variants: [
+      {
+        width: 3,
+        height: 2,
+        terrain: [
+          ['land', 'rock', 'land'],
+          ['sea', 'land', 'land'],
+        ],
+        objects: [
+          { type: 'checkpoint', order: 2, position: { x: 2, y: 0 } },
+          { type: 'luggage', id: 'parcel-a', position: { x: 1, y: 1 } },
+          { type: 'goal', position: { x: 2, y: 1 } },
+        ],
+        robot: { position: { x: 0, y: 0 }, direction: 'south' },
+        drillLimit: 1,
+      },
+    ],
+    clearCondition: { type: 'visit_checkpoints' },
+  })
+  const layout = field.layouts[0]
+  assert.equal(layout.robot.direction, 'south')
+  assert.deepEqual(layout.rows, ['S#C', '_OG'])
+  assert.equal(layout.cells.find((cell) => cell.x === 2 && cell.y === 0)?.objects[0].order, 2)
+  assert.equal(layout.cells.find((cell) => cell.x === 1 && cell.y === 1)?.objects[0].id, 'parcel-a')
+  assert.equal(layout.rockCount, 1)
+})
+
+test('schema fieldの寸法不一致と不正な配置を拒否する', () => {
+  const base = {
+    width: 2,
+    height: 1,
+    terrain: [['land', 'land']],
+    objects: [],
+    robot: { position: { x: 0, y: 0 }, direction: 'east' },
+    drillLimit: 0,
+  }
+  assert.throws(() => normalizeField({ ...base, terrain: [['land']] }), /terrain/)
+  assert.throws(
+    () => normalizeField({ ...base, objects: [{ type: 'goal', position: { x: 2, y: 0 } }] }),
+    /object/,
+  )
+})
