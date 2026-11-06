@@ -1,7 +1,7 @@
 package valid
 
 import (
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	bot "github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot"
 )
 
@@ -48,7 +48,7 @@ var (
 	}}
 	_ bot.CompoundType = bot.VectorType{ElementType: bot.VectorType{ElementType: bot.IntegerType{}}}
 	_                  = []bot.PrimitiveType{bot.BoolType{}, bot.IntegerType{}, bot.UnitType{}, bot.TerrainType{}, bot.RotationType{}}
-	_                  = []bot.Literal{bot.BoolLiteral{}, bot.IntegerLiteral{}, bot.UnitLiteral{}, bot.RotationLiteral{Value: game.Left}}
+	_                  = []bot.Literal{bot.BoolLiteral{}, bot.IntegerLiteral{}, bot.UnitLiteral{}, bot.RotationLiteral{Value: values.Left}}
 )
 
 func pipeline(parse bot.ParseFunc, index bot.IndexFunc, check bot.TypeCheckFunc, source []byte) (bot.TypedProgram, error) {

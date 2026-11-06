@@ -18,8 +18,9 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
 - distance_target
     - `robot`、`ally`、`enemy`、`rock`、`luggage`、`sea`, `goal`、`goal_area`
 - vector\<T>
-    - 型Tの要素を持つ可変長配列
+    - 型Tの要素を持つ連結リスト
     - 同じvectorの要素はすべて同じ型
+    - 内部的にはノードに参照カウンタのついた根付き木として表現し、コピーのコストはO(1)とする。
 
 ### 組み込み関数
 
@@ -183,8 +184,6 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - return文の型が異なる場合エラー
 
 ### 実行
-
-内部表現として不変の木構造を用い、値の複製や更新時に変更のない部分木を共有してよい。更新時には変更する経路を再構築し、既存の値を保持する部分木は変更しない。内部表現の共有によって、言語上の値の独立性が変わることはない。値全体を物理的にコピーすることは要求しない。
 
 実行時は、関数呼び出しのスタックを用意し、関数呼び出し時にpush、終了時にpopする
 

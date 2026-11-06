@@ -7,9 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
-	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
 func TestRenderTerrainKinds(t *testing.T) {
@@ -17,9 +16,9 @@ func TestRenderTerrainKinds(t *testing.T) {
 	var output bytes.Buffer
 	err := render(&output, board.Snapshot{
 		Tick: 7,
-		Terrain: [][]game.TerrainValue{{
-			game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}},
-			game.LandTerrain{Kind: game.PlainLand{}, HasLuggage: true}, game.RockTerrain{}, game.SeaTerrain{},
+		Terrain: [][]values.TerrainValue{{
+			values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.GoalLand{}}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}},
+			values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}, values.RockTerrain{}, values.SeaTerrain{},
 		}},
 	})
 	if err != nil {
@@ -34,7 +33,7 @@ func TestInteractiveDemo(t *testing.T) {
 	t.Parallel()
 	input := "p1 drill_durability\np1 forward\np2 forward\np1 forward\np2 forward\np1 done\np2 done\n"
 	var output bytes.Buffer
-	if err := run(t.Context(), io.NopCloser(strings.NewReader(input)), &output, 1000, 10000); err != nil {
+	if err := run(io.NopCloser(strings.NewReader(input)), &output, 1000, 10000); err != nil {
 		t.Error(err)
 	}
 	for _, want := range []string{"tick 0", "tick 1", "tick 2", "p1 => 3", "p1 => true", "p2 => true", "p1 => false", "p2 => false", "p1: (1,0) east", "p2: (3,0) west", "p1: completed", "p2: completed"} {
@@ -48,7 +47,7 @@ func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {
 		var output bytes.Buffer
-		if err := run(t.Context(), io.NopCloser(strings.NewReader(input)), &output, 1000, 10000); err != nil {
+		if err := run(io.NopCloser(strings.NewReader(input)), &output, 1000, 10000); err != nil {
 			t.Error(err)
 		}
 		want := "finished at tick 0"
@@ -67,8 +66,8 @@ func TestEOFFinishesPendingTick(t *testing.T) {
 func TestCLITickLimit(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
-	err := run(t.Context(), io.NopCloser(strings.NewReader("p1 forward\np2 forward\np1 forward\np2 forward\n")), &output, 1, 100)
-	if !errors.Is(err, hub.ErrTickLimit) || strings.Contains(output.String(), "tick 2") {
+	err := run(io.NopCloser(strings.NewReader("p1 forward\np2 forward\np1 forward\np2 forward\n")), &output, 1, 100)
+	if !errors.Is(err, board.ErrTickLimit) || strings.Contains(output.String(), "tick 2") {
 		t.Errorf("tick limit not enforced: %v\n%s", err, output.String())
 	}
 }

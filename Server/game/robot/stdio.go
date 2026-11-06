@@ -1,9 +1,8 @@
-// Package robot provides an interactive text-command implementation of game.Robot.
+// Package robot provides an interactive text-command implementation of values.Robot.
 package robot
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,25 +11,20 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	robotmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
 const help = "<id> forward | back | rotate left | rotate right | drill_durability | done; help\n"
 
-type line struct {
-	text string
-	err  error
-}
-
 // Session owns input and shares it between robots. Calls to Robot.Start and
-// Robot.Next must be sequential. Closing input must unblock Read.
-// One reader goroutine is created lazily; Close or cancellation releases it.
+// Robot.Next must be sequential. Close releases the input resource.
 type Session struct {
 	input     io.ReadCloser
 	output    io.Writer
-	lines     chan line
-	closed    chan struct{}
-	readOnce  sync.Once
+	scanner   *bufio.Scanner
 	closeOnce sync.Once
 	closeErr  error
 	eof       bool
@@ -40,53 +34,26 @@ func NewSession(input io.ReadCloser, output io.Writer) (*Session, error) {
 	if input == nil || output == nil {
 		return nil, errors.New("input and output are required")
 	}
-	return &Session{input: input, output: output, lines: make(chan line), closed: make(chan struct{})}, nil
+	return &Session{input: input, output: output, scanner: bufio.NewScanner(input)}, nil
 }
 
 func (s *Session) Close() error {
-	s.closeOnce.Do(func() {
-		close(s.closed)
-		s.closeErr = s.input.Close()
-	})
+	s.closeOnce.Do(func() { s.closeErr = s.input.Close() })
 	return s.closeErr
 }
 
-func (s *Session) read() {
-	defer close(s.lines)
-	scanner := bufio.NewScanner(s.input)
-	for scanner.Scan() {
-		select {
-		case s.lines <- line{text: scanner.Text()}:
-		case <-s.closed:
-			return
-		}
+func (s *Session) readLine() (string, error) {
+	if s.scanner.Scan() {
+		return s.scanner.Text(), nil
 	}
-	if err := scanner.Err(); err != nil {
-		select {
-		case s.lines <- line{err: err}:
-		case <-s.closed:
-		}
+	if err := s.scanner.Err(); err != nil {
+		return "", err
 	}
-}
-
-func (s *Session) readLine(ctx context.Context) (string, error) {
-	s.readOnce.Do(func() { go s.read() })
-	select {
-	case <-ctx.Done():
-		_ = s.Close()
-		return "", ctx.Err()
-	case <-s.closed:
-		return "", io.ErrClosedPipe
-	case value, ok := <-s.lines:
-		if !ok {
-			return "", io.EOF
-		}
-		return value.text, value.err
-	}
+	return "", io.EOF
 }
 
 type Stdio struct {
-	id      game.RobotID
+	id      protocol.RobotID
 	session *Session
 	phase   stdioPhase
 }
@@ -101,54 +68,47 @@ func (unstartedStdio) stdioPhase() {}
 func (runningStdio) stdioPhase()   {}
 func (finishedStdio) stdioPhase()  {}
 
-func NewStdio(id game.RobotID, session *Session) (*Stdio, error) {
+func NewStdio(id protocol.RobotID, session *Session) (*Stdio, error) {
 	if id == "" || strings.IndexFunc(string(id), unicode.IsSpace) >= 0 || session == nil {
 		return nil, errors.New("a nonempty whitespace-free robot ID and session are required")
 	}
 	return &Stdio{id: id, session: session, phase: unstartedStdio{}}, nil
 }
 
-func (r *Stdio) Start(ctx context.Context) (game.Step, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
+func (r *Stdio) Start() (robotmsg.RobotOutput, error) {
 	if _, fresh := r.phase.(unstartedStdio); !fresh {
-		return nil, errors.New("robot has already started")
+		return robotmsg.RobotOutput{}, errors.New("robot has already started")
 	}
 	r.phase = runningStdio{}
-	return r.readStep(ctx)
+	step, err := r.readStep()
+	return robotmsg.RobotOutput{Step: step}, err
 }
 
-func (r *Stdio) Next(ctx context.Context, value game.Value) (game.Step, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
+func (r *Stdio) Next(value values.Value) (robotmsg.RobotOutput, error) {
 	if _, running := r.phase.(runningStdio); !running {
-		return nil, errors.New("robot must be running to resume")
+		return robotmsg.RobotOutput{}, errors.New("robot must be running to resume")
 	}
-	if !game.ValidValue(value) {
-		return nil, errors.New("resume requires a return value")
+	if !values.ValidValue(value) {
+		return robotmsg.RobotOutput{}, errors.New("resume requires a return value")
 	}
 	if _, err := fmt.Fprintf(r.session.output, "%s => %s\n", r.id, formatValue(value)); err != nil {
-		return nil, err
+		return robotmsg.RobotOutput{}, err
 	}
-	return r.readStep(ctx)
+	step, err := r.readStep()
+	return robotmsg.RobotOutput{Step: step}, err
 }
 
-func (r *Stdio) readStep(ctx context.Context) (game.Step, error) {
+func (r *Stdio) readStep() (robotmsg.Step, error) {
 	for !r.session.eof {
 		if _, err := fmt.Fprintf(r.session.output, "%s> ", r.id); err != nil {
 			return nil, err
 		}
-		text, err := r.session.readLine(ctx)
+		text, err := r.session.readLine()
 		if errors.Is(err, io.EOF) {
 			r.session.eof = true
 			break
 		}
 		if err != nil {
-			return nil, err
-		}
-		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		fields := strings.Fields(text)
@@ -160,7 +120,7 @@ func (r *Stdio) readStep(ctx context.Context) (game.Step, error) {
 		}
 		step, ok := parse(r.id, fields)
 		if ok {
-			if _, done := step.(game.DoneStep); done {
+			if _, done := step.(robotmsg.DoneStep); done {
 				r.phase = finishedStdio{}
 			}
 			return step, nil
@@ -170,57 +130,57 @@ func (r *Stdio) readStep(ctx context.Context) (game.Step, error) {
 		}
 	}
 	r.phase = finishedStdio{}
-	return game.DoneStep{}, nil
+	return robotmsg.DoneStep{}, nil
 }
 
-func parse(id game.RobotID, fields []string) (game.Step, bool) {
+func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 	if len(fields) < 2 || fields[0] != string(id) {
 		return nil, false
 	}
 	if len(fields) == 2 {
 		switch fields[1] {
 		case "done":
-			return game.DoneStep{}, true
+			return robotmsg.DoneStep{}, true
 		case "forward":
-			return game.ActionStep{Action: game.ForwardAction{}}, true
+			return robotmsg.ActionStep{Action: actions.ForwardAction{}}, true
 		case "back":
-			return game.ActionStep{Action: game.BackAction{}}, true
+			return robotmsg.ActionStep{Action: actions.BackAction{}}, true
 		case "drill_durability":
-			return game.ActionStep{Action: game.DrillDurabilityAction{}}, true
+			return robotmsg.ActionStep{Action: actions.DrillDurabilityAction{}}, true
 		}
 	}
-	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(game.Left) || fields[2] == string(game.Right)) {
-		return game.ActionStep{Action: game.RotateAction{Rotation: game.Rotation(fields[2])}}, true
+	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(values.Left) || fields[2] == string(values.Right)) {
+		return robotmsg.ActionStep{Action: actions.RotateAction{Rotation: values.Rotation(fields[2])}}, true
 	}
 	return nil, false
 }
 
-func formatValue(value game.Value) string {
+func formatValue(value values.Value) string {
 	switch value := value.(type) {
-	case game.BoolValue:
+	case values.BoolValue:
 		return strconv.FormatBool(value.Bool)
-	case game.IntegerValue:
+	case values.IntegerValue:
 		return strconv.FormatInt(value.Integer, 10)
-	case game.UnitValue:
+	case values.UnitValue:
 		return "()"
-	case game.LandTerrain:
+	case values.LandTerrain:
 		attributes := []string{"land"}
 		switch kind := value.Kind.(type) {
-		case game.GoalLand:
+		case values.GoalLand:
 			attributes = append(attributes, "goal")
-		case game.CheckpointLand:
+		case values.CheckpointLand:
 			attributes = append(attributes, fmt.Sprintf("checkpoint=%d", kind.Order))
 		}
 		if value.HasLuggage {
 			attributes = append(attributes, "luggage")
 		}
-		if value.GoalArea != game.NoGoalArea {
+		if value.GoalArea != values.NoGoalArea {
 			attributes = append(attributes, "goal_area="+string(value.GoalArea))
 		}
 		return "terrain(" + strings.Join(attributes, ", ") + ")"
-	case game.RockTerrain:
+	case values.RockTerrain:
 		return "terrain(rock)"
-	case game.SeaTerrain:
+	case values.SeaTerrain:
 		return "terrain(sea)"
 	}
 	return "<invalid value>"

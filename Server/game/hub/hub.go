@@ -2,35 +2,38 @@
 package hub
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
+	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	robotmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
 var (
-	ErrTickLimit   = errors.New("tick limit reached")
+	ErrRecording   = errors.New("recording failed")
 	ErrResumeLimit = errors.New("robot resume limit reached")
 	ErrProtocol    = errors.New("invalid game protocol")
 )
 
 type Participant struct {
-	ID    game.RobotID
+	ID    protocol.RobotID
 	Robot game.Robot
 }
 
 type Options struct {
-	MaxTicks uint64
 	// MaxResumes counts both Start and Next calls.
 	MaxResumes uint64
-	OnTick     func(game.TickUpdate) error
+	Recorder   game.Recorder
 }
 
 type Report struct {
-	Tick     uint64
 	Resumes  uint64
-	Outcomes map[game.RobotID]Outcome
+	Outcomes map[protocol.RobotID]Outcome
 }
 
 type Hub struct {
@@ -43,7 +46,7 @@ func New(board game.Board, participants []Participant) (*Hub, error) {
 	if board == nil || len(participants) == 0 {
 		return nil, errors.New("board and at least one robot are required")
 	}
-	seen := make(map[game.RobotID]struct{}, len(participants))
+	seen := make(map[protocol.RobotID]struct{}, len(participants))
 	for _, p := range participants {
 		if _, exists := seen[p.ID]; p.ID == "" || p.Robot == nil || exists {
 			return nil, fmt.Errorf("invalid or duplicate robot %q", p.ID)
@@ -53,68 +56,51 @@ func New(board game.Board, participants []Participant) (*Hub, error) {
 	return &Hub{board: board, participants: append([]Participant(nil), participants...)}, nil
 }
 
-func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
-	report := Report{Outcomes: make(map[game.RobotID]Outcome, len(h.participants))}
-	if h.used || options.MaxTicks == 0 || options.MaxResumes == 0 {
+func (h *Hub) Run(options Options) (Report, error) {
+	report := Report{Outcomes: make(map[protocol.RobotID]Outcome, len(h.participants))}
+	if h.used || options.MaxResumes == 0 {
 		return report, errors.New("hub is single-use and limits must be positive")
 	}
 	h.used = true
-	robots := make(map[game.RobotID]game.Robot, len(h.participants))
-	ids := make([]game.RobotID, 0, len(h.participants))
+	robots := make(map[protocol.RobotID]game.Robot, len(h.participants))
+	ids := make([]protocol.RobotID, 0, len(h.participants))
 	for _, p := range h.participants {
 		robots[p.ID] = p.Robot
 		ids = append(ids, p.ID)
 		report.Outcomes[p.ID] = UnstartedOutcome{}
 	}
-	if err := ctx.Err(); err != nil {
-		return report, err
+	events, err := h.board.Start(ids)
+	if options.Recorder != nil {
+		for _, event := range events {
+			if recordErr := options.Recorder.Record(gameevent.FieldEvent{Event: event}); recordErr != nil {
+				return report, errors.Join(err, fmt.Errorf("%w: %w", ErrRecording, recordErr))
+			}
+		}
 	}
-	if err := h.board.Start(ctx, ids); err != nil {
+	if err != nil {
 		return report, fmt.Errorf("start board: %w", err)
 	}
-	var reply game.Reply
-	var proposed *uint64
+	var reply robotmsg.Reply
 	for {
-		if err := ctx.Err(); err != nil {
-			return report, err
-		}
-		decision, err := h.board.Next(ctx, reply)
-		if err != nil {
-			return report, fmt.Errorf("advance board: %w", err)
-		}
-		reply = nil
-		if proposed != nil {
-			if _, committing := decision.(game.UpdateDecision); !committing {
-				return report, fmt.Errorf("%w: expected tick commit", ErrProtocol)
-			}
-		}
-		switch decision := decision.(type) {
-		case game.AdvanceDecision:
-			tick := decision.Tick
-			if tick <= report.Tick {
-				return report, fmt.Errorf("%w: tick must increase", ErrProtocol)
-			}
-			if tick > options.MaxTicks {
-				return report, ErrTickLimit
-			}
-			proposed = &tick
-		case game.UpdateDecision:
-			if proposed == nil || decision.Update.Tick != *proposed {
-				return report, fmt.Errorf("%w: unexpected tick commit", ErrProtocol)
-			}
-			proposed = nil
-			report.Tick = decision.Update.Tick
-			if options.OnTick != nil {
-				if err := options.OnTick(decision.Update); err != nil {
-					return report, fmt.Errorf("tick callback: %w", err)
+		output, err := h.board.Next(reply)
+		if options.Recorder != nil {
+			for _, event := range output.Events {
+				if recordErr := options.Recorder.Record(gameevent.FieldEvent{Event: event}); recordErr != nil {
+					return report, errors.Join(err, fmt.Errorf("%w: %w", ErrRecording, recordErr))
 				}
 			}
-		case game.StartDecision, game.ResumeDecision:
-			var id game.RobotID
+		}
+		if err != nil {
+			return report, fmt.Errorf("board.Next: %w", err)
+		}
+		reply = nil
+		switch decision := output.Decision.(type) {
+		case boardmsg.StartDecision, boardmsg.ResumeDecision:
+			var id protocol.RobotID
 			switch request := decision.(type) {
-			case game.StartDecision:
+			case boardmsg.StartDecision:
 				id = request.RobotID
-			case game.ResumeDecision:
+			case boardmsg.ResumeDecision:
 				id = request.RobotID
 			}
 			robot, exists := robots[id]
@@ -122,12 +108,12 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 				return report, fmt.Errorf("%w: unavailable robot %q", ErrProtocol, id)
 			}
 			switch request := decision.(type) {
-			case game.StartDecision:
+			case boardmsg.StartDecision:
 				if _, fresh := report.Outcomes[id].(UnstartedOutcome); !fresh {
 					return report, fmt.Errorf("%w: robot %q already started", ErrProtocol, id)
 				}
-			case game.ResumeDecision:
-				if _, stopped := report.Outcomes[id].(StoppedOutcome); !stopped || !game.ValidValue(request.ReturnValue) {
+			case boardmsg.ResumeDecision:
+				if _, stopped := report.Outcomes[id].(StoppedOutcome); !stopped || !values.ValidValue(request.ReturnValue) {
 					return report, fmt.Errorf("%w: invalid resume for robot %q", ErrProtocol, id)
 				}
 			}
@@ -136,37 +122,41 @@ func (h *Hub) Run(ctx context.Context, options Options) (Report, error) {
 			}
 			report.Resumes++
 			report.Outcomes[id] = StoppedOutcome{}
-			var step game.Step
+			var output robotmsg.RobotOutput
 			var err error
 			switch request := decision.(type) {
-			case game.StartDecision:
-				step, err = robot.Start(ctx)
-			case game.ResumeDecision:
-				step, err = robot.Next(ctx, request.ReturnValue)
+			case boardmsg.StartDecision:
+				output, err = robot.Start()
+			case boardmsg.ResumeDecision:
+				output, err = robot.Next(request.ReturnValue)
 			}
-			if cancelErr := ctx.Err(); cancelErr != nil {
-				return report, cancelErr
+			if options.Recorder != nil {
+				for _, event := range output.Events {
+					if recordErr := options.Recorder.Record(gameevent.RobotEvent{InterpreterID: id, Event: event}); recordErr != nil {
+						return report, errors.Join(err, fmt.Errorf("%w: %w", ErrRecording, recordErr))
+					}
+				}
 			}
 			if err == nil {
-				switch step := step.(type) {
-				case game.ActionStep:
-					if !game.ValidAction(step.Action) {
+				switch step := output.Step.(type) {
+				case robotmsg.ActionStep:
+					if !actions.ValidAction(step.Action) {
 						err = fmt.Errorf("%w: invalid robot action %T", ErrProtocol, step.Action)
 					} else {
-						reply = game.ActionReply{RobotID: id, Action: step.Action}
+						reply = robotmsg.ActionReply{RobotID: id, Action: step.Action}
 					}
-				case game.DoneStep:
-					reply = game.DoneReply{RobotID: id}
+				case robotmsg.DoneStep:
+					reply = robotmsg.DoneReply{RobotID: id}
 					report.Outcomes[id] = CompletedOutcome{}
 				default:
-					err = fmt.Errorf("%w: invalid robot step %T", ErrProtocol, step)
+					err = fmt.Errorf("%w: invalid robot step %T", ErrProtocol, output.Step)
 				}
 			}
 			if err != nil {
-				reply = game.ErrorReply{RobotID: id, Err: err}
+				reply = robotmsg.ErrorReply{RobotID: id, Err: err}
 				report.Outcomes[id] = FailedOutcome{Err: err}
 			}
-		case game.DoneDecision:
+		case boardmsg.DoneDecision:
 			for _, outcome := range report.Outcomes {
 				switch outcome.(type) {
 				case UnstartedOutcome, StoppedOutcome:

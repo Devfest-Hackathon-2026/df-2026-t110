@@ -1,4 +1,4 @@
-package game
+package value
 
 type Value interface{ value() }
 
@@ -14,6 +14,7 @@ func (UnitValue) value()    {}
 // or sea. Subsequent board changes do not affect the observation.
 type TerrainValue interface {
 	Value
+	RecordValue
 	terrain()
 }
 

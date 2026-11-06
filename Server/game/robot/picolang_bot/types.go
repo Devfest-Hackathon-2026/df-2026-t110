@@ -1,6 +1,9 @@
 package picolangbot
 
-import "github.com/dvpico/Programming-Learning-AR/Server/game"
+import (
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+)
 
 // Type is a picolang value type and the annotation on a checked expression.
 // Parsed type declarations also use this closed family of language types.
@@ -61,8 +64,8 @@ type Literal interface{ literal() }
 type BoolLiteral struct{ Value bool }
 type IntegerLiteral struct{ Value int64 }
 type UnitLiteral struct{}
-type RotationLiteral struct{ Value game.Rotation }
-type DistanceTargetLiteral struct{ Value game.DistanceTarget }
+type RotationLiteral struct{ Value values.Rotation }
+type DistanceTargetLiteral struct{ Value actions.DistanceTarget }
 
 func (BoolLiteral) literal()           {}
 func (IntegerLiteral) literal()        {}
