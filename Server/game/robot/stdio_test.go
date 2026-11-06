@@ -97,10 +97,10 @@ func TestDisplaysTerrainReturnValue(t *testing.T) {
 		value game.TerrainValue
 		want  string
 	}{
-		{name: "land", value: game.LandTerrain{}, want: "terrain(land)"},
-		{name: "goal", value: game.GoalTerrain{}, want: "terrain(goal)"},
-		{name: "checkpoint", value: game.CheckpointTerrain{}, want: "terrain(checkpoint)"},
-		{name: "luggage", value: game.LuggageTerrain{}, want: "terrain(luggage)"},
+		{name: "land", value: game.LandTerrain{Kind: game.PlainLand{}}, want: "terrain(land)"},
+		{name: "goal", value: game.LandTerrain{Kind: game.GoalLand{}}, want: "terrain(land, goal)"},
+		{name: "checkpoint", value: game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}, want: "terrain(land, checkpoint=2)"},
+		{name: "luggage", value: game.LandTerrain{Kind: game.LuggageLand{}}, want: "terrain(land, luggage)"},
 		{name: "rock", value: game.RockTerrain{}, want: "terrain(rock)"},
 		{name: "sea", value: game.SeaTerrain{}, want: "terrain(sea)"},
 	}
@@ -133,10 +133,15 @@ func TestStartAndResumeLifecycle(t *testing.T) {
 		t.Error("second start was accepted")
 	}
 	for _, value := range []game.Value{
-		nil, (*game.BoolValue)(nil), &game.LandTerrain{},
-		(*game.GoalTerrain)(nil), &game.GoalTerrain{},
-		(*game.CheckpointTerrain)(nil), &game.CheckpointTerrain{},
-		(*game.LuggageTerrain)(nil), &game.LuggageTerrain{},
+		nil, (*game.BoolValue)(nil), &game.LandTerrain{Kind: game.PlainLand{}},
+		game.LandTerrain{},
+		game.LandTerrain{Kind: &game.PlainLand{}},
+		game.LandTerrain{Kind: &game.GoalLand{}},
+		game.LandTerrain{Kind: &game.CheckpointLand{Order: 2}},
+		game.LandTerrain{Kind: &game.LuggageLand{}},
+		game.LandTerrain{Kind: (*game.GoalLand)(nil)}, &game.LandTerrain{Kind: game.GoalLand{}},
+		game.LandTerrain{Kind: (*game.CheckpointLand)(nil)}, &game.LandTerrain{Kind: game.CheckpointLand{Order: 2}},
+		game.LandTerrain{Kind: (*game.LuggageLand)(nil)}, &game.LandTerrain{Kind: game.LuggageLand{}},
 	} {
 		if _, err := r.Next(t.Context(), value); err == nil {
 			t.Errorf("invalid resume value was accepted: %T", value)

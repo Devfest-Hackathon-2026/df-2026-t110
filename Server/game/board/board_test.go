@@ -16,7 +16,7 @@ func land(width, height int) [][]game.TerrainValue {
 	for y := range grid {
 		grid[y] = make([]game.TerrainValue, width)
 		for x := range grid[y] {
-			grid[y][x] = game.LandTerrain{}
+			grid[y][x] = game.LandTerrain{Kind: game.PlainLand{}}
 		}
 	}
 	return grid
@@ -142,8 +142,8 @@ func TestAtomicMovement(t *testing.T) {
 		{
 			name: "goal",
 			grid: [][]game.TerrainValue{{
-				game.LandTerrain{},
-				game.GoalTerrain{},
+				game.LandTerrain{Kind: game.PlainLand{}},
+				game.LandTerrain{Kind: game.GoalLand{}},
 			}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
@@ -152,13 +152,13 @@ func TestAtomicMovement(t *testing.T) {
 		},
 		{
 			name:   "rock",
-			grid:   [][]game.TerrainValue{{game.LandTerrain{}, game.RockTerrain{}}},
+			grid:   [][]game.TerrainValue{{game.LandTerrain{Kind: game.PlainLand{}}, game.RockTerrain{}}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
 		},
 		{
 			name:   "sea",
-			grid:   [][]game.TerrainValue{{game.LandTerrain{}, game.SeaTerrain{}}},
+			grid:   [][]game.TerrainValue{{game.LandTerrain{Kind: game.PlainLand{}}, game.SeaTerrain{}}},
 			robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			ids:    []game.RobotID{"a"},
 		},
@@ -233,11 +233,15 @@ func TestAtomicMovement(t *testing.T) {
 
 func TestWalkableTerrainKinds(t *testing.T) {
 	t.Parallel()
-	for _, terrain := range []game.TerrainValue{
-		game.LandTerrain{}, game.GoalTerrain{}, game.CheckpointTerrain{}, game.LuggageTerrain{},
+	for _, kind := range []game.LandKind{
+		game.PlainLand{}, game.GoalLand{}, game.CheckpointLand{Order: 2}, game.LuggageLand{},
 	} {
-		t.Run(fmt.Sprintf("%T", terrain), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%T", kind), func(t *testing.T) {
 			t.Parallel()
+			if _, isTerrain := any(kind).(game.TerrainValue); isTerrain {
+				t.Errorf("%T must be nested inside LandTerrain, not used as terrain directly", kind)
+			}
+			terrain := game.LandTerrain{Kind: kind}
 			b := newBoard(t, board.Config{
 				Terrain: [][]game.TerrainValue{{terrain, terrain}},
 				Robots:  map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)},
@@ -267,7 +271,7 @@ func TestWalkableTerrainKinds(t *testing.T) {
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
 	valid := board.Config{Terrain: land(2, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
-	valid.Terrain[0][0] = game.GoalTerrain{}
+	valid.Terrain[0][0] = game.LandTerrain{Kind: game.GoalLand{}}
 	b, err := board.New(valid)
 	if err != nil {
 		t.Fatal(err)
@@ -283,15 +287,21 @@ func TestValidationAndCopies(t *testing.T) {
 	}
 	invalid := []board.Config{
 		{}, {Terrain: land(2, 1)},
-		{Terrain: [][]game.TerrainValue{{game.LandTerrain{}}, {}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: game.PlainLand{}}}, {}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{nil}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{(*game.LandTerrain)(nil)}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{(*game.GoalTerrain)(nil)}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{&game.GoalTerrain{}}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{(*game.CheckpointTerrain)(nil)}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{&game.CheckpointTerrain{}}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{(*game.LuggageTerrain)(nil)}}, Robots: initial.Robots},
-		{Terrain: [][]game.TerrainValue{{&game.LuggageTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: (*game.PlainLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: &game.PlainLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: &game.GoalLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: &game.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: &game.LuggageLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: (*game.GoalLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.LandTerrain{Kind: game.GoalLand{}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: (*game.CheckpointLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.LandTerrain{Kind: game.CheckpointLand{Order: 2}}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{game.LandTerrain{Kind: (*game.LuggageLand)(nil)}}}, Robots: initial.Robots},
+		{Terrain: [][]game.TerrainValue{{&game.LandTerrain{Kind: game.LuggageLand{}}}}, Robots: initial.Robots},
 		{Terrain: [][]game.TerrainValue{{game.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[game.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},

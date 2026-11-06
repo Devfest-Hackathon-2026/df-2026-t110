@@ -10,50 +10,53 @@ func (BoolValue) value()    {}
 func (IntegerValue) value() {}
 func (UnitValue) value()    {}
 
-// TerrainValue is a cell observation copied by value. Each cell is exactly one
-// of plain land, goal, checkpoint, luggage, rock, or sea. Subsequent board changes
-// do not affect the observation.
+// TerrainValue is a cell observation copied by value. Each cell is land, rock,
+// or sea. Land contains one LandKind. Subsequent board changes do not affect the
+// observation.
 type TerrainValue interface {
 	Value
 	terrain()
 }
 
-// LandTerrainValue covers the four mutually exclusive walkable terrain kinds.
-type LandTerrainValue interface {
-	TerrainValue
-	land()
-}
-
-type LandTerrain struct{}
-type GoalTerrain struct{}
-type CheckpointTerrain struct{}
-type LuggageTerrain struct{}
+// LandTerrain contains exactly one non-nil, non-pointer LandKind.
+type LandTerrain struct{ Kind LandKind }
 type RockTerrain struct{}
 type SeaTerrain struct{}
 
-func (LandTerrain) value()         {}
-func (GoalTerrain) value()         {}
-func (CheckpointTerrain) value()   {}
-func (LuggageTerrain) value()      {}
-func (RockTerrain) value()         {}
-func (SeaTerrain) value()          {}
-func (LandTerrain) terrain()       {}
-func (GoalTerrain) terrain()       {}
-func (CheckpointTerrain) terrain() {}
-func (LuggageTerrain) terrain()    {}
-func (RockTerrain) terrain()       {}
-func (SeaTerrain) terrain()        {}
-func (LandTerrain) land()          {}
-func (GoalTerrain) land()          {}
-func (CheckpointTerrain) land()    {}
-func (LuggageTerrain) land()       {}
+// LandKind describes one mutually exclusive kind of land, following Docs/field.md.
+// PlainLand is ordinary land; goal, checkpoint, and luggage are special land.
+type LandKind interface {
+	landKind()
+}
 
-// ValidValue rejects nil and pointer variants at protocol boundaries.
+type PlainLand struct{}
+type GoalLand struct{}
+type CheckpointLand struct{ Order int64 }
+type LuggageLand struct{}
+
+func (LandTerrain) value()       {}
+func (RockTerrain) value()       {}
+func (SeaTerrain) value()        {}
+func (LandTerrain) terrain()     {}
+func (RockTerrain) terrain()     {}
+func (SeaTerrain) terrain()      {}
+func (PlainLand) landKind()      {}
+func (GoalLand) landKind()       {}
+func (CheckpointLand) landKind() {}
+func (LuggageLand) landKind()    {}
+
+// ValidValue rejects nil, pointer variants, and unset land kinds at protocol boundaries.
 func ValidValue(value Value) bool {
-	switch value.(type) {
-	case BoolValue, IntegerValue, UnitValue, LandTerrain, GoalTerrain,
-		CheckpointTerrain, LuggageTerrain, RockTerrain, SeaTerrain:
+	switch value := value.(type) {
+	case BoolValue, IntegerValue, UnitValue, RockTerrain, SeaTerrain:
 		return true
+	case LandTerrain:
+		switch value.Kind.(type) {
+		case PlainLand, GoalLand, CheckpointLand, LuggageLand:
+			return true
+		default:
+			return false
+		}
 	default:
 		return false
 	}

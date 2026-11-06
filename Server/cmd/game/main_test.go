@@ -18,8 +18,8 @@ func TestRenderTerrainKinds(t *testing.T) {
 	err := render(&output, board.Snapshot{
 		Tick: 7,
 		Terrain: [][]game.TerrainValue{{
-			game.LandTerrain{}, game.GoalTerrain{}, game.CheckpointTerrain{},
-			game.LuggageTerrain{}, game.RockTerrain{}, game.SeaTerrain{},
+			game.LandTerrain{Kind: game.PlainLand{}}, game.LandTerrain{Kind: game.GoalLand{}}, game.LandTerrain{Kind: game.CheckpointLand{Order: 2}},
+			game.LandTerrain{Kind: game.LuggageLand{}}, game.RockTerrain{}, game.SeaTerrain{},
 		}},
 	})
 	if err != nil {
