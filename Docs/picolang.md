@@ -18,7 +18,6 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - vector\<T>
     - 型Tの要素を持つ可変長配列
     - 同じvectorの要素はすべて同じ型
-    - インデックスは0から始まる
 
 ### 組み込み関数
 
@@ -55,13 +54,11 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
         - snd < fstの場合はパニック
 - vector
     - new: () -> vector\<T>
-    - push_back: (vector\<T>, T) -> ()
-    - pop_back: vector\<T> -> ()
+    - push_back: (vector\<T>, T) -> vector\<T>
+        - 末尾に要素の値を追加した新しいvectorを返す
+    - pop_back: vector\<T> -> vector\<T>
+        - 末尾の要素を取り除いた新しいvectorを返す
         - 要素数が0の場合はパニック
-    - get: (vector\<T>, integer) -> T
-        - インデックスが0未満、または要素数以上の場合はパニック
-    - set: (vector\<T>, integer, T) -> ()
-        - インデックスが0未満、または要素数以上の場合はパニック
     - size: vector\<T> -> integer
 - terrain
     - is_land: terrain -> bool
@@ -137,8 +134,10 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 - 関数以外の値のスコープは関数全体かブロック全体のスコープを持つ。
 - shadowing, 型エラーは実行前に弾く。
 - 関数の引数は先頭から評価される。
-- 変数定義・代入、引数・戻り値、vectorの要素の受け渡しでは、primitive typeは値をコピーし、compound typeは参照をコピーする。
-- compound typeの変更は同じ実体を参照する側にも反映される。変数への再代入はその変数だけに反映される。
+- primitive type、compound typeを問わず、変数定義・代入、引数・戻り値、vectorの要素の受け渡しはすべて値渡しとし、値全体を複製したものとして扱う。
+- vectorの値は、入れ子のvectorを含めてそれぞれ独立している。一方の値への更新は、別の変数や取得済みの値に伝播しない。
+- 関数内での引数への再代入は、その関数のローカルな値にだけ反映される。
+- push_back、pop_backの結果を元の変数に反映するには、`v = push_back(v, x)`のように戻り値を代入する。
 
 ### VM
 - VMのパニックはgoのerrに変換する
@@ -165,17 +164,19 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
         - すでに同じ変数名が存在する場合はエラー
         - 同名の関数が存在する場合はエラー
     - スコープから抜けるときにpopする
-    - 変数参照時に補助的なmapを使ってインデックスを取得する
+    - 変数の読み出し時に補助的なmapを使ってインデックスを取得する
         - 存在しない場合エラー
 - 型付けを行う
     - 変数宣言時に型を付ける
-    - 変数参照時に型を確認する
+    - 変数の読み出し時に型を確認する
     - 変数の型が異なる場合エラー
     - 関数全体のブロックの末尾にreturn文がない場合エラー
         - return文以降に文がある場合やif-elseの両方にreturn文がある場合など、return文が必ず実行されることを保証する条件はほかにもあるが、末尾にreturn文がある条件を満たさない限りエラーとする
     - return文の型が異なる場合エラー
 
 ### 実行
+
+内部表現として不変の木構造を用い、値の複製や更新時に変更のない部分木を共有してよい。更新時には変更する経路を再構築し、既存の値を保持する部分木は変更しない。内部表現の共有によって、言語上の値の独立性が変わることはない。値全体を物理的にコピーすることは要求しない。
 
 実行時は、関数呼び出しのスタックを用意し、関数呼び出し時にpush、終了時にpopする
 
@@ -188,15 +189,15 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
 以下の操作はステップ数のコストを消費する
 - 関数呼び出し
 - 変数定義
-- 変数参照
+- 変数の読み出し
 - 変数代入
 - ブロックの開始
 
 以下の操作はメモリコストを消費する
 - 変数定義
-- 値の生成・コピー
+- 値の生成・複製
 
-メモリコストは値のサイズに応じた推定値を使う。compound typeは参照と実体を分けて計上し、参照のコピーでは実体を重複計上しない。スコープ終了時に値・参照をdropし、compound typeの実体は最後の参照がなくなった時点で減算する。GCによる実際の解放時期は考慮しない。
+メモリコストは内部表現の共有方法に依存しない、論理的な値のサイズに応じた推定値を使う。vectorのサイズはコンテナと入れ子を含む全要素のサイズを再帰的に合計し、論理的に複製された値もそれぞれ別々に計上する。スコープ終了、再代入、式評価の完了などで不要になった値をdropし、その値が保持していたメモリコストを減算する。GCによる実際の解放時期は考慮しない。
 
 保持中の値の合計が上限を超える場合はVMを停止する。中断・再開時もコストを引き継ぐ。
 
