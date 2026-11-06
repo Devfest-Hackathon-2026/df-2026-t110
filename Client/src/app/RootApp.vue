@@ -11,25 +11,37 @@ import AppHeader from './AppHeader.vue'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
+const RoomsPage = defineAsyncComponent(() => import('../features/rooms/RoomsPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
+const roomMatch = /^\/rooms\/([^/]+)$/.exec(path)
+const roomId = roomMatch ? decodeURIComponent(roomMatch[1]) : null
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
+  if (roomId) return 'room-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
   return 'missing'
 })
 
-document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Robot Field'
+document.title = isStage
+  ? 'preview'
+  : tutorialId
+    ? '教材 | Robot Field'
+    : roomId
+      ? '対戦待機 | Robot Field'
+      : path === '/rooms'
+        ? '対戦 | Robot Field'
+        : 'Robot Field'
 </script>
 
 <template>
   <div :class="isStage ? 'stage-page' : 'site'">
-    <AppHeader :active-page="isStage ? 'tutorials' : page" />
+    <AppHeader :active-page="isStage ? 'tutorials' : page === 'room-detail' ? 'rooms' : page" />
 
     <StageViewer v-if="isStage" />
 
@@ -87,6 +99,8 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
       <TutorialPage :tutorial-id="tutorialId ?? ''" />
     </main>
 
+    <RoomsPage v-else-if="page === 'rooms' || page === 'room-detail'" :room-id="roomId" />
+
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
         <h1 class="heading-with-icon">
@@ -109,15 +123,6 @@ document.title = isStage ? 'preview' : tutorialId ? '教材 | Robot Field' : 'Ro
             >ステージ表示の開発用プレビュー</a
           >も確認できます。
         </p>
-      </template>
-      <template v-else-if="page === 'rooms'">
-        <h1 class="heading-with-icon">
-          <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦は、準備中です。</span>
-        </h1>
-        <p class="inner-lead">
-          自分で考えた命令でロボットを動かし、ほかの人と同じフィールドに挑む機能を予定しています。
-        </p>
-        <a class="action-primary" href="/tutorials">先に教材を試す</a>
       </template>
       <template v-else-if="page === 'account'">
         <h1 class="heading-with-icon">

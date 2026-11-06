@@ -2,7 +2,11 @@
 
 開発とテストには Node.js 24 以上を使います。依存関係の確認には pnpm 12.17.0 を使用しました。
 
-`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` と `/account` は、対戦とログインの準備状況を示すクライアント内のページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` はクライアント内で部屋作成とマッチングを試せる画面、`/account` はログインの準備状況を示すページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+
+## 対戦のローカルプレビュー
+
+`/rooms` で部屋を作成し、6文字のコードまたは共有リンクから `/rooms/:roomId` に参加できます。Piniaで画面状態を管理し、`localStorage` の変更通知で同じブラウザの別タブに反映します。参加者が2人になると待機画面はマッチング成立を表示します。プレイヤーIDはタブごとの `sessionStorage` に保存するため、確認時は複製タブではなく新しいタブを開いてください。別端末との同期、サーバーへの保存、対戦画面への遷移はまだありません。
 
 ## 教材詳細
 
@@ -18,12 +22,11 @@ iPad横向きのような横長画面では、左にカテゴリ・命令見本�
 
 ```bash
 cd Client
-pnpm approve-builds esbuild
 pnpm install
 pnpm dev
 ```
 
-`esbuild` は Vite の依存パッケージです。pnpm 12 ではインストール時スクリプトの実行を許可する必要があります。`pnpm approve-builds esbuild` が作る `pnpm-workspace.yaml` には、この許可が記録されます。
+`esbuild` は Vite の依存パッケージです。`pnpm-workspace.yaml` でインストール時スクリプトを許可しています。
 
 3dプレビュー:カメラなしで動くデバッグ用
 
