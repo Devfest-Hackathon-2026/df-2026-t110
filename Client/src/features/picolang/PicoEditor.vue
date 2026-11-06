@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import moveIcon from '@iconify-icons/lucide/move'
 import mousePointerIcon from '@iconify-icons/lucide/mouse-pointer-2'
@@ -41,6 +41,8 @@ const program = ref<PicoProgram>(newProgram())
 const activeFunctionName = ref('main')
 const category = ref('動き')
 const newFunctionName = ref('')
+const showNewFunction = ref(false)
+const newFunctionInput = ref<HTMLInputElement | null>(null)
 const message = ref('')
 const showJson = ref(false)
 const jsonInput = ref('')
@@ -151,8 +153,16 @@ function addFunction(): void {
     body: block([makeStatement('return', functions.value)]),
   }
   activeFunctionName.value = name
-  newFunctionName.value = ''
+  closeNewFunction()
   message.value = `${name} を追加しました。`
+}
+function openNewFunction(): void {
+  showNewFunction.value = true
+  nextTick(() => newFunctionInput.value?.focus())
+}
+function closeNewFunction(): void {
+  showNewFunction.value = false
+  newFunctionName.value = ''
 }
 function removeFunction(): void {
   if (activeFunctionName.value === 'main') return
@@ -219,7 +229,8 @@ function importJson(): void {
         @click="addChoice(item.name)"
         @dragstart="dragChoice($event, item.name)"
       >
-        {{ item.label }}
+        <Icon :icon="plusIcon" aria-hidden="true" />
+        <span>{{ item.label }}</span>
       </button>
     </aside>
     <div class="pico-workspace">
@@ -233,6 +244,31 @@ function importJson(): void {
         >
           {{ name }}
         </button>
+        <button
+          v-if="!showNewFunction"
+          type="button"
+          class="pico-function-add-button"
+          aria-label="関数を追加"
+          title="関数を追加"
+          @click="openNewFunction"
+        >
+          <Icon :icon="plusIcon" aria-hidden="true" />
+        </button>
+        <form v-else class="pico-new-function" @submit.prevent="addFunction">
+          <input
+            ref="newFunctionInput"
+            v-model="newFunctionName"
+            aria-label="新しい関数名"
+            placeholder="関数名"
+            @keydown.esc="closeNewFunction"
+          />
+          <button type="submit" aria-label="関数を作成" title="関数を作成">
+            <Icon :icon="plusIcon" aria-hidden="true" />追加
+          </button>
+          <button type="button" aria-label="キャンセル" title="キャンセル" @click="closeNewFunction">
+            <Icon :icon="xIcon" aria-hidden="true" />
+          </button>
+        </form>
       </div>
       <div class="pico-function-card">
         <div class="pico-function-header">
@@ -263,12 +299,13 @@ function importJson(): void {
           </div>
           <button type="button" @click="addParam"><Icon :icon="plusIcon" aria-hidden="true" />引数</button>
         </div>
-        <PicoBlock :block="currentFunction.body" :functions="functions" terminal-return />
+        <PicoBlock
+          :block="currentFunction.body"
+          :functions="functions"
+          :variables="currentFunction.params.map((param) => ({ name: param.ident.name, type: param.type }))"
+          terminal-return
+        />
       </div>
-      <form class="pico-new-function" @submit.prevent="addFunction">
-        <input v-model="newFunctionName" aria-label="新しい関数名" placeholder="新しい関数名" />
-        <button type="submit"><Icon :icon="plusIcon" aria-hidden="true" />関数を追加</button>
-      </form>
       <details
         class="pico-json"
         :open="showJson"
@@ -290,7 +327,6 @@ function importJson(): void {
           <Icon :icon="uploadIcon" aria-hidden="true" />読み込む
         </button>
       </details>
-      <p v-if="message" class="pico-message" role="status">{{ message }}</p>
     </div>
   </div>
 </template>

@@ -3,9 +3,8 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import StageScene from './StageScene.vue'
 import { normalizeField } from './stage.ts'
 import { SAMPLE_FIELD } from './sampleStages.ts'
-import { chooseLayoutIndex, resolveServerSelection, rouletteSteps } from './roulette.ts'
+import { chooseLayoutIndex, rouletteSteps } from './roulette.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
-import type { SelectionResponse } from './roulette.ts'
 
 const field = ref(normalizeField(SAMPLE_FIELD))
 const layouts = computed(() => field.value.layouts)
@@ -16,9 +15,8 @@ const fieldId = ref('')
 const json = ref(JSON.stringify(SAMPLE_FIELD, null, 2))
 const error = ref('')
 const source = ref('サンプルデータ')
-const sourceType = ref<'sample' | 'json' | 'api'>('sample')
 const loadedFieldId = ref<string | null>(null)
-const phase = ref<'preview' | 'requesting' | 'rolling' | 'running'>('preview')
+const phase = ref<'preview' | 'rolling' | 'running'>('preview')
 const animationEvent = ref<AnimationEvent | null>(null)
 const mobileTab = ref('stage')
 const demoActions: Array<{ type: AnimationEvent['type']; label: string; direction?: 'left' | 'right' }> = [
@@ -33,7 +31,6 @@ const demoActions: Array<{ type: AnimationEvent['type']; label: string; directio
   { type: 'clear', label: 'クリア' },
 ]
 let rouletteTimer: ReturnType<typeof setTimeout> | null = null
-let matchController: AbortController | null = null
 let rouletteGeneration = 0
 let eventId = 0
 
@@ -41,9 +38,7 @@ function cancelRoulette() {
   rouletteGeneration++
   if (rouletteTimer) clearTimeout(rouletteTimer)
   rouletteTimer = null
-  matchController?.abort()
-  matchController = null
-  if (phase.value === 'rolling' || phase.value === 'requesting') phase.value = 'preview'
+  if (phase.value === 'rolling') phase.value = 'preview'
 }
 
 function previewStage(index: number): void {
@@ -52,35 +47,17 @@ function previewStage(index: number): void {
   phase.value = 'preview'
 }
 
-async function runRoulette() {
-  if (phase.value === 'rolling' || phase.value === 'requesting') return
+function runRoulette() {
+  if (phase.value === 'rolling') return
   const generation = ++rouletteGeneration
-  phase.value = 'requesting'
   animationEvent.value = null
   let winner = 0
-  let match: SelectionResponse = null
   try {
-    if (sourceType.value === 'api') {
-      const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-      const controller = new AbortController()
-      matchController = controller
-      const response = await fetch(`${base}/field/${encodeURIComponent(loadedFieldId.value ?? '')}/match`, {
-        method: 'POST',
-        signal: controller.signal,
-      })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      match = await response.json()
-      winner = resolveServerSelection(layouts.value, match)
-    } else {
-      winner = chooseLayoutIndex(layouts.value.length)
-    }
+    winner = chooseLayoutIndex(layouts.value.length)
   } catch (cause) {
-    if (generation !== rouletteGeneration) return
     error.value = `抽選結果を取得できませんでした: ${cause instanceof Error ? cause.message : String(cause)}`
     phase.value = 'preview'
     return
-  } finally {
-    if (generation === rouletteGeneration) matchController = null
   }
   if (generation !== rouletteGeneration) return
   const steps = rouletteSteps(selected.value, winner, layouts.value.length)
@@ -105,7 +82,6 @@ async function runRoulette() {
           fieldId: loadedFieldId.value ?? field.value.id,
           layout: layouts.value[winner],
           candidateIndex: winner,
-          match,
         },
       }),
     )
@@ -118,19 +94,13 @@ function playDemoEvent(action: (typeof demoActions)[number]): void {
   animationEvent.value = { id: ++eventId, type: action.type, direction: action.direction }
 }
 
-function receiveStageData(
-  payload: Record<string, unknown>,
-  label: string,
-  kind: 'json' | 'api' = 'json',
-  id: string | null = null,
-): void {
+function receiveStageData(payload: Record<string, unknown>, label: string, id: string | null = null): void {
   cancelRoulette()
   field.value = normalizeField(payload)
   selected.value = 0
   phase.value = 'preview'
   animationEvent.value = null
   source.value = label
-  sourceType.value = kind
   loadedFieldId.value = id
   error.value = ''
 }
@@ -154,7 +124,7 @@ async function loadField() {
     const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
     const response = await fetch(`${base}/field/${encodeURIComponent(id)}`)
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    receiveStageData(await response.json(), `GET /field/${id}`, 'api', id)
+    receiveStageData(await response.json(), `GET /field/${id}`, id)
   } catch (cause) {
     error.value = `ステージを取得できませんでした: ${cause instanceof Error ? cause.message : String(cause)}`
   }
@@ -244,30 +214,18 @@ async function loadField() {
           </button>
         </div>
         <p class="stage-note">
-          APIで取得したフィールドは、サーバーが選んだ配置でルーレットが止まります。サンプル・貼り付けJSONではローカル抽選です。
+          このプレビューでは、取得元にかかわらず配置をローカルで抽選します。対戦は作成しません。
         </p>
-        <button
-          class="roulette-button"
-          :disabled="phase === 'rolling' || phase === 'requesting'"
-          @click="runRoulette"
-        >
-          {{
-            phase === 'requesting'
-              ? 'サーバーの結果を待機中…'
-              : phase === 'rolling'
-                ? '抽選中…'
-                : '配置を抽選して実行'
-          }}
+        <button class="roulette-button" :disabled="phase === 'rolling'" @click="runRoulette">
+          {{ phase === 'rolling' ? '抽選中…' : '配置を抽選して実行' }}
         </button>
         <p class="run-status" role="status">
           {{
-            phase === 'requesting'
-              ? '実行する配置を問い合わせています'
-              : phase === 'rolling'
-                ? '配置を選んでいます'
-                : phase === 'running'
-                  ? `実行対象: ${stage.label}`
-                  : '実行する配置は未決定です'
+            phase === 'rolling'
+              ? '配置を選んでいます'
+              : phase === 'running'
+                ? `実行対象: ${stage.label}`
+                : '実行する配置は未決定です'
           }}
         </p>
       </section>

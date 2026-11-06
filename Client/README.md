@@ -63,7 +63,7 @@ pnpm dev
 
 ## 抽選と動作イベント
 
-配置を切り替えて、そのフィールドの全候補を確認できます。サンプルと貼り付けJSONはローカルで配置を抽選します。APIから取得したフィールドでは、`POST /field/{id}/match` のレスポンスにある0始まりの `candidateIndex` または `selectedLayoutId` で結果を決めます。クライアントはその結果へルーレットを止めます。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex, match }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
+配置を切り替えて、そのフィールドの全候補を確認できます。開発用プレビューの抽選は、サンプル・貼り付けJSON・APIから取得したフィールドのいずれもローカルで行い、対戦作成APIは呼びません。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
 
 `StageScene` の `animationEvent` prop に `{ id, type, to?, direction?, ticks?, success? }` を渡すとロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `forward` / `back`（現在の向きに1マス進む）、`rotate`（`direction: 'left' | 'right'` で90°回る）、`wait`（`ticks` 単位時間待つ）、`pick_up` / `release`（念動力）、`drill`（目のビーム）、`clear`（クリア演出）です。これらの基本動作は1単位時間を1秒として描画します。移動先が岩・海・盤外なら進まず、`success: false` を渡した動作も失敗として演出します。旧形式の `move`（`to: {x,y}`）、`get`、`put` も受け付けます。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作り、念動力の瞬間は腕の絶対角度 Rx=-90°にします。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
 
@@ -72,7 +72,7 @@ pnpm dev
 ## 接続時に確定する項目
 
 - 現行schemaの `Stage.variants` に一意の配置IDを持たせるか。現時点ではIDが無い場合、表示側で `layout-1` などを付けます。
-- `POST /field/{id}/match` のレスポンス形式。現状は0始まりの `candidateIndex`、または候補の `id` と一致する `selectedLayoutId` を受け取ります。対戦ではサーバーの選択を唯一の結果として扱います。
+- 対戦作成時の `POST /field/{id}/match` のレスポンス形式。対戦ではサーバーが選んだ配置と結果を唯一の正とし、開発用プレビューのローカル抽選とは分けて扱います。
 - ゲームエンジンからの動作イベントに含めるロボットID、tick、座標、向き、および対戦相手への配信方法。現在は描画確認用の仮形式です。
 
 ```bash

@@ -48,6 +48,10 @@ export interface PicoFunctionOption {
   args: PicoType[]
   returns: PicoType
 }
+export interface PicoVariableOption {
+  name: string
+  type: PicoType
+}
 const vectorInteger: PicoType = { kind: 'vector', elementType: 'integer' }
 const builtin = (
   name: string,

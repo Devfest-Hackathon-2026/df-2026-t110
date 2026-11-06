@@ -6,6 +6,13 @@ const props = defineProps<{ modelValue: PicoType }>()
 const emit = defineEmits<{ 'update:modelValue': [value: PicoType] }>()
 const kind = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : 'vector'))
 const primitives: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation']
+const typeLabels: Record<PicoPrimitive, string> = {
+  bool: '真偽',
+  integer: '整数',
+  unit: '値なし',
+  terrain: '地形',
+  rotation: '向き',
+}
 function changeKind(event: Event): void {
   const value = (event.target as HTMLSelectElement).value
   emit(
@@ -18,8 +25,8 @@ function changeKind(event: Event): void {
 <template>
   <span class="pico-type-input">
     <select :value="kind" aria-label="型" @change="changeKind">
-      <option v-for="type in primitives" :key="type" :value="type">{{ type }}</option>
-      <option value="vector">vector</option>
+      <option v-for="type in primitives" :key="type" :value="type">{{ typeLabels[type] }}</option>
+      <option value="vector">配列</option>
     </select>
     <template v-if="typeof modelValue !== 'string'">
       <span aria-hidden="true">&lt;</span>

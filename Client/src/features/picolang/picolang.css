@@ -118,17 +118,22 @@
   line-height: 1.5;
 }
 .pico-palette button {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   min-height: 34px;
   padding: 6px 8px;
   border: 0;
   border-radius: 2px;
-  background: transparent;
+  background: var(--pico-surface-alt);
   color: var(--pico-ink);
   text-align: left;
   line-height: 1.4;
-  cursor: grab;
+  cursor: pointer;
+}
+.pico-palette button svg {
+  color: var(--pico-accent);
 }
 .pico-palette button + button {
   margin-top: 2px;
@@ -142,13 +147,16 @@
 }
 .pico-functions {
   display: flex;
+  align-items: center;
   gap: 14px;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--pico-rule);
+  overflow-x: auto;
 }
 .pico-functions button {
+  flex: 0 0 auto;
   min-height: 34px;
   padding: 4px 0;
   border: 0;
@@ -160,6 +168,17 @@
   border-bottom-color: var(--pico-accent);
   color: var(--pico-ink);
   font-weight: 700;
+}
+.pico-functions .pico-function-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  padding: 4px;
+  color: var(--pico-accent);
+}
+.pico-functions .pico-function-add-button:hover {
+  background: var(--pico-surface-active);
 }
 .pico-function-card {
   max-width: 100%;
@@ -193,8 +212,7 @@
 .pico-block-list {
   min-width: 0;
   min-height: 38px;
-  padding: 2px 0 0 14px;
-  border-left: 2px solid var(--pico-rule);
+  padding: 2px 0 0;
 }
 .pico-block-list .pico-block-list {
   margin: 6px 0 3px 8px;
@@ -295,6 +313,40 @@
   grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
   align-items: start;
 }
+.pico-condition-editor,
+.pico-condition-comparison {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.pico-condition-editor {
+  flex-basis: 100%;
+  min-width: 0;
+}
+.pico-condition-editor > select,
+.pico-condition-comparison > select,
+.pico-condition-comparison > input {
+  min-height: 29px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 2px;
+  background: var(--pico-surface);
+  color: var(--pico-ink);
+}
+.pico-condition-comparison > input {
+  width: 72px;
+}
+.pico-condition-comparison > strong {
+  color: var(--pico-ink);
+}
+.pico-condition-help {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--pico-muted);
+  font-size: 11px;
+}
 .pico-control-field {
   display: flex;
   flex-direction: column;
@@ -378,6 +430,20 @@
   font-size: 12px;
   font-weight: 700;
 }
+.pico-variable-tip {
+  flex-basis: 100%;
+  color: var(--pico-muted);
+  font-size: 11px;
+}
+.pico-statement--assign .pico-statement-content > select {
+  min-height: 29px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 2px;
+  background: var(--pico-surface);
+  color: var(--pico-ink);
+}
 .pico-arguments,
 .pico-type-input,
 .pico-add-row {
@@ -430,8 +496,24 @@
 }
 .pico-new-function {
   display: flex;
+  align-items: center;
+  flex: 0 0 auto;
   gap: 6px;
-  margin-top: 18px;
+  margin: 0 0 3px;
+}
+.pico-new-function input {
+  width: 126px;
+}
+.pico-functions .pico-new-function button {
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--pico-surface-active);
+  color: var(--pico-accent);
+}
+.pico-functions .pico-new-function button:hover {
+  background: var(--pico-command);
 }
 .pico-json {
   margin-top: 18px;

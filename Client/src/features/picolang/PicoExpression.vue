@@ -1,10 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { PICO_BUILTINS, defaultExpr, ident, makeCall, type PicoExpr, type PicoFunction } from './picolang.ts'
+import {
+  PICO_BUILTINS,
+  defaultExpr,
+  ident,
+  makeCall,
+  type PicoExpr,
+  type PicoFunction,
+  type PicoVariableOption,
+} from './picolang.ts'
 
-const props = defineProps<{ node: PicoExpr; functions: Record<string, PicoFunction>; statement?: boolean }>()
+const props = defineProps<{
+  node: PicoExpr
+  functions: Record<string, PicoFunction>
+  variables?: PicoVariableOption[]
+  statement?: boolean
+  defaultCall?: string
+}>()
 const emit = defineEmits<{ replace: [node: PicoExpr] }>()
 const mode = computed(() => (props.node.kind === 'literal' ? props.node.type : props.node.kind))
+const identifierName = computed(() => (props.node.kind === 'ident' ? props.node.name : ''))
 const options = computed(() => [
   ...PICO_BUILTINS,
   ...Object.entries(props.functions).map(([name, definition]) => ({
@@ -23,8 +38,8 @@ const callLabel = computed(() => {
 })
 function changeMode(event: Event): void {
   const value = (event.target as HTMLSelectElement).value
-  if (value === 'ident') emit('replace', ident())
-  else if (value === 'call') emit('replace', makeCall('forward', props.functions))
+  if (value === 'ident') emit('replace', ident(props.variables?.[0]?.name ?? 'x'))
+  else if (value === 'call') emit('replace', makeCall(props.defaultCall ?? 'forward', props.functions))
   else emit('replace', defaultExpr(value as 'integer' | 'bool' | 'unit' | 'rotation'))
 }
 function changeFunction(event: Event): void {
@@ -62,7 +77,7 @@ function replaceArg(index: number, expr: PicoExpr): void {
       <option value="bool">真偽</option>
       <option value="unit">()</option>
       <option value="rotation">向き</option>
-      <option value="ident">変数</option>
+      <option value="ident" :disabled="!variables?.length">変数</option>
       <option value="call">関数</option>
     </select>
     <template v-if="node.kind === 'literal'">
@@ -94,6 +109,23 @@ function replaceArg(index: number, expr: PicoExpr): void {
       </select>
       <span v-else>()</span>
     </template>
+    <select
+      v-else-if="node.kind === 'ident' && variables?.length"
+      :value="identifierName"
+      aria-label="参照する変数"
+      @change="setName(($event.target as HTMLSelectElement).value)"
+    >
+      <option
+        v-if="!variables.some((variable) => variable.name === identifierName)"
+        :value="identifierName"
+        disabled
+      >
+        {{ identifierName }}（ここでは使えません）
+      </option>
+      <option v-for="variable in variables" :key="variable.name" :value="variable.name">
+        {{ variable.name }}
+      </option>
+    </select>
     <input
       v-else-if="node.kind === 'ident'"
       :value="node.name"
@@ -124,6 +156,7 @@ function replaceArg(index: number, expr: PicoExpr): void {
           :key="arg.hintId"
           :node="arg"
           :functions="functions"
+          :variables="variables"
           @replace="replaceArg(index, $event)"
         />
       </span>

@@ -5,6 +5,7 @@ import arrowUpIcon from '@iconify-icons/lucide/arrow-up'
 import arrowDownIcon from '@iconify-icons/lucide/arrow-down'
 import trashIcon from '@iconify-icons/lucide/trash-2'
 import plusIcon from '@iconify-icons/lucide/plus'
+import PicoCondition from './PicoCondition.vue'
 import PicoExpression from './PicoExpression.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
 import {
@@ -14,13 +15,16 @@ import {
   type PicoBlock,
   type PicoFunction,
   type PicoStatement,
+  type PicoVariableOption,
 } from './picolang.ts'
 
 defineOptions({ name: 'PicoBlock' })
 const props = defineProps<{
   block: PicoBlock
   functions: Record<string, PicoFunction>
+  variables?: PicoVariableOption[]
   terminalReturn?: boolean
+  emptyHint?: string
 }>()
 const statements = computed(() => props.block.stmts)
 const choice = ref('forward')
@@ -35,6 +39,15 @@ const controlChoices = [
   { value: 'break', label: 'くり返しを抜ける' },
   { value: 'continue', label: '次のくり返しへ' },
 ]
+function variablesBefore(index: number): PicoVariableOption[] {
+  const visible = new Map<string, PicoVariableOption>()
+  for (const variable of props.variables ?? []) if (variable.name.trim()) visible.set(variable.name, variable)
+  for (const statement of statements.value.slice(0, index)) {
+    if (statement.kind === 'declare' && statement.ident.name.trim())
+      visible.set(statement.ident.name, { name: statement.ident.name, type: statement.type })
+  }
+  return [...visible.values()]
+}
 function append(value = choice.value): void {
   const last = statements.value.at(-1)
   if (props.terminalReturn && last?.kind === 'return')
@@ -90,7 +103,9 @@ function remove(index: number): void {
 
 <template>
   <div class="pico-block-list" @dragover.stop.prevent @drop="drop">
-    <p v-if="!statements.length" class="pico-drop-hint">ここへ命令を置く</p>
+    <p v-if="!statements.length" class="pico-drop-hint">
+      {{ emptyHint ?? 'ここへ命令を置く' }}
+    </p>
     <div
       v-for="(stmt, index) in statements"
       :key="stmt.hintId"
@@ -133,12 +148,14 @@ function remove(index: number): void {
             <span class="pico-control-brace" aria-hidden="true">{</span>
           </div>
           <div class="pico-control-settings">
-            <span class="pico-control-field-label">この条件が成り立つとき</span>
-            <PicoExpression
+            <span class="pico-control-field-label">実行する条件</span>
+            <PicoCondition
               :node="stmt.condition"
               :functions="functions"
+              :variables="variablesBefore(index)"
               @replace="stmt.condition = $event"
             />
+            <p class="pico-condition-help">条件が true なら、下の命令を実行します。</p>
           </div>
           <div
             class="pico-control-scope"
@@ -148,7 +165,12 @@ function remove(index: number): void {
             @drop="dropInto(stmt.then, $event)"
           >
             <span class="pico-scope-label">条件が真のとき</span>
-            <PicoBlock :block="stmt.then" :functions="functions" />
+            <PicoBlock
+              :block="stmt.then"
+              :functions="functions"
+              :variables="variablesBefore(index)"
+              empty-hint="条件が成り立ったときの命令をここに追加"
+            />
           </div>
           <template v-if="stmt.else">
             <div class="pico-control-middle">
@@ -162,7 +184,12 @@ function remove(index: number): void {
               @drop="dropInto(stmt.else, $event)"
             >
               <span class="pico-scope-label">条件が偽のとき</span>
-              <PicoBlock :block="stmt.else" :functions="functions" />
+              <PicoBlock
+                :block="stmt.else"
+                :functions="functions"
+                :variables="variablesBefore(index)"
+                empty-hint="条件が成り立たないときの命令をここに追加"
+              />
             </div>
           </template>
           <button v-else type="button" class="pico-control-add-else" @click="addElse(stmt)">
@@ -177,9 +204,10 @@ function remove(index: number): void {
           </div>
           <div class="pico-control-settings">
             <span class="pico-control-field-label">くり返す条件</span>
-            <PicoExpression
+            <PicoCondition
               :node="stmt.condition"
               :functions="functions"
+              :variables="variablesBefore(index)"
               @replace="stmt.condition = $event"
             />
           </div>
@@ -191,7 +219,7 @@ function remove(index: number): void {
             @drop="dropInto(stmt.body, $event)"
           >
             <span class="pico-scope-label">くり返す処理</span>
-            <PicoBlock :block="stmt.body" :functions="functions" />
+            <PicoBlock :block="stmt.body" :functions="functions" :variables="variablesBefore(index)" />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
         </div>
@@ -212,11 +240,21 @@ function remove(index: number): void {
             </div>
             <div class="pico-control-field" role="group" aria-label="最初の値">
               <span class="pico-control-field-label">最初の値</span>
-              <PicoExpression :node="stmt.start" :functions="functions" @replace="stmt.start = $event" />
+              <PicoExpression
+                :node="stmt.start"
+                :functions="functions"
+                :variables="variablesBefore(index)"
+                @replace="stmt.start = $event"
+              />
             </div>
             <div class="pico-control-field" role="group" aria-label="終わりの値。この値は含まない">
               <span class="pico-control-field-label">終わりの値 <small>含まない</small></span>
-              <PicoExpression :node="stmt.end" :functions="functions" @replace="stmt.end = $event" />
+              <PicoExpression
+                :node="stmt.end"
+                :functions="functions"
+                :variables="variablesBefore(index)"
+                @replace="stmt.end = $event"
+              />
             </div>
             <p class="pico-control-help">変数を最初の値から1ずつ増やし、終わりの値の手前で止めます。</p>
           </div>
@@ -228,7 +266,11 @@ function remove(index: number): void {
             @drop="dropInto(stmt.body, $event)"
           >
             <span class="pico-scope-label">くり返す処理</span>
-            <PicoBlock :block="stmt.body" :functions="functions" />
+            <PicoBlock
+              :block="stmt.body"
+              :functions="functions"
+              :variables="[...variablesBefore(index), { name: stmt.ident.name, type: 'integer' }]"
+            />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
         </div>
@@ -236,6 +278,7 @@ function remove(index: number): void {
           v-else-if="stmt.kind === 'call' || stmt.kind === 'literal' || stmt.kind === 'ident'"
           :node="stmt"
           :functions="functions"
+          :variables="variablesBefore(index)"
           :statement="stmt.kind === 'call'"
           @replace="replace(index, $event)"
         />
@@ -243,17 +286,49 @@ function remove(index: number): void {
           <span>変数を作る</span>
           <PicoTypeInput v-model="stmt.type" />
           <input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" />
-          <span>＝</span
-          ><PicoExpression :node="stmt.value" :functions="functions" @replace="stmt.value = $event" />
+          <span>＝</span>
+          <PicoExpression
+            :node="stmt.value"
+            :functions="functions"
+            :variables="variablesBefore(index)"
+            @replace="stmt.value = $event"
+          />
+          <small class="pico-variable-tip">
+            下の入力欄で「作った変数」を選ぶと {{ stmt.ident.name || 'この変数' }} を使えます。
+          </small>
         </template>
         <template v-else-if="stmt.kind === 'assign'">
-          <span>変数へ代入</span
-          ><input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" /> <span>＝</span
-          ><PicoExpression :node="stmt.value" :functions="functions" @replace="stmt.value = $event" />
+          <span>変数の値を変える</span>
+          <select
+            :value="
+              variablesBefore(index).some((variable) => variable.name === stmt.ident.name)
+                ? stmt.ident.name
+                : ''
+            "
+            aria-label="値を変える変数"
+            @change="stmt.ident.name = ($event.target as HTMLSelectElement).value"
+          >
+            <option value="" disabled>変数を選ぶ</option>
+            <option v-for="variable in variablesBefore(index)" :key="variable.name" :value="variable.name">
+              {{ variable.name }}
+            </option>
+          </select>
+          <span>＝</span>
+          <PicoExpression
+            :node="stmt.value"
+            :functions="functions"
+            :variables="variablesBefore(index)"
+            @replace="stmt.value = $event"
+          />
         </template>
         <template v-else-if="stmt.kind === 'return'">
-          <span>返す</span
-          ><PicoExpression :node="stmt.value" :functions="functions" @replace="stmt.value = $event" />
+          <span>返す</span>
+          <PicoExpression
+            :node="stmt.value"
+            :functions="functions"
+            :variables="variablesBefore(index)"
+            @replace="stmt.value = $event"
+          />
         </template>
         <span v-else>{{ stmt.kind === 'break' ? 'くり返しを抜ける' : '次のくり返しへ' }}</span>
       </div>
