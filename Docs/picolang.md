@@ -59,6 +59,9 @@ bool、integer、unit、terrain、rotationはprimitive type、vectorはcompound 
     - pop_back: vector\<T> -> vector\<T>
         - 末尾の要素を取り除いた新しいvectorを返す
         - 要素数が0の場合はパニック
+    - get_back: vector\<T> -> T
+        - 末尾の要素を独立した値として返す。元のvectorの要素数は変わらない
+        - 要素数が0の場合はパニック
     - size: vector\<T> -> integer
 - terrain
     - is_land: terrain -> bool
