@@ -11,6 +11,8 @@ type Source struct {
 	HintID HintID
 }
 
+func (s Source) source() Source { return s }
+
 // Name is a source-level variable or function name.
 type Name string
 
