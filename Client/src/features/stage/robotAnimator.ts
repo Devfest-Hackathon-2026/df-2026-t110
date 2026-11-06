@@ -1,15 +1,27 @@
 import * as THREE from 'three'
-import { armAngleAt } from './armController.js'
-import { createEyeBeam } from './beamEffect.js'
+import { armAngleAt } from './armController.ts'
+import { createEyeBeam } from './beamEffect.ts'
 
 const DURATION = { move: 750, drill: 650, get: 800, put: 800, clear: 1300 }
-const ease = value => value * value * (3 - 2 * value)
+type ActionType = keyof typeof DURATION
+export interface AnimationEvent {
+  id: number
+  type: ActionType
+  to?: { x: number; y: number }
+}
+const ease = (value: number): number => value * value * (3 - 2 * value)
 
 // GLBにアニメーションクリップはないので、Object名から作った肩軸に差分回転を加える。
-export function createRobotAnimator(rig, model, pivots) {
+export function createRobotAnimator(rig: THREE.Object3D, model: THREE.Object3D, pivots: THREE.Group[]) {
   const restingModelY = model.position.y
-  let action = null
-  let removeBeam = null
+  let action: {
+    type: ActionType
+    startTime: number | null
+    from: THREE.Vector3
+    to: THREE.Vector3
+    baseYaw: number
+  } | null = null
+  let removeBeam: (() => void) | null = null
 
   function stop() {
     removeBeam?.()
@@ -20,7 +32,7 @@ export function createRobotAnimator(rig, model, pivots) {
     model.position.y = restingModelY
   }
 
-  function play(event, destination) {
+  function play(event: AnimationEvent | null, destination?: THREE.Vector3): boolean {
     stop()
     if (!event || !(event.type in DURATION)) return false
     action = {
@@ -34,7 +46,7 @@ export function createRobotAnimator(rig, model, pivots) {
     return true
   }
 
-  function update(time) {
+  function update(time: number): void {
     if (!action) {
       model.position.y = restingModelY + Math.sin(time * 0.002) * 0.012
       return

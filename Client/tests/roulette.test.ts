@@ -1,11 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { chooseLayoutIndex, resolveServerSelection, rouletteSteps } from '../src/roulette.js'
+import { chooseLayoutIndex, resolveServerSelection, rouletteSteps } from '../src/features/stage/roulette.ts'
 
 test('抽選結果は閲覧中の配置に依存せず乱数で決まる', () => {
-  assert.equal(chooseLayoutIndex(3, () => 0), 0)
-  assert.equal(chooseLayoutIndex(3, () => 0.5), 1)
-  assert.equal(chooseLayoutIndex(3, () => 0.9999), 2)
+  assert.equal(
+    chooseLayoutIndex(3, () => 0),
+    0,
+  )
+  assert.equal(
+    chooseLayoutIndex(3, () => 0.5),
+    1,
+  )
+  assert.equal(
+    chooseLayoutIndex(3, () => 0.9999),
+    2,
+  )
 })
 
 test('ルーレットは候補を複数周して選ばれた配置で止まる', () => {

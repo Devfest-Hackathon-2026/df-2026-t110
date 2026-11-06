@@ -1,20 +1,40 @@
-# ARフィールド表示（issues #1–3）
+# Robot Field クライアント
+
+開発とテストには Node.js 24 以上を使います。依存関係の確認には pnpm 12.17.0 を使用しました。
+
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` と `/account` は、対戦とログインの準備状況を示すクライアント内のページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+
+## 教材詳細
+
+`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` と `GET /api/field/{fieldId}` を読み、取得したフィールドを3D・カメラ表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。教材APIの説明文形式は未定なので、`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
+
+教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex }` です。「リセット」はロボットの表示を初期位置に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。教育用エディタとゲームエンジンはこのイベントに接続する予定で、現時点では命令の実行・クリア判定は行いません。
+
+iPad横向きのような横長画面では、左にカテゴリ・命令見本・作業領域、右上にスクロールできる課題説明、右下にARを置きます。左右の境界はドラッグまたはフォーカス後の左右矢印キー、説明とARの境界はドラッグまたは上下矢印キーで調整できます。実行しても領域サイズは変わりません。「全画面」はブラウザの全画面表示を試し、対応していない環境では画面全体にARを重ねます。「ARを隠す」後は説明欄の「ARを表示」から戻せます。幅980px以下で縦向きに近い画面、または幅700px以下では上下に並べます。エディタ領域は `TutorialPage` の `program-editor` スロットで差し替えられます。現在の命令は見本で、編集機能は未接続です。
+
+## ARフィールド表示（issues #1–3）
 
 1つのフィールドに属する配置候補をすべて見られる3D/カメラビュー、実行前の抽選、Blender製GLBロボットとイベント別アニメーションを含みます。
 
 ```bash
 cd Client
+pnpm approve-builds esbuild
 pnpm install
 pnpm dev
 ```
 
+`esbuild` は Vite の依存パッケージです。pnpm 12 ではインストール時スクリプトの実行を許可する必要があります。`pnpm approve-builds esbuild` が作る `pnpm-workspace.yaml` には、この許可が記録されます。
+
 3dプレビュー:カメラなしで動くデバッグ用
+
 - カメラに重ねる:localhost または HTTPS とカメラ許可が必要
 
 画面をタップすると盤面の表示位置を変えられます。現時点ではカメラ映像への重ね合わせで、平面検出・空間固定は次の段階です。
 
 ## ステージデータ
+
 いったん仮ですすめる、jsonが確定したらそっちに合わせる
+
 ```json
 {
   "id": "crystal-route",
@@ -36,7 +56,7 @@ pnpm dev
 
 記号は `S` スタート、`G` ゴール、`.` 陸、`#` 岩、`_` 海、`O` 荷物、`X` 置き場、`?` 可変マスです。行幅は同一、`S` は1個です。配置候補の `map` に `?` は使いません。
 
-APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [src/stage.js](src/stage.js) の `normalizeField` で変換します。表示は [StageScene.vue](src/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
+APIが用意されたら画面のフィールドIDから `GET /field/{id}` を呼びます。別オリジンなら `.env.local` に `VITE_API_BASE_URL=https://...` を設定してください。レスポンスの形式が確定したら [stage.ts](src/features/stage/stage.ts) の `normalizeField` で変換します。表示は [StageScene.vue](src/features/stage/StageScene.vue) の `stage` prop に依存し、API通信には依存しません。
 
 ## 抽選と動作イベント
 
@@ -54,5 +74,17 @@ APIが用意されたら画面のフィールドIDから `GET /field/{id}` を�
 
 ```bash
 pnpm test
+pnpm type-check
+pnpm lint
+pnpm format:check
 pnpm build
 ```
+
+## Client の構成
+
+- `src/app`: 画面の入口とルート別の表示
+- `src/features/stage`: 盤面データ、3D表示、ロボットの動作
+- `src/features/tutorial`: 教材の画面、ローカル教材、API
+- `src/styles`: サイト共通のスタイル
+
+`pnpm format` はClient内のソースと設定をPrettierで整形します。ESLintとTypeScriptの設定もClient内で完結しています。
