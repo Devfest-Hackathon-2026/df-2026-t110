@@ -20,6 +20,7 @@ func TestPicolangPrimitiveTypeNames(t *testing.T) {
 		{name: "terrain", valid: true},
 		{name: "field", valid: false},
 		{name: "rotation", valid: true},
+		{name: "distance_target", valid: true},
 		{name: "direction", valid: false},
 		{name: "vector", valid: false},
 	}
@@ -117,5 +118,21 @@ func TestRotationLiteral(t *testing.T) {
 	}
 	if got.Rotation == nil || got.Rotation.Value != schema.RotationLiteralValueLeft {
 		t.Errorf("unexpected rotation literal: %+v", got)
+	}
+}
+
+func TestDistanceTargetLiteral(t *testing.T) {
+	t.Parallel()
+	var got schema.Literal
+	data := []byte(`{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000001","type":"distance_target","value":"territory"}`)
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Error(err)
+	}
+	if got.DistanceTarget == nil || got.DistanceTarget.Value != schema.DistanceTargetTerritory {
+		t.Errorf("unexpected distance target literal: %+v", got)
+	}
+	data = []byte(`{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000001","type":"distance_target","value":"left"}`)
+	if err := json.Unmarshal(data, &got); err == nil {
+		t.Error("accepted an unknown distance target")
 	}
 }

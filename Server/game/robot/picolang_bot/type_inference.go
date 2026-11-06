@@ -86,7 +86,7 @@ func canonicalType(t Type, visiting map[*VectorType]struct{}) (Type, bool) {
 		defer delete(visiting, v)
 	}
 	switch t := NodeValue(t).(type) {
-	case BoolType, IntegerType, UnitType, TerrainType, RotationType:
+	case BoolType, IntegerType, UnitType, TerrainType, RotationType, DistanceTargetType:
 		return t, true
 	case VectorType:
 		element, ok := canonicalType(t.ElementType, visiting)
@@ -175,6 +175,9 @@ func unifyTypes(expected, actual Type) bool {
 	case RotationType:
 		_, ok := actual.(RotationType)
 		return ok
+	case DistanceTargetType:
+		_, ok := actual.(DistanceTargetType)
+		return ok
 	case VectorType:
 		vector, ok := actual.(VectorType)
 		return ok && unifyTypes(expected.ElementType, vector.ElementType)
@@ -204,6 +207,8 @@ func TypeName(t Type) string {
 		return "terrain"
 	case RotationType:
 		return "rotation"
+	case DistanceTargetType:
+		return "distance_target"
 	case VectorType:
 		return "vector<" + TypeName(t.ElementType) + ">"
 	case *inferenceVariable:

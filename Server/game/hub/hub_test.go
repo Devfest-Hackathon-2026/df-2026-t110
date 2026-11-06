@@ -82,7 +82,7 @@ func newHub(t *testing.T, b game.Board, participants ...hub.Participant) *hub.Hu
 func grid(t *testing.T) *board.Board {
 	t.Helper()
 	b, err := board.New(board.Config{
-		Terrain: [][]values.TerrainValue{{values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.PlainLand{}}}},
+		Terrain: [][]board.Terrain{{board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}, board.LandTerrain{Kind: board.PlainLand{}}}},
 		Robots: map[protocol.RobotID]board.RobotState{
 			"a": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
 			"b": {Position: board.Position{X: 2, Y: 0}, Direction: board.West, DrillDurability: 3},
@@ -186,6 +186,9 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 		if value != (values.BoolValue{Bool: true}) {
 			t.Errorf("other robot got wrong result: %+v", value)
 		}
+		if robots := b.Snapshot().Robots; len(robots) != 1 || robots["b"].Position.X != 1 {
+			t.Errorf("unexpected robots after the first tick: %+v", robots)
+		}
 		return robotmsg.DoneStep{}, nil
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: failed}, hub.Participant{ID: "b", Robot: other})
@@ -194,8 +197,8 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 	if err != nil || !failedOK || !errors.Is(failedOutcome.Err, failure) || report.Outcomes["b"] != (hub.CompletedOutcome{}) {
 		t.Errorf("got %+v, %v", report, err)
 	}
-	if b.Snapshot().Robots["a"].Position.X != 0 || b.Snapshot().Robots["b"].Position.X != 1 {
-		t.Error("unexpected final positions")
+	if robots := b.Snapshot().Robots; len(robots) != 0 {
+		t.Errorf("stopped robots remained on the board: %+v", robots)
 	}
 }
 
@@ -317,7 +320,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 		{action: actions.ReleaseAction{}, result: boolean},
 		{action: actions.DrillAction{}, result: boolean},
 		{action: actions.DrillDurabilityAction{}, result: integer},
-		{action: actions.DistanceAction{}, result: integer},
+		{action: actions.DistanceAction{Target: values.DistanceRock}, result: integer},
 		{action: actions.SearchFrontAction{}, result: observation},
 		{action: actions.SearchNowAction{}, result: observation},
 		{action: actions.PrintIntegerAction{Integer: -42}, result: unit},
@@ -374,7 +377,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 
 func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 	t.Parallel()
-	var cell values.TerrainValue = values.LandTerrain{Kind: values.LuggageLand{}}
+	var cell values.TerrainValue = values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}
 	observation := cell
 	boardCalls, robotCalls := 0, 0
 	b := boardFunc{next: func(reply robotmsg.Reply) (boardmsg.Decision, error) {
@@ -445,7 +448,7 @@ func TestStartsOnceThenResumesWithValue(t *testing.T) {
 	t.Parallel()
 	for _, value := range []values.Value{
 		values.BoolValue{Bool: false}, values.IntegerValue{Integer: -42}, values.UnitValue{},
-		values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.GoalLand{}}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}, values.LandTerrain{Kind: values.LuggageLand{}}, values.RockTerrain{}, values.SeaTerrain{},
+		values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.GoalLand{}}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}, values.RockTerrain{}, values.SeaTerrain{},
 	} {
 		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 			t.Parallel()

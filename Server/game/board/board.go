@@ -51,13 +51,13 @@ type RobotState struct {
 type Config struct {
 	// MaxTicks bounds committed ticks; zero means unlimited.
 	MaxTicks uint64
-	Terrain  [][]values.TerrainValue
+	Terrain  [][]Terrain
 	Robots   map[protocol.RobotID]RobotState
 }
 
 type Snapshot struct {
 	Tick    uint64
-	Terrain [][]values.TerrainValue
+	Terrain [][]Terrain
 	Robots  map[protocol.RobotID]RobotState
 }
 
@@ -79,7 +79,7 @@ func New(config Config) (*Board, error) {
 			return nil, errors.New("terrain must be rectangular")
 		}
 		for _, cell := range row {
-			if !values.ValidValue(cell) {
+			if !validTerrain(cell) {
 				return nil, fmt.Errorf("invalid terrain %T", cell)
 			}
 		}
@@ -91,7 +91,7 @@ func New(config Config) (*Board, error) {
 			p.X < 0 || p.Y < 0 || p.X >= width || p.Y >= len(config.Terrain) {
 			return nil, fmt.Errorf("invalid robot %q", id)
 		}
-		_, isLand := config.Terrain[p.Y][p.X].(values.LandTerrain)
+		_, isLand := config.Terrain[p.Y][p.X].(LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {
 			return nil, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
@@ -159,6 +159,7 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 			}
 		}
 		if !pending {
+			clear(b.state.Robots)
 			b.phase = finishedBoard{}
 			output.Decision = boardmsg.DoneDecision{}
 			return output, nil
@@ -225,13 +226,18 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 }
 
 // commit resolves movement dependencies against one immutable starting state.
-// A visiting dependency denotes a swap/cycle; failure propagates to followers.
 func (b *Board) commit() error {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]protocol.RobotID, robotCount)
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
+	next := clone(b.state)
+	next.Tick++
 	for id, robot := range b.state.Robots {
+		if _, stopped := b.controls[id].(finishedControl); stopped {
+			delete(next.Robots, id)
+			continue
+		}
 		occupied[robot.Position] = id
 	}
 	for _, id := range b.order {
@@ -264,22 +270,25 @@ func (b *Board) commit() error {
 			return movable[id]
 		}
 		if _, exists := visiting[id]; exists {
-			return false
+			// Swaps are rejected below, so this is a longer cycle.
+			return true
 		}
 		target, ok := targets[id]
 		if !ok || counts[target] != 1 {
 			resolved[id] = struct{}{}
 			return false
 		}
-		visiting[id] = struct{}{}
 		other, occupied := occupied[target]
+		if reverse, moving := targets[other]; occupied && moving && reverse == b.state.Robots[id].Position {
+			resolved[id] = struct{}{}
+			return false
+		}
+		visiting[id] = struct{}{}
 		movable[id] = !occupied || canMove(other)
 		delete(visiting, id)
 		resolved[id] = struct{}{}
 		return movable[id]
 	}
-	next := clone(b.state)
-	next.Tick++
 	var results []robotmsg.ActionResult
 	for _, id := range b.order {
 		c, pending := b.controls[id].(pendingControl)
@@ -319,7 +328,7 @@ func (b *Board) land(p Position) bool {
 	if p.Y < 0 || p.Y >= len(b.state.Terrain) || p.X < 0 || p.X >= len(b.state.Terrain[0]) {
 		return false
 	}
-	_, isLand := b.state.Terrain[p.Y][p.X].(values.LandTerrain)
+	_, isLand := b.state.Terrain[p.Y][p.X].(LandTerrain)
 	return isLand
 }
 
@@ -331,9 +340,9 @@ func directionIndex(d Direction) int {
 }
 
 func clone(state Snapshot) Snapshot {
-	copy := Snapshot{Tick: state.Tick, Terrain: make([][]values.TerrainValue, len(state.Terrain)), Robots: make(map[protocol.RobotID]RobotState, len(state.Robots))}
+	copy := Snapshot{Tick: state.Tick, Terrain: make([][]Terrain, len(state.Terrain)), Robots: make(map[protocol.RobotID]RobotState, len(state.Robots))}
 	for y, row := range state.Terrain {
-		copy.Terrain[y] = append([]values.TerrainValue(nil), row...)
+		copy.Terrain[y] = append([]Terrain(nil), row...)
 	}
 	for id, robot := range state.Robots {
 		copy.Robots[id] = robot

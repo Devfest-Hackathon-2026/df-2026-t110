@@ -1,4 +1,4 @@
-// Package robot provides an interactive text-command implementation of game.Robot.
+// Package robot provides an interactive text-command implementation of values.Robot.
 package robot
 
 import (
@@ -164,16 +164,20 @@ func formatValue(value values.Value) string {
 	case values.UnitValue:
 		return "()"
 	case values.LandTerrain:
+		attributes := []string{"land"}
 		switch kind := value.Kind.(type) {
-		case values.PlainLand:
-			return "terrain(land)"
 		case values.GoalLand:
-			return "terrain(land, goal)"
+			attributes = append(attributes, "goal")
 		case values.CheckpointLand:
-			return fmt.Sprintf("terrain(land, checkpoint=%d)", kind.Order)
-		case values.LuggageLand:
-			return "terrain(land, luggage)"
+			attributes = append(attributes, fmt.Sprintf("checkpoint=%d", kind.Order))
 		}
+		if value.HasLuggage {
+			attributes = append(attributes, "luggage")
+		}
+		if value.Territory != values.NoTerritory {
+			attributes = append(attributes, "territory="+string(value.Territory))
+		}
+		return "terrain(" + strings.Join(attributes, ", ") + ")"
 	case values.RockTerrain:
 		return "terrain(rock)"
 	case values.SeaTerrain:

@@ -11,21 +11,33 @@ func (IntegerValue) value() {}
 func (UnitValue) value()    {}
 
 // TerrainValue is a cell observation copied by value. Each cell is land, rock,
-// or sea. Land contains one LandKind. Subsequent board changes do not affect the
-// observation.
+// or sea. Subsequent board changes do not affect the observation.
 type TerrainValue interface {
 	Value
 	RecordValue
 	terrain()
 }
 
-// LandTerrain contains exactly one non-nil, non-pointer LandKind.
-type LandTerrain struct{ Kind LandKind }
-type RockTerrain struct{}
-type SeaTerrain struct{}
+// LandTerrain has one base kind and independent luggage and territory attributes.
+// Territory is relative to the robot that observed the cell.
+type LandTerrain struct {
+	Kind       LandKind
+	HasLuggage bool
+	Territory  TerritoryRelation
+	TerrainValue
+}
+type RockTerrain struct{ TerrainValue }
+type SeaTerrain struct{ TerrainValue }
 
-// LandKind describes one mutually exclusive kind of land, following Docs/field.md.
-// PlainLand is ordinary land; goal, checkpoint, and luggage are special land.
+type TerritoryRelation string
+
+const (
+	NoTerritory    TerritoryRelation = ""
+	OwnTerritory   TerritoryRelation = "own"
+	EnemyTerritory TerritoryRelation = "enemy"
+)
+
+// LandKind distinguishes ordinary land from tutorial goals and checkpoints.
 type LandKind interface {
 	landKind()
 }
@@ -33,18 +45,10 @@ type LandKind interface {
 type PlainLand struct{}
 type GoalLand struct{}
 type CheckpointLand struct{ Order int64 }
-type LuggageLand struct{}
 
-func (LandTerrain) value()       {}
-func (RockTerrain) value()       {}
-func (SeaTerrain) value()        {}
-func (LandTerrain) terrain()     {}
-func (RockTerrain) terrain()     {}
-func (SeaTerrain) terrain()      {}
 func (PlainLand) landKind()      {}
 func (GoalLand) landKind()       {}
 func (CheckpointLand) landKind() {}
-func (LuggageLand) landKind()    {}
 
 // ValidValue rejects nil, pointer variants, and unset land kinds at protocol boundaries.
 func ValidValue(value Value) bool {
@@ -52,8 +56,12 @@ func ValidValue(value Value) bool {
 	case BoolValue, IntegerValue, UnitValue, RockTerrain, SeaTerrain:
 		return true
 	case LandTerrain:
+		if value.Territory != NoTerritory {
+			_, plain := value.Kind.(PlainLand)
+			return plain && (value.Territory == OwnTerritory || value.Territory == EnemyTerritory)
+		}
 		switch value.Kind.(type) {
-		case PlainLand, GoalLand, CheckpointLand, LuggageLand:
+		case PlainLand, GoalLand, CheckpointLand:
 			return true
 		default:
 			return false
