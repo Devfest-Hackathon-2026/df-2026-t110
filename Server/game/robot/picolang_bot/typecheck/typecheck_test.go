@@ -2,7 +2,7 @@ package typecheck_test
 
 import (
 	"fmt"
-	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+
 	"reflect"
 	"slices"
 	"testing"
@@ -251,7 +251,7 @@ func TestTypeCheckLiteralsAndPointers(t *testing.T) {
 		{"unit", &bot.UnitLiteral{}, &bot.UnitType{}},
 		{"left", &bot.RotationLiteral{Value: values.Left}, &bot.RotationType{}},
 		{"right", bot.RotationLiteral{Value: values.Right}, bot.RotationType{}},
-		{"distance target", bot.DistanceTargetLiteral{Value: actions.DistanceLuggage}, bot.DistanceTargetType{}},
+		{"distance target", bot.DistanceTargetLiteral{Value: values.DistanceLuggage}, bot.DistanceTargetType{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

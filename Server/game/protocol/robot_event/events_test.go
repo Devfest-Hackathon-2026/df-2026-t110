@@ -42,6 +42,7 @@ func TestInitialValueEncoding(t *testing.T) {
 		{"bool", values.BoolValue{Bool: false}, "false"},
 		{"integer", values.IntegerValue{Integer: -9223372036854775808}, "-9223372036854775808"},
 		{"unit", values.UnitValue{}, "null"},
+		{"distance target", values.DistanceGoalArea, `"goal_area"`},
 		{"rotation", values.RotationRecordValue{Rotation: values.Left}, `"left"`},
 		{"plain", values.LandTerrain{Kind: values.PlainLand{}}, `{"type":"land","kind":{"type":"plain"}}`},
 		{"goal", values.LandTerrain{Kind: values.GoalLand{}}, `{"type":"land","kind":{"type":"goal"}}`},
@@ -78,6 +79,7 @@ func TestUpdateEncoding(t *testing.T) {
 		{"integer", []robotevent.ValueUpdate{robotevent.IntegerUpdate{Value: 5}}, `[{"type":"integer","value":5}]`},
 		{"unit", []robotevent.ValueUpdate{robotevent.UnitUpdate{}}, `[{"type":"unit","value":null}]`},
 		{"terrain", []robotevent.ValueUpdate{robotevent.TerrainUpdate{Value: values.LandTerrain{Kind: values.GoalLand{}}}}, `[{"type":"terrain","value":{"type":"land","kind":{"type":"goal"}}}]`},
+		{"distance target", []robotevent.ValueUpdate{robotevent.DistanceTargetUpdate{Value: values.DistanceSea}}, `[{"type":"distance_target","value":"sea"}]`},
 		{"rotation", []robotevent.ValueUpdate{robotevent.RotationUpdate{Value: values.Right}}, `[{"type":"rotation","value":"right"}]`},
 		{"vector operations", []robotevent.ValueUpdate{
 			robotevent.VectorUpdate{Update: robotevent.PushBack{Value: values.IntegerValue{Integer: 2}}},

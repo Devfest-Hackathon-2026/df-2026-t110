@@ -1,7 +1,6 @@
 package picolangbot
 
 import (
-	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
@@ -65,7 +64,7 @@ type BoolLiteral struct{ Value bool }
 type IntegerLiteral struct{ Value int64 }
 type UnitLiteral struct{}
 type RotationLiteral struct{ Value values.Rotation }
-type DistanceTargetLiteral struct{ Value actions.DistanceTarget }
+type DistanceTargetLiteral struct{ Value values.DistanceTarget }
 
 func (BoolLiteral) literal()           {}
 func (IntegerLiteral) literal()        {}

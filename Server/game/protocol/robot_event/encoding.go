@@ -26,6 +26,11 @@ func marshalRecordValue(value values.RecordValue) ([]byte, error) {
 		return json.Marshal(value.Integer)
 	case values.UnitValue:
 		return []byte("null"), nil
+	case values.DistanceTarget:
+		if !value.Valid() {
+			return nil, fmt.Errorf("invalid recording distance target %q", value)
+		}
+		return json.Marshal(value)
 	case values.RotationRecordValue:
 		if value.Rotation != values.Left && value.Rotation != values.Right {
 			return nil, fmt.Errorf("invalid recording rotation %q", value.Rotation)
@@ -94,6 +99,8 @@ func marshalValueUpdate(update ValueUpdate) ([]byte, error) {
 		return marshalPrimitiveUpdate("unit", values.UnitValue{})
 	case TerrainUpdate:
 		return marshalPrimitiveUpdate("terrain", update.Value)
+	case DistanceTargetUpdate:
+		return marshalPrimitiveUpdate("distance_target", update.Value)
 	case RotationUpdate:
 		return marshalPrimitiveUpdate("rotation", values.RotationRecordValue{Rotation: update.Value})
 	case VectorUpdate:
