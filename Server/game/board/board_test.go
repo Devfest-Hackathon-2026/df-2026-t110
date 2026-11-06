@@ -396,7 +396,7 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	for _, action := range []game.Action{
 		game.WaitAction{Integer: 7},
 		game.PickUpAction{}, game.ReleaseAction{}, game.DrillAction{},
-		game.DistanceAction{}, game.SearchFrontAction{}, game.SearchNowAction{},
+		game.DistanceAction{Target: game.DistanceRock}, game.SearchFrontAction{}, game.SearchNowAction{},
 		game.PrintIntegerAction{Integer: -42}, game.PrintBoolAction{Bool: true},
 	} {
 		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {

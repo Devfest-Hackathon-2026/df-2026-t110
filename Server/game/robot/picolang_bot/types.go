@@ -24,31 +24,35 @@ type IntegerType struct{}
 type UnitType struct{}
 type TerrainType struct{}
 type RotationType struct{}
+type DistanceTargetType struct{}
 
 type VectorType struct {
 	ElementType Type
 }
 
-func (BoolType) annotation()     {}
-func (IntegerType) annotation()  {}
-func (UnitType) annotation()     {}
-func (TerrainType) annotation()  {}
-func (RotationType) annotation() {}
-func (VectorType) annotation()   {}
+func (BoolType) annotation()           {}
+func (IntegerType) annotation()        {}
+func (UnitType) annotation()           {}
+func (TerrainType) annotation()        {}
+func (RotationType) annotation()       {}
+func (DistanceTargetType) annotation() {}
+func (VectorType) annotation()         {}
 
-func (BoolType) languageType()     {}
-func (IntegerType) languageType()  {}
-func (UnitType) languageType()     {}
-func (TerrainType) languageType()  {}
-func (RotationType) languageType() {}
-func (VectorType) languageType()   {}
+func (BoolType) languageType()           {}
+func (IntegerType) languageType()        {}
+func (UnitType) languageType()           {}
+func (TerrainType) languageType()        {}
+func (RotationType) languageType()       {}
+func (DistanceTargetType) languageType() {}
+func (VectorType) languageType()         {}
 
-func (BoolType) primitiveType()     {}
-func (IntegerType) primitiveType()  {}
-func (UnitType) primitiveType()     {}
-func (TerrainType) primitiveType()  {}
-func (RotationType) primitiveType() {}
-func (VectorType) compoundType()    {}
+func (BoolType) primitiveType()           {}
+func (IntegerType) primitiveType()        {}
+func (UnitType) primitiveType()           {}
+func (TerrainType) primitiveType()        {}
+func (RotationType) primitiveType()       {}
+func (DistanceTargetType) primitiveType() {}
+func (VectorType) compoundType()          {}
 
 // Literal contains only source literals. Terrain and vector values are
 // produced by builtins, so they have no literal representation.
@@ -58,8 +62,10 @@ type BoolLiteral struct{ Value bool }
 type IntegerLiteral struct{ Value int64 }
 type UnitLiteral struct{}
 type RotationLiteral struct{ Value game.Rotation }
+type DistanceTargetLiteral struct{ Value game.DistanceTarget }
 
-func (BoolLiteral) literal()     {}
-func (IntegerLiteral) literal()  {}
-func (UnitLiteral) literal()     {}
-func (RotationLiteral) literal() {}
+func (BoolLiteral) literal()           {}
+func (IntegerLiteral) literal()        {}
+func (UnitLiteral) literal()           {}
+func (RotationLiteral) literal()       {}
+func (DistanceTargetLiteral) literal() {}

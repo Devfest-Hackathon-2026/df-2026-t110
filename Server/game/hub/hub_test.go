@@ -378,7 +378,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 		{action: game.ReleaseAction{}, result: boolean},
 		{action: game.DrillAction{}, result: boolean},
 		{action: game.DrillDurabilityAction{}, result: integer},
-		{action: game.DistanceAction{}, result: integer},
+		{action: game.DistanceAction{Target: game.DistanceRock}, result: integer},
 		{action: game.SearchFrontAction{}, result: observation},
 		{action: game.SearchNowAction{}, result: observation},
 		{action: game.PrintIntegerAction{Integer: -42}, result: unit},

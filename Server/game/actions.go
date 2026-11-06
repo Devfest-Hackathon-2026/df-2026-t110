@@ -15,7 +15,7 @@ type PickUpAction struct{}
 type ReleaseAction struct{}
 type DrillAction struct{}
 type DrillDurabilityAction struct{}
-type DistanceAction struct{}
+type DistanceAction struct{ Target DistanceTarget }
 type SearchFrontAction struct{}
 type SearchNowAction struct{}
 type PrintIntegerAction struct{ Integer int64 }
@@ -35,13 +35,38 @@ func (SearchNowAction) action()       {}
 func (PrintIntegerAction) action()    {}
 func (PrintBoolAction) action()       {}
 
-// ValidAction rejects nil and pointer variants at protocol boundaries.
+type DistanceTarget string
+
+const (
+	DistanceRobot    DistanceTarget = "robot"
+	DistanceAlly     DistanceTarget = "ally"
+	DistanceEnemy    DistanceTarget = "enemy"
+	DistanceRock     DistanceTarget = "rock"
+	DistanceLuggage  DistanceTarget = "luggage"
+	DistanceSea      DistanceTarget = "sea"
+	DistanceGoal     DistanceTarget = "goal"
+	DistanceGoalArea DistanceTarget = "goal_area"
+)
+
+func (target DistanceTarget) Valid() bool {
+	switch target {
+	case DistanceRobot, DistanceAlly, DistanceEnemy, DistanceRock, DistanceLuggage,
+		DistanceSea, DistanceGoal, DistanceGoalArea:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidAction rejects nil, pointer variants, and invalid distance targets.
 func ValidAction(action Action) bool {
-	switch action.(type) {
+	switch action := action.(type) {
 	case ForwardAction, BackAction, RotateAction, WaitAction, PickUpAction,
-		ReleaseAction, DrillAction, DrillDurabilityAction, DistanceAction,
+		ReleaseAction, DrillAction, DrillDurabilityAction,
 		SearchFrontAction, SearchNowAction, PrintIntegerAction, PrintBoolAction:
 		return true
+	case DistanceAction:
+		return action.Target.Valid()
 	default:
 		return false
 	}

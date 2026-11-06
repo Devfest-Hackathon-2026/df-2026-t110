@@ -33,10 +33,11 @@ func builtinCases() []builtinCase {
 		{"new", nil, vector}, {"push_back", []bot.Type{vector, i}, vector}, {"pop_back", []bot.Type{vector}, vector},
 		{"get_back", []bot.Type{vector}, i}, {"size", []bot.Type{vector}, i},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
-		{"is_laggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
+		{"is_own_goal_area", []bot.Type{terrain}, b}, {"is_enemy_goal_area", []bot.Type{terrain}, b},
+		{"is_luggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
 		{"forward", nil, b}, {"back", nil, b}, {"rotate", []bot.Type{rotation}, u}, {"wait", []bot.Type{i}, u},
 		{"pick_up", nil, b}, {"release", nil, b}, {"drill", nil, b}, {"drill_durability", nil, i},
-		{"distance", nil, i}, {"search_front", nil, terrain}, {"search_now", nil, terrain},
+		{"distance", []bot.Type{bot.DistanceTargetType{}}, i}, {"search_front", nil, terrain}, {"search_now", nil, terrain},
 		{"print_integer", []bot.Type{i}, u}, {"print_bool", []bot.Type{b}, u},
 	}
 }
@@ -249,6 +250,7 @@ func TestTypeCheckLiteralsAndPointers(t *testing.T) {
 		{"unit", &bot.UnitLiteral{}, &bot.UnitType{}},
 		{"left", &bot.RotationLiteral{Value: game.Left}, &bot.RotationType{}},
 		{"right", bot.RotationLiteral{Value: game.Right}, bot.RotationType{}},
+		{"distance target", bot.DistanceTargetLiteral{Value: game.DistanceLuggage}, bot.DistanceTargetType{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

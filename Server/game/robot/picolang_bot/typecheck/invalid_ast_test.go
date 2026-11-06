@@ -26,6 +26,7 @@ func TestTypeCheckMalformedAST(t *testing.T) {
 		{"nil literal", testutil.Literal[bot.VariableIndex]("literal", nil), bot.CodeInvalidAST, "literal"},
 		{"nil pointer literal", testutil.Literal[bot.VariableIndex]("literal", (*bot.BoolLiteral)(nil)), bot.CodeInvalidAST, "literal"},
 		{"invalid rotation", testutil.Literal[bot.VariableIndex]("literal", bot.RotationLiteral{Value: "up"}), bot.CodeInvalidAST, "literal"},
+		{"invalid distance target", testutil.Literal[bot.VariableIndex]("literal", bot.DistanceTargetLiteral{Value: "other"}), bot.CodeInvalidAST, "literal"},
 		{"nil type", declaration("decl", 0, nil, testutil.Literal[bot.VariableIndex]("unit", bot.UnitLiteral{})), bot.CodeInvalidType, "decl"},
 		{"nil pointer type", declaration("decl", 0, (*bot.BoolType)(nil), testutil.Literal[bot.VariableIndex]("bool", bot.BoolLiteral{})), bot.CodeInvalidType, "decl"},
 		{"missing vector element", declaration("decl", 0, bot.VectorType{}, testutil.Call[bot.VariableIndex]("new", "new")), bot.CodeInvalidType, "decl"},
