@@ -1345,6 +1345,42 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type PrimitiveType string
+
+const PrimitiveTypeBool PrimitiveType = "bool"
+const PrimitiveTypeInteger PrimitiveType = "integer"
+const PrimitiveTypeRotation PrimitiveType = "rotation"
+const PrimitiveTypeTerrain PrimitiveType = "terrain"
+const PrimitiveTypeUnit PrimitiveType = "unit"
+
+var enumValues_PrimitiveType = []interface{}{
+	"bool",
+	"integer",
+	"unit",
+	"terrain",
+	"rotation",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PrimitiveType) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_PrimitiveType {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_PrimitiveType, v)
+	}
+	*j = PrimitiveType(v)
+	return nil
+}
+
 // ロボットがゴールに到達するとクリアする条件
 type ReachGoal struct {
 	// ゴールへの到達を求めるクリア条件の種別
@@ -1594,41 +1630,8 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-type Type string
-
-const TypeBool Type = "bool"
-const TypeInteger Type = "integer"
-const TypeRotation Type = "rotation"
-const TypeTerrain Type = "terrain"
-const TypeUnit Type = "unit"
-
-var enumValues_Type = []interface{}{
-	"bool",
-	"integer",
-	"unit",
-	"terrain",
-	"rotation",
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *Type) UnmarshalJSON(value []byte) error {
-	var v string
-	if err := json.Unmarshal(value, &v); err != nil {
-		return err
-	}
-	var ok bool
-	for _, expected := range enumValues_Type {
-		if reflect.DeepEqual(v, expected) {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_Type, v)
-	}
-	*j = Type(v)
-	return nil
-}
+// picolang の値の型。基本型または複合型
+type Type interface{}
 
 // unit 型のリテラル
 type UnitLiteral struct {
@@ -1691,6 +1694,41 @@ func (j *UnitLiteral) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be null", "value")
 	}
 	*j = UnitLiteral(plain)
+	return nil
+}
+
+// 同じ型の要素を持つ可変長配列の型
+type VectorType struct {
+	// 要素の型。基本型と複合型のどちらも指定できる
+	ElementType Type `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const VectorTypeKind = "vector"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *VectorType) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw VectorType: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in VectorType: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in VectorType: required")
+	}
+	type Plain VectorType
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal VectorType: %w", err)
+	}
+	if plain.Kind != "vector" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "vector")
+	}
+	*j = VectorType(plain)
 	return nil
 }
 

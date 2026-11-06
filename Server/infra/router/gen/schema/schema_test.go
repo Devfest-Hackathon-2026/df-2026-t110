@@ -2,32 +2,80 @@ package schema_test
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 )
 
-func TestPicolangTypeNames(t *testing.T) {
+func TestPicolangPrimitiveTypeNames(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
 		valid bool
 	}{
+		{name: "bool", valid: true},
+		{name: "integer", valid: true},
+		{name: "unit", valid: true},
 		{name: "terrain", valid: true},
 		{name: "field", valid: false},
 		{name: "rotation", valid: true},
 		{name: "direction", valid: false},
+		{name: "vector", valid: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var got schema.Type
+			var got schema.PrimitiveType
 			err := json.Unmarshal([]byte(`"`+tt.name+`"`), &got)
 			if (err == nil) != tt.valid {
 				t.Errorf("type %q: got error %v, valid = %t", tt.name, err, tt.valid)
 			}
 			if err == nil && string(got) != tt.name {
 				t.Errorf("got type %q, want %q", got, tt.name)
+			}
+		})
+	}
+}
+
+func TestVectorType(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		data  string
+		valid bool
+	}{
+		{name: "integer elements", data: `{"kind":"vector","elementType":"integer"}`, valid: true},
+		{name: "nested vector", data: `{"kind":"vector","elementType":{"kind":"vector","elementType":"bool"}}`, valid: true},
+		{name: "missing kind", data: `{"elementType":"integer"}`, valid: false},
+		{name: "wrong kind", data: `{"kind":"array","elementType":"integer"}`, valid: false},
+		{name: "missing element type", data: `{"kind":"vector"}`, valid: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var got schema.VectorType
+			err := json.Unmarshal([]byte(tt.data), &got)
+			if (err == nil) != tt.valid {
+				t.Errorf("got error %v, valid = %t", err, tt.valid)
+			}
+			if err != nil || !tt.valid {
+				return
+			}
+			data, err := json.Marshal(got)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			var want, roundTrip any
+			if err := json.Unmarshal([]byte(tt.data), &want); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal(data, &roundTrip); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(roundTrip, want) {
+				t.Errorf("round trip: got %s, want %s", data, tt.data)
 			}
 		})
 	}

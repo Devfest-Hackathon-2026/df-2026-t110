@@ -1,11 +1,7 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: Type
-description: picolang の値の型。unit は () を表す
+description: picolang の値の型。基本型または複合型
 
-type: string
-enum:
-  - bool
-  - integer
-  - unit
-  - terrain
-  - rotation
+oneOf:
+  - $ref: './primitive-type.yaml'
+  - $ref: './compound-type.yaml'

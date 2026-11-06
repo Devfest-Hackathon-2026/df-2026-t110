@@ -1,0 +1,5 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: CompoundType
+description: 他の型を組み合わせて構成する picolang の複合型
+
+$ref: './vector-type.yaml'

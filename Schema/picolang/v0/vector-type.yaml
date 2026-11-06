@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: VectorType
+description: 同じ型の要素を持つ可変長配列の型
+
+type: object
+additionalProperties: false
+required: [kind, elementType]
+properties:
+  kind:
+    type: string
+    const: vector
+  elementType:
+    description: 要素の型。基本型と複合型のどちらも指定できる
+    $ref: './type.yaml'
