@@ -11,6 +11,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
 	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
+	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	robotmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
@@ -188,31 +189,63 @@ func TestAtomicMovement(t *testing.T) {
 			want:    map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North)},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			b := newBoard(t, board.Config{Terrain: tt.grid, Robots: tt.robots}, tt.ids)
-			d := next(t, b, nil)
-			for _, id := range tt.ids {
-				if d != (boardmsg.StartDecision{RobotID: id}) {
-					t.Errorf("unexpected request: %+v", d)
-				}
-				var a actions.Action = forward
-				if custom, ok := tt.actions[id]; ok {
-					a = custom
-				}
-				d = next(t, b, robotmsg.ActionReply{RobotID: id, Action: a})
-			}
-			if b.Snapshot().Tick != 1 {
-				t.Error("missing internal commit")
-			}
 			want := tt.want
 			if want == nil {
 				want = tt.robots
 			}
+
+			var wantUpdate fieldevent.UpdateState
+			output, err := b.Next(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, id := range tt.ids {
+				if output.Decision != (boardmsg.StartDecision{RobotID: id}) || len(output.Events) != 0 {
+					t.Errorf("unexpected output before commit: %+v", output)
+				}
+				var action actions.Action = forward
+				if custom, ok := tt.actions[id]; ok {
+					action = custom
+				}
+
+				output, err = b.Next(robotmsg.ActionReply{RobotID: id, Action: action})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if rotate, ok := action.(actions.RotateAction); ok {
+					wantUpdate.Actions = append(wantUpdate.Actions, fieldevent.RotateResult{
+						RobotID: id, Rotation: rotate.Rotation, Direction: string(want[id].Direction()),
+					})
+					continue
+				}
+				move := fieldevent.MoveResult{Kind: fieldevent.Forward, RobotID: id, Success: tt.moved[id]}
+				if _, ok := action.(actions.BackAction); ok {
+					move.Kind = fieldevent.Back
+				}
+				if move.Success {
+					p := want[id].Position()
+					move.To = &fieldevent.Position{X: p.X(), Y: p.Y()}
+				}
+				wantUpdate.Actions = append(wantUpdate.Actions, move)
+			}
+			wantRecords := []fieldevent.FieldEvent{{Tick: 1, State: wantUpdate}}
+			if !reflect.DeepEqual(output.Events, wantRecords) {
+				t.Errorf("turn records = %+v, want %+v", output.Events, wantRecords)
+			}
+			if b.Snapshot().Tick != 1 {
+				t.Error("missing internal commit")
+			}
 			if !reflect.DeepEqual(b.Snapshot().Robots, want) {
 				t.Errorf("got %+v, want %+v", b.Snapshot().Robots, want)
 			}
+			d := output.Decision
 			for _, id := range tt.ids {
 				var value values.Value = values.BoolValue{Bool: tt.moved[id]}
 				if _, rotating := tt.actions[id].(actions.RotateAction); rotating {
@@ -419,11 +452,14 @@ func TestBoardLifecycle(t *testing.T) {
 	if decision := next(t, b, nil); decision != (boardmsg.StartDecision{RobotID: "a"}) {
 		t.Errorf("unexpected initial decision: %+v", decision)
 	}
-	if decision := next(t, b, robotmsg.ErrorReply{RobotID: "a", Err: errors.New("robot failed")}); decision != (boardmsg.DoneDecision{}) {
-		t.Errorf("failed robot did not finish: %+v", decision)
+	output, err := b.Next(robotmsg.ErrorReply{RobotID: "a", Err: errors.New("robot failed")})
+	wantRecords := []fieldevent.FieldEvent{{State: fieldevent.UpdateState{RemovedRobotIDs: []protocol.RobotID{"a"}}}}
+	if err != nil || output.Decision != (boardmsg.DoneDecision{}) || !reflect.DeepEqual(output.Events, wantRecords) {
+		t.Errorf("failed robot did not finish at tick zero: %+v, %v", output, err)
 	}
-	if decision := next(t, b, nil); decision != (boardmsg.DoneDecision{}) {
-		t.Errorf("completed board did not remain complete: %+v", decision)
+	output, err = b.Next(nil)
+	if err != nil || output.Decision != (boardmsg.DoneDecision{}) || len(output.Events) != 0 {
+		t.Errorf("completed board did not remain complete: %+v, %v", output, err)
 	}
 	if _, err := b.Start([]protocol.RobotID{"a"}); err == nil {
 		t.Error("completed board restarted")

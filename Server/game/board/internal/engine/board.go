@@ -128,7 +128,7 @@ func (b *Board) Start(ids []protocol.RobotID) ([]fieldevent.FieldEvent, error) {
 		controls[id] = unstartedControl{}
 	}
 	b.controls, b.order, b.phase = controls, append([]protocol.RobotID(nil), ids...), collectingBoard{}
-	return b.events(), nil
+	return []fieldevent.FieldEvent{{State: b.initialFieldState()}}, nil
 }
 
 func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
@@ -155,11 +155,11 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 			return output, nil
 		}
 
-		pending := false
+		hasPendingActions := false
 		for _, id := range b.order {
 			switch c := b.controls[id].(type) {
 			case pendingControl:
-				pending = true
+				hasPendingActions = true
 			case unstartedControl:
 				b.phase = awaitingReplyBoard{robotID: id}
 				output.Decision = boardmsg.StartDecision{RobotID: id}
@@ -174,9 +174,18 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 			}
 		}
 
-		if !pending {
+		if !hasPendingActions {
+			// All controls are finished here. Record the remaining robots' removal
+			// before clearing the board, at the current tick.
+			var update fieldevent.UpdateState
+			for _, id := range b.order {
+				if _, present := b.state.Robots[id]; present {
+					update.RemovedRobotIDs = append(update.RemovedRobotIDs, id)
+				}
+			}
 			clear(b.state.Robots)
 			b.phase = finishedBoard{}
+			output.Events = append(output.Events, fieldevent.FieldEvent{Tick: b.state.Tick, State: update})
 			output.Decision = boardmsg.DoneDecision{}
 			return output, nil
 		}
@@ -187,15 +196,12 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 		if b.maxTicks != 0 && b.state.Tick >= b.maxTicks {
 			return output, ErrTickLimit
 		}
-		if err := b.commit(); err != nil {
+		update, err := b.commit()
+		if err != nil {
 			return output, err
 		}
-		output.Events = append(output.Events, b.events()...)
+		output.Events = append(output.Events, fieldevent.FieldEvent{Tick: b.state.Tick, State: update})
 	}
-}
-
-func (b *Board) events() []fieldevent.FieldEvent {
-	return []fieldevent.FieldEvent{{Tick: b.state.Tick}}
 }
 
 func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
@@ -244,20 +250,28 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 }
 
 // commit resolves movement dependencies against one immutable starting state.
-func (b *Board) commit() error {
+func (b *Board) commit() (fieldevent.UpdateState, error) {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]protocol.RobotID, robotCount)
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
 	next := clone(b.state)
 	next.Tick++
-	for id, robot := range b.state.Robots {
+
+	var update fieldevent.UpdateState
+	for _, id := range b.order {
+		robot, present := b.state.Robots[id]
+		if !present {
+			continue
+		}
 		if _, stopped := b.controls[id].(finishedControl); stopped {
 			delete(next.Robots, id)
+			update.RemovedRobotIDs = append(update.RemovedRobotIDs, id)
 			continue
 		}
 		occupied[robot.position] = id
 	}
+
 	for _, id := range b.order {
 		c, pending := b.controls[id].(pendingControl)
 		if !pending {
@@ -279,6 +293,7 @@ func (b *Board) commit() error {
 			counts[target]++
 		}
 	}
+
 	visiting := make(map[protocol.RobotID]struct{}, robotCount)
 	resolved := make(map[protocol.RobotID]struct{}, robotCount)
 	movable := make(map[protocol.RobotID]bool, robotCount)
@@ -313,33 +328,46 @@ func (b *Board) commit() error {
 		if !pending {
 			continue
 		}
-		a := c.action
+
 		robot := next.Robots[id]
 		var value values.Value = values.UnitValue{}
-		switch action := a.(type) {
+		switch action := c.action.(type) {
 		case actions.RotateAction:
 			rotation := 1
 			if action.Rotation == values.Left {
 				rotation = 3
 			}
 			robot.direction = [...]Direction{North, East, South, West}[(directionIndex(robot.direction)+rotation)%4]
+			update.Actions = append(update.Actions, fieldevent.RotateResult{
+				RobotID: id, Rotation: action.Rotation, Direction: string(robot.direction),
+			})
 		case actions.ForwardAction, actions.BackAction:
 			moved := canMove(id)
 			value = values.BoolValue{Bool: moved}
+			kind := fieldevent.Forward
+			if _, backward := action.(actions.BackAction); backward {
+				kind = fieldevent.Back
+			}
+			move := fieldevent.MoveResult{Kind: kind, RobotID: id, Success: moved}
 			if moved {
 				robot.position = targets[id]
+				move.To = &fieldevent.Position{X: robot.position.x, Y: robot.position.y}
 			}
+			update.Actions = append(update.Actions, move)
 		default:
-			return fmt.Errorf("%w: pending action %T", game.ErrNotSupported, a)
+			return fieldevent.UpdateState{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, c.action)
 		}
+
 		next.Robots[id] = robot
-		results = append(results, robotmsg.ActionResult{RobotID: id, Action: a, Value: value})
+		results = append(results, robotmsg.ActionResult{RobotID: id, Action: c.action, Value: value})
 	}
+
 	b.state = next
 	for _, result := range results {
 		b.controls[result.RobotID] = readyControl{value: result.Value}
 	}
-	return nil
+
+	return update, nil
 }
 
 func (b *Board) land(p Position) bool {

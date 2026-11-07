@@ -22,8 +22,13 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 			t.Parallel()
 			b, err := board.New(board.Config{
 				MaxTicks: limit,
-				Terrain:  land(1, 1),
-				Robots:   map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+				Terrain: [][]board.Terrain{{
+					board.NewLandTerrain(board.PlainLand{}, true, board.TeamID1),
+					board.NewLandTerrain(board.GoalLand{}, false, 0),
+					board.NewLandTerrain(board.NewCheckpointLand(0), false, 0),
+					board.RockTerrain{}, board.SeaTerrain{},
+				}},
+				Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -32,7 +37,16 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			wantInitial := []fieldevent.FieldEvent{{}}
+			checkpointOrder := int64(0)
+			wantInitial := []fieldevent.FieldEvent{{State: fieldevent.InitialState{
+				Terrain: [][]fieldevent.Cell{{
+					{Type: "land", Kind: &fieldevent.LandKind{Type: "plain"}, HasLuggage: true, TerritoryOwner: int(board.TeamID1)},
+					{Type: "land", Kind: &fieldevent.LandKind{Type: "goal"}},
+					{Type: "land", Kind: &fieldevent.LandKind{Type: "checkpoint", Order: &checkpointOrder}},
+					{Type: "rock"}, {Type: "sea"},
+				}},
+				Robots: []fieldevent.RobotState{{ID: "a", Direction: "east", DrillDurability: 3}},
+			}}}
 			if !reflect.DeepEqual(initialRecords, wantInitial) {
 				t.Errorf("initial records = %+v", initialRecords)
 			}
@@ -47,11 +61,13 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 			if output := call(nil); output.Decision != (boardmsg.StartDecision{RobotID: "a"}) || len(output.Events) != 0 {
 				t.Errorf("start request = %+v", output)
 			}
-			if output := call(robotmsg.ActionReply{RobotID: "a", Action: actions.DrillDurabilityAction{}}); len(output.Events) != 0 {
-				t.Error("query emitted a field change")
+			query := call(robotmsg.ActionReply{RobotID: "a", Action: actions.DrillDurabilityAction{}})
+			if query.Decision != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.IntegerValue{Integer: 3}}) || len(query.Events) != 0 {
+				t.Errorf("query output = %+v", query)
 			}
 			rotate := robotmsg.ActionReply{RobotID: "a", Action: actions.RotateAction{Rotation: values.Right}}
-			for tick := uint64(1); tick <= 3; tick++ {
+			for i, direction := range []string{"south", "west", "north"} {
+				tick := uint64(i + 1)
 				before := b.Snapshot()
 				output, err := b.Next(rotate)
 				if limit != 0 && tick > limit {
@@ -63,8 +79,10 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				wantRecord := fieldevent.FieldEvent{Tick: tick}
-				if output.Decision != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.UnitValue{}}) || len(output.Events) != 1 || output.Events[0] != wantRecord || b.Snapshot().Tick != tick {
+				wantRecords := []fieldevent.FieldEvent{{Tick: tick, State: fieldevent.UpdateState{
+					Actions: []fieldevent.ActionResult{fieldevent.RotateResult{RobotID: "a", Rotation: values.Right, Direction: direction}},
+				}}}
+				if output.Decision != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.UnitValue{}}) || !reflect.DeepEqual(output.Events, wantRecords) || b.Snapshot().Tick != tick {
 					t.Errorf("commit = %+v, snapshot %+v", output, b.Snapshot())
 				}
 			}
