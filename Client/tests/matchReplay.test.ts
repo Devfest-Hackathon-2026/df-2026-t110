@@ -144,8 +144,8 @@ test('match responses require identifiers and scores', () => {
   assert.equal(parseMatch({ id: 'm1', fieldId: 'f1', selectedLayoutId: 'l1' }).id, 'm1')
   assert.throws(() => parseMatch({ id: 'm1' }))
   assert.deepEqual(
-    parseMatchResult({ history: [], summary: { score: { player: 2, opposite: 1 } } }).summary.score,
-    { player: 2, opposite: 1 },
+    parseMatchResult({ history: [], summary: { score: { player: 2, opponent: 1 } } }).summary.score,
+    { player: 2, opponent: 1 },
   )
   assert.throws(() => parseMatchResult({ history: [], summary: {} }))
 })

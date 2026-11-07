@@ -21,7 +21,20 @@ type ResumeDecision struct {
 	RobotID     protocol.RobotID
 	ReturnValue values.Value
 }
-type DoneDecision struct{}
+
+// DoneDecision carries the result produced by the game's completion rules.
+type DoneDecision struct {
+	result      CompletionResult
+	interrupted bool
+}
+
+// NewDoneDecision allows suspended robots when interrupted is true.
+func NewDoneDecision(result CompletionResult, interrupted bool) DoneDecision {
+	return DoneDecision{result: result, interrupted: interrupted}
+}
+
+func (d DoneDecision) Result() CompletionResult { return d.result }
+func (d DoneDecision) Interrupted() bool        { return d.interrupted }
 
 func (StartDecision) decision()  {}
 func (ResumeDecision) decision() {}

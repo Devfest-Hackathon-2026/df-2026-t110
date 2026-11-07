@@ -122,7 +122,7 @@ export const useMatchStore = defineStore('match', () => {
         const started = Date.now()
         const reached = await runGuestProgram(fieldId.value, program.source)
         await new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, 850 - (Date.now() - started))))
-        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opposite: 0 } } }
+        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opponent: 0 } } }
         frames.value = []
         return
       }
@@ -147,7 +147,7 @@ export const useMatchStore = defineStore('match', () => {
       void import('./replayDemo.ts').then(({ replayDemoHistory }) => {
         if (importedBoardEvents.value) return
         match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'sample' }
-        result.value = { history: replayDemoHistory, summary: { score: { player: 1, opposite: 0 } } }
+        result.value = { history: replayDemoHistory, summary: { score: { player: 1, opponent: 0 } } }
         frames.value = replayFrames(replayDemoHistory)
         error.value = ''
       })
@@ -182,7 +182,7 @@ export const useMatchStore = defineStore('match', () => {
     stopEvents?.()
     stopEvents = undefined
     match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'Boardイベント' }
-    result.value = { history, summary: { score: { player: 0, opposite: 0 } } }
+    result.value = { history, summary: { score: { player: 0, opponent: 0 } } }
     frames.value = nextFrames
     importedBoardEvents.value = true
     error.value = ''

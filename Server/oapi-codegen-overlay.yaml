@@ -9,6 +9,8 @@ actions:
     remove: true
   - target: $.components.schemas.PicolangProgram
     remove: true
+  - target: $.components.schemas.TutorialDetail
+    remove: true
   - target: $.components.schemas
     update:
       Field:
@@ -26,6 +28,16 @@ actions:
       PicolangProgram:
         type: object
         x-go-type: schema.PicolangProgram
+        x-go-type-import:
+          name: schema
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
+      TutorialDetail:
+        type: object
+        # Keep the Stage alias reachable during code generation.
+        properties:
+          stage:
+            $ref: "#/components/schemas/Stage"
+        x-go-type: schema.TutorialDetail
         x-go-type-import:
           name: schema
           path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema

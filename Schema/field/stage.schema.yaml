@@ -29,8 +29,6 @@ $defs:
         description: ゴールへの到達を求める条件
       - $ref: '#/$defs/VisitCheckpoints'
         description: チェックポイントの順次通過を求める条件
-      - $ref: '#/$defs/DeliverAndReachGoal'
-        description: 荷物の運搬とゴールへの到達を求める条件
 
   ReachGoal:
     description: ロボットがゴールに到達するとクリアする条件
@@ -53,14 +51,3 @@ $defs:
         description: チェックポイントの順次通過を求めるクリア条件の種別
         type: string
         const: visit_checkpoints
-
-  DeliverAndReachGoal:
-    description: ロボットが荷物を運搬し、ゴールに到達するとクリアする条件
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        description: 荷物の運搬とゴールへの到達を求めるクリア条件の種別
-        type: string
-        const: deliver_and_reach_goal

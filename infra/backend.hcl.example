@@ -1,0 +1,8 @@
+# Copy to backend.hcl and replace the project ID.
+#
+# Bootstrap (once per project):
+#   gcloud storage buckets create gs://your-project-id-tfstate --project=your-project-id \
+#     --location=asia-northeast1 --uniform-bucket-level-access --public-access-prevention
+#   terraform init -backend-config=backend.hcl
+#   terraform apply   # adopts the bucket (state.tf) and enables versioning
+bucket = "your-project-id-tfstate"

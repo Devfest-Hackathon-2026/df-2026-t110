@@ -96,12 +96,18 @@ func TestSearchFrontObservesTerrainAhead(t *testing.T) {
 			want := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "a", ReturnValue: tt.want},
 			}
-			b := newBoard(t, board.Config{
-				Terrain: terrain,
-				Robots: map[protocol.RobotID]board.RobotState{
+			config, err := board.NewConfig(
+				terrain,
+				map[protocol.RobotID]board.RobotState{
 					"a": board.NewRobotState(tt.position, tt.direction, 3).WithTeam(tt.team),
 				},
-			}, []protocol.RobotID{"a"})
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a"})
 			before := b.Snapshot()
 			next(t, b, nil)
 

@@ -82,13 +82,19 @@ func newHub(t *testing.T, b game.Board, participants ...hub.Participant) *hub.Hu
 func grid(t *testing.T) *board.Board {
 	t.Helper()
 	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
-	b, err := board.New(board.Config{
-		Terrain: [][]board.Terrain{{plain, plain, plain}},
-		Robots: map[protocol.RobotID]board.RobotState{
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, plain, plain}},
+		map[protocol.RobotID]board.RobotState{
 			"a": board.NewRobotState(board.NewPosition(0, 0), board.East, 3),
 			"b": board.NewRobotState(board.NewPosition(2, 0), board.West, 3),
 		},
-	})
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := board.New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +110,7 @@ func TestBoardOwnsOrderAndCompletion(t *testing.T) {
 		boardmsg.StartDecision{RobotID: "a"},
 		boardmsg.ResumeDecision{RobotID: "b", ReturnValue: valueB},
 		boardmsg.ResumeDecision{RobotID: "a", ReturnValue: valueA},
-		boardmsg.DoneDecision{},
+		boardmsg.NewDoneDecision(nil, false),
 	}
 	index := 0
 	var calls []protocol.RobotID
@@ -165,7 +171,7 @@ func TestBoardOwnsOrderAndCompletion(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if report.Resumes != 4 || !reflect.DeepEqual(calls, []protocol.RobotID{"b", "a", "b", "a"}) {
+	if report.Resumes() != 4 || !reflect.DeepEqual(calls, []protocol.RobotID{"b", "a", "b", "a"}) {
 		t.Errorf("unexpected run: %+v, calls %v", report, calls)
 	}
 	if _, err := h.Run(options); err == nil {
@@ -194,8 +200,8 @@ func TestRobotFailureDoesNotStopOthers(t *testing.T) {
 	})
 	h := newHub(t, b, hub.Participant{ID: "a", Robot: failed}, hub.Participant{ID: "b", Robot: other})
 	report, err := h.Run(limits())
-	failedOutcome, failedOK := report.Outcomes["a"].(hub.FailedOutcome)
-	if err != nil || !failedOK || !errors.Is(failedOutcome.Err, failure) || report.Outcomes["b"] != (hub.CompletedOutcome{}) {
+	failedOutcome, failedOK := report.Outcome("a").(hub.FailedOutcome)
+	if err != nil || !failedOK || !errors.Is(failedOutcome.Err, failure) || report.Outcome("b") != (hub.CompletedOutcome{}) {
 		t.Errorf("got %+v, %v", report, err)
 	}
 	if robots := b.Snapshot().Robots; len(robots) != 0 {
@@ -213,7 +219,7 @@ func TestLimits(t *testing.T) {
 		})
 		h := newHub(t, b, hub.Participant{ID: "a", Robot: query}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(hub.Options{MaxResumes: 3})
-		if !errors.Is(err, hub.ErrResumeLimit) || report.Resumes != 3 || b.Snapshot().Tick != 0 {
+		if !errors.Is(err, hub.ErrResumeLimit) || report.Resumes() != 3 || b.Snapshot().Tick != 0 {
 			t.Errorf("got %+v, %v", report, err)
 		}
 	})
@@ -226,7 +232,7 @@ func TestProtocolViolations(t *testing.T) {
 		"typed nil decision":  {(*boardmsg.StartDecision)(nil)},
 		"unknown robot":       {boardmsg.StartDecision{RobotID: "unknown"}},
 		"finished robot":      {boardmsg.StartDecision{RobotID: "a"}, boardmsg.StartDecision{RobotID: "a"}},
-		"early completion":    {boardmsg.DoneDecision{}},
+		"early completion":    {boardmsg.NewDoneDecision(nil, false)},
 		"resume before start": {boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.UnitValue{}}},
 	}
 	for name, events := range tests {
@@ -291,7 +297,7 @@ func TestNewValidationAndInvalidSteps(t *testing.T) {
 		r := robotFunc(func(values.Value) (robotmsg.Step, error) { return step, nil })
 		h := newHub(t, grid(t), hub.Participant{ID: "a", Robot: r}, hub.Participant{ID: "b", Robot: doneRobot()})
 		report, err := h.Run(limits())
-		failed, ok := report.Outcomes["a"].(hub.FailedOutcome)
+		failed, ok := report.Outcome("a").(hub.FailedOutcome)
 		if err != nil || !ok || !errors.Is(failed.Err, hub.ErrProtocol) {
 			t.Errorf("invalid step did not isolate robot: %+v, %v", report, err)
 		}
@@ -348,7 +354,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 					if reply != (robotmsg.DoneReply{RobotID: "a"}) {
 						t.Errorf("completion lost in transit: %+v", reply)
 					}
-					return boardmsg.DoneDecision{}, nil
+					return boardmsg.NewDoneDecision(nil, false), nil
 				default:
 					t.Error("unexpected board call")
 					return nil, nil
@@ -369,7 +375,7 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 			})
 			h := newHub(t, b, hub.Participant{ID: "a", Robot: r})
 			report, err := h.Run(limits())
-			if err != nil || report.Outcomes["a"] != (hub.CompletedOutcome{}) || report.Resumes != 2 || boardCalls != 3 || robotCalls != 2 {
+			if err != nil || report.Outcome("a") != (hub.CompletedOutcome{}) || report.Resumes() != 2 || boardCalls != 3 || robotCalls != 2 {
 				t.Errorf("unexpected result: %+v, %v", report, err)
 			}
 		})
@@ -398,7 +404,7 @@ func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 			if reply != (robotmsg.DoneReply{RobotID: "a"}) {
 				t.Errorf("expected completion after local terrain predicate, got %+v", reply)
 			}
-			return boardmsg.DoneDecision{}, nil
+			return boardmsg.NewDoneDecision(nil, false), nil
 		default:
 			t.Error("unexpected board call")
 			return nil, errors.New("unexpected board call")
@@ -437,7 +443,7 @@ func TestTerrainObservationSurvivesBoardChanges(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if report.Outcomes["a"] != (hub.CompletedOutcome{}) || report.Resumes != 2 || boardCalls != 3 || robotCalls != 2 {
+	if report.Outcome("a") != (hub.CompletedOutcome{}) || report.Resumes() != 2 || boardCalls != 3 || robotCalls != 2 {
 		t.Errorf("local terrain predicate caused unexpected execution: %+v, board calls=%d, robot calls=%d", report, boardCalls, robotCalls)
 	}
 	if cell != (values.SeaTerrain{}) {
@@ -484,14 +490,14 @@ func TestStartsOnceThenResumesWithValue(t *testing.T) {
 					if reply != (robotmsg.DoneReply{RobotID: "a"}) {
 						t.Errorf("unexpected completion reply: %+v", reply)
 					}
-					return boardmsg.DoneDecision{}, nil
+					return boardmsg.NewDoneDecision(nil, false), nil
 				default:
 					t.Error("unexpected board call")
 					return nil, errors.New("no more board events")
 				}
 			}}
 			report, err := newHub(t, b, hub.Participant{ID: "a", Robot: r}).Run(limits())
-			if err != nil || starts != 1 || resumes != 1 || report.Resumes != 2 || report.Outcomes["a"] != (hub.CompletedOutcome{}) {
+			if err != nil || starts != 1 || resumes != 1 || report.Resumes() != 2 || report.Outcome("a") != (hub.CompletedOutcome{}) {
 				t.Errorf("got %+v, %v with %d starts and %d resumes", report, err, starts, resumes)
 			}
 		})
@@ -555,7 +561,7 @@ func TestRejectsInvalidStartAndResume(t *testing.T) {
 				return decision, nil
 			}}
 			report, err := newHub(t, b, hub.Participant{ID: "a", Robot: r}).Run(limits())
-			if !errors.Is(err, hub.ErrProtocol) || starts != tt.started || resumes != 0 || report.Resumes != tt.started {
+			if !errors.Is(err, hub.ErrProtocol) || starts != tt.started || resumes != 0 || report.Resumes() != tt.started {
 				t.Errorf("got %+v, %v with %d starts and %d resumes", report, err, starts, resumes)
 			}
 		})

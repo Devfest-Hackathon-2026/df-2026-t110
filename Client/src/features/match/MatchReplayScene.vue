@@ -470,13 +470,7 @@ onBeforeUnmount(() => {
       @input="seek"
     />
     <div class="match-replay-controls">
-      <button
-        type="button"
-        :disabled="index === 0"
-        @click="previous"
-      >
-        前へ
-      </button>
+      <button type="button" :disabled="index === 0" @click="previous">前へ</button>
       <button type="button" @click="togglePlay">{{ playing ? '一時停止' : '再生' }}</button>
       <button
         type="button"

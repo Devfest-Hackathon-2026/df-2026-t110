@@ -256,7 +256,7 @@ func (j *Checkpoint) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_Checkpoint); err != nil {
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Checkpoint); err != nil {
 			return fmt.Errorf("unmarshal Checkpoint: %w", err)
 		}
 		plain = retry
@@ -273,8 +273,6 @@ type ClearCondition struct {
 	ReachGoal *ReachGoal `json:"-" yaml:"-"`
 
 	VisitCheckpoints *VisitCheckpoints `json:"-" yaml:"-"`
-
-	DeliverAndReachGoal *DeliverAndReachGoal `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -287,9 +285,6 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	if j.VisitCheckpoints != nil {
 		set++
 	}
-	if j.DeliverAndReachGoal != nil {
-		set++
-	}
 	if set != 1 {
 		return nil, fmt.Errorf("ClearCondition: exactly one variant must be set, got %d", set)
 	}
@@ -298,9 +293,6 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	}
 	if j.VisitCheckpoints != nil {
 		return json.Marshal(j.VisitCheckpoints)
-	}
-	if j.DeliverAndReachGoal != nil {
-		return json.Marshal(j.DeliverAndReachGoal)
 	}
 	return nil, nil // unreachable
 }
@@ -343,12 +335,6 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("ClearCondition.VisitCheckpoints: %w", err)
 		}
 		j.VisitCheckpoints = &v
-	case "deliver_and_reach_goal":
-		var v DeliverAndReachGoal
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("ClearCondition.DeliverAndReachGoal: %w", err)
-		}
-		j.DeliverAndReachGoal = &v
 	default:
 		return fmt.Errorf("ClearCondition: unknown type value %q", disc)
 	}
@@ -450,35 +436,6 @@ func (j *Declaration) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("unmarshal Declaration: %w", err)
 	}
 	*j = Declaration(plain)
-	return nil
-}
-
-// ロボットが荷物を運搬し、ゴールに到達するとクリアする条件
-type DeliverAndReachGoal struct {
-	// 荷物の運搬とゴールへの到達を求めるクリア条件の種別
-	Type string `json:"type"`
-}
-
-const DeliverAndReachGoalType = "deliver_and_reach_goal"
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *DeliverAndReachGoal) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw DeliverAndReachGoal: %w", err)
-	}
-	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in DeliverAndReachGoal: required")
-	}
-	type Plain DeliverAndReachGoal
-	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal DeliverAndReachGoal: %w", err)
-	}
-	if plain.Type != "deliver_and_reach_goal" {
-		return fmt.Errorf("field %s: must be equal to %s", "type", "deliver_and_reach_goal")
-	}
-	*j = DeliverAndReachGoal(plain)
 	return nil
 }
 
@@ -717,7 +674,7 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_FieldDefinition); err != nil {
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_FieldDefinition); err != nil {
 			return fmt.Errorf("unmarshal FieldDefinition: %w", err)
 		}
 		plain = retry
@@ -1110,7 +1067,7 @@ func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_IntegerLiteral); err != nil {
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_IntegerLiteral); err != nil {
 			return fmt.Errorf("unmarshal IntegerLiteral: %w", err)
 		}
 		plain = retry
@@ -1448,7 +1405,7 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_Position); err != nil {
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Position); err != nil {
 			return fmt.Errorf("unmarshal Position: %w", err)
 		}
 		plain = retry
@@ -1750,6 +1707,60 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 教材詳細ページに表示する目標、課題、案内文、ステージと初期プログラム
+type TutorialDetail struct {
+	// 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
+	Description string `json:"description"`
+
+	// ページの目標としてタイトルの下に表示する短い文
+	Goal *string `json:"goal,omitempty,omitzero"`
+
+	// 案内役が順番に表示する説明文。未指定または空配列なら案内役を表示しない
+	Guide []string `json:"guide,omitempty,omitzero"`
+
+	// チュートリアルのID
+	Id string `json:"id"`
+
+	// 教材ページを初めて開いたときに配置するブロックを表す picolang プログラム
+	InitialProgram PicolangProgram `json:"initialProgram,omitempty,omitzero"`
+
+	// 「この課題で考えること」に表示する本文
+	Lesson *string `json:"lesson,omitempty,omitzero"`
+
+	// チュートリアルで使用するステージ
+	Stage StageDefinition `json:"stage"`
+
+	// チュートリアルのタイトル
+	Title string `json:"title"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TutorialDetail) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw TutorialDetail: %w", err)
+	}
+	if _, ok := raw["description"]; raw != nil && !ok {
+		return fmt.Errorf("field description in TutorialDetail: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in TutorialDetail: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in TutorialDetail: required")
+	}
+	if _, ok := raw["title"]; raw != nil && !ok {
+		return fmt.Errorf("field title in TutorialDetail: required")
+	}
+	type Plain TutorialDetail
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal TutorialDetail: %w", err)
+	}
+	*j = TutorialDetail(plain)
+	return nil
+}
+
 // picolang の値の型。基本型または複合型
 type Type interface{}
 
@@ -1939,7 +1950,7 @@ func (j *Version0) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_Position(value, &retry, err, integerPaths_Version0); err != nil {
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Version0); err != nil {
 			return fmt.Errorf("unmarshal Version0: %w", err)
 		}
 		plain = retry
@@ -2032,26 +2043,26 @@ func (j *While) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-var integerPaths_Checkpoint = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+var integerPaths_Checkpoint = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"order": {kind: "int"},
 }}
 
-var integerPaths_FieldDefinition = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+var integerPaths_FieldDefinition = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"drillLimit": {kind: "int"},
 	"height":     {kind: "int"},
 	"width":      {kind: "int"},
 }}
 
-var integerPaths_IntegerLiteral = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+var integerPaths_IntegerLiteral = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"value": {kind: "int"},
 }}
 
-var integerPaths_Position = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+var integerPaths_Position = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"x": {kind: "int"},
 	"y": {kind: "int"},
 }}
 
-var integerPaths_Version0 = &unmarshalIntegral_Position_path{fields: map[string]*unmarshalIntegral_Position_path{
+var integerPaths_Version0 = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"picolangVersion": {kind: "int"},
 }}
 
@@ -2129,15 +2140,15 @@ func uniqueItemKey_Ident_number(s string) json.Number {
 	return json.Number(canonical)
 }
 
-// unmarshalIntegral_Position decodes data into v again, as json.Unmarshal does,
-// after a decode that failed with err. It first writes each number at one of p's
-// integer paths that holds an integer, such as 2.0 or 1e2, as that integer, which
-// JSON Schema counts it as and encoding/json requires for a Go integer. Every
-// other byte stays as written, and so does a number that the Go integer type can't
-// hold, so that the error of the second decode names it as written. It returns err
-// when no number needs writing. Every decoder in this file calls it; it is named
-// after the first, so that no other file of the package declares it.
-func unmarshalIntegral_Position(data []byte, v interface{}, err error, p *unmarshalIntegral_Position_path) error {
+// unmarshalIntegral_IntegerLiteral decodes data into v again, as json.Unmarshal
+// does, after a decode that failed with err. It first writes each number at one of
+// p's integer paths that holds an integer, such as 2.0 or 1e2, as that integer,
+// which JSON Schema counts it as and encoding/json requires for a Go integer.
+// Every other byte stays as written, and so does a number that the Go integer type
+// can't hold, so that the error of the second decode names it as written. It
+// returns err when no number needs writing. Every decoder in this file calls it;
+// it is named after the first, so that no other file of the package declares it.
+func unmarshalIntegral_IntegerLiteral(data []byte, v interface{}, err error, p *unmarshalIntegral_IntegerLiteral_path) error {
 	if !json.Valid(data) {
 		return err
 	}
@@ -2145,8 +2156,8 @@ func unmarshalIntegral_Position(data []byte, v interface{}, err error, p *unmars
 	dec.UseNumber()
 	var written []byte
 	copied := 0
-	var walk func(p *unmarshalIntegral_Position_path) bool
-	walk = func(p *unmarshalIntegral_Position_path) bool {
+	var walk func(p *unmarshalIntegral_IntegerLiteral_path) bool
+	walk = func(p *unmarshalIntegral_IntegerLiteral_path) bool {
 		if p == nil {
 			var skipped json.RawMessage
 			return dec.Decode(&skipped) == nil
@@ -2173,8 +2184,8 @@ func unmarshalIntegral_Position(data []byte, v interface{}, err error, p *unmars
 			return terr == nil
 		}
 		if n, ok := tok.(json.Number); ok && p.kind != "" {
-			s, ok := unmarshalIntegral_Position_number(string(n))
-			if ok && s != "" && s != string(n) && unmarshalIntegral_Position_fits(s, p.kind) {
+			s, ok := unmarshalIntegral_IntegerLiteral_number(string(n))
+			if ok && s != "" && s != string(n) && unmarshalIntegral_IntegerLiteral_fits(s, p.kind) {
 				end := int(dec.InputOffset())
 				written = append(append(written, data[copied:end-len(n)]...), s...)
 				copied = end
@@ -2189,9 +2200,9 @@ func unmarshalIntegral_Position(data []byte, v interface{}, err error, p *unmars
 	return json.Unmarshal(written, v)
 }
 
-// unmarshalIntegral_Position_fits reports whether the Go integer type kind holds
-// the integer s.
-func unmarshalIntegral_Position_fits(s, kind string) bool {
+// unmarshalIntegral_IntegerLiteral_fits reports whether the Go integer type kind
+// holds the integer s.
+func unmarshalIntegral_IntegerLiteral_fits(s, kind string) bool {
 	size := strconv.IntSize
 	switch strings.TrimPrefix(kind, "u") {
 	case "int8":
@@ -2211,11 +2222,11 @@ func unmarshalIntegral_Position_fits(s, kind string) bool {
 	return err == nil
 }
 
-// unmarshalIntegral_Position_number returns the integer that the number s holds,
-// written without a fraction, an exponent or a plus sign, or false when s holds
-// none. An integer of more than 20 digits, which no Go integer holds, is returned
-// as "".
-func unmarshalIntegral_Position_number(s string) (string, bool) {
+// unmarshalIntegral_IntegerLiteral_number returns the integer that the number s
+// holds, written without a fraction, an exponent or a plus sign, or false when s
+// holds none. An integer of more than 20 digits, which no Go integer holds, is
+// returned as "".
+func unmarshalIntegral_IntegerLiteral_number(s string) (string, bool) {
 	neg := strings.HasPrefix(s, "-")
 	if neg || strings.HasPrefix(s, "+") {
 		s = s[1:]
@@ -2259,20 +2270,20 @@ func unmarshalIntegral_Position_number(s string) (string, bool) {
 	return whole, true
 }
 
-// unmarshalIntegral_Position_path is where a value holds Go integers that its own
-// decoder decodes: the value itself, whose Go integer type kind names, or the
-// values below it, in its items, its values or its fields. A nil field holds none,
-// but has a name that a JSON key can match.
-type unmarshalIntegral_Position_path struct {
+// unmarshalIntegral_IntegerLiteral_path is where a value holds Go integers that
+// its own decoder decodes: the value itself, whose Go integer type kind names, or
+// the values below it, in its items, its values or its fields. A nil field holds
+// none, but has a name that a JSON key can match.
+type unmarshalIntegral_IntegerLiteral_path struct {
 	kind          string
-	items, values *unmarshalIntegral_Position_path
-	fields        map[string]*unmarshalIntegral_Position_path
+	items, values *unmarshalIntegral_IntegerLiteral_path
+	fields        map[string]*unmarshalIntegral_IntegerLiteral_path
 }
 
 // at returns the path of the value at key in an object at p. With fold, it also
 // finds a field whose name key matches only when case is ignored, the first such
 // in name order, as encoding/json does.
-func (p *unmarshalIntegral_Position_path) at(key string, fold bool) *unmarshalIntegral_Position_path {
+func (p *unmarshalIntegral_IntegerLiteral_path) at(key string, fold bool) *unmarshalIntegral_IntegerLiteral_path {
 	if p.fields == nil {
 		return p.values
 	}

@@ -37,6 +37,8 @@ const (
 // copy a VM or mutate its checked AST. Close abandons a suspended run.
 type VM struct {
 	program     bot.TypedProgram
+	limits      Limits
+	source      bot.Source
 	memory      memory.Store
 	time        clock.Counter
 	events      event.Collector
@@ -52,13 +54,17 @@ var _ game.Robot = (*VM)(nil)
 // New accepts only a successfully checked program. The function table is copied;
 // the AST it contains remains borrowed and must not be modified. The seed creates
 // one random stream shared across every call and action suspension in this run.
-func New(program bot.TypedProgram, seed uint64) (*VM, error) {
+// Resource limits must be positive and apply across the entire run.
+func New(program bot.TypedProgram, seed uint64, limits Limits) (*VM, error) {
+	if limits.MaxSteps == 0 || limits.MaxMemoryBytes == 0 || limits.MaxCallDepth == 0 {
+		return nil, errors.New("VM resource limits must be positive")
+	}
 	main, exists := program.Functions["main"]
 	_, unit := bot.NodeValue(main.ReturnType).(bot.UnitType)
 	if !exists || len(main.Params) != 0 || !unit {
 		return nil, errors.New("main must have signature () -> unit")
 	}
-	v := &VM{program: bot.TypedProgram{Functions: maps.Clone(program.Functions)}, initialized: true}
+	v := &VM{program: bot.TypedProgram{Functions: maps.Clone(program.Functions)}, limits: limits, source: main.Source, initialized: true}
 	evaluator, err := builtin.New(&v.memory, seed)
 	if err != nil {
 		return nil, err
@@ -87,7 +93,12 @@ func (v *VM) step() (robotmsg.Step, error) {
 	}
 	frame := v.stack[len(v.stack)-1]
 	state, err := frame.Step()
+	v.source = frame.Source()
 	if err != nil {
+		return nil, v.fail(err)
+	}
+	// Check charged work before evaluating a call or returning an action.
+	if err := v.checkLimits(); err != nil {
 		return nil, v.fail(err)
 	}
 	switch state := state.(type) {
@@ -133,6 +144,7 @@ func (v *VM) step() (robotmsg.Step, error) {
 				return nil, v.fail(err)
 			}
 			v.phase = finished
+			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndCompleted, Message: "program completed"})
 			return robotmsg.DoneStep{}, nil
 		}
 		if err := v.acceptResult(state.Value); err != nil {
@@ -160,6 +172,11 @@ func (v *VM) resume(result values.Value) error {
 	id, err := v.evaluator.Complete(v.pending, result)
 	if err != nil {
 		return err
+	}
+	// Completion can allocate a board observation. Check before Resume releases
+	// the caller's arguments, and release the temporary reference on failure.
+	if err := v.checkLimits(); err != nil {
+		return v.fail(errors.Join(err, v.memory.Release(id)))
 	}
 	if err := v.acceptResult(id); err != nil {
 		return v.fail(err)
@@ -192,6 +209,22 @@ func (v *VM) closeFrames() error {
 func (v *VM) fail(err error) error {
 	err = errors.Join(err, v.closeFrames())
 	v.phase = failed
+	end := robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndRuntimeError, Message: err.Error()}
+	var runtimeErr *function.RuntimeError
+	if errors.As(err, &runtimeErr) {
+		end.HintID, end.Message = runtimeErr.HintID, runtimeErr.Err.Error()
+	}
+	switch {
+	case errors.Is(err, ErrStepLimit):
+		end.Reason = robotevent.EndStepLimit
+	case errors.Is(err, ErrMemoryLimit):
+		end.Reason = robotevent.EndMemoryLimit
+	case errors.Is(err, ErrCallDepthLimit):
+		end.Reason = robotevent.EndCallDepthLimit
+	case errors.Is(err, builtin.ErrDivisionByZero):
+		end.Reason = robotevent.EndDivisionByZero
+	}
+	v.events.Add(end)
 	return err
 }
 
@@ -201,7 +234,15 @@ func (v *VM) Close() error {
 	if v == nil || v.phase == closed {
 		return nil
 	}
+	active := v.phase == running || v.phase == awaiting
 	err := v.closeFrames()
+	if active {
+		if err != nil {
+			err = v.fail(err)
+		} else {
+			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndInterrupted, Message: "execution interrupted"})
+		}
+	}
 	v.phase = closed
 	return err
 }
@@ -221,8 +262,17 @@ func (v *VM) Next(result values.Value) (robotmsg.RobotOutput, error) {
 }
 
 func (v *VM) run() (robotmsg.RobotOutput, error) {
+	if err := v.checkLimits(); err != nil {
+		err = v.fail(err)
+		return robotmsg.RobotOutput{Events: v.Collect()}, err
+	}
 	for {
 		step, err := v.step()
+		if err == nil {
+			if limitErr := v.checkLimits(); limitErr != nil {
+				err = v.fail(limitErr)
+			}
+		}
 		if err != nil {
 			return robotmsg.RobotOutput{Events: v.Collect()}, err
 		}

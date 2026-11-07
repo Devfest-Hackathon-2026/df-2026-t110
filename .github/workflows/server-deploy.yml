@@ -1,0 +1,67 @@
+name: Deploy (server)
+
+# Deploys a main commit once CI has passed on it, so the checks run only once.
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CI (server)
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Deploy only the latest main; a newer push supersedes an in-flight one.
+concurrency:
+  group: server-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # `branches` also matches CI runs of fork PRs from a branch named main, so only pushes deploy.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Variables are managed by infra/github_actions.tf; until it is applied, only the build runs.
+      DEPLOY_ENABLED: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}
+      # Use the CI-checked commit, or the selected main commit for a manual run.
+      IMAGE: ${{ vars.SERVER_IMAGE_REPOSITORY }}/server:${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install: false
+      - name: Build container
+        working-directory: Server
+        run: docker build --build-arg GO_VERSION="$(mise current go)" --tag server:ci .
+      - name: Authenticate to Google Cloud
+        if: env.DEPLOY_ENABLED == 'true'
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+        if: env.DEPLOY_ENABLED == 'true'
+      - name: Push container
+        if: env.DEPLOY_ENABLED == 'true'
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker tag server:ci "$IMAGE"
+          docker push "$IMAGE"
+      - name: Deploy to Cloud Run
+        if: env.DEPLOY_ENABLED == 'true'
+        run: |
+          gcloud run deploy "${{ vars.SERVER_CLOUD_RUN_SERVICE }}" \
+            --image="$IMAGE" \
+            --region="${{ vars.GCP_REGION }}" \
+            --quiet
