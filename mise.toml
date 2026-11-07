@@ -34,7 +34,7 @@ outputs = [
 ]
 run = [
   "corepack pnpm -C ../Client generate:api",
-  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/tutorial/tutorial-detail.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
+  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/tutorial/tutorial-detail.schema.yaml ../Schema/picolang/toplevel.schema.yaml ../Schema/picolang/header_v0/header.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
   "sqlc generate",
   "go generate ./game/robot/picolang_bot/parse",
