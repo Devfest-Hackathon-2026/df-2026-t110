@@ -1,0 +1,206 @@
+.match-main {
+  padding-block: var(--space-xl) var(--space-3xl);
+}
+.match-heading {
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-rule);
+}
+.match-heading h1 {
+  margin-bottom: var(--space-xs);
+}
+.match-heading p,
+.match-programs p,
+.match-start p,
+.match-status p {
+  color: var(--color-ink-2);
+  line-height: 1.65;
+}
+.match-field-form,
+.match-programs,
+.match-start,
+.match-status,
+.match-replay {
+  max-width: 780px;
+  padding-block: var(--space-xl);
+  border-bottom: 1px solid var(--color-rule);
+}
+.match-main h2 {
+  margin-bottom: var(--space-sm);
+  font-size: var(--type-section);
+}
+.match-main label {
+  display: block;
+  margin-block: var(--space-md) var(--space-xs);
+  font-size: var(--type-small);
+  font-weight: 650;
+}
+.match-field-form > div,
+.match-save-form > div {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.match-main input[type='text'],
+.match-main select {
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--color-rule);
+  border-radius: 3px;
+  background: var(--color-card);
+  color: var(--color-ink);
+  font: inherit;
+}
+.match-field-form input,
+.match-save-form input {
+  flex: 1 1 230px;
+}
+.match-main select {
+  width: min(100%, 420px);
+}
+.match-main button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-inline: 16px;
+  font: inherit;
+  cursor: pointer;
+}
+.match-main button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.match-main button:not(.action-primary) {
+  border: 1px solid var(--color-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-accent-deep);
+}
+.match-main button:focus-visible,
+.match-main input:focus-visible,
+.match-main select:focus-visible,
+.match-main summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.match-editor-details {
+  margin-top: var(--space-xl);
+}
+.match-editor-details summary {
+  color: var(--color-accent-deep);
+  cursor: pointer;
+  font-weight: 650;
+}
+.match-editor {
+  min-height: 470px;
+  height: min(70svh, 650px);
+  margin-top: var(--space-md);
+  overflow: hidden;
+}
+.match-editor > * {
+  height: 100%;
+}
+.match-save-form {
+  margin-top: var(--space-md);
+}
+.match-start .action-primary {
+  margin-top: var(--space-md);
+}
+.match-error {
+  max-width: 780px;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid #a64735;
+  background: #f6e9e5;
+  color: #703324;
+}
+.match-score {
+  display: flex;
+  gap: var(--space-xl);
+  margin-top: var(--space-lg);
+  font-variant-numeric: tabular-nums;
+}
+.match-score strong {
+  margin-left: 8px;
+  font-size: var(--type-section);
+}
+.match-replay-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  align-items: baseline;
+}
+.match-replay-heading > span {
+  color: var(--color-muted);
+  font-size: var(--type-small);
+}
+.match-board-scroll {
+  overflow: auto;
+  padding-block: var(--space-md);
+}
+.match-board {
+  display: grid;
+  width: max-content;
+  min-width: 280px;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-field);
+}
+.match-cell {
+  display: grid;
+  place-items: center;
+  width: clamp(32px, 7vw, 52px);
+  aspect-ratio: 1;
+  background: #d6e6d8;
+  color: #193d38;
+  font-size: var(--type-small);
+}
+.match-cell-rock {
+  background: #67716c;
+  color: #fff;
+}
+.match-cell-sea {
+  background: #8cc8cc;
+}
+.match-cell-luggage {
+  background: #e7d6a4;
+}
+.match-robot {
+  display: grid;
+  place-items: center;
+  width: 75%;
+  height: 75%;
+  border-radius: 50%;
+  background: var(--color-accent-deep);
+  color: white;
+  font-weight: 700;
+}
+.match-owner {
+  color: var(--color-muted);
+}
+.match-replay input[type='range'] {
+  display: block;
+  width: min(100%, 700px);
+  margin-block: var(--space-md);
+  accent-color: var(--color-accent);
+}
+.match-replay-controls {
+  display: flex;
+  gap: var(--space-sm);
+}
+.match-back {
+  display: inline-block;
+  margin-top: var(--space-xl);
+  color: var(--color-accent-deep) !important;
+  text-underline-offset: 0.3em;
+}
+@media (max-width: 700px) {
+  .match-main {
+    padding-block: var(--space-lg) var(--space-2xl);
+  }
+  .match-editor {
+    height: 62svh;
+    min-height: 390px;
+  }
+}

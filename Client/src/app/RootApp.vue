@@ -11,18 +11,21 @@ import AppHeader from './AppHeader.vue'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
-const RoomsPage = defineAsyncComponent(() => import('../features/rooms/RoomsPage.vue'))
+const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
 const roomMatch = /^\/rooms\/([^/]+)$/.exec(path)
 const roomId = roomMatch ? decodeURIComponent(roomMatch[1]) : null
+const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
+const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
-  if (roomId) return 'room-detail'
+  if (roomId) return 'rooms'
+  if (matchId) return 'match-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
   return 'missing'
@@ -32,8 +35,8 @@ document.title = isStage
   ? 'preview'
   : tutorialId
     ? '教材 | Robot Field'
-    : roomId
-      ? '対戦待機 | Robot Field'
+    : matchId
+      ? '対戦結果 | Robot Field'
       : path === '/rooms'
         ? '対戦 | Robot Field'
         : 'Robot Field'
@@ -41,7 +44,7 @@ document.title = isStage
 
 <template>
   <div :class="isStage ? 'stage-page' : 'site'">
-    <AppHeader :active-page="isStage ? 'tutorials' : page === 'room-detail' ? 'rooms' : page" />
+    <AppHeader :active-page="isStage ? 'tutorials' : page === 'match-detail' ? 'rooms' : page" />
 
     <StageViewer v-if="isStage" />
 
@@ -99,7 +102,7 @@ document.title = isStage
       <TutorialPage :tutorial-id="tutorialId ?? ''" />
     </main>
 
-    <RoomsPage v-else-if="page === 'rooms' || page === 'room-detail'" :room-id="roomId" />
+    <MatchPage v-else-if="page === 'rooms' || page === 'match-detail'" :match-id="matchId" />
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
