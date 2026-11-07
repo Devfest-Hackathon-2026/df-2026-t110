@@ -6,7 +6,13 @@ import {
   replayFrameToStage,
   replayFrames,
 } from '../src/features/match/matchReplay.ts'
-import { parseMatch, parseMatchResult, parseMatchUser } from '../src/features/match/matchApi.ts'
+import {
+  getMe,
+  parseIapIdentity,
+  parseMatch,
+  parseMatchResult,
+  parseMatchUser,
+} from '../src/features/match/matchApi.ts'
 
 test('Go BoardOutput events can be imported for replay', () => {
   const initial = {
@@ -157,6 +163,49 @@ test('account response accepts an authenticated user without a registered name',
   })
   assert.deepEqual(parseMatchUser({ name: 'Ada' }), { id: undefined, name: 'Ada' })
   assert.throws(() => parseMatchUser({ name: 12 }))
+})
+
+test('IAP identity maps the Google account email and subject to the account display', () => {
+  assert.deepEqual(
+    parseIapIdentity({
+      email: 'accounts.google.com:ada@example.com',
+      sub: 'accounts.google.com:google-subject',
+    }),
+    { id: 'google-subject', name: 'ada@example.com' },
+  )
+  assert.throws(() => parseIapIdentity({ email: 'ada@example.com', sub: 'google-subject' }))
+})
+
+test('deployed account falls back to IAP identity while /api/me is unavailable', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const calls: string[] = []
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { origin: 'https://server-639320660675.asia-northeast1.run.app' } },
+  })
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls.push(String(input))
+    if (calls.length === 1) return new Response('{}', { status: 501 })
+    return new Response(
+      JSON.stringify({
+        email: 'accounts.google.com:ada@example.com',
+        sub: 'accounts.google.com:google-subject',
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    )
+  }) as typeof fetch
+  try {
+    assert.deepEqual(await getMe(), { id: 'google-subject', name: 'ada@example.com' })
+    assert.deepEqual(calls, [
+      '/api/me',
+      'https://server-639320660675.asia-northeast1.run.app/account?gcp-iap-mode=IDENTITY',
+    ])
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow)
+    else Reflect.deleteProperty(globalThis, 'window')
+  }
 })
 
 test('schema history replays drill, messages and wait without losing board state', () => {
