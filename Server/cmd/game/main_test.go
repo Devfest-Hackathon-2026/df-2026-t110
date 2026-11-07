@@ -131,6 +131,25 @@ func TestInteractiveWait(t *testing.T) {
 	}
 }
 
+func TestInteractiveDistance(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 distance invalid\np1 distance sea\np1 distance robot\np1 done\np2 distance enemy\np2 done\n"
+	want := []string{"p1 => 5", "p1 => 4", "p2 => 4", "finished at tick 0"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 1, 100)
+
+	if err != nil || strings.Count(output.String(), "invalid command") != 1 {
+		t.Errorf("distance commands = %v, output: %s", err, output.String())
+	}
+	for _, line := range want {
+		if !strings.Contains(output.String(), line) {
+			t.Errorf("missing %q in output: %s", line, output.String())
+		}
+	}
+}
+
 func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {
