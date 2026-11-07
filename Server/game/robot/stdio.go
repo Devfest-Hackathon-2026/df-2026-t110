@@ -17,7 +17,14 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-const help = "<id> forward | back | rotate left | rotate right | drill | drill_durability | search_now | search_front | print_integer <integer> | print_bool true/false | done; help\n"
+// CommandUsage lists the commands accepted by a stdio robot session.
+const CommandUsage = `
+<id> forward | back | rotate left | rotate right |
+ drill | drill_durability | 
+ search_now | search_front | 
+ print_integer <integer> | print_bool true/false | 
+ done
+help`
 
 // Session owns input and shares it between robots. Calls to Robot.Start and
 // Robot.Next must be sequential. Close releases the input resource.
@@ -113,7 +120,7 @@ func (r *Stdio) readStep() (robotmsg.Step, error) {
 		}
 		fields := strings.Fields(text)
 		if len(fields) == 1 && fields[0] == "help" {
-			if _, err := io.WriteString(r.session.output, help); err != nil {
+			if _, err := fmt.Fprintln(r.session.output, CommandUsage); err != nil {
 				return nil, err
 			}
 			continue
@@ -125,7 +132,7 @@ func (r *Stdio) readStep() (robotmsg.Step, error) {
 			}
 			return step, nil
 		}
-		if _, err := fmt.Fprintf(r.session.output, "invalid command for %s; %s", r.id, help); err != nil {
+		if _, err := fmt.Fprintf(r.session.output, "invalid command for %s; %s\n", r.id, CommandUsage); err != nil {
 			return nil, err
 		}
 	}
