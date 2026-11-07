@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import maximizeIcon from '@iconify-icons/lucide/maximize'
 import minimizeIcon from '@iconify-icons/lucide/minimize'
@@ -9,7 +9,6 @@ import playIcon from '@iconify-icons/lucide/play'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
-import BlocklyEditor from '../picolang/BlocklyEditor.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/picolang.ts'
 import { executePicolang } from '../picolang/executePicolang.ts'
 import { createTutorialWorld } from './tutorialWorld.ts'
@@ -20,6 +19,21 @@ import { LOCAL_LESSONS, lessonField, localLesson } from './tutorialLessons.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
 import type { TutorialRecord } from './tutorialApi.ts'
 import type { Lesson } from './tutorialLessons.ts'
+
+const BlocklyEditor = defineAsyncComponent({
+  loader: () => import('../picolang/BlocklyEditor.vue'),
+  loadingComponent: {
+    render: () => h('p', { class: 'tutorial-editor-loading', role: 'status' }, 'エディタを読み込んでいます…'),
+  },
+  errorComponent: {
+    render: () =>
+      h(
+        'p',
+        { class: 'tutorial-editor-loading', role: 'alert' },
+        'エディタを読み込めませんでした。ページを再読み込みしてください。',
+      ),
+  },
+})
 
 const props = defineProps<{ tutorialId: string }>()
 const tutorial = ref<TutorialRecord | Lesson | null>(null)

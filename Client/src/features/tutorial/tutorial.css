@@ -289,6 +289,12 @@
   overflow: hidden;
   container: editor / inline-size;
 }
+.tutorial-editor-loading {
+  margin: 0;
+  padding: var(--space-md);
+  color: var(--color-muted);
+  font-size: var(--type-small);
+}
 .tutorial-editor-mock {
   display: grid;
   grid-template-columns: 54px minmax(150px, 32%) minmax(0, 1fr);
