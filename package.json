@@ -6,6 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "generate:api": "pnpm -C Client generate:api",
     "lint": "pnpm -r lint"
   }
 }

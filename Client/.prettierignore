@@ -1,4 +1,5 @@
 node_modules/
+src/api/schema.d.ts
 dist/
 public/vendor/
 .hallmark/
