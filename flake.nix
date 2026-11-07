@@ -33,7 +33,7 @@
             bzip2
             xz
             unzip
-            # Node.js builds from source by default on NixOS.
+            # Build tools remain available for explicit source builds.
             python3
             gnumake
             stdenv.cc
@@ -57,6 +57,7 @@
                 rm "$out/bin/mise"
                 makeWrapper ${pkgs.lib.getExe fhsEnv} "$out/bin/mise" \
                   --set __MISE_BIN "$out/bin/mise" \
+                  --set-default MISE_ALL_COMPILE false \
                   --prefix PATH : "$out/bin" \
                   --run 'export MISE_FHS_ARGV0="$0"'
               '' else ''
