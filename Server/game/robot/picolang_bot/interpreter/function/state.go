@@ -13,7 +13,7 @@ import (
 type Resources struct {
 	Memory *memory.Store
 	Time   *clock.Counter
-	Events *event.Collector
+	Events *event.Collector // nil disables events and debug value snapshots.
 }
 
 type State interface{ functionState() }

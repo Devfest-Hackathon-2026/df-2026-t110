@@ -41,7 +41,7 @@ type VM struct {
 	source      bot.Source
 	memory      memory.Store
 	time        clock.Counter
-	events      event.Collector
+	events      *event.Collector
 	evaluator   *builtin.Evaluator
 	stack       []*function.Machine
 	pending     builtin.Action
@@ -55,7 +55,8 @@ var _ game.Robot = (*VM)(nil)
 // the AST it contains remains borrowed and must not be modified. The seed creates
 // one random stream shared across every call and action suspension in this run.
 // Resource limits must be positive and apply across the entire run.
-func New(program bot.TypedProgram, seed uint64, limits Limits) (*VM, error) {
+// When logExecution is false, no events or debug value snapshots are created.
+func New(program bot.TypedProgram, seed uint64, limits Limits, logExecution bool) (*VM, error) {
 	if limits.MaxSteps == 0 || limits.MaxMemoryBytes == 0 || limits.MaxCallDepth == 0 {
 		return nil, errors.New("VM resource limits must be positive")
 	}
@@ -65,6 +66,9 @@ func New(program bot.TypedProgram, seed uint64, limits Limits) (*VM, error) {
 		return nil, errors.New("main must have signature () -> unit")
 	}
 	v := &VM{program: bot.TypedProgram{Functions: maps.Clone(program.Functions)}, limits: limits, source: main.Source, initialized: true}
+	if logExecution {
+		v.events = &event.Collector{}
+	}
 	evaluator, err := builtin.New(&v.memory, seed)
 	if err != nil {
 		return nil, err
@@ -74,7 +78,7 @@ func New(program bot.TypedProgram, seed uint64, limits Limits) (*VM, error) {
 }
 
 func (v *VM) resources() function.Resources {
-	return function.Resources{Memory: &v.memory, Time: &v.time, Events: &v.events}
+	return function.Resources{Memory: &v.memory, Time: &v.time, Events: v.events}
 }
 
 // step executes one transition, including pushing or popping at most one
@@ -144,7 +148,9 @@ func (v *VM) step() (robotmsg.Step, error) {
 				return nil, v.fail(err)
 			}
 			v.phase = finished
-			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndCompleted, Message: "program completed"})
+			if v.events != nil {
+				v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndCompleted, Message: "program completed"})
+			}
 			return robotmsg.DoneStep{}, nil
 		}
 		if err := v.acceptResult(state.Value); err != nil {
@@ -188,7 +194,7 @@ func (v *VM) resume(result values.Value) error {
 // Collect transfers pending events. Start and Next call it automatically before
 // returning. It can also collect cleanup events after Close.
 func (v *VM) Collect() []robotevent.PicolangEvent {
-	if v == nil {
+	if v == nil || v.events == nil {
 		return nil
 	}
 	return v.events.Collect()
@@ -209,6 +215,9 @@ func (v *VM) closeFrames() error {
 func (v *VM) fail(err error) error {
 	err = errors.Join(err, v.closeFrames())
 	v.phase = failed
+	if v.events == nil {
+		return err
+	}
 	end := robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndRuntimeError, Message: err.Error()}
 	var runtimeErr *function.RuntimeError
 	if errors.As(err, &runtimeErr) {
@@ -239,7 +248,7 @@ func (v *VM) Close() error {
 	if active {
 		if err != nil {
 			err = v.fail(err)
-		} else {
+		} else if v.events != nil {
 			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndInterrupted, Message: "execution interrupted"})
 		}
 	}

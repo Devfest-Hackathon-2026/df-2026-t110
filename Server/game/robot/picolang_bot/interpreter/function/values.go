@@ -48,15 +48,19 @@ func (m *Machine) define(ident bot.Ident[bot.VariableIndex], id memory.ID) {
 		panic(fmt.Errorf("invalid declaration slot %d", ident.Variable))
 	}
 	m.resources.Time.Increment()
-	m.resources.Events.Add(robotevent.VariableInitEvent{HintID: ident.HintID, Value: m.record(id)})
-	m.variables = append(m.variables, binding{value: id, hint: ident.HintID, announced: true})
+	if m.resources.Events != nil {
+		m.resources.Events.Add(robotevent.VariableInitEvent{HintID: ident.HintID, Value: m.record(id)})
+	}
+	m.variables = append(m.variables, binding{value: id, hint: ident.HintID, announced: m.resources.Events != nil})
 }
 
 func (m *Machine) assign(index bot.VariableIndex, id memory.ID) {
 	variable := &m.variables[index]
-	diff := m.replacement(id)
 	m.resources.Time.Increment()
-	m.resources.Events.Add(robotevent.VariableUpdateEvent{HintID: variable.hint, Diff: []robotevent.ValueUpdate{diff}})
+	if m.resources.Events != nil {
+		diff := m.replacement(id)
+		m.resources.Events.Add(robotevent.VariableUpdateEvent{HintID: variable.hint, Diff: []robotevent.ValueUpdate{diff}})
+	}
 	previous := variable.value
 	variable.value = id
 	m.drop(previous)

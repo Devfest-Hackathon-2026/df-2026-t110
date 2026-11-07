@@ -57,7 +57,7 @@ func TestPicolangBotConstructorErrors(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			r, err := robot.NewPicolangBot([]byte(tc.source), 42, tc.limits)
+			r, err := robot.NewPicolangBot([]byte(tc.source), 42, tc.limits, true)
 			if err == nil || r != nil {
 				t.Errorf("constructor returned %v, %v for invalid input", r, err)
 			}
@@ -85,7 +85,7 @@ func TestPicolangBotConstructorErrors(t *testing.T) {
 func TestPicolangBotRunsThroughHub(t *testing.T) {
 	t.Parallel()
 	source := []byte(picolangSource)
-	r, err := robot.NewPicolangBot(source, 42, picolangLimits())
+	r, err := robot.NewPicolangBot(source, 42, picolangLimits(), true)
 	if err != nil {
 		t.Errorf("NewPicolangBot: %v", err)
 		return
@@ -149,7 +149,7 @@ func TestPicolangBotDefersExecutionUntilStart(t *testing.T) {
 	t.Parallel()
 	limits := picolangLimits()
 	limits.MaxSteps = 1
-	r, err := robot.NewPicolangBot([]byte(picolangSource), 42, limits)
+	r, err := robot.NewPicolangBot([]byte(picolangSource), 42, limits, true)
 	if err != nil {
 		t.Errorf("constructor spent the execution budget: %v", err)
 		return
