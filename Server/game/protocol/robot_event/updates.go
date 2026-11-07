@@ -21,22 +21,25 @@ type BoolUpdate struct{ Value bool }
 type IntegerUpdate struct{ Value int64 }
 type UnitUpdate struct{}
 type TerrainUpdate struct{ Value values.TerrainValue }
+type DistanceTargetUpdate struct{ Value values.DistanceTarget }
 type RotationUpdate struct{ Value values.Rotation }
 type VectorUpdate struct{ Update VectorOperation }
 
-func (BoolUpdate) valueUpdate()     {}
-func (IntegerUpdate) valueUpdate()  {}
-func (UnitUpdate) valueUpdate()     {}
-func (TerrainUpdate) valueUpdate()  {}
-func (RotationUpdate) valueUpdate() {}
-func (VectorUpdate) valueUpdate()   {}
+func (BoolUpdate) valueUpdate()           {}
+func (IntegerUpdate) valueUpdate()        {}
+func (UnitUpdate) valueUpdate()           {}
+func (TerrainUpdate) valueUpdate()        {}
+func (DistanceTargetUpdate) valueUpdate() {}
+func (RotationUpdate) valueUpdate()       {}
+func (VectorUpdate) valueUpdate()         {}
 
-func (BoolUpdate) primitiveUpdate()     {}
-func (IntegerUpdate) primitiveUpdate()  {}
-func (UnitUpdate) primitiveUpdate()     {}
-func (TerrainUpdate) primitiveUpdate()  {}
-func (RotationUpdate) primitiveUpdate() {}
-func (VectorUpdate) compoundUpdate()    {}
+func (BoolUpdate) primitiveUpdate()           {}
+func (IntegerUpdate) primitiveUpdate()        {}
+func (UnitUpdate) primitiveUpdate()           {}
+func (TerrainUpdate) primitiveUpdate()        {}
+func (DistanceTargetUpdate) primitiveUpdate() {}
+func (RotationUpdate) primitiveUpdate()       {}
+func (VectorUpdate) compoundUpdate()          {}
 
 // VectorOperation only permits operations supported by picolang vectors.
 type VectorOperation interface{ vectorOperation() }

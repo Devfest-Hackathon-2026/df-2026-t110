@@ -236,6 +236,11 @@ func (c *typeChecker) literalType(value bot.Literal, source bot.Source) bot.Type
 			return bot.RotationType{}
 		}
 		c.Report(source, bot.CodeInvalidAST, "invalid rotation literal %q; expected left or right", value.Value)
+	case bot.DistanceTargetLiteral:
+		if value.Value.Valid() {
+			return bot.DistanceTargetType{}
+		}
+		c.Report(source, bot.CodeInvalidAST, "invalid distance target literal %q", value.Value)
 	default:
 		c.Report(source, bot.CodeInvalidAST, "invalid literal %T", value)
 	}

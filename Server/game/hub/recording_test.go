@@ -57,14 +57,29 @@ func TestIndependentEventMessages(t *testing.T) {
 	if err != nil || report.Resumes != 3 {
 		t.Errorf("run = %+v, %v", report, err)
 	}
+	plain := fieldevent.Cell{Type: "land", Kind: &fieldevent.LandKind{Type: "plain"}}
 	want := []gameevent.GameEvent{
-		gameevent.FieldEvent{Event: fieldevent.FieldEvent{}},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{State: fieldevent.InitialState{
+			Terrain: [][]fieldevent.Cell{{plain, plain, plain}},
+			Robots: []fieldevent.RobotState{
+				{ID: "a", Direction: "east", DrillDurability: 3},
+				{ID: "b", Position: fieldevent.Position{X: 2}, Direction: "west", DrillDurability: 3},
+			},
+		}}},
 		gameevent.RobotEvent{InterpreterID: "a", Event: current},
 		gameevent.RobotEvent{InterpreterID: "a", Event: init},
 		gameevent.RobotEvent{InterpreterID: "b", Event: current},
-		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1}},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1, State: fieldevent.UpdateState{
+			Actions: []fieldevent.ActionResult{
+				fieldevent.MoveResult{Kind: fieldevent.Forward, RobotID: "a", Success: true, To: &fieldevent.Position{X: 1}},
+			},
+			RemovedRobotIDs: []protocol.RobotID{"b"},
+		}}},
 		gameevent.RobotEvent{InterpreterID: "a", Event: update},
 		gameevent.RobotEvent{InterpreterID: "a", Event: drop},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1, State: fieldevent.UpdateState{
+			RemovedRobotIDs: []protocol.RobotID{"a"},
+		}}},
 	}
 	if !reflect.DeepEqual(received.Events, want) {
 		t.Errorf("deliveries = %+v, want %+v", received.Events, want)
@@ -113,7 +128,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 				t.Parallel()
 				producerErr := errors.New("producer failed")
 				recordingErr := errors.New("storage failed")
-				field := []fieldevent.FieldEvent{{}}
+				field := []fieldevent.FieldEvent{{State: fieldevent.UpdateState{}}}
 				debug := []robotevent.PicolangEvent{robotevent.CurrentNodeEvent{HintID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}}
 				boardCalls, robotCalls := 0, 0
 				b := boardFunc{
@@ -214,7 +229,7 @@ func TestReturnedRecordsPrecedeProtocolChecks(t *testing.T) {
 				return nil, nil
 			}}
 			if source == "board" {
-				b.nextEvents = []fieldevent.FieldEvent{{}}
+				b.nextEvents = []fieldevent.FieldEvent{{State: fieldevent.UpdateState{}}}
 			} else {
 				r.startEvents = []robotevent.PicolangEvent{robotevent.CurrentNodeEvent{HintID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}}
 			}

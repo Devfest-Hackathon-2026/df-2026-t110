@@ -49,7 +49,7 @@ func TestSetMyUsername(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			setter := &usernameSetterStub{err: tt.setErr}
-			r := NewRouter(nil, Config{Sessions: sessionLookupStub{err: tt.sessionErr}, Users: setter})
+			r := NewRouter(Config{Sessions: sessionLookupStub{err: tt.sessionErr}, Users: setter})
 			e := echo.New()
 			api.RegisterHandlers(e, r)
 			req := httptest.NewRequest(http.MethodPost, "/me/username", strings.NewReader(tt.body))

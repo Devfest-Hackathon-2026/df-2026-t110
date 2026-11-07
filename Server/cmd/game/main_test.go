@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
 func TestRenderTerrainKinds(t *testing.T) {
@@ -16,9 +15,13 @@ func TestRenderTerrainKinds(t *testing.T) {
 	var output bytes.Buffer
 	err := render(&output, board.Snapshot{
 		Tick: 7,
-		Terrain: [][]values.TerrainValue{{
-			values.LandTerrain{Kind: values.PlainLand{}}, values.LandTerrain{Kind: values.GoalLand{}}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}},
-			values.LandTerrain{Kind: values.LuggageLand{}}, values.RockTerrain{}, values.SeaTerrain{},
+		Terrain: [][]board.Terrain{{
+			board.NewLandTerrain(board.PlainLand{}, false, 0),
+			board.NewLandTerrain(board.GoalLand{}, false, 0),
+			board.NewLandTerrain(board.NewCheckpointLand(2), false, 0),
+			board.NewLandTerrain(board.PlainLand{}, true, 0),
+			board.RockTerrain{},
+			board.SeaTerrain{},
 		}},
 	})
 	if err != nil {
@@ -40,6 +43,28 @@ func TestInteractiveDemo(t *testing.T) {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("missing %q in output:\n%s", want, output.String())
 		}
+	}
+}
+
+func TestInteractivePrintInteger(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 print_integer -42\np2 print_integer 9223372036854775807\np1 print_bool false\np2 print_bool true\np1 done\np2 done\n"
+	want := []string{"p1 says -42", "p2 says 9223372036854775807", "p1 says false", "p2 says true", "p1 => ()", "p2 => ()", "finished at tick 2", "p1: completed", "p2: completed"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 2, 100)
+
+	if err != nil {
+		t.Error(err)
+	}
+	for _, text := range want {
+		if !strings.Contains(output.String(), text) {
+			t.Errorf("missing %q in output: %s", text, output.String())
+		}
+	}
+	if strings.Contains(output.String(), "invalid command") {
+		t.Errorf("print command was rejected: %s", output.String())
 	}
 }
 

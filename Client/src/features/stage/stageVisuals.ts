@@ -203,10 +203,15 @@ export function createStageVisuals(
       if (assets) placeAsset(tile, assets, 'floor')
       else addFloor(tile)
       if (cell.terrain === 'rock') {
+        const rock = new THREE.Group()
+        rock.name = 'stage-rock'
+        rock.userData.cellX = cell.x
+        rock.userData.cellY = cell.y
+        tile.add(rock)
         if (assets) {
-          const rock = placeAsset(tile, assets, 'rock')
-          rock.rotation.y = ((cell.x + cell.y * stage.width) % 7) * 0.28
-        } else addRock(tile, cell.x + cell.y * stage.width)
+          const model = placeAsset(rock, assets, 'rock')
+          model.rotation.y = ((cell.x + cell.y * stage.width) % 7) * 0.28
+        } else addRock(rock, cell.x + cell.y * stage.width)
       } else if (assets) {
         if (cell.start) {
           placeAsset(tile, assets, 'start')

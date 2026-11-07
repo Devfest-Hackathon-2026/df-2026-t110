@@ -10,8 +10,9 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+
 	"github.com/dvpico/Programming-Learning-AR/Server/game/recorder"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 )
@@ -31,17 +32,17 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if maxTicks == 0 {
 		return fmt.Errorf("max-ticks must be positive")
 	}
-	plain := values.LandTerrain{Kind: values.PlainLand{}}
+	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
 	b, err := board.New(board.Config{
 		MaxTicks: maxTicks,
-		Terrain: [][]values.TerrainValue{
+		Terrain: [][]board.Terrain{
 			{plain, plain, plain, plain, plain},
-			{plain, plain, values.RockTerrain{}, plain, plain},
-			{plain, plain, values.SeaTerrain{}, plain, plain},
+			{plain, plain, board.RockTerrain{}, plain, plain},
+			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[protocol.RobotID]board.RobotState{
-			"p1": {Position: board.Position{X: 0, Y: 0}, Direction: board.East, DrillDurability: 3},
-			"p2": {Position: board.Position{X: 4, Y: 0}, Direction: board.West, DrillDurability: 3},
+			"p1": board.NewRobotState(board.NewPosition(0, 0), board.East, 3),
+			"p2": board.NewRobotState(board.NewPosition(4, 0), board.West, 3),
 		},
 	})
 	if err != nil {
@@ -64,7 +65,7 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | done; help"); err != nil {
+	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | print_integer <integer> | print_bool true/false | done; help"); err != nil {
 		return err
 	}
 	report, runErr := h.Run(hub.Options{
@@ -101,28 +102,29 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 		for x, terrain := range row {
 			var cell string
 			switch terrain := terrain.(type) {
-			case values.LandTerrain:
-				switch terrain.Kind.(type) {
-				case values.PlainLand:
+			case board.LandTerrain:
+				switch kind := terrain.Kind().(type) {
+				case board.PlainLand:
 					cell = "."
-				case values.GoalLand:
+				case board.GoalLand:
 					cell = "G"
-				case values.CheckpointLand:
+				case board.CheckpointLand:
 					cell = "C"
-				case values.LuggageLand:
-					cell = "L"
 				default:
-					return fmt.Errorf("invalid land kind %T", terrain.Kind)
+					return fmt.Errorf("invalid land kind %T", kind)
 				}
-			case values.RockTerrain:
+				if terrain.HasLuggage() {
+					cell = "L"
+				}
+			case board.RockTerrain:
 				cell = "#"
-			case values.SeaTerrain:
+			case board.SeaTerrain:
 				cell = "~"
 			default:
 				return fmt.Errorf("invalid terrain %T", terrain)
 			}
 			for id, robot := range snapshot.Robots {
-				if robot.Position == (board.Position{X: x, Y: y}) {
+				if robot.Position() == board.NewPosition(x, y) {
 					cell = string(id)
 				}
 			}
@@ -141,7 +143,8 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, id := range ids {
 		r := snapshot.Robots[id]
-		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s\n", id, r.Position.X, r.Position.Y, r.Direction); err != nil {
+		position := r.Position()
+		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s\n", id, position.X(), position.Y(), r.Direction()); err != nil {
 			return err
 		}
 	}
@@ -159,7 +162,23 @@ func (r *boardRenderer) Record(event gameevent.GameEvent) error {
 	if err := r.Recorder.Record(event); err != nil {
 		return err
 	}
-	if _, field := event.(gameevent.FieldEvent); field {
+	if field, ok := event.(gameevent.FieldEvent); ok {
+		if update, ok := field.Event.State.(fieldevent.UpdateState); ok {
+			for _, action := range update.Actions {
+				var speech string
+				switch action := action.(type) {
+				case fieldevent.PrintIntegerResult:
+					speech = fmt.Sprintf("%s says %d\n", action.RobotID, action.Integer)
+				case fieldevent.PrintBoolResult:
+					speech = fmt.Sprintf("%s says %t\n", action.RobotID, action.Bool)
+				}
+				if speech != "" {
+					if _, err := io.WriteString(r.output, speech); err != nil {
+						return err
+					}
+				}
+			}
+		}
 		return render(r.output, r.board.Snapshot())
 	}
 	return nil

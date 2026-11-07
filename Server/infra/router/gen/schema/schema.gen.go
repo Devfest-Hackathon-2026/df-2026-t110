@@ -516,6 +516,110 @@ func (j *Direction) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type DistanceTarget string
+
+const DistanceTargetAlly DistanceTarget = "ally"
+const DistanceTargetEnemy DistanceTarget = "enemy"
+const DistanceTargetGoal DistanceTarget = "goal"
+
+// distance_target 型のリテラル
+type DistanceTargetLiteral struct {
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type interface{} `json:"type"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value DistanceTarget `json:"value"`
+}
+
+const DistanceTargetLiteralKind = "literal"
+const DistanceTargetLiteralType = "distance_target"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DistanceTargetLiteral) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw DistanceTargetLiteral: %w", err)
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in DistanceTargetLiteral: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in DistanceTargetLiteral: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in DistanceTargetLiteral: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in DistanceTargetLiteral: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"literal\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"literal\"")
+		}
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "type") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"distance_target\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "type", "\"distance_target\"")
+		}
+	}
+	type Plain DistanceTargetLiteral
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal DistanceTargetLiteral: %w", err)
+	}
+	*j = DistanceTargetLiteral(plain)
+	return nil
+}
+
+const DistanceTargetLuggage DistanceTarget = "luggage"
+const DistanceTargetRobot DistanceTarget = "robot"
+const DistanceTargetRock DistanceTarget = "rock"
+const DistanceTargetSea DistanceTarget = "sea"
+const DistanceTargetTerritory DistanceTarget = "territory"
+
+var enumValues_DistanceTarget = []interface{}{
+	"robot",
+	"ally",
+	"enemy",
+	"rock",
+	"luggage",
+	"sea",
+	"goal",
+	"territory",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DistanceTarget) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_DistanceTarget {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DistanceTarget, v)
+	}
+	*j = DistanceTarget(v)
+	return nil
+}
+
 // リテラル、変数参照、関数呼び出しのいずれかの式
 type Expr interface{}
 
@@ -1015,7 +1119,7 @@ func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// bool、integer、unit、rotation のリテラル。terrain 型にはリテラルがない
+// bool、integer、unit、rotation、distance_target のリテラル。terrain 型にはリテラルがない
 type Literal struct {
 	Bool *BoolLiteral `json:"-" yaml:"-"`
 
@@ -1024,6 +1128,8 @@ type Literal struct {
 	Unit *UnitLiteral `json:"-" yaml:"-"`
 
 	Rotation *RotationLiteral `json:"-" yaml:"-"`
+
+	DistanceTarget *DistanceTargetLiteral `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -1042,6 +1148,9 @@ func (j Literal) MarshalJSON() ([]byte, error) {
 	if j.Rotation != nil {
 		set++
 	}
+	if j.DistanceTarget != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("Literal: exactly one variant must be set, got %d", set)
 	}
@@ -1056,6 +1165,9 @@ func (j Literal) MarshalJSON() ([]byte, error) {
 	}
 	if j.Rotation != nil {
 		return json.Marshal(j.Rotation)
+	}
+	if j.DistanceTarget != nil {
+		return json.Marshal(j.DistanceTarget)
 	}
 	return nil, nil // unreachable
 }
@@ -1110,6 +1222,12 @@ func (j *Literal) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("Literal.Rotation: %w", err)
 		}
 		j.Rotation = &v
+	case "distance_target":
+		var v DistanceTargetLiteral
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("Literal.DistanceTarget: %w", err)
+		}
+		j.DistanceTarget = &v
 	default:
 		return fmt.Errorf("Literal: unknown type value %q", disc)
 	}
@@ -1348,6 +1466,7 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 type PrimitiveType string
 
 const PrimitiveTypeBool PrimitiveType = "bool"
+const PrimitiveTypeDistanceTarget PrimitiveType = "distance_target"
 const PrimitiveTypeInteger PrimitiveType = "integer"
 const PrimitiveTypeRotation PrimitiveType = "rotation"
 const PrimitiveTypeTerrain PrimitiveType = "terrain"
@@ -1359,6 +1478,7 @@ var enumValues_PrimitiveType = []interface{}{
 	"unit",
 	"terrain",
 	"rotation",
+	"distance_target",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

@@ -1,0 +1,777 @@
+/* Hallmark · redesign: restyle · scope: app · direction: quiet code workbench · signature: readable nested commands · v2.0.0 */
+/* Hallmark · critique: removed the dotted gradient, nested cards, decorative outlines and boxed icons while keeping command structure visible. */
+/* Hallmark · waive 24b · the editor is a resizable split pane with controls inside nested expressions · intermediate spacing keeps the fields readable at narrow widths. */
+:root {
+  --pico-paper: #f7f9f7;
+  --pico-surface: #fbfdfb;
+  --pico-surface-alt: #edf3f0;
+  --pico-surface-active: #dcece5;
+  --pico-ink: #173a34;
+  --pico-muted: #55716a;
+  --pico-accent: #166e66;
+  --pico-rule: #cddbd3;
+  --pico-focus: #126d88;
+  --pico-command: #a8d2ee;
+  --pico-control: #e8bf73;
+  --pico-control-ink: #614f2d;
+  --pico-variable: #e3b99a;
+  --pico-return: #c8b4df;
+  --pico-code: #1d302e;
+  --pico-code-ink: #edf6f1;
+  --pico-font: var(--font-body);
+  --pico-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.pico-editor {
+  display: grid;
+  grid-template-columns: 64px minmax(142px, 23%) minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  color: var(--pico-ink);
+  font-family: var(--pico-font);
+  font-size: 13px;
+}
+.pico-editor *,
+.pico-editor *::before,
+.pico-editor *::after {
+  box-sizing: border-box;
+}
+.pico-editor button,
+.pico-editor input,
+.pico-editor select,
+.pico-editor textarea {
+  font: inherit;
+}
+.pico-editor button {
+  cursor: pointer;
+}
+.pico-editor button:disabled {
+  background: var(--pico-surface-alt);
+  color: var(--pico-muted);
+  cursor: default;
+}
+.pico-editor button:active:not(:disabled) {
+  background: var(--pico-surface-active);
+}
+.pico-editor :is(button, input, select, summary, textarea):focus-visible {
+  outline: 2px solid var(--pico-focus);
+  outline-offset: 2px;
+}
+.pico-editor :is(button, summary) > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.pico-categories,
+.pico-palette,
+.pico-workspace {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.pico-categories,
+.pico-palette {
+  background: var(--pico-paper);
+}
+.pico-categories {
+  display: flex;
+  flex-direction: column;
+  padding-block: 8px;
+  border-right: 1px solid var(--pico-rule);
+}
+.pico-categories button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  width: 100%;
+  padding: 5px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--pico-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+.pico-categories button:hover,
+.pico-categories button[aria-pressed='true'] {
+  background: var(--pico-surface-active);
+  color: var(--pico-accent);
+}
+.pico-categories button[aria-pressed='true'] {
+  font-weight: 700;
+}
+.pico-palette {
+  padding: 16px 12px 24px;
+  border-right: 1px solid var(--pico-rule);
+}
+.pico-palette h3 {
+  margin: 0 0 5px;
+  font-size: 14px;
+}
+.pico-palette p {
+  margin: 0 0 14px;
+  color: var(--pico-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pico-palette button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--pico-surface-alt);
+  color: var(--pico-ink);
+  text-align: left;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.pico-palette button svg {
+  color: var(--pico-accent);
+}
+.pico-palette button + button {
+  margin-top: 2px;
+}
+.pico-palette button:hover {
+  background: var(--pico-surface-active);
+}
+.pico-workspace {
+  padding: 14px 18px 40px;
+  background: var(--pico-surface);
+}
+.pico-workspace-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--pico-rule);
+}
+.pico-functions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+.pico-history-controls {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+.pico-history-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pico-accent);
+  cursor: pointer;
+}
+.pico-history-controls button:hover:not(:disabled) {
+  background: var(--pico-surface-active);
+}
+.pico-history-controls button:disabled {
+  color: var(--pico-rule);
+  cursor: default;
+}
+.pico-functions button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--pico-muted);
+}
+.pico-functions button[aria-pressed='true'] {
+  border-bottom-color: var(--pico-accent);
+  color: var(--pico-ink);
+  font-weight: 700;
+}
+.pico-functions .pico-function-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  padding: 4px;
+  color: var(--pico-accent);
+}
+.pico-functions .pico-function-add-button:hover {
+  background: var(--pico-surface-active);
+}
+.pico-function-card {
+  max-width: 100%;
+  min-width: 0;
+}
+.pico-function-header,
+.pico-params,
+.pico-params > div,
+.pico-add-row,
+.pico-statement-toolbar,
+.pico-statement-content,
+.pico-expression,
+.pico-type-input,
+.pico-arguments {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pico-function-header {
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  color: var(--pico-ink);
+}
+.pico-function-header > button {
+  margin-left: auto;
+}
+.pico-params {
+  flex-wrap: wrap;
+  padding: 8px 0 12px;
+}
+.pico-block-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  min-height: 38px;
+  width: 100%;
+  padding: 2px 0 0;
+}
+.pico-block-list .pico-block-list {
+  margin: 0;
+}
+.pico-drop-hint {
+  margin: 5px 0 12px;
+  color: var(--pico-muted);
+  font-size: 12px;
+}
+.pico-statement {
+  --pico-block-fill: var(--pico-command);
+  position: relative;
+  width: fit-content;
+  min-width: 190px;
+  max-width: 100%;
+  margin: 0;
+  padding: 5px 8px 6px;
+  border-radius: 4px 4px 3px 3px;
+  background: var(--pico-block-fill);
+  box-shadow: inset 0 -2px 0 rgb(23 58 52 / 12%);
+}
+.pico-statement + .pico-statement {
+  margin-top: -1px;
+}
+.pico-statement::before,
+.pico-statement::after {
+  position: absolute;
+  left: 22px;
+  width: 30px;
+  height: 7px;
+  content: '';
+  pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 82% 100%, 18% 100%);
+}
+.pico-statement::before {
+  top: 0;
+  background: var(--pico-surface);
+}
+.pico-statement::after {
+  z-index: 2;
+  bottom: -7px;
+  background: var(--pico-block-fill);
+}
+.pico-statement--drop-before {
+  box-shadow: 0 -3px 0 var(--pico-focus);
+}
+.pico-statement--drop-after {
+  box-shadow: 0 3px 0 var(--pico-focus);
+}
+.pico-statement--declare,
+.pico-statement--assign {
+  --pico-block-fill: var(--pico-variable);
+}
+.pico-statement--return {
+  --pico-block-fill: var(--pico-return);
+}
+.pico-statement--break,
+.pico-statement--continue {
+  --pico-block-fill: var(--pico-control);
+}
+.pico-statement--return::after,
+.pico-statement--break::after,
+.pico-statement--continue::after {
+  display: none;
+}
+.pico-statement--if,
+.pico-statement--while,
+.pico-statement--for {
+  --pico-block-fill: var(--pico-control);
+  width: 100%;
+  padding: 0;
+}
+.pico-statement-toolbar {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  right: 5px;
+  margin: 0;
+  color: var(--pico-muted);
+}
+.pico-statement-toolbar > div {
+  display: flex;
+  gap: 2px;
+}
+.pico-statement-toolbar button,
+.pico-params button,
+.pico-function-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 25px;
+  min-width: 25px;
+  padding: 3px;
+  border: 0;
+  background: transparent;
+  color: var(--pico-muted);
+}
+.pico-statement-toolbar button:hover,
+.pico-params button:hover,
+.pico-function-header button:hover {
+  color: var(--pico-accent);
+  background: var(--pico-surface-alt);
+}
+.pico-statement-content {
+  flex-wrap: wrap;
+  min-height: 34px;
+  padding-right: 79px;
+  line-height: 1.5;
+}
+.pico-statement--if > .pico-statement-content,
+.pico-statement--while > .pico-statement-content,
+.pico-statement--for > .pico-statement-content {
+  padding-right: 0;
+}
+.pico-statement-content > .pico-block-list {
+  flex-basis: 100%;
+}
+.pico-control-shell {
+  padding-left: 10px;
+  background: var(--pico-block-fill);
+}
+.pico-control-head,
+.pico-control-middle,
+.pico-control-settings {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+.pico-control-head,
+.pico-control-middle {
+  color: var(--pico-control-ink);
+}
+.pico-control-head {
+  padding-right: 86px;
+}
+.pico-control-head strong,
+.pico-control-middle strong {
+  font-size: 13px;
+}
+.pico-control-settings--for {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  align-items: start;
+}
+.pico-condition-editor,
+.pico-condition-comparison {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.pico-condition-editor {
+  flex-basis: 100%;
+  min-width: 0;
+}
+.pico-condition-editor > select,
+.pico-condition-comparison > select,
+.pico-condition-comparison > input {
+  min-height: 29px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 2px;
+  background: var(--pico-surface);
+  color: var(--pico-ink);
+}
+.pico-condition-comparison > input {
+  width: 72px;
+}
+.pico-condition-comparison > strong {
+  color: var(--pico-ink);
+}
+.pico-condition-help {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--pico-muted);
+  font-size: 11px;
+}
+.pico-control-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 4px;
+}
+.pico-control-field label,
+.pico-control-field-label,
+.pico-scope-label {
+  color: var(--pico-muted);
+  font-size: 11px;
+}
+.pico-control-field-label small {
+  font-size: 11px;
+  font-weight: 400;
+}
+.pico-control-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--pico-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.pico-control-brace,
+.pico-control-middle > span,
+.pico-control-tail {
+  color: var(--pico-muted);
+  font-family: var(--pico-mono);
+  font-size: 13px;
+}
+.pico-control-brace {
+  margin-left: auto;
+}
+.pico-control-scope {
+  min-height: 56px;
+  padding: 6px 8px 8px;
+  background: var(--pico-surface);
+}
+.pico-scope-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.pico-control-scope > .pico-block-list {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding-top: 0;
+}
+.pico-control-scope .pico-statement {
+  max-width: 100%;
+}
+.pico-control-tail {
+  padding: 0 8px 3px;
+}
+.pico-control-add-else {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--pico-accent);
+}
+.pico-control-add-else:hover {
+  background: var(--pico-surface-active);
+}
+.pico-expression {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 2px 4px;
+  border: 1px dashed var(--pico-rule);
+  border-radius: 4px;
+  background: var(--pico-surface);
+  vertical-align: middle;
+}
+.pico-expression--statement {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.pico-expression--drop-target {
+  outline: 2px solid var(--pico-focus);
+  outline-offset: 1px;
+  background: #e8f6fa;
+}
+.pico-dragging .pico-expression select,
+.pico-dragging .pico-expression input {
+  pointer-events: none;
+}
+.pico-expression-drop-error {
+  flex-basis: 100%;
+  color: #9b3f32;
+  font-size: 11px;
+}
+.pico-expression-drop-error button {
+  margin-left: 4px;
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+}
+.pico-argument {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  max-width: 100%;
+}
+.pico-argument > small {
+  color: var(--pico-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.pico-info {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.pico-info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pico-muted);
+  cursor: help;
+}
+.pico-info-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  display: none;
+  width: var(--pico-info-width, 260px);
+  padding: 9px 11px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 5px;
+  background: var(--pico-surface);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 16%);
+  color: var(--pico-ink);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: normal;
+}
+.pico-info--flip .pico-info-popover {
+  right: 0;
+  left: auto;
+}
+.pico-info:hover .pico-info-popover,
+.pico-info--open .pico-info-popover {
+  display: block;
+}
+.pico-expression-invalid {
+  color: #9b3f32;
+  font-size: 11px;
+}
+.pico-command-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+.pico-variable-tip {
+  flex-basis: 100%;
+  color: var(--pico-muted);
+  font-size: 11px;
+}
+.pico-editor .pico-variable-token {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid #ae7e5d;
+  border-radius: 999px;
+  background: #fff8ef;
+  color: #684127;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: grab;
+}
+.pico-editor .pico-variable-token:active {
+  cursor: grabbing;
+}
+.pico-statement--assign .pico-statement-content > select {
+  min-height: 29px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 2px;
+  background: var(--pico-surface);
+  color: var(--pico-ink);
+}
+.pico-arguments,
+.pico-type-input,
+.pico-add-row {
+  flex-wrap: wrap;
+}
+.pico-expression select,
+.pico-type-input select,
+.pico-add-row select,
+.pico-editor input,
+.pico-json textarea {
+  min-height: 29px;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid var(--pico-rule);
+  border-radius: 2px;
+  background: var(--pico-surface);
+  color: var(--pico-ink);
+}
+.pico-expression-kind {
+  max-width: 106px;
+}
+.pico-expression input[type='number'] {
+  width: 57px;
+}
+.pico-name-input {
+  width: 85px;
+}
+.pico-add-row {
+  margin-top: 9px;
+}
+.pico-add-row button,
+.pico-new-function button,
+.pico-json button,
+.pico-inline-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--pico-surface-active);
+  color: var(--pico-accent);
+}
+.pico-add-row button:hover,
+.pico-new-function button:hover,
+.pico-json button:hover,
+.pico-inline-action:hover {
+  background: var(--pico-command);
+}
+.pico-new-function {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin: 0 0 3px;
+}
+.pico-new-function input {
+  width: 126px;
+}
+.pico-functions .pico-new-function button {
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--pico-surface-active);
+  color: var(--pico-accent);
+}
+.pico-functions .pico-new-function button:hover {
+  background: var(--pico-command);
+}
+.pico-json {
+  margin-top: 18px;
+}
+.pico-json summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  color: var(--pico-accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pico-json pre {
+  max-height: 250px;
+  overflow: auto;
+  padding: 10px;
+  background: var(--pico-code);
+  color: var(--pico-code-ink);
+  font-family: var(--pico-mono);
+  font-size: 11px;
+}
+.pico-json label {
+  display: block;
+  margin-block: 8px 4px;
+}
+.pico-json textarea {
+  display: block;
+  width: 100%;
+  min-height: 75px;
+  margin-bottom: 8px;
+}
+.pico-message {
+  color: var(--pico-accent);
+}
+@container editor (max-width: 560px) {
+  .pico-editor {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(220px, 1fr);
+  }
+  .pico-categories {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0 5px;
+    border-right: 0;
+    border-bottom: 1px solid var(--pico-rule);
+  }
+  .pico-categories button {
+    flex: 0 0 56px;
+    min-height: 64px;
+  }
+  .pico-palette {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--pico-rule);
+  }
+  .pico-palette h3,
+  .pico-palette p {
+    display: none;
+  }
+  .pico-palette button {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+  .pico-palette button + button {
+    margin-top: 0;
+  }
+  .pico-workspace {
+    padding: 12px 10px 32px;
+  }
+}

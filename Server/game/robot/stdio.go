@@ -1,4 +1,4 @@
-// Package robot provides an interactive text-command implementation of game.Robot.
+// Package robot provides an interactive text-command implementation of values.Robot.
 package robot
 
 import (
@@ -17,7 +17,7 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-const help = "<id> forward | back | rotate left | rotate right | drill_durability | done; help\n"
+const help = "<id> forward | back | rotate left | rotate right | drill_durability | print_integer <integer> | print_bool true/false | done; help\n"
 
 // Session owns input and shares it between robots. Calls to Robot.Start and
 // Robot.Next must be sequential. Close releases the input resource.
@@ -152,6 +152,16 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(values.Left) || fields[2] == string(values.Right)) {
 		return robotmsg.ActionStep{Action: actions.RotateAction{Rotation: values.Rotation(fields[2])}}, true
 	}
+	if len(fields) == 3 && fields[1] == "print_integer" {
+		integer, err := strconv.ParseInt(fields[2], 10, 64)
+		if err != nil {
+			return nil, false
+		}
+		return robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: integer}}, true
+	}
+	if len(fields) == 3 && fields[1] == "print_bool" && (fields[2] == "true" || fields[2] == "false") {
+		return robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: fields[2] == "true"}}, true
+	}
 	return nil, false
 }
 
@@ -164,16 +174,20 @@ func formatValue(value values.Value) string {
 	case values.UnitValue:
 		return "()"
 	case values.LandTerrain:
+		attributes := []string{"land"}
 		switch kind := value.Kind.(type) {
-		case values.PlainLand:
-			return "terrain(land)"
 		case values.GoalLand:
-			return "terrain(land, goal)"
+			attributes = append(attributes, "goal")
 		case values.CheckpointLand:
-			return fmt.Sprintf("terrain(land, checkpoint=%d)", kind.Order)
-		case values.LuggageLand:
-			return "terrain(land, luggage)"
+			attributes = append(attributes, fmt.Sprintf("checkpoint=%d", kind.Order))
 		}
+		if value.HasLuggage {
+			attributes = append(attributes, "luggage")
+		}
+		if value.Territory != values.NoTerritory {
+			attributes = append(attributes, "territory="+string(value.Territory))
+		}
+		return "terrain(" + strings.Join(attributes, ", ") + ")"
 	case values.RockTerrain:
 		return "terrain(rock)"
 	case values.SeaTerrain:
