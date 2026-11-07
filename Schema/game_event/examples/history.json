@@ -8,7 +8,7 @@
         [
           { "type": "land", "kind": { "type": "plain" } },
           { "type": "land", "kind": { "type": "plain" }, "hasLuggage": true, "territoryOwner": 1 },
-          { "type": "land", "kind": { "type": "checkpoint", "order": 2 } },
+          { "type": "land", "kind": { "type": "checkpoint", "order": 2 }, "hasLuggage": true },
           { "type": "land", "kind": { "type": "goal" } },
           { "type": "sea" },
           { "type": "rock" }
@@ -153,9 +153,9 @@
     "state": {
       "kind": "update",
       "actions": [
+        { "kind": "pick_up", "robotId": "robot-1", "success": true, "target": { "x": 2, "y": 0 } },
         { "kind": "rotate", "robotId": "robot-2", "rotation": "left", "direction": "south" }
-      ],
-      "removedRobotIds": ["robot-1"]
+      ]
     }
   },
   {
@@ -165,7 +165,8 @@
       "kind": "update",
       "actions": [
         { "kind": "print_integer", "robotId": "robot-2", "integer": -42 }
-      ]
+      ],
+      "removedRobotIds": ["robot-1"]
     }
   },
   {
