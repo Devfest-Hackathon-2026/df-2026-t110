@@ -1,0 +1,45 @@
+name: CI (client)
+
+on:
+  push:
+    paths:
+      - 'Client/**'
+      - 'mise.toml'
+      - '!Client/README.md'
+      - '.github/workflows/client-ci.yml'
+      - '.github/workflows/actions.lock'
+  pull_request:
+    paths:
+      - 'Client/**'
+      - 'mise.toml'
+      - '!Client/README.md'
+      - '.github/workflows/client-ci.yml'
+      - '.github/workflows/actions.lock'
+
+permissions:
+  contents: read
+
+env:
+  # Version the client README documents; not in mise.toml to keep other tool installs unchanged.
+  PNPM_VERSION: '12.17.0'
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Client
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: node
+      - name: Install dependencies
+        run: mise exec "pnpm@${PNPM_VERSION}" -- pnpm install --frozen-lockfile
+      - name: Lint
+        run: mise exec "pnpm@${PNPM_VERSION}" -- pnpm lint
+      - name: Test
+        run: mise exec "pnpm@${PNPM_VERSION}" -- pnpm test
+      # type-check rather than build: the deploy builds anyway, and this is all a PR needs.
+      - name: Type check
+        run: mise exec "pnpm@${PNPM_VERSION}" -- pnpm type-check
