@@ -10,13 +10,18 @@ import type { PicoProgram } from '../picolang/picolang.ts'
 import { LOCAL_LESSONS } from '../tutorial/tutorialLessons.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/BlocklyEditor.vue'))
+const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()
 const fieldInput = ref('')
 const programName = ref('')
 const draft = ref<PicoProgram | null>(null)
 const editorOpen = ref(false)
-const score = computed(() => store.result?.summary.score)
+const isDev = import.meta.env.DEV
+const boardJson = ref('')
+const boardImportError = ref('')
+const replayOpen = ref(props.matchId === 'demo')
+const score = computed(() => (store.importedBoardEvents ? null : store.result?.summary.score))
 const selectedProgram = computed(() => store.programs.find((item) => item.id === store.selectedProgramId))
 const outcome = computed(() => {
   if (!score.value) return ''
@@ -36,6 +41,23 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => store.dispose())
+
+function importBoardJson(): void {
+  boardImportError.value = ''
+  try {
+    store.importBoardEvents(boardJson.value)
+    replayOpen.value = true
+  } catch (cause) {
+    boardImportError.value = cause instanceof Error ? cause.message : 'イベントを読み込めませんでした。'
+  }
+}
+
+async function importBoardFile(event: Event): Promise<void> {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  boardJson.value = await file.text()
+  importBoardJson()
+}
 
 async function chooseField(): Promise<void> {
   store.setField(fieldInput.value)
@@ -60,6 +82,9 @@ function onEditorToggle(event: Event): void {
       <p>ロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
     <p v-if="store.error" class="match-error" role="alert">{{ store.error }}</p>
+    <p v-if="isDev && store.phase === 'preparing'" class="match-demo-link">
+      <a href="/matches/demo">開発用の再生サンプルを見る</a>
+    </p>
 
     <template v-if="store.phase === 'preparing'">
       <section class="match-account" aria-labelledby="match-account-title">
@@ -175,6 +200,23 @@ function onEditorToggle(event: Event): void {
     </template>
 
     <template v-else>
+      <details v-if="isDev && props.matchId === 'demo'" class="match-board-import">
+        <summary>BoardイベントJSONを読み込む</summary>
+        <p>
+          Board.Start() の初期イベントと BoardOutput.Events
+          の更新イベントを含むJSONを読み込みます。データはサーバーへ送信しません。
+        </p>
+        <label>
+          JSONファイル
+          <input type="file" accept=".json,application/json" @change="importBoardFile" />
+        </label>
+        <label>
+          またはJSONを貼り付け
+          <textarea v-model="boardJson" rows="5" spellcheck="false" />
+        </label>
+        <button type="button" @click="importBoardJson">このイベントを再生</button>
+        <p v-if="boardImportError" role="alert">{{ boardImportError }}</p>
+      </details>
       <section class="match-status" aria-live="polite">
         <p class="match-eyebrow">
           {{
@@ -192,12 +234,17 @@ function onEditorToggle(event: Event): void {
                 ? 'ローカル練習結果'
                 : 'プログラムを実行中'
               : store.phase === 'finished'
-                ? `対戦結果 · ${outcome}`
+                ? store.importedBoardEvents
+                  ? 'Boardイベントの再生'
+                  : `対戦結果 · ${outcome}`
                 : '結果を待っています'
           }}
         </h2>
         <p v-if="!store.isGuestMatch">対戦ID: {{ store.match?.id }}</p>
         <p v-if="store.match?.selectedLayoutId">選ばれた配置: {{ store.match.selectedLayoutId }}</p>
+        <p v-if="store.importedBoardEvents">
+          Go BoardのイベントJSONを再生中です。得点判定は含まれていません。
+        </p>
         <template v-if="store.phase === 'running'">
           <div class="match-progress" aria-hidden="true"><span /></div>
           <p>
@@ -225,9 +272,18 @@ function onEditorToggle(event: Event): void {
           </div>
         </div>
         <p v-if="store.phase === 'finished' && !store.isGuestMatch">
-          計算結果の再生は後続の実装で追加します。
+          対戦の計算過程を、3Dまたはカメラに重ねて確認できます。
         </p>
       </section>
+      <details
+        v-if="store.phase === 'finished' && store.frames.length"
+        class="match-replay-details"
+        :open="replayOpen"
+        @toggle="replayOpen = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>計算過程を見る</summary>
+        <MatchReplayScene v-if="replayOpen" :frames="store.frames" />
+      </details>
       <a class="match-back" href="/rooms">{{
         store.isGuestMatch ? '別のプログラムで練習する' : '新しい対戦を準備する'
       }}</a>
