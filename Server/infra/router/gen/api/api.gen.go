@@ -147,6 +147,9 @@ type BadRequest = ApiError
 // Conflict defines model for Conflict.
 type Conflict = ApiError
 
+// Forbidden defines model for Forbidden.
+type Forbidden = ApiError
+
 // NotFound defines model for NotFound.
 type NotFound = ApiError
 
@@ -363,7 +366,7 @@ type ServerInterface interface {
 	// GetField フィールドを取得
 	// (GET /field/{fieldId})
 	GetField(ctx *echo.Context, fieldId FieldId) error
-	// CreateMatch 対戦を作成し、使用する配置を抽選
+	// CreateMatch ランク対戦を作成し、シミュレーションを開始
 	// (POST /field/{fieldId}/match)
 	CreateMatch(ctx *echo.Context, fieldId FieldId) error
 	// ListPrograms フィールドのプログラム一覧を取得
@@ -390,6 +393,9 @@ type ServerInterface interface {
 	// Logout ログアウト
 	// (POST /logout)
 	Logout(ctx *echo.Context) error
+	// MatchEvents 対戦結果を購読
+	// (GET /match/{matchId}/events)
+	MatchEvents(ctx *echo.Context, matchId MatchId) error
 	// GetMe 自分の情報を取得
 	// (GET /me)
 	GetMe(ctx *echo.Context) error
@@ -602,6 +608,22 @@ func (w *ServerInterfaceWrapper) Logout(ctx *echo.Context) error {
 	return err
 }
 
+// MatchEvents converts echo context to params.
+func (w *ServerInterfaceWrapper) MatchEvents(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "matchId" -------------
+	var matchId MatchId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "matchId", ctx.Param("matchId"), &matchId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter matchId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.MatchEvents(ctx, matchId)
+	return err
+}
+
 // GetMe converts echo context to params.
 func (w *ServerInterfaceWrapper) GetMe(ctx *echo.Context) error {
 	var err error
@@ -776,6 +798,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/login", wrapper.Login, options.OperationMiddlewares["login"]...)
 	router.GET(options.BaseURL+"/login/callback", wrapper.LoginCallback, options.OperationMiddlewares["loginCallback"]...)
 	router.POST(options.BaseURL+"/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
+	router.GET(options.BaseURL+"/match/:matchId/events", wrapper.MatchEvents, options.OperationMiddlewares["matchEvents"]...)
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
 	router.POST(options.BaseURL+"/me/username", wrapper.SetMyUsername, options.OperationMiddlewares["setMyUsername"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
