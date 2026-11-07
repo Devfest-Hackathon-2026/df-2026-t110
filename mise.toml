@@ -10,11 +10,30 @@ sqlc = "1.31.1"
 terraform = "1.17.1"
 
 [tasks.generate]
-description = "Generate API models, Echo server and database queries"
+description = "Generate frontend API types, server API models, Echo server and database queries"
 dir = "{{config_root}}/Server"
-sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml", "sqlc.yaml", "infra/repo/sql/**/*.sql", "game/robot/picolang_bot/parse/**/*.go"]
-outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go", "infra/repo/gen/db/*.go", "game/robot/picolang_bot/parse/schema.gen.json"]
+sources = [
+  "../Schema/**/*.yaml",
+  "../Client/scripts/generate-api.mjs",
+  "../Client/package.json",
+  "../package.json",
+  "../pnpm-lock.yaml",
+  "../pnpm-workspace.yaml",
+  "oapi-codegen.yaml",
+  "oapi-codegen-overlay.yaml",
+  "sqlc.yaml",
+  "infra/repo/sql/**/*.sql",
+  "game/robot/picolang_bot/parse/**/*.go",
+]
+outputs = [
+  "../Client/src/api/schema.d.ts",
+  "infra/router/gen/api/api.gen.go",
+  "infra/router/gen/schema/schema.gen.go",
+  "infra/repo/gen/db/*.go",
+  "game/robot/picolang_bot/parse/schema.gen.json",
+]
 run = [
+  "corepack pnpm -C ../Client generate:api",
   "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/tutorial/tutorial-detail.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
   "sqlc generate",
