@@ -52,6 +52,7 @@ type RobotState struct {
 	direction       Direction
 	drillDurability int64
 	teamID          TeamID
+	carryingLuggage bool
 }
 
 func NewRobotState(position Position, direction Direction, drillDurability int64) RobotState {
@@ -62,6 +63,7 @@ func (r RobotState) Position() Position     { return r.position }
 func (r RobotState) Direction() Direction   { return r.direction }
 func (r RobotState) DrillDurability() int64 { return r.drillDurability }
 func (r RobotState) TeamID() TeamID         { return r.teamID }
+func (r RobotState) CarryingLuggage() bool  { return r.carryingLuggage }
 
 // WithTeam returns a copy of the robot with the specified team.
 func (r RobotState) WithTeam(team TeamID) RobotState {
@@ -245,7 +247,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: b.searchNow(id)}
 		case actions.SearchFrontAction:
 			b.controls[id] = readyControl{value: b.searchFront(id)}
-		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PrintIntegerAction, actions.PrintBoolAction:
+		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -273,6 +275,8 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
 	drillTargets := make(map[protocol.RobotID]Position)
+	pickUpTargets := make(map[protocol.RobotID]Position, robotCount)
+	pickUpCounts := make(map[Position]int, robotCount)
 	next := clone(b.state)
 	next.Tick++
 
@@ -305,6 +309,12 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		case actions.DrillAction:
 			if _, rock := b.terrainAt(target).(RockTerrain); rock && robot.drillDurability > 0 {
 				drillTargets[id] = target
+			}
+			continue
+		case actions.PickUpAction:
+			if land, ok := b.terrainAt(target).(LandTerrain); ok && land.hasLuggage && !robot.carryingLuggage {
+				pickUpTargets[id] = target
+				pickUpCounts[target]++
 			}
 			continue
 		default:
@@ -364,6 +374,9 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		case actions.DrillAction:
 			target, eligible := drillTargets[id]
 			value, event = applyDrill(id, &robot, next.Terrain, target, eligible)
+		case actions.PickUpAction:
+			target, eligible := pickUpTargets[id]
+			value, event = applyPickUp(id, &robot, next.Terrain, target, eligible && pickUpCounts[target] == 1)
 		case actions.PrintIntegerAction:
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:

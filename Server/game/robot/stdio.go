@@ -21,6 +21,7 @@ import (
 const CommandUsage = `
 <id> forward | back | rotate left | rotate right |
  drill | drill_durability | 
+ pick_up |
  search_now | search_front | 
  print_integer <integer> | print_bool true/false | 
  done
@@ -156,6 +157,8 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 			return robotmsg.ActionStep{Action: actions.DrillDurabilityAction{}}, true
 		case "drill":
 			return robotmsg.ActionStep{Action: actions.DrillAction{}}, true
+		case "pick_up":
+			return robotmsg.ActionStep{Action: actions.PickUpAction{}}, true
 		case "search_now":
 			return robotmsg.ActionStep{Action: actions.SearchNowAction{}}, true
 		case "search_front":

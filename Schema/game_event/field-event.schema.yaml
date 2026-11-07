@@ -68,6 +68,7 @@ $defs:
             - $ref: '#/$defs/MoveResult'
             - $ref: '#/$defs/RotateResult'
             - $ref: '#/$defs/DrillResult'
+            - $ref: '#/$defs/PickUpResult'
             - $ref: '#/$defs/PrintIntegerResult'
             - $ref: '#/$defs/PrintBoolResult'
       removedRobotIds:
@@ -142,6 +143,9 @@ $defs:
       teamId:
         description: ロボットの所属チーム ID。省略時はチームなし
         enum: [1, 2]
+      carryingLuggage:
+        description: 荷物を運搬しているか。省略時は false
+        type: boolean
 
   MoveResult:
     type: object
@@ -200,6 +204,30 @@ $defs:
       drillDurability:
         type: integer
         minimum: 0
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      required: [target]
+    else:
+      not:
+        required: [target]
+
+  PickUpResult:
+    description: 荷物の取得結果。成功時は対象マスから荷物を除き、機体が運搬する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success]
+    properties:
+      kind:
+        const: pick_up
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
     if:
       properties:
         success:
