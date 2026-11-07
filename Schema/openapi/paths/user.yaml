@@ -4,6 +4,8 @@
       - user
     summary: 自分の情報を取得
     operationId: getMe
+    security:
+      - sessionCookie: []
     responses:
       "200":
         description: ユーザー情報
@@ -11,6 +13,8 @@
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/User"
+      "401":
+        description: 認証されていない
 
 /me/username:
   post:

@@ -12,7 +12,7 @@
         content:
           application/json:
             schema:
-              $ref: "../../openapi.yaml#/components/schemas/Program"
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
   put:
@@ -34,7 +34,7 @@
         content:
           application/json:
             schema:
-              $ref: "../../openapi.yaml#/components/schemas/Program"
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
 
@@ -54,25 +54,29 @@
           schema:
             oneOf:
               - type: object
+                additionalProperties: false
+                required: [tutorialId]
                 properties:
                   tutorialId:
                     type: string
                     description: チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる
               - type: object
+                additionalProperties: false
+                required: [matchId]
                 properties:
                   matchId:
                     type: string
                     description: 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。
     responses:
       "200":
-        description: SSEストリーム
+        description: SSEストリーム。result イベントの data は MatchResult 形式の JSON。
         content:
           text/event-stream:
             schema:
               type: string
-            example: |
+            example: |+
               event: result
-              data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opponent":1}}}
+              data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
 
 /program/create-with-vibe:
   post:
@@ -122,4 +126,4 @@
         content:
           application/json:
             schema:
-              $ref: "../../openapi.yaml#/components/schemas/Program"
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"

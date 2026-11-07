@@ -45,8 +45,9 @@ type Field = schema.FieldDefinition
 
 // Match defines model for Match.
 type Match struct {
-	FieldId string `json:"fieldId"`
-	Id      string `json:"id"`
+	EnemyName string `json:"enemyName"`
+	FieldId   string `json:"fieldId"`
+	Id        string `json:"id"`
 
 	// SelectedLayoutId 対戦作成時にサーバーが選んだ配置候補のID。
 	SelectedLayoutId string       `json:"selectedLayoutId"`
@@ -61,14 +62,36 @@ type PicolangProgram = schema.PicolangProgram
 
 // Program プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
 //
-// Examples: {"id":"program-1","name":"前進する","source":{"picolang":{"v0":{"program":{"main":{"body":{"hintId":"00000000-0000-4000-8000-000000000002","kind":"block","stmts":[{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000003","kind":"call"},{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000004","kind":"call"},{"hintId":"00000000-0000-4000-8000-000000000005","kind":"return","value":{"hintId":"00000000-0000-4000-8000-000000000006","kind":"literal","type":"unit","value":null}}]},"hintId":"00000000-0000-4000-8000-000000000001","kind":"function","params":[],"returnType":"unit"}}}},"picolangVersion":0}}
+// Examples: {"id":"program-1","isBattle":false,"name":"前進する","source":{"picolang":{"v0":{"program":{"main":{"body":{"hintId":"00000000-0000-4000-8000-000000000002","kind":"block","stmts":[{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000003","kind":"call"},{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000004","kind":"call"},{"hintId":"00000000-0000-4000-8000-000000000005","kind":"return","value":{"hintId":"00000000-0000-4000-8000-000000000006","kind":"literal","type":"unit","value":null}}]},"hintId":"00000000-0000-4000-8000-000000000001","kind":"function","params":[],"returnType":"unit"}}}},"picolangVersion":0},"tutorialID":"tutorial-1"}
 type Program struct {
 	// Id 保存したプログラムのID
 	Id *string `json:"id,omitempty"`
 
+	// IsBattle 対戦用プログラムなら true、チュートリアル用プログラムなら false
+	IsBattle bool `json:"isBattle"`
+
 	// Name プログラムの表示名
 	Name   string          `json:"name"`
 	Source PicolangProgram `json:"source"`
+
+	// TutorialID チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。
+	TutorialID *string `json:"tutorialID,omitempty"`
+}
+
+// SavedProgram 保存済みのプログラム
+type SavedProgram struct {
+	// Id 保存したプログラムのID
+	Id string `json:"id"`
+
+	// IsBattle 対戦用プログラムなら true、チュートリアル用プログラムなら false
+	IsBattle bool `json:"isBattle"`
+
+	// Name プログラムの表示名
+	Name   string          `json:"name"`
+	Source PicolangProgram `json:"source"`
+
+	// TutorialID チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。
+	TutorialID *string `json:"tutorialID,omitempty"`
 }
 
 // Stage defines model for Stage.
@@ -94,11 +117,11 @@ type User struct {
 // FieldId defines model for FieldId.
 type FieldId = string
 
-// MatchId defines model for MatchId.
-type MatchId = string
-
 // ProgramId defines model for ProgramId.
 type ProgramId = string
+
+// TutorialId defines model for TutorialId.
+type TutorialId = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiError
@@ -112,15 +135,8 @@ type Forbidden = ApiError
 // NotFound defines model for NotFound.
 type NotFound = ApiError
 
-// CreateMatchJSONBody defines parameters for CreateMatch.
-type CreateMatchJSONBody struct {
-	ProgramId string `json:"programId"`
-}
-
-// CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
-type CreateProgramWithVibeJSONBody struct {
-	Prompt string `json:"prompt"`
-}
+// SetBattleProgramsJSONBody defines parameters for SetBattlePrograms.
+type SetBattleProgramsJSONBody = []string
 
 // LoginCallbackParams defines parameters for LoginCallback.
 type LoginCallbackParams struct {
@@ -133,14 +149,52 @@ type LoginCallbackParams struct {
 	Error *string `form:"error,omitempty" json:"error,omitempty"`
 }
 
+// CreateMatchJSONBody defines parameters for CreateMatch.
+type CreateMatchJSONBody = []struct {
+	ProgramId string `json:"programId"`
+}
+
 // SetMyUsernameJSONBody defines parameters for SetMyUsername.
 type SetMyUsernameJSONBody struct {
 	// Username self と std は大文字・小文字を問わず名前空間の予約名のため使用不可
 	Username string `json:"username"`
 }
 
+// CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
+type CreateProgramWithVibeJSONBody struct {
+	// FieldId Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+	FieldId *string `json:"fieldId,omitempty"`
+
+	// IsBattle 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+	IsBattle *bool  `json:"isBattle,omitempty"`
+	Prompt   string `json:"prompt"`
+}
+
+// RunProgramJSONBody defines parameters for RunProgram.
+type RunProgramJSONBody struct {
+	union json.RawMessage
+}
+
+// RunProgramJSONBody0 defines parameters for RunProgram.
+type RunProgramJSONBody0 struct {
+	// TutorialId チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる
+	TutorialId string `json:"tutorialId"`
+}
+
+// RunProgramJSONBody1 defines parameters for RunProgram.
+type RunProgramJSONBody1 struct {
+	// MatchId 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。
+	MatchId string `json:"matchId"`
+}
+
+// SetBattleProgramsJSONRequestBody defines body for SetBattlePrograms for application/json ContentType.
+type SetBattleProgramsJSONRequestBody = SetBattleProgramsJSONBody
+
 // CreateMatchJSONRequestBody defines body for CreateMatch for application/json ContentType.
-type CreateMatchJSONRequestBody CreateMatchJSONBody
+type CreateMatchJSONRequestBody = CreateMatchJSONBody
+
+// SetMyUsernameJSONRequestBody defines body for SetMyUsername for application/json ContentType.
+type SetMyUsernameJSONRequestBody SetMyUsernameJSONBody
 
 // CreateProgramJSONRequestBody defines body for CreateProgram for application/json ContentType.
 type CreateProgramJSONRequestBody = Program
@@ -151,8 +205,8 @@ type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
 type UpdateProgramJSONRequestBody = Program
 
-// SetMyUsernameJSONRequestBody defines body for SetMyUsername for application/json ContentType.
-type SetMyUsernameJSONRequestBody SetMyUsernameJSONBody
+// RunProgramJSONRequestBody defines body for RunProgram for application/json ContentType.
+type RunProgramJSONRequestBody RunProgramJSONBody
 
 // Getter for additional properties for Tutorial. Returns the specified
 // element and whether it was found
@@ -320,29 +374,79 @@ func (a User) MarshalJSON() ([]byte, error) {
 	return json.Marshal(object)
 }
 
+// AsRunProgramJSONBody0 returns the union data inside the RunProgramJSONBody as a RunProgramJSONBody0
+func (t RunProgramJSONBody) AsRunProgramJSONBody0() (RunProgramJSONBody0, error) {
+	var body RunProgramJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRunProgramJSONBody0 overwrites any union data inside the RunProgramJSONBody as the provided RunProgramJSONBody0
+func (t *RunProgramJSONBody) FromRunProgramJSONBody0(v RunProgramJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRunProgramJSONBody0 performs a merge with any union data inside the RunProgramJSONBody, using the provided RunProgramJSONBody0
+func (t *RunProgramJSONBody) MergeRunProgramJSONBody0(v RunProgramJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsRunProgramJSONBody1 returns the union data inside the RunProgramJSONBody as a RunProgramJSONBody1
+func (t RunProgramJSONBody) AsRunProgramJSONBody1() (RunProgramJSONBody1, error) {
+	var body RunProgramJSONBody1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromRunProgramJSONBody1 overwrites any union data inside the RunProgramJSONBody as the provided RunProgramJSONBody1
+func (t *RunProgramJSONBody) FromRunProgramJSONBody1(v RunProgramJSONBody1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeRunProgramJSONBody1 performs a merge with any union data inside the RunProgramJSONBody, using the provided RunProgramJSONBody1
+func (t *RunProgramJSONBody) MergeRunProgramJSONBody1(v RunProgramJSONBody1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t RunProgramJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *RunProgramJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GetBattlePrograms 対戦用のプログラム設定を取得
+	// (GET /battle/program)
+	GetBattlePrograms(ctx *echo.Context) error
+	// SetBattlePrograms 対戦用のプログラムを設定
+	// (PUT /battle/program)
+	SetBattlePrograms(ctx *echo.Context) error
 	// GetField フィールドを取得
 	// (GET /field/{fieldId})
 	GetField(ctx *echo.Context, fieldId FieldId) error
-	// CreateMatch ランク対戦を作成し、シミュレーションを開始
-	// (POST /field/{fieldId}/match)
-	CreateMatch(ctx *echo.Context, fieldId FieldId) error
-	// ListPrograms フィールドのプログラム一覧を取得
-	// (GET /field/{fieldId}/program)
-	ListPrograms(ctx *echo.Context, fieldId FieldId) error
-	// CreateProgram プログラムを作成
-	// (POST /field/{fieldId}/program)
-	CreateProgram(ctx *echo.Context, fieldId FieldId) error
-	// CreateProgramWithVibe 自然言語からプログラムを生成
-	// (POST /field/{fieldId}/program/create-with-vibe)
-	CreateProgramWithVibe(ctx *echo.Context, fieldId FieldId) error
-	// GetProgram プログラムを取得
-	// (GET /field/{fieldId}/program/{programId})
-	GetProgram(ctx *echo.Context, fieldId FieldId, programId ProgramId) error
-	// UpdateProgram プログラムを更新
-	// (PUT /field/{fieldId}/program/{programId})
-	UpdateProgram(ctx *echo.Context, fieldId FieldId, programId ProgramId) error
 	// Login Google ログインを開始
 	// (GET /login)
 	Login(ctx *echo.Context) error
@@ -352,15 +456,30 @@ type ServerInterface interface {
 	// Logout ログアウト
 	// (POST /logout)
 	Logout(ctx *echo.Context) error
-	// MatchEvents 対戦結果を購読
-	// (GET /match/{matchId}/events)
-	MatchEvents(ctx *echo.Context, matchId MatchId) error
+	// CreateMatch ランク対戦を作成し、シミュレーションを開始
+	// (POST /match)
+	CreateMatch(ctx *echo.Context) error
 	// GetMe 自分の情報を取得
 	// (GET /me)
 	GetMe(ctx *echo.Context) error
 	// SetMyUsername ユーザー名を一度だけ設定
 	// (POST /me/username)
 	SetMyUsername(ctx *echo.Context) error
+	// CreateProgram プログラムを作成
+	// (POST /program)
+	CreateProgram(ctx *echo.Context) error
+	// CreateProgramWithVibe 自然言語からプログラムを生成
+	// (POST /program/create-with-vibe)
+	CreateProgramWithVibe(ctx *echo.Context) error
+	// GetProgram プログラムを取得
+	// (GET /program/{programId})
+	GetProgram(ctx *echo.Context, programId ProgramId) error
+	// UpdateProgram プログラムを更新
+	// (PUT /program/{programId})
+	UpdateProgram(ctx *echo.Context, programId ProgramId) error
+	// RunProgram プログラムを実行
+	// (POST /program/{programId}/run)
+	RunProgram(ctx *echo.Context, programId ProgramId) error
 	// GetRanking ランキングを取得
 	// (GET /ranking)
 	GetRanking(ctx *echo.Context) error
@@ -370,11 +489,32 @@ type ServerInterface interface {
 	// GetTutorial チュートリアルのタイトル、説明、ステージを取得
 	// (GET /tutorial/{tutorialId})
 	GetTutorial(ctx *echo.Context, tutorialId string) error
+	// ListTutorialPrograms チュートリアルでユーザーが作ったプログラム一覧を取得
+	// (GET /tutorial/{tutorialId}/program)
+	ListTutorialPrograms(ctx *echo.Context, tutorialId TutorialId) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GetBattlePrograms converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBattlePrograms(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetBattlePrograms(ctx)
+	return err
+}
+
+// SetBattlePrograms converts echo context to params.
+func (w *ServerInterfaceWrapper) SetBattlePrograms(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetBattlePrograms(ctx)
+	return err
 }
 
 // GetField converts echo context to params.
@@ -390,118 +530,6 @@ func (w *ServerInterfaceWrapper) GetField(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetField(ctx, fieldId)
-	return err
-}
-
-// CreateMatch converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateMatch(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateMatch(ctx, fieldId)
-	return err
-}
-
-// ListPrograms converts echo context to params.
-func (w *ServerInterfaceWrapper) ListPrograms(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListPrograms(ctx, fieldId)
-	return err
-}
-
-// CreateProgram converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateProgram(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateProgram(ctx, fieldId)
-	return err
-}
-
-// CreateProgramWithVibe converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateProgramWithVibe(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateProgramWithVibe(ctx, fieldId)
-	return err
-}
-
-// GetProgram converts echo context to params.
-func (w *ServerInterfaceWrapper) GetProgram(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// ------------- Path parameter "programId" -------------
-	var programId ProgramId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetProgram(ctx, fieldId, programId)
-	return err
-}
-
-// UpdateProgram converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateProgram(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "fieldId" -------------
-	var fieldId FieldId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "fieldId", ctx.Param("fieldId"), &fieldId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter fieldId: %s", err))
-	}
-
-	// ------------- Path parameter "programId" -------------
-	var programId ProgramId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateProgram(ctx, fieldId, programId)
 	return err
 }
 
@@ -555,19 +583,12 @@ func (w *ServerInterfaceWrapper) Logout(ctx *echo.Context) error {
 	return err
 }
 
-// MatchEvents converts echo context to params.
-func (w *ServerInterfaceWrapper) MatchEvents(ctx *echo.Context) error {
+// CreateMatch converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateMatch(ctx *echo.Context) error {
 	var err error
-	// ------------- Path parameter "matchId" -------------
-	var matchId MatchId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "matchId", ctx.Param("matchId"), &matchId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter matchId: %s", err))
-	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.MatchEvents(ctx, matchId)
+	err = w.Handler.CreateMatch(ctx)
 	return err
 }
 
@@ -586,6 +607,72 @@ func (w *ServerInterfaceWrapper) SetMyUsername(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SetMyUsername(ctx)
+	return err
+}
+
+// CreateProgram converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateProgram(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateProgram(ctx)
+	return err
+}
+
+// CreateProgramWithVibe converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateProgramWithVibe(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateProgramWithVibe(ctx)
+	return err
+}
+
+// GetProgram converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProgram(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "programId" -------------
+	var programId ProgramId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetProgram(ctx, programId)
+	return err
+}
+
+// UpdateProgram converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateProgram(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "programId" -------------
+	var programId ProgramId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateProgram(ctx, programId)
+	return err
+}
+
+// RunProgram converts echo context to params.
+func (w *ServerInterfaceWrapper) RunProgram(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "programId" -------------
+	var programId ProgramId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RunProgram(ctx, programId)
 	return err
 }
 
@@ -620,6 +707,22 @@ func (w *ServerInterfaceWrapper) GetTutorial(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetTutorial(ctx, tutorialId)
+	return err
+}
+
+// ListTutorialPrograms converts echo context to params.
+func (w *ServerInterfaceWrapper) ListTutorialPrograms(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "tutorialId" -------------
+	var tutorialId TutorialId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tutorialId", ctx.Param("tutorialId"), &tutorialId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tutorialId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListTutorialPrograms(ctx, tutorialId)
 	return err
 }
 
@@ -670,21 +773,23 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
+	router.GET(options.BaseURL+"/battle/program", wrapper.GetBattlePrograms, options.OperationMiddlewares["getBattlePrograms"]...)
+	router.PUT(options.BaseURL+"/battle/program", wrapper.SetBattlePrograms, options.OperationMiddlewares["setBattlePrograms"]...)
 	router.GET(options.BaseURL+"/field/:fieldId", wrapper.GetField, options.OperationMiddlewares["getField"]...)
-	router.POST(options.BaseURL+"/field/:fieldId/match", wrapper.CreateMatch, options.OperationMiddlewares["createMatch"]...)
-	router.GET(options.BaseURL+"/field/:fieldId/program", wrapper.ListPrograms, options.OperationMiddlewares["listPrograms"]...)
-	router.POST(options.BaseURL+"/field/:fieldId/program", wrapper.CreateProgram, options.OperationMiddlewares["createProgram"]...)
-	router.GET(options.BaseURL+"/field/:fieldId/program/:programId", wrapper.GetProgram, options.OperationMiddlewares["getProgram"]...)
-	router.PUT(options.BaseURL+"/field/:fieldId/program/:programId", wrapper.UpdateProgram, options.OperationMiddlewares["updateProgram"]...)
-	router.POST(options.BaseURL+"/field/:fieldId/program/create-with-vibe", wrapper.CreateProgramWithVibe, options.OperationMiddlewares["createProgramWithVibe"]...)
 	router.GET(options.BaseURL+"/login", wrapper.Login, options.OperationMiddlewares["login"]...)
 	router.GET(options.BaseURL+"/login/callback", wrapper.LoginCallback, options.OperationMiddlewares["loginCallback"]...)
 	router.POST(options.BaseURL+"/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
-	router.GET(options.BaseURL+"/match/:matchId/events", wrapper.MatchEvents, options.OperationMiddlewares["matchEvents"]...)
+	router.POST(options.BaseURL+"/match", wrapper.CreateMatch, options.OperationMiddlewares["createMatch"]...)
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
 	router.POST(options.BaseURL+"/me/username", wrapper.SetMyUsername, options.OperationMiddlewares["setMyUsername"]...)
+	router.POST(options.BaseURL+"/program", wrapper.CreateProgram, options.OperationMiddlewares["createProgram"]...)
+	router.POST(options.BaseURL+"/program/create-with-vibe", wrapper.CreateProgramWithVibe, options.OperationMiddlewares["createProgramWithVibe"]...)
+	router.GET(options.BaseURL+"/program/:programId", wrapper.GetProgram, options.OperationMiddlewares["getProgram"]...)
+	router.PUT(options.BaseURL+"/program/:programId", wrapper.UpdateProgram, options.OperationMiddlewares["updateProgram"]...)
+	router.POST(options.BaseURL+"/program/:programId/run", wrapper.RunProgram, options.OperationMiddlewares["runProgram"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
 	router.GET(options.BaseURL+"/tutorial", wrapper.ListTutorials, options.OperationMiddlewares["listTutorials"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId", wrapper.GetTutorial, options.OperationMiddlewares["getTutorial"]...)
+	router.GET(options.BaseURL+"/tutorial/:tutorialId/program", wrapper.ListTutorialPrograms, options.OperationMiddlewares["listTutorialPrograms"]...)
 
 }

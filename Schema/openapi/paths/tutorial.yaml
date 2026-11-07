@@ -42,6 +42,8 @@
       - tutorial
     summary: チュートリアルでユーザーが作ったプログラム一覧を取得
     operationId: listTutorialPrograms
+    security:
+      - sessionCookie: []
     parameters:
       - $ref: "../../openapi.yaml#/components/parameters/TutorialId"
     responses:
@@ -52,4 +54,6 @@
             schema:
               type: array
               items:
-                $ref: "../../openapi.yaml#/components/schemas/Program"
+                $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "401":
+        description: 認証されていない

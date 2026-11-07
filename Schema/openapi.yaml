@@ -216,6 +216,12 @@ components:
                             type: unit
                             value: null
 
+    SavedProgram:
+      description: 保存済みのプログラム
+      allOf:
+        - $ref: "#/components/schemas/Program"
+        - required: [id]
+
     Match:
       type: object
       required: [id, fieldId, selectedLayoutId, enemyName]

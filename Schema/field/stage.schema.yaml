@@ -15,19 +15,19 @@ properties:
     description: 実行前に提示する複数のフィールド
     items:
       description: ステージの候補となる一つのフィールド
-      $ref: './field.schema.yaml'
+      $ref: "./field.schema.yaml"
 
   clearCondition:
     description: 全ての候補フィールドに共通するクリア条件
-    $ref: '#/$defs/ClearCondition'
+    $ref: "#/$defs/ClearCondition"
 
 $defs:
   ClearCondition:
     description: ステージのクリアに必要な条件
     oneOf:
-      - $ref: '#/$defs/ReachGoal'
+      - $ref: "#/$defs/ReachGoal"
         description: ゴールへの到達を求める条件
-      - $ref: '#/$defs/VisitCheckpoints'
+      - $ref: "#/$defs/VisitCheckpoints"
         description: チェックポイントの順次通過を求める条件
 
   ReachGoal:

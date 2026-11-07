@@ -11,6 +11,8 @@
       抽選結果を取得・変更する独立したAPIは設けない。
       レートは対戦を申し込んだ側だけ変動する。
     operationId: createMatch
+    security:
+      - sessionCookie: []
     requestBody:
       required: true
       content:
@@ -60,6 +62,11 @@
             items:
               type: string
               description: プログラムのID
+    responses:
+      "204":
+        description: 対戦用のプログラム設定を保存した
+      "401":
+        description: 認証されていない
   get:
     tags:
       - battle
