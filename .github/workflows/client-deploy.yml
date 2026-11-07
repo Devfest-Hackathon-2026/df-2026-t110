@@ -1,0 +1,60 @@
+name: Deploy (client)
+
+# Deploys a main commit once CI has passed on it, so the checks run only once.
+on:
+  workflow_run:
+    workflows:
+      - CI (client)
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Deploy only the latest main; a newer push supersedes an in-flight one.
+concurrency:
+  group: client-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # `branches` also matches CI runs of fork PRs from a branch named main, so only pushes deploy.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Variables are managed by infra/github_actions.tf; until it is applied, only the build runs.
+      DEPLOY_ENABLED: ${{ vars.CLIENT_BUCKET != '' }}
+      BUCKET: gs://${{ vars.CLIENT_BUCKET }}
+    steps:
+      # github.sha is main's latest commit, not necessarily the one CI checked.
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: node
+      - name: Install dependencies
+        run: corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
+      - name: Build
+        run: corepack pnpm -C Client build
+      - name: Authenticate to Google Cloud
+        if: env.DEPLOY_ENABLED == 'true'
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+        if: env.DEPLOY_ENABLED == 'true'
+      # index.html goes last so it never references assets that are not uploaded yet.
+      # Old hashed assets are kept for pages that are still open with the previous index.html.
+      - name: Upload assets
+        if: env.DEPLOY_ENABLED == 'true'
+        run: gcloud storage rsync Client/dist "$BUCKET" --recursive --exclude='^index\.html$'
+      - name: Upload index.html
+        if: env.DEPLOY_ENABLED == 'true'
+        run: gcloud storage cp Client/dist/index.html "$BUCKET/index.html"

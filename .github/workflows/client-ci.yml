@@ -1,0 +1,44 @@
+name: CI (client)
+
+on:
+  push:
+    paths:
+      - 'Client/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'mise.toml'
+      - '!Client/README.md'
+      - '.github/workflows/client-ci.yml'
+      - '.github/workflows/actions.lock'
+  pull_request:
+    paths:
+      - 'Client/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'mise.toml'
+      - '!Client/README.md'
+      - '.github/workflows/client-ci.yml'
+      - '.github/workflows/actions.lock'
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: node
+      - name: Install dependencies
+        run: corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
+      - name: Lint
+        run: corepack pnpm -C Client lint
+      - name: Test
+        run: corepack pnpm -C Client test
+      # type-check rather than build: the deploy builds anyway, and this is all a PR needs.
+      - name: Type check
+        run: corepack pnpm -C Client type-check

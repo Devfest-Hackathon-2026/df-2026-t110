@@ -6,6 +6,12 @@ Server は 1 つの Go バイナリとして Cloud Run 上で stateless に動�
 
 レイヤーは `infra` → `usecase` → `domain` の一方向依存とし、実装の組み立ては `cmd` で行う (詳細は `Server/AGENTS.md`)。
 
+## インフラ構成図
+
+構成図は `Docs/infra-architecture.drawio` (draw.io) にあり、Terraform (`infra/`) で管理しているリソースだけを描いている。
+
+- TODO: アイコンは draw.io の gcp2 ライブラリ由来で、旧デザイン (単色の青) のままである。現行の公式アイコン (https://cloud.google.com/icons) に差し替える。
+
 ## simulation
 
 simulation (`game/hub` の `Hub.Run`) は、1 回の実行の中だけで完結する計算である。Board は単回利用で、実行は `MaxTicks` / `MaxResumes` で上限が決まっており、実行間で状態を共有しない。そのため同一ユーザー間の同期制御を必要とせず、stateless な Cloud Run にそのまま載せられ、他のコンポーネントから切り出すのも容易である。
