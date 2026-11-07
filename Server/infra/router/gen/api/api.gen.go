@@ -81,11 +81,21 @@ type Tutorial struct {
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
-// TutorialDetail チュートリアルのタイトル、説明、ステージを含む詳細情報
+// TutorialDetail 教材詳細ページに表示する目標、課題、案内文とステージ
 type TutorialDetail struct {
-	// Description チュートリアルの内容や取り組み方の説明のmarkdown
-	Description string `json:"description"`
-	Stage       Stage  `json:"stage"`
+	// Description 従来の説明文。goal がない場合だけ章の目標欄にプレーンテキストとして表示する
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Description *string `json:"description,omitempty"`
+
+	// Goal 章の目標としてタイトルの下に表示する短い文
+	Goal *string `json:"goal,omitempty"`
+
+	// Guide 案内役が順番に表示する説明文。未指定または空配列ならクライアントの案内文を使う
+	Guide *[]string `json:"guide,omitempty"`
+
+	// Lesson 「この課題で考えること」に表示する本文
+	Lesson *string `json:"lesson,omitempty"`
+	Stage  Stage   `json:"stage"`
 
 	// Title チュートリアルのタイトル
 	Title string `json:"title"`

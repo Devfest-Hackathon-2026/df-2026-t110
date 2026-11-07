@@ -1,7 +1,7 @@
 const base = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 export interface TutorialRecord {
-  id: string
+  id?: string
   title: string
   fieldId?: string
   stage?: Record<string, unknown>
