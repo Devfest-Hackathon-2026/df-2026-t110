@@ -1,0 +1,80 @@
+/match:
+  post:
+    tags:
+      - battle
+    summary: ランク対戦を作成し、シミュレーションを開始
+    description: |
+      自分のプログラムで対戦を申し込む。ロボットが複数あるので、それぞれに対戦用のプログラムのidを指定する。
+      サーバーは候補配置を1つ選び、自分以外のユーザーからランダムに相手を1人選んで、
+      そのユーザーが登録している対戦用プログラムと対戦させる。
+      シミュレーションはサーバーで実行し、結果は runProgram で受け取る。
+      抽選結果を取得・変更する独立したAPIは設けない。
+      レートは対戦を申し込んだ側だけ変動する。
+    operationId: createMatch
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: object
+              required: [programId]
+              properties:
+                programId:
+                  type: string
+            minItems: 1
+    responses:
+      "201":
+        description: 作成した対戦と抽選結果。シミュレーション中のため status は running
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Match"
+      "401":
+        description: 認証されていない
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
+        description: DisplayName が設定されていないためランク対戦に参加できない
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "409":
+        $ref: "../../openapi.yaml#/components/responses/Conflict"
+        description: このフィールドに対戦相手の候補がいない
+
+/battle/program:
+  put:
+    tags:
+      - battle
+    summary: 対戦用のプログラムを設定
+    description: 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを設定する。
+    operationId: setBattlePrograms
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              description: プログラムのID
+  get:
+    tags:
+      - battle
+    summary: 対戦用のプログラム設定を取得
+    description: 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを取得する。
+    operationId: getBattlePrograms
+    security:
+      - sessionCookie: []
+    responses:
+      "200":
+        description: 対戦用のプログラム設定
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                description: プログラムのID

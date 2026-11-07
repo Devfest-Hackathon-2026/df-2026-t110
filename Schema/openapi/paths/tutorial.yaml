@@ -1,0 +1,55 @@
+/tutorial:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアル一覧を取得
+    operationId: listTutorials
+    responses:
+      "200":
+        description: チュートリアル一覧
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "../../openapi.yaml#/components/schemas/Tutorial"
+
+/tutorial/{tutorialId}:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアルのタイトル、説明、ステージを取得
+    operationId: getTutorial
+    parameters:
+      - name: tutorialId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: チュートリアルのタイトル、説明、ステージ
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/TutorialDetail"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+
+/tutorial/{tutorialId}/program:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアルでユーザーが作ったプログラム一覧を取得
+    operationId: listTutorialPrograms
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/TutorialId"
+    responses:
+      "200":
+        description: プログラム一覧
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "../../openapi.yaml#/components/schemas/Program"

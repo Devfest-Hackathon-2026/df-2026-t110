@@ -1,0 +1,125 @@
+/program/{programId}:
+  get:
+    tags:
+      - program
+    summary: プログラムを取得
+    operationId: getProgram
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
+    responses:
+      "200":
+        description: プログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Program"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+  put:
+    tags:
+      - program
+    summary: プログラムを更新
+    operationId: updateProgram
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../../openapi.yaml#/components/schemas/Program"
+    responses:
+      "200":
+        description: 更新したプログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Program"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+
+/program/{programId}/run:
+  post:
+    tags:
+      - program
+    summary: プログラムを実行
+    description: 指定されたプログラムを実行し、その実行結果をSSEで配信する。
+    operationId: runProgram
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: object
+                properties:
+                  tutorialId:
+                    type: string
+                    description: チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる
+              - type: object
+                properties:
+                  matchId:
+                    type: string
+                    description: 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。
+    responses:
+      "200":
+        description: SSEストリーム
+        content:
+          text/event-stream:
+            schema:
+              type: string
+            example: |
+              event: result
+              data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opponent":1}}}
+
+/program/create-with-vibe:
+  post:
+    tags:
+      - program
+    summary: 自然言語からプログラムを生成
+    operationId: createProgramWithVibe
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [prompt]
+            properties:
+              prompt:
+                type: string
+              fieldId:
+                type: string
+                description: Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+              isBattle:
+                type: boolean
+                description: 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+    responses:
+      "201":
+        description: 生成したプログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Program"
+
+/program:
+  post:
+    tags:
+      - program
+    summary: プログラムを作成
+    operationId: createProgram
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../../openapi.yaml#/components/schemas/Program"
+    responses:
+      "201":
+        description: 作成したプログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Program"

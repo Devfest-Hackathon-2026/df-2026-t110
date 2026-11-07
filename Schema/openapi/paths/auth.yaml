@@ -1,0 +1,69 @@
+/login:
+  get:
+    tags:
+      - auth
+    summary: Google ログインを開始
+    description: |
+      ブラウザの画面遷移で呼び出す。
+      ログイン試行を紐づける cookie を発行し、Google の認可画面へリダイレクトする。
+    operationId: login
+    responses:
+      "302":
+        description: Google の認可画面へリダイレクト
+        headers:
+          Location:
+            $ref: "../../openapi.yaml#/components/headers/Location"
+          Set-Cookie:
+            $ref: "../../openapi.yaml#/components/headers/SetCookie"
+
+/login/callback:
+  get:
+    tags:
+      - auth
+    summary: Google ログインを完了
+    description: |
+      Google の認可後のリダイレクト先。Google Cloud にリダイレクト URI として登録する。
+      state、認可コード、ID トークンを検証してセッション cookie を発行し、クライアントの画面へリダイレクトする。
+    operationId: loginCallback
+    parameters:
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: query
+        description: 認可された場合に Google が付与する認可コード
+        schema:
+          type: string
+      - name: error
+        in: query
+        description: 認可されなかった場合に Google が付与するエラーコード
+        schema:
+          type: string
+    responses:
+      "302":
+        description: ログインに成功し、クライアントの画面へリダイレクト
+        headers:
+          Location:
+            $ref: "../../openapi.yaml#/components/headers/Location"
+          Set-Cookie:
+            $ref: "../../openapi.yaml#/components/headers/SetCookie"
+      "400":
+        $ref: "../../openapi.yaml#/components/responses/BadRequest"
+
+/logout:
+  post:
+    tags:
+      - auth
+    summary: ログアウト
+    description: セッション cookie を削除する。
+    operationId: logout
+    security:
+      - sessionCookie: []
+    responses:
+      "204":
+        description: ログアウトした
+        headers:
+          Set-Cookie:
+            $ref: "../../openapi.yaml#/components/headers/SetCookie"

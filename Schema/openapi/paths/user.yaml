@@ -1,0 +1,50 @@
+/me:
+  get:
+    tags:
+      - user
+    summary: 自分の情報を取得
+    operationId: getMe
+    responses:
+      "200":
+        description: ユーザー情報
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/User"
+
+/me/username:
+  post:
+    tags:
+      - user
+    summary: ユーザー名を一度だけ設定
+    operationId: setMyUsername
+    security:
+      - sessionCookie: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [username]
+            properties:
+              username:
+                type: string
+                description: self と std は大文字・小文字を問わず名前空間の予約名のため使用不可
+                minLength: 1
+                maxLength: 32
+                pattern: "^[A-Za-z0-9_-]{1,32}$"
+                not:
+                  pattern: "^([sS][eE][lL][fF]|[sS][tT][dD])$"
+    responses:
+      "204":
+        description: ユーザー名を設定した
+      "400":
+        description: 不正なユーザー名またはリクエスト
+      "401":
+        description: 認証されていない
+      "409":
+        description: ユーザー名が使用済み、または既に設定済み
+      "501":
+        description: ユーザー管理が設定されていない
