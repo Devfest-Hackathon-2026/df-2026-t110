@@ -264,6 +264,11 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: b.searchNow(id)}
 		case actions.SearchFrontAction:
 			b.controls[id] = readyControl{value: b.searchFront(id)}
+		case actions.DistanceAction:
+			if !a.Target.Valid() {
+				return fmt.Errorf("invalid distance target %q", a.Target)
+			}
+			b.controls[id] = readyControl{value: values.IntegerValue{Integer: b.distance(id, a.Target)}}
 		case actions.WaitAction:
 			if a.Integer <= 0 {
 				b.controls[id] = readyControl{value: values.UnitValue{}}
