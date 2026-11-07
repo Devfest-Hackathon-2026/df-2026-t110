@@ -187,7 +187,7 @@ paths:
                 type: string
               example: |
                 event: result
-                data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opposite":1}}}
+                data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opponent":1}}}
         "401":
           description: 認証されていない
         "404":
@@ -436,12 +436,12 @@ components:
         score:
           type: object
           description: 両プレイヤーの最終得点。同点の場合は引き分け
-          required: [player, opposite]
+          required: [player, opponent]
           properties:
             player:
               type: number
               description: 対戦を申し込んだプレイヤーの最終得点
-            opposite:
+            opponent:
               type: number
               description: 対戦相手の最終得点
 
