@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - 'Schema/**'
+      - 'Client/package.json'
+      - 'Client/scripts/generate-api.mjs'
+      - 'Client/src/api/schema.d.ts'
       - 'Server/infra/router/gen/**'
       - 'Server/oapi-codegen*.yaml'
       - 'Server/sqlc.yaml'
@@ -11,11 +14,17 @@ on:
       - 'Server/infra/repo/gen/**'
       - 'Server/game/robot/picolang_bot/parse/**'
       - 'mise.toml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/codegen-ci.yml'
       - '.github/workflows/actions.lock'
   pull_request:
     paths:
       - 'Schema/**'
+      - 'Client/package.json'
+      - 'Client/scripts/generate-api.mjs'
+      - 'Client/src/api/schema.d.ts'
       - 'Server/infra/router/gen/**'
       - 'Server/oapi-codegen*.yaml'
       - 'Server/sqlc.yaml'
@@ -23,6 +32,9 @@ on:
       - 'Server/infra/repo/gen/**'
       - 'Server/game/robot/picolang_bot/parse/**'
       - 'mise.toml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/codegen-ci.yml'
       - '.github/workflows/actions.lock'
 
@@ -35,6 +47,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
+      - name: Install client dependencies
+        run: corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
       - name: Check generated code
         run: |
           mise run --force generate

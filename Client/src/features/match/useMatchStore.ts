@@ -13,7 +13,7 @@ import {
   type ProgramRecord,
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
-import { guestFieldIds, loadGuestPrograms, runGuestProgram, saveGuestProgram } from './guestMatch.ts'
+import { parseBoardEventHistory, replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 export const useMatchStore = defineStore('match', () => {
   const fieldId = ref('')
@@ -21,10 +21,10 @@ export const useMatchStore = defineStore('match', () => {
   const selectedProgramId = ref('')
   const match = ref<MatchRecord | null>(null)
   const result = ref<MatchResult | null>(null)
+  const frames = ref<ReplayFrame[]>([])
+  const importedBoardEvents = ref(false)
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
-  const guestMode = computed(() => authStatus.value === 'guest')
-  const isGuestMatch = ref(false)
   const busy = ref(false)
   const error = ref('')
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
@@ -44,7 +44,8 @@ export const useMatchStore = defineStore('match', () => {
     selectedProgramId.value = ''
     match.value = null
     result.value = null
-    isGuestMatch.value = false
+    frames.value = []
+    importedBoardEvents.value = false
     error.value = ''
   }
 
@@ -61,12 +62,7 @@ export const useMatchStore = defineStore('match', () => {
 
   async function loadPrograms(): Promise<void> {
     if (!fieldId.value) return
-    if (guestMode.value) {
-      programs.value = loadGuestPrograms(fieldId.value)
-      if (!programs.value.some((item) => item.id === selectedProgramId.value)) selectedProgramId.value = ''
-      error.value = ''
-      return
-    }
+    if (authStatus.value !== 'signed-in') return
     loadController?.abort()
     loadController = new AbortController()
     busy.value = true
@@ -82,13 +78,11 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function saveProgram(name: string, source: PicoProgram): Promise<void> {
-    if (!fieldId.value || !name.trim()) return
+    if (authStatus.value !== 'signed-in' || !fieldId.value || !name.trim()) return
     busy.value = true
     error.value = ''
     try {
-      const saved = guestMode.value
-        ? saveGuestProgram(fieldId.value, name, source)
-        : await createProgram(fieldId.value, { name: name.trim(), source })
+      const saved = await createProgram(fieldId.value, { name: name.trim(), source })
       programs.value = [...programs.value, saved]
       selectedProgramId.value = saved.id ?? ''
     } catch (cause) {
@@ -99,35 +93,14 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function startMatch(): Promise<void> {
-    if (!fieldId.value || !selectedProgramId.value) return
+    if (authStatus.value !== 'signed-in' || !fieldId.value || !selectedProgramId.value) return
     busy.value = true
     error.value = ''
     try {
-      if (guestMode.value) {
-        if (!guestFieldIds().includes(fieldId.value)) throw new Error('サンプルフィールドを選んでください。')
-        const program = programs.value.find((item) => item.id === selectedProgramId.value)
-        if (!program) throw new Error('プログラムを選び直してください。')
-        isGuestMatch.value = true
-        match.value = {
-          id: `guest-${crypto.randomUUID()}`,
-          fieldId: fieldId.value,
-          selectedLayoutId: fieldId.value,
-          status: 'running',
-        }
-        const started = Date.now()
-        const reached = await runGuestProgram(fieldId.value, program.source)
-        await new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, 850 - (Date.now() - started))))
-        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opponent: 0 } } }
-        return
-      }
       const created = await createMatch(fieldId.value, selectedProgramId.value)
       watchMatch(created.id, created)
       window.history.pushState(null, '', `/matches/${encodeURIComponent(created.id)}`)
     } catch (cause) {
-      if (isGuestMatch.value) {
-        match.value = null
-        isGuestMatch.value = false
-      }
       error.value = errorText(cause)
     } finally {
       busy.value = false
@@ -136,13 +109,30 @@ export const useMatchStore = defineStore('match', () => {
 
   function watchMatch(id: string, record?: MatchRecord): void {
     stopEvents?.()
+    importedBoardEvents.value = false
+    if (import.meta.env.DEV && id === 'demo') {
+      void import('./replayDemo.ts').then(({ replayDemoHistory }) => {
+        if (importedBoardEvents.value) return
+        match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'sample' }
+        result.value = { history: replayDemoHistory, summary: { score: { player: 1, opponent: 0 } } }
+        frames.value = replayFrames(replayDemoHistory)
+        error.value = ''
+      })
+      return
+    }
     match.value = record ?? { id, fieldId: '', selectedLayoutId: '' }
     result.value = null
+    frames.value = []
     error.value = ''
     stopEvents = subscribeMatchResult(
       id,
       (received) => {
         result.value = received
+        try {
+          frames.value = replayFrames(received.history)
+        } catch (cause) {
+          error.value = cause instanceof Error ? cause.message : '再生用の履歴を読み取れませんでした。'
+        }
         stopEvents?.()
         stopEvents = undefined
       },
@@ -150,6 +140,19 @@ export const useMatchStore = defineStore('match', () => {
         error.value = message
       },
     )
+  }
+
+  function importBoardEvents(json: string): void {
+    const history = parseBoardEventHistory(json)
+    const nextFrames = replayFrames(history)
+    if (nextFrames.length === 0) throw new Error('再生できるfieldイベントがありません。')
+    stopEvents?.()
+    stopEvents = undefined
+    match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'Boardイベント' }
+    result.value = { history, summary: { score: { player: 0, opponent: 0 } } }
+    frames.value = nextFrames
+    importedBoardEvents.value = true
+    error.value = ''
   }
 
   function reconnect(): void {
@@ -162,10 +165,10 @@ export const useMatchStore = defineStore('match', () => {
     selectedProgramId,
     match,
     result,
+    frames,
+    importedBoardEvents,
     user,
     authStatus,
-    guestMode,
-    isGuestMatch,
     busy,
     error,
     phase,
@@ -175,6 +178,7 @@ export const useMatchStore = defineStore('match', () => {
     saveProgram,
     startMatch,
     watchMatch,
+    importBoardEvents,
     reconnect,
     dispose,
   }

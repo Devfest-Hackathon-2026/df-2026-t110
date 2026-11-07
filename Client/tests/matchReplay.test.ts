@@ -1,7 +1,45 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { replayFrames } from '../src/features/match/matchReplay.ts'
-import { parseMatch, parseMatchResult, parseMatchUser } from '../src/features/match/matchApi.ts'
+import { readFileSync } from 'node:fs'
+import {
+  parseBoardEventHistory,
+  replayFrameToStage,
+  replayFrames,
+} from '../src/features/match/matchReplay.ts'
+import {
+  getMe,
+  parseIapIdentity,
+  parseMatch,
+  parseMatchResult,
+  parseMatchUser,
+} from '../src/features/match/matchApi.ts'
+
+test('Go BoardOutput events can be imported for replay', () => {
+  const initial = {
+    type: 'field',
+    tick: 0,
+    state: {
+      kind: 'initial',
+      terrain: [[{ type: 'land', kind: { type: 'plain' } }, { type: 'rock' }]],
+      robots: [{ id: 'a', position: { x: 0, y: 0 }, direction: 'east' }],
+    },
+  }
+  const update = {
+    type: 'field',
+    tick: 1,
+    state: {
+      kind: 'update',
+      actions: [{ kind: 'drill', robotId: 'a', success: true, target: { x: 1, y: 0 }, drillDurability: 2 }],
+    },
+  }
+  const history = parseBoardEventHistory(
+    JSON.stringify([{ Events: [initial] }, { Decision: { RobotID: 'a' }, Events: [update] }]),
+  )
+  const frames = replayFrames(history)
+  assert.equal(frames.length, 2)
+  assert.equal(frames[1].terrain[0][1].type, 'land')
+  assert.throws(() => parseBoardEventHistory(JSON.stringify([{ Events: [update] }])), /初期盤面/)
+})
 
 test('field history replays movement, rotation and removal in order', () => {
   const frames = replayFrames([
@@ -125,4 +163,67 @@ test('account response accepts an authenticated user without a registered name',
   })
   assert.deepEqual(parseMatchUser({ name: 'Ada' }), { id: undefined, name: 'Ada' })
   assert.throws(() => parseMatchUser({ name: 12 }))
+})
+
+test('IAP identity maps the Google account email and subject to the account display', () => {
+  assert.deepEqual(
+    parseIapIdentity({
+      email: 'accounts.google.com:ada@example.com',
+      sub: 'accounts.google.com:google-subject',
+    }),
+    { id: 'google-subject', name: 'ada@example.com' },
+  )
+  assert.throws(() => parseIapIdentity({ email: 'ada@example.com', sub: 'google-subject' }))
+})
+
+test('deployed account falls back to IAP identity while /api/me is unavailable', async () => {
+  const originalFetch = globalThis.fetch
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const calls: string[] = []
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { location: { origin: 'https://server-639320660675.asia-northeast1.run.app' } },
+  })
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls.push(String(input))
+    if (calls.length === 1) return new Response('{}', { status: 501 })
+    return new Response(
+      JSON.stringify({
+        email: 'accounts.google.com:ada@example.com',
+        sub: 'accounts.google.com:google-subject',
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    )
+  }) as typeof fetch
+  try {
+    assert.deepEqual(await getMe(), { id: 'google-subject', name: 'ada@example.com' })
+    assert.deepEqual(calls, [
+      '/api/me',
+      'https://server-639320660675.asia-northeast1.run.app/account?gcp-iap-mode=IDENTITY',
+    ])
+  } finally {
+    globalThis.fetch = originalFetch
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow)
+    else Reflect.deleteProperty(globalThis, 'window')
+  }
+})
+
+test('schema history replays drill, messages and wait without losing board state', () => {
+  const history = JSON.parse(
+    readFileSync(new URL('../../Schema/game_event/examples/history.json', import.meta.url), 'utf8'),
+  ) as unknown[]
+  const frames = replayFrames(history)
+  const at = (tick: number) => frames.find((frame) => frame.tick === tick)!
+  assert.equal(at(2).terrain[0][2].hasLuggage, false)
+  assert.equal(at(3).robots.find((robot) => robot.id === 'robot-2')?.speech, '-42')
+  assert.equal(at(4).robots.find((robot) => robot.id === 'robot-2')?.speech, 'false')
+  assert.deepEqual(at(5).terrain[1][3], { type: 'land', kind: { type: 'plain' } })
+  assert.equal(at(5).robots.find((robot) => robot.id === 'robot-2')?.drillDurability, 1)
+  assert.equal(at(7).actions[0].ticks, 3)
+  assert.equal(frames.at(-1)?.tick, 9)
+  assert.deepEqual(frames.at(-1)?.robots, [])
+  const stage = replayFrameToStage(at(5))
+  assert.equal(stage.width, 6)
+  assert.equal(stage.cells.find((cell) => cell.x === 3 && cell.y === 1)?.terrain, 'land')
+  assert.equal(stage.cells.find((cell) => cell.x === 3 && cell.y === 0)?.objects[0]?.type, 'goal')
 })

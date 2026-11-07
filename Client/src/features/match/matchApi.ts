@@ -1,6 +1,9 @@
 import type { PicoProgram } from '../picolang/picolang.ts'
 
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+const authAppOrigin = (
+  import.meta.env?.VITE_AUTH_APP_ORIGIN ?? 'https://server-639320660675.asia-northeast1.run.app'
+).replace(/\/$/, '')
 
 export interface ProgramRecord {
   id?: string
@@ -13,7 +16,8 @@ export interface MatchUser {
   name?: string
 }
 
-export const loginUrl = `${base}/login`
+// IAP handles Google sign-in before the deployed app is served.
+export const loginUrl = `${authAppOrigin}/account`
 
 export interface MatchRecord {
   id: string
@@ -77,8 +81,32 @@ export function parseMatchUser(value: unknown): MatchUser {
   }
 }
 
+export function parseIapIdentity(value: unknown): MatchUser {
+  if (!isObject(value) || typeof value.email !== 'string' || typeof value.sub !== 'string')
+    throw new Error('Googleアカウント情報の形式が不正です')
+  const prefix = 'accounts.google.com:'
+  if (!value.email.startsWith(prefix) || !value.sub.startsWith(prefix))
+    throw new Error('Googleアカウント情報の形式が不正です')
+  const email = value.email.slice(prefix.length)
+  const id = value.sub.slice(prefix.length)
+  if (!email || !id) throw new Error('Googleアカウント情報の形式が不正です')
+  return { id, name: email }
+}
+
 export async function getMe(): Promise<MatchUser> {
-  return parseMatchUser(await request('/me'))
+  try {
+    return parseMatchUser(await request('/me'))
+  } catch (error) {
+    // The deployed app is protected by IAP, while /api/me is not implemented yet.
+    if (!(error instanceof MatchApiError) || error.status !== 501 || window.location.origin !== authAppOrigin)
+      throw error
+    const url = new URL('/account', window.location.origin)
+    url.searchParams.set('gcp-iap-mode', 'IDENTITY')
+    const response = await fetch(url, { credentials: 'same-origin' })
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json'))
+      throw new Error('Googleアカウント情報を取得できませんでした')
+    return parseIapIdentity(await response.json())
+  }
 }
 
 export function parseMatch(value: unknown): MatchRecord {
