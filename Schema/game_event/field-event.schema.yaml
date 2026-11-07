@@ -67,6 +67,7 @@ $defs:
           oneOf:
             - $ref: '#/$defs/MoveResult'
             - $ref: '#/$defs/RotateResult'
+            - $ref: '#/$defs/DrillResult'
             - $ref: '#/$defs/PrintIntegerResult'
             - $ref: '#/$defs/PrintBoolResult'
       removedRobotIds:
@@ -181,6 +182,33 @@ $defs:
       direction:
         description: 回転後の向き
         $ref: '../field/field.schema.yaml#/$defs/Direction'
+
+  DrillResult:
+    description: 掘削の成否と確定後の残り回数。成功時は対象の岩を荷物・テリトリーのない通常の陸に変える
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success, drillDurability]
+    properties:
+      kind:
+        const: drill
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+      drillDurability:
+        type: integer
+        minimum: 0
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      required: [target]
+    else:
+      not:
+        required: [target]
 
   PrintBoolResult:
     description: 1ターンを消費して真偽値を吹き出しに表示する
