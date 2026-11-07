@@ -57,6 +57,7 @@ type RobotState struct {
 	Direction       string           `json:"direction"`
 	DrillDurability int64            `json:"drillDurability"`
 	TeamID          int              `json:"teamId,omitzero"`
+	CarryingLuggage bool             `json:"carryingLuggage,omitzero"`
 }
 
 type ActionResult interface{ actionResult() }
@@ -138,6 +139,22 @@ func (r DrillResult) MarshalJSON() ([]byte, error) {
 		Kind string `json:"kind"`
 		payload
 	}{Kind: "drill", payload: payload(r)})
+}
+
+type PickUpResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Success bool             `json:"success"`
+	Target  *Position        `json:"target,omitempty"`
+
+	ActionResult `json:"-"`
+}
+
+func (r PickUpResult) MarshalJSON() ([]byte, error) {
+	type payload PickUpResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "pick_up", payload: payload(r)})
 }
 
 func (e FieldEvent) MarshalJSON() ([]byte, error) {
