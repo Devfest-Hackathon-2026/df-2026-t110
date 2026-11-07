@@ -164,9 +164,9 @@
     "state": {
       "kind": "update",
       "actions": [
+        { "kind": "release", "robotId": "robot-1", "success": true, "target": { "x": 2, "y": 0 } },
         { "kind": "print_integer", "robotId": "robot-2", "integer": -42 }
-      ],
-      "removedRobotIds": ["robot-1"]
+      ]
     }
   },
   {
@@ -176,7 +176,8 @@
       "kind": "update",
       "actions": [
         { "kind": "print_bool", "robotId": "robot-2", "bool": false }
-      ]
+      ],
+      "removedRobotIds": ["robot-1"]
     }
   },
   {

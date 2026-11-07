@@ -69,6 +69,7 @@ $defs:
             - $ref: '#/$defs/RotateResult'
             - $ref: '#/$defs/DrillResult'
             - $ref: '#/$defs/PickUpResult'
+            - $ref: '#/$defs/ReleaseResult'
             - $ref: '#/$defs/PrintIntegerResult'
             - $ref: '#/$defs/PrintBoolResult'
       removedRobotIds:
@@ -237,6 +238,36 @@ $defs:
     else:
       not:
         required: [target]
+
+  ReleaseResult:
+    description: 荷物を手放した結果。成功時は target に荷物を置くか、discarded で海への投棄を示す
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success]
+    properties:
+      kind:
+        const: release
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+      discarded:
+        const: true
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      oneOf:
+        - required: [target]
+        - required: [discarded]
+    else:
+      not:
+        anyOf:
+          - required: [target]
+          - required: [discarded]
 
   PrintBoolResult:
     description: 1ターンを消費して真偽値を吹き出しに表示する
