@@ -6,15 +6,17 @@ oapi-codegen = "2.8.2"
 "go:github.com/plheide/go-jsonschema" = "0.28.0"
 node = "24.22.2"
 "npm:@redocly/cli" = "2.76.0"
+sqlc = "1.31.1"
 
 [tasks.generate]
-description = "Generate API models and Echo server from the shared schemas"
+description = "Generate API models, Echo server and database queries"
 dir = "{{config_root}}/Server"
-sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml"]
-outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go"]
+sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml", "sqlc.yaml", "infra/repo/sql/**/*.sql"]
+outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go", "infra/repo/gen/db/*.go"]
 run = [
   "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/field/stage.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
+  "sqlc generate",
 ]
 
 [tasks.redocly-preview]
