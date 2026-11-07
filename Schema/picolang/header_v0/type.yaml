@@ -1,0 +1,31 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangV0SignatureType
+description: シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照
+
+oneOf:
+  - $ref: '../v0/primitive-type.yaml'
+  - $ref: '#/$defs/VectorType'
+  - $ref: '#/$defs/TypeParameter'
+
+$defs:
+  VectorType:
+    type: object
+    additionalProperties: false
+    required: [kind, elementType]
+    properties:
+      kind:
+        type: string
+        const: vector
+      elementType:
+        $ref: './type.yaml'
+  TypeParameter:
+    type: object
+    additionalProperties: false
+    required: [kind, name]
+    properties:
+      kind:
+        type: string
+        const: type_parameter
+      name:
+        description: 同じシグネチャの typeParameters で宣言した名前。同名の参照は同じ型を表す
+        $ref: '../v0/name.yaml'
