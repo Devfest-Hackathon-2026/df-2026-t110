@@ -6,7 +6,8 @@ type Terrain interface{ terrain() }
 type TeamID int
 
 const (
-	TeamID1 TeamID = iota + 1
+	NoTeam TeamID = iota
+	TeamID1
 	TeamID2
 )
 

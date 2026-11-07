@@ -138,6 +138,9 @@ $defs:
         description: 掘削の残り回数
         type: integer
         minimum: 0
+      teamId:
+        description: ロボットの所属チーム ID。省略時はチームなし
+        enum: [1, 2]
 
   MoveResult:
     type: object

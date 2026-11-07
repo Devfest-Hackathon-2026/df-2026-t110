@@ -35,6 +35,7 @@ const (
 	South = engine.South
 	West  = engine.West
 
+	NoTeam  = engine.NoTeam
 	TeamID1 = engine.TeamID1
 	TeamID2 = engine.TeamID2
 )

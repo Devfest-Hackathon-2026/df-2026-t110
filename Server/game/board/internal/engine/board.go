@@ -51,6 +51,7 @@ type RobotState struct {
 	position        Position
 	direction       Direction
 	drillDurability int64
+	teamID          TeamID
 }
 
 func NewRobotState(position Position, direction Direction, drillDurability int64) RobotState {
@@ -60,6 +61,13 @@ func NewRobotState(position Position, direction Direction, drillDurability int64
 func (r RobotState) Position() Position     { return r.position }
 func (r RobotState) Direction() Direction   { return r.direction }
 func (r RobotState) DrillDurability() int64 { return r.drillDurability }
+func (r RobotState) TeamID() TeamID         { return r.teamID }
+
+// WithTeam returns a copy of the robot with the specified team.
+func (r RobotState) WithTeam(team TeamID) RobotState {
+	r.teamID = team
+	return r
+}
 
 type Config struct {
 	// MaxTicks bounds committed ticks; zero means unlimited.
@@ -103,6 +111,11 @@ func New(config Config) (Board, error) {
 		if id == "" || directionIndex(robot.direction) < 0 || robot.drillDurability < 0 ||
 			p.x < 0 || p.y < 0 || p.x >= width || p.y >= len(config.Terrain) {
 			return Board{}, fmt.Errorf("invalid robot %q", id)
+		}
+		switch robot.teamID {
+		case NoTeam, TeamID1, TeamID2:
+		default:
+			return Board{}, fmt.Errorf("invalid team %d for robot %q", robot.teamID, id)
 		}
 		_, isLand := config.Terrain[p.y][p.x].(LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {

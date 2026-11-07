@@ -56,6 +56,7 @@ type RobotState struct {
 	Position        Position         `json:"position"`
 	Direction       string           `json:"direction"`
 	DrillDurability int64            `json:"drillDurability"`
+	TeamID          int              `json:"teamId,omitzero"`
 }
 
 type ActionResult interface{ actionResult() }
