@@ -11,76 +11,6 @@ servers:
   - url: /api
 
 paths:
-  /room:
-    get:
-      summary: 参加可能なルーム一覧を取得
-      operationId: listRooms
-      responses:
-        "200":
-          description: ルーム一覧
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Room"
-
-  /room/{roomId}:
-    get:
-      summary: ルームを取得
-      operationId: getRoom
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-      responses:
-        "200":
-          description: ルーム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Room"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /room/{roomId}/start/{matchId}:
-    post:
-      summary: ルーム内の対戦を開始
-      operationId: startRoomMatch
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-        - $ref: "#/components/parameters/MatchId"
-      responses:
-        "200":
-          description: 開始した対戦
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Match"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-
-  /room/{roomId}/join:
-    get:
-      summary: ルームのイベントを購読
-      description: |
-        Server-Sent Events。
-        参加登録を兼ねるか、およびイベント形式の詳細は未確定。
-        対戦開始イベントではサーバーが選んだselectedLayoutIdを配信する。
-      operationId: joinRoomEvents
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-      responses:
-        "200":
-          description: SSEストリーム
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              example: |
-                event: match-started
-                data: {"matchId":"match-1","selectedLayoutId":"layout-2"}
-
   /field/{fieldId}:
     get:
       summary: フィールドを取得
@@ -424,12 +354,6 @@ paths:
 
 components:
   parameters:
-    RoomId:
-      name: roomId
-      in: path
-      required: true
-      schema:
-        type: string
     FieldId:
       name: fieldId
       in: path
@@ -577,18 +501,6 @@ components:
                             hintId: 00000000-0000-4000-8000-000000000006
                             type: unit
                             value: null
-
-    Room:
-      type: object
-      required: [id]
-      properties:
-        id:
-          type: string
-        fieldId:
-          type: string
-        status:
-          type: string
-          enum: [waiting, running, finished]
 
     Match:
       type: object

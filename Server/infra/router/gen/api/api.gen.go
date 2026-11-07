@@ -15,40 +15,19 @@ import (
 
 // Defines values for MatchStatus.
 const (
-	MatchStatusFinished MatchStatus = "finished"
-	MatchStatusReady    MatchStatus = "ready"
-	MatchStatusRunning  MatchStatus = "running"
+	Finished MatchStatus = "finished"
+	Ready    MatchStatus = "ready"
+	Running  MatchStatus = "running"
 )
 
 // Valid indicates whether the value is a known member of the MatchStatus enum.
 func (e MatchStatus) Valid() bool {
 	switch e {
-	case MatchStatusFinished:
+	case Finished:
 		return true
-	case MatchStatusReady:
+	case Ready:
 		return true
-	case MatchStatusRunning:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for RoomStatus.
-const (
-	RoomStatusFinished RoomStatus = "finished"
-	RoomStatusRunning  RoomStatus = "running"
-	RoomStatusWaiting  RoomStatus = "waiting"
-)
-
-// Valid indicates whether the value is a known member of the RoomStatus enum.
-func (e RoomStatus) Valid() bool {
-	switch e {
-	case RoomStatusFinished:
-		return true
-	case RoomStatusRunning:
-		return true
-	case RoomStatusWaiting:
+	case Running:
 		return true
 	default:
 		return false
@@ -92,16 +71,6 @@ type Program struct {
 	Source PicolangProgram `json:"source"`
 }
 
-// Room defines model for Room.
-type Room struct {
-	FieldId *string     `json:"fieldId,omitempty"`
-	Id      string      `json:"id"`
-	Status  *RoomStatus `json:"status,omitempty"`
-}
-
-// RoomStatus defines model for Room.Status.
-type RoomStatus string
-
 // Stage defines model for Stage.
 type Stage = schema.StageDefinition
 
@@ -137,9 +106,6 @@ type MatchId = string
 
 // ProgramId defines model for ProgramId.
 type ProgramId = string
-
-// RoomId defines model for RoomId.
-type RoomId = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest = ApiError
@@ -405,18 +371,6 @@ type ServerInterface interface {
 	// GetRanking ランキングを取得
 	// (GET /ranking)
 	GetRanking(ctx *echo.Context) error
-	// ListRooms 参加可能なルーム一覧を取得
-	// (GET /room)
-	ListRooms(ctx *echo.Context) error
-	// GetRoom ルームを取得
-	// (GET /room/{roomId})
-	GetRoom(ctx *echo.Context, roomId RoomId) error
-	// JoinRoomEvents ルームのイベントを購読
-	// (GET /room/{roomId}/join)
-	JoinRoomEvents(ctx *echo.Context, roomId RoomId) error
-	// StartRoomMatch ルーム内の対戦を開始
-	// (POST /room/{roomId}/start/{matchId})
-	StartRoomMatch(ctx *echo.Context, roomId RoomId, matchId MatchId) error
 	// ListTutorials チュートリアル一覧を取得
 	// (GET /tutorial)
 	ListTutorials(ctx *echo.Context) error
@@ -651,71 +605,6 @@ func (w *ServerInterfaceWrapper) GetRanking(ctx *echo.Context) error {
 	return err
 }
 
-// ListRooms converts echo context to params.
-func (w *ServerInterfaceWrapper) ListRooms(ctx *echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListRooms(ctx)
-	return err
-}
-
-// GetRoom converts echo context to params.
-func (w *ServerInterfaceWrapper) GetRoom(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "roomId" -------------
-	var roomId RoomId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetRoom(ctx, roomId)
-	return err
-}
-
-// JoinRoomEvents converts echo context to params.
-func (w *ServerInterfaceWrapper) JoinRoomEvents(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "roomId" -------------
-	var roomId RoomId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.JoinRoomEvents(ctx, roomId)
-	return err
-}
-
-// StartRoomMatch converts echo context to params.
-func (w *ServerInterfaceWrapper) StartRoomMatch(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "roomId" -------------
-	var roomId RoomId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
-	}
-
-	// ------------- Path parameter "matchId" -------------
-	var matchId MatchId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "matchId", ctx.Param("matchId"), &matchId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter matchId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.StartRoomMatch(ctx, roomId, matchId)
-	return err
-}
-
 // ListTutorials converts echo context to params.
 func (w *ServerInterfaceWrapper) ListTutorials(ctx *echo.Context) error {
 	var err error
@@ -802,10 +691,6 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
 	router.POST(options.BaseURL+"/me/username", wrapper.SetMyUsername, options.OperationMiddlewares["setMyUsername"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
-	router.GET(options.BaseURL+"/room", wrapper.ListRooms, options.OperationMiddlewares["listRooms"]...)
-	router.GET(options.BaseURL+"/room/:roomId", wrapper.GetRoom, options.OperationMiddlewares["getRoom"]...)
-	router.GET(options.BaseURL+"/room/:roomId/join", wrapper.JoinRoomEvents, options.OperationMiddlewares["joinRoomEvents"]...)
-	router.POST(options.BaseURL+"/room/:roomId/start/:matchId", wrapper.StartRoomMatch, options.OperationMiddlewares["startRoomMatch"]...)
 	router.GET(options.BaseURL+"/tutorial", wrapper.ListTutorials, options.OperationMiddlewares["listTutorials"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId", wrapper.GetTutorial, options.OperationMiddlewares["getTutorial"]...)
 
