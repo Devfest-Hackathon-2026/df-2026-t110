@@ -14,7 +14,7 @@ dir = "{{config_root}}/Server"
 sources = ["../Schema/**/*.yaml", "oapi-codegen.yaml", "oapi-codegen-overlay.yaml", "sqlc.yaml", "infra/repo/sql/**/*.sql"]
 outputs = ["infra/router/gen/api/api.gen.go", "infra/router/gen/schema/schema.gen.go", "infra/repo/gen/db/*.go"]
 run = [
-  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/field/stage.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
+  "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/tutorial/tutorial-detail.schema.yaml ../Schema/picolang/toplevel.schema.yaml",
   "oapi-codegen -config oapi-codegen.yaml ../Schema/openapi.yaml",
   "sqlc generate",
 ]

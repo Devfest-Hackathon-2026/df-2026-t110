@@ -1,0 +1,20 @@
+{
+  "name": "programming-learning-ar-textbooks",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "format": "prettier --write \"pages/**/*.{yaml,yml}\"",
+    "format:check": "prettier --check \"pages/**/*.{yaml,yml}\"",
+    "lint": "node lint-pages.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "js-yaml": "^4.3.2",
+    "prettier": "^3.9.10",
+    "textlint": "^15.8.0",
+    "textlint-rule-ja-grade-kanji": "^1.0.0",
+    "textlint-rule-preset-japanese": "^10.0.4"
+  }
+}

@@ -15,6 +15,9 @@ workflows:
     '.github/workflows/server-container-build.yml':
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
+    '.github/workflows/textbooks-ci.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'jdx/mise-action@v5.2.6'
 dependencies:
     'actions/checkout@v7.0.1':
         ref: 'v7.0.1'

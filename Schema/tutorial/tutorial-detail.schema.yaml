@@ -1,0 +1,30 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: TutorialDetail
+type: object
+description: 教材詳細ページに表示する目標、課題、案内文とステージ
+additionalProperties: false
+required: [id, title, description, stage]
+properties:
+  id:
+    type: string
+    description: チュートリアルのID
+  title:
+    type: string
+    description: チュートリアルのタイトル
+  goal:
+    type: string
+    description: ページの目標としてタイトルの下に表示する短い文
+  lesson:
+    type: string
+    description: 「この課題で考えること」に表示する本文
+  guide:
+    type: array
+    description: 案内役が順番に表示する説明文。未指定または空配列なら案内役を表示しない
+    items:
+      type: string
+  description:
+    type: string
+    description: 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
+  stage:
+    description: チュートリアルで使用するステージ
+    $ref: '../field/stage.schema.yaml'
