@@ -8,3 +8,7 @@ import (
 func (r *Router) CreateMatch(ctx *echo.Context, fieldID api.FieldId) error {
 	return errNotImplemented()
 }
+
+func (r *Router) MatchEvents(ctx *echo.Context, matchID api.MatchId) error {
+	return errNotImplemented()
+}

@@ -11,76 +11,6 @@ servers:
   - url: /api
 
 paths:
-  /room:
-    get:
-      summary: 参加可能なルーム一覧を取得
-      operationId: listRooms
-      responses:
-        "200":
-          description: ルーム一覧
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Room"
-
-  /room/{roomId}:
-    get:
-      summary: ルームを取得
-      operationId: getRoom
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-      responses:
-        "200":
-          description: ルーム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Room"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /room/{roomId}/start/{matchId}:
-    post:
-      summary: ルーム内の対戦を開始
-      operationId: startRoomMatch
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-        - $ref: "#/components/parameters/MatchId"
-      responses:
-        "200":
-          description: 開始した対戦
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Match"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-
-  /room/{roomId}/join:
-    get:
-      summary: ルームのイベントを購読
-      description: |
-        Server-Sent Events。
-        参加登録を兼ねるか、およびイベント形式の詳細は未確定。
-        対戦開始イベントではサーバーが選んだselectedLayoutIdを配信する。
-      operationId: joinRoomEvents
-      parameters:
-        - $ref: "#/components/parameters/RoomId"
-      responses:
-        "200":
-          description: SSEストリーム
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              example: |
-                event: match-started
-                data: {"matchId":"match-1","selectedLayoutId":"layout-2"}
-
   /field/{fieldId}:
     get:
       summary: フィールドを取得
@@ -196,13 +126,15 @@ paths:
 
   /field/{fieldId}/match:
     post:
-      summary: 対戦を作成し、使用する配置を抽選
+      summary: ランク対戦を作成し、シミュレーションを開始
       description: |
-        プログラム作成後に呼び出す。
-        サーバーがフィールド内の候補配置を1つ選び、
-        selectedLayoutIdをレスポンスで返す。
+        自分のプログラムで対戦を申し込む。
+        サーバーはフィールド内の候補配置を1つ選び、
+        このフィールドに提出している自分以外のユーザーからランダムに相手を1人選んで、
+        そのユーザーがこのフィールドで最後に更新したプログラムと対戦させる。
+        シミュレーションはサーバーで実行し、結果は matchEvents で受け取る。
         抽選結果を取得・変更する独立したAPIは設けない。
-        対戦を進行する間はサーバーが同じ配置を参照する。
+        レートは対戦を申し込んだ側だけ変動する。
       operationId: createMatch
       parameters:
         - $ref: "#/components/parameters/FieldId"
@@ -218,11 +150,46 @@ paths:
                   type: string
       responses:
         "201":
-          description: 作成した対戦と抽選結果
+          description: 作成した対戦と抽選結果。シミュレーション中のため status は running
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Match"
+        "401":
+          description: 認証されていない
+        "403":
+          $ref: "#/components/responses/Forbidden"
+          description: DisplayName が設定されていないためランク対戦に参加できない
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+          description: このフィールドに対戦相手の候補がいない
+
+  /match/{matchId}/events:
+    get:
+      summary: 対戦結果を購読
+      description: |
+        Server-Sent Events。
+        シミュレーション完了時に result イベントを1回送り、ストリームを閉じる。
+        接続時点で完了済みなら、接続直後に result イベントを送る。
+        副作用を持たないため、切断後に再接続して結果を取り直せる。
+        result の data は MatchResult 形式の JSON。
+      operationId: matchEvents
+      parameters:
+        - $ref: "#/components/parameters/MatchId"
+      responses:
+        "200":
+          description: SSEストリーム
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                event: result
+                data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opposite":1}}}
+        "401":
+          description: 認証されていない
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -387,12 +354,6 @@ paths:
 
 components:
   parameters:
-    RoomId:
-      name: roomId
-      in: path
-      required: true
-      schema:
-        type: string
     FieldId:
       name: fieldId
       in: path
@@ -437,6 +398,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ApiError"
+    Forbidden:
+      description: 認証済みだが操作する権限がない
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
     NotFound:
       description: 対象が存在しない
       content:
@@ -451,6 +418,33 @@ components:
             $ref: "#/components/schemas/ApiError"
 
   schemas:
+    MatchResult:
+      type: object
+      description: 対戦の再生履歴と結果の要約
+      required: [history, summary]
+      properties:
+        history:
+          $ref: "./game_event/history.schema.yaml"
+        summary:
+          $ref: "#/components/schemas/MatchSummary"
+
+    MatchSummary:
+      type: object
+      description: 対戦を申し込んだプレイヤーから見た対戦結果の要約
+      required: [score]
+      properties:
+        score:
+          type: object
+          description: 両プレイヤーの最終得点。同点の場合は引き分け
+          required: [player, opposite]
+          properties:
+            player:
+              type: number
+              description: 対戦を申し込んだプレイヤーの最終得点
+            opposite:
+              type: number
+              description: 対戦相手の最終得点
+
     Field:
       $ref: "./field/field.schema.yaml"
 
@@ -507,18 +501,6 @@ components:
                             hintId: 00000000-0000-4000-8000-000000000006
                             type: unit
                             value: null
-
-    Room:
-      type: object
-      required: [id]
-      properties:
-        id:
-          type: string
-        fieldId:
-          type: string
-        status:
-          type: string
-          enum: [waiting, running, finished]
 
     Match:
       type: object

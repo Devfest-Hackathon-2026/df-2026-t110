@@ -10,6 +10,9 @@
   - S3 の Object 名に利用するため
   - 初回ログインで DisplayName 設定を強制させるよりも、設定タイミングが明確で実装が行いやすい
     - DisplayName は NULL 許容であり、 foreign key にはすべて ID token の sub を用いる
+- ランク対戦に参加するとき、 DisplayName の設定が必要
+  - 対戦とランキングで相手の名前を表示するため
+  - 詳細は [matchmaking.md](matchmaking.md) を参照
 - DisplayName の重複
   - 重複判定は case insensitive で行う
 
