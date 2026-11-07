@@ -90,14 +90,14 @@ func TestInteractiveDrill(t *testing.T) {
 	}
 }
 
-func TestInteractivePickUp(t *testing.T) {
+func TestInteractiveLuggage(t *testing.T) {
 	t.Parallel()
 
-	input := "p1 forward\np2 done\np1 rotate right\np1 pick_up\np1 search_front\np1 done\n"
-	want := []string{"p1: (1,0) south carrying luggage", "p1 => terrain(land)", "finished at tick 3"}
+	input := "p1 forward\np2 done\np1 rotate right\np1 pick_up\np1 search_front\np1 release\np1 search_front\np1 done\n"
+	want := []string{"p1: (1,0) south carrying luggage", "p1 => terrain(land)", "p1 => terrain(land, luggage)", "finished at tick 4"}
 	var output bytes.Buffer
 
-	err := run(io.NopCloser(strings.NewReader(input)), &output, 3, 100)
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 4, 100)
 
 	if err != nil {
 		t.Error(err)
