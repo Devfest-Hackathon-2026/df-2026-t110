@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -13,6 +14,38 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 )
+
+func TestPrintIntegerCommands(t *testing.T) {
+	t.Parallel()
+
+	for _, argument := range []string{"0", "-42", "+7", "-9223372036854775808", "9223372036854775807"} {
+		t.Run(argument, func(t *testing.T) {
+			t.Parallel()
+
+			integer, err := strconv.ParseInt(argument, 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: integer}}
+			input := "p1 print_integer\np1 print_integer extra args\np1 print_integer abc\np1 print_integer 1.5\np1 print_integer 9223372036854775808\np1 print_integer -9223372036854775809\np2 print_integer 3\np1 print_integer " + argument + "\np1 done\n"
+			var output bytes.Buffer
+			r := stdio(t, "p1", session(t, io.NopCloser(strings.NewReader(input)), &output))
+
+			step, startErr := r.Start()
+			done, resumeErr := r.Next(values.UnitValue{})
+
+			if startErr != nil || step.Step != want {
+				t.Errorf("print command = %+v, %v, want %+v", step, startErr, want)
+			}
+			if resumeErr != nil || done.Step != (robotmsg.DoneStep{}) {
+				t.Errorf("resume = %+v, %v", done, resumeErr)
+			}
+			if strings.Count(output.String(), "invalid command for p1") != 7 {
+				t.Errorf("invalid commands were not rejected: %s", output.String())
+			}
+		})
+	}
+}
 
 func session(t *testing.T, input io.ReadCloser, output io.Writer) *robot.Session {
 	t.Helper()
