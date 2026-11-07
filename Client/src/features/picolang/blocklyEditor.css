@@ -207,6 +207,20 @@
 .blockly-canvas .blocklyToolboxFlyout[style*='display: none'] + .blocklyFlyoutScrollbar {
   display: none;
 }
+.blockly-canvas .blocklyZoom > image,
+.blockly-canvas .blocklyTrash > image,
+.blockly-canvas .blocklyTrashLid {
+  display: none;
+}
+.blockly-canvas .blockly-pico-control-icon {
+  color: #16584e;
+  pointer-events: none;
+}
+.blockly-canvas .blocklyZoom > .blocklyFocusRing,
+.blockly-canvas .blocklyTrash > .blocklyFocusRing {
+  fill: transparent;
+  pointer-events: all;
+}
 .blockly-canvas .blocklyTreeLabel {
   font-family: var(--font-body);
   font-size: 12px;

@@ -19,6 +19,9 @@ import shuffleIcon from '@iconify-icons/lucide/shuffle'
 import listIcon from '@iconify-icons/lucide/list'
 import typeIcon from '@iconify-icons/lucide/type'
 import squareFunctionIcon from '@iconify-icons/lucide/square-function'
+import focusIcon from '@iconify-icons/lucide/focus'
+import zoomInIcon from '@iconify-icons/lucide/zoom-in'
+import zoomOutIcon from '@iconify-icons/lucide/zoom-out'
 import {
   keyType,
   loadFunction,
@@ -117,6 +120,32 @@ function decorateToolboxCategories(): void {
   }
 }
 
+function decorateWorkspaceControls(): void {
+  if (!host.value) return
+  const controls = [
+    ['.blocklyZoomReset', focusIcon],
+    ['.blocklyZoomIn', zoomInIcon],
+    ['.blocklyZoomOut', zoomOutIcon],
+    ['.blocklyTrash', trashIcon],
+  ] as const
+  for (const [selector, icon] of controls) {
+    const button = host.value.querySelector(selector)
+    if (!button || button.querySelector('.blockly-pico-control-icon')) continue
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.classList.add('blockly-pico-control-icon')
+    svg.setAttribute('viewBox', '0 0 32 32')
+    svg.setAttribute('width', '32')
+    svg.setAttribute('height', '32')
+    svg.setAttribute('aria-hidden', 'true')
+    svg.innerHTML = `<circle cx="16" cy="16" r="15" fill="#e6f2ed" stroke="#5f9186"/><g transform="translate(4 4)">${icon.body}</g>`
+    if (selector === '.blocklyTrash') {
+      svg.setAttribute('x', '8')
+      svg.setAttribute('y', '18')
+    }
+    button.appendChild(svg)
+  }
+}
+
 function save(): void {
   const snapshot = JSON.stringify(program.value)
   if (snapshot !== history.value[historyIndex.value]) {
@@ -161,6 +190,7 @@ function loadActive(): void {
     loadFunction(workspace, activeFunction.value, functions.value)
     refreshVariableBlocks(workspace, activeFunction.value.params)
     Blockly.svgResize(workspace)
+    decorateWorkspaceControls()
   } finally {
     loading = false
   }
