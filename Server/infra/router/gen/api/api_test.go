@@ -21,6 +21,8 @@ func (s *fieldServer) GetField(ctx *echo.Context, fieldID FieldId) error {
 }
 
 func TestEchoRoutesFieldRequest(t *testing.T) {
+	t.Parallel()
+
 	server := &fieldServer{}
 	router := echo.New()
 	RegisterHandlersWithBaseURL(router, server, "/api")
@@ -32,6 +34,8 @@ func TestEchoRoutesFieldRequest(t *testing.T) {
 }
 
 func TestFieldAndStageSchemas(t *testing.T) {
+	t.Parallel()
+
 	data := []byte(`{
 		"variants": [{
 			"width": 1, "height": 1, "terrain": [["land"]],
@@ -71,6 +75,8 @@ func TestFieldAndStageSchemas(t *testing.T) {
 }
 
 func TestUnknownSchemaVariant(t *testing.T) {
+	t.Parallel()
+
 	for _, target := range []any{&schema.FieldObject{}, &schema.ClearCondition{}} {
 		if err := json.Unmarshal([]byte(`{"type":"unknown"}`), target); err == nil {
 			t.Errorf("expected %T to reject an unknown variant", target)
@@ -79,6 +85,8 @@ func TestUnknownSchemaVariant(t *testing.T) {
 }
 
 func TestProgramSourceUsesPicolangSchema(t *testing.T) {
+	t.Parallel()
+
 	data := []byte(`{
 		"name": "前進する",
 		"source": {"picolangVersion": 0, "picolang": {"v0": {"program": {}}}}

@@ -57,6 +57,8 @@ func TestRoomRoutesAreNotRegistered(t *testing.T) {
 		{http.MethodPost, "/room/room-1/start/match-1"},
 	} {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			t.Parallel()
+
 			response := httptest.NewRecorder()
 			f.e.ServeHTTP(response, httptest.NewRequest(tt.method, tt.path, nil))
 			if response.Code != http.StatusNotFound {

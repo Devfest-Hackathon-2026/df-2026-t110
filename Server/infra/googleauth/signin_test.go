@@ -15,6 +15,8 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestCompleteRejectsInvalidStateWithoutExchange(t *testing.T) {
+	t.Parallel()
+
 	f := newProviderFixture(t)
 	a := f.begin(t)
 	if _, err := f.client.Complete(context.Background(), a, "wrong-state", "valid-code"); err == nil {
@@ -26,6 +28,8 @@ func TestCompleteRejectsInvalidStateWithoutExchange(t *testing.T) {
 }
 
 func TestBeginRequestsOnlyIdentity(t *testing.T) {
+	t.Parallel()
+
 	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.URL.String() != googleIssuer+"/.well-known/openid-configuration" {
 			return nil, fmt.Errorf("unexpected discovery URL: %s", r.URL)
