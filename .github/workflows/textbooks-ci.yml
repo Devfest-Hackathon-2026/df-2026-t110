@@ -7,12 +7,14 @@ on:
       - 'Schema/tutorial/tutorial-detail.schema.yaml'
       - 'Schema/field/stage.schema.yaml'
       - 'Schema/field/field.schema.yaml'
+      - 'Schema/picolang/**'
   pull_request:
     paths:
       - 'Textbooks/**'
       - 'Schema/tutorial/tutorial-detail.schema.yaml'
       - 'Schema/field/stage.schema.yaml'
       - 'Schema/field/field.schema.yaml'
+      - 'Schema/picolang/**'
 
 permissions:
   contents: read
