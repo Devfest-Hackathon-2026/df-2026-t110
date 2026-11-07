@@ -162,7 +162,17 @@
   },
   {
     "type": "field",
-    "tick": 3,
+    "tick": 4,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "print_bool", "robotId": "robot-2", "bool": false }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 4,
     "state": {
       "kind": "update",
       "removedRobotIds": ["robot-2"]
