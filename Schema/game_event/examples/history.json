@@ -12,6 +12,14 @@
           { "type": "land", "kind": { "type": "goal" } },
           { "type": "sea" },
           { "type": "rock" }
+        ],
+        [
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "rock" },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } }
         ]
       ],
       "robots": [
@@ -172,7 +180,27 @@
   },
   {
     "type": "field",
-    "tick": 4,
+    "tick": 5,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "drill", "robotId": "robot-2", "success": true, "target": { "x": 3, "y": 1 }, "drillDurability": 1 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 6,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "drill", "robotId": "robot-2", "success": false, "drillDurability": 1 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 6,
     "state": {
       "kind": "update",
       "removedRobotIds": ["robot-2"]

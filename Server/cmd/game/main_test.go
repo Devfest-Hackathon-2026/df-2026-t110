@@ -68,6 +68,28 @@ func TestInteractivePrintInteger(t *testing.T) {
 	}
 }
 
+func TestInteractiveDrill(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 forward\np2 done\np1 forward\np1 rotate right\np1 drill\np1 drill\np1 drill_durability\np1 search_front\np1 forward\np1 done\n"
+	want := []string{"p1 => false", "p1 => 2", "p1 => terrain(land)", "p1: (2,1) south", "finished at tick 6"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 6, 100)
+
+	if err != nil {
+		t.Error(err)
+	}
+	for _, line := range want {
+		if !strings.Contains(output.String(), line) {
+			t.Errorf("missing %q in output: %s", line, output.String())
+		}
+	}
+	if strings.Contains(output.String(), "invalid command") {
+		t.Errorf("drill was rejected: %s", output.String())
+	}
+}
+
 func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {

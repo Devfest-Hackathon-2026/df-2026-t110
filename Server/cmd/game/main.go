@@ -67,7 +67,7 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | search_now | search_front | print_integer <integer> | print_bool true/false | done; help"); err != nil {
+	if _, err := fmt.Fprintln(output, "Commands:", robot.CommandUsage); err != nil {
 		return err
 	}
 	report, runErr := h.Run(hub.Options{
