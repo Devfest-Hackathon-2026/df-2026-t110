@@ -67,6 +67,10 @@ $defs:
           oneOf:
             - $ref: '#/$defs/MoveResult'
             - $ref: '#/$defs/RotateResult'
+            - $ref: '#/$defs/WaitResult'
+            - $ref: '#/$defs/DrillResult'
+            - $ref: '#/$defs/PickUpResult'
+            - $ref: '#/$defs/ReleaseResult'
             - $ref: '#/$defs/PrintIntegerResult'
             - $ref: '#/$defs/PrintBoolResult'
       removedRobotIds:
@@ -138,6 +142,12 @@ $defs:
         description: 掘削の残り回数
         type: integer
         minimum: 0
+      teamId:
+        description: ロボットの所属チーム ID。省略時はチームなし
+        enum: [1, 2]
+      carryingLuggage:
+        description: 荷物を運搬しているか。省略時は false
+        type: boolean
 
   MoveResult:
     type: object
@@ -178,6 +188,103 @@ $defs:
       direction:
         description: 回転後の向き
         $ref: '../field/field.schema.yaml#/$defs/Direction'
+
+  DrillResult:
+    description: 掘削の成否と確定後の残り回数。成功時は対象の岩を荷物・テリトリーのない通常の陸に変える。同じターンに同じ岩を掘削した複数のロボットが成功することがある
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success, drillDurability]
+    properties:
+      kind:
+        const: drill
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+      drillDurability:
+        type: integer
+        minimum: 0
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      required: [target]
+    else:
+      not:
+        required: [target]
+
+  PickUpResult:
+    description: 荷物の取得結果。成功時は対象マスから荷物を除き、機体が運搬する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success]
+    properties:
+      kind:
+        const: pick_up
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      required: [target]
+    else:
+      not:
+        required: [target]
+
+  ReleaseResult:
+    description: 荷物を手放した結果。成功時は target に荷物を置くか、discarded で海への投棄を示す
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success]
+    properties:
+      kind:
+        const: release
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      target:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+      discarded:
+        const: true
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      oneOf:
+        - required: [target]
+        - required: [discarded]
+    else:
+      not:
+        anyOf:
+          - required: [target]
+          - required: [discarded]
+
+  WaitResult:
+    description: 機体の待機開始。イベントの tick は待機で消費する最初のターンを示す
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, ticks]
+    properties:
+      kind:
+        const: wait
+      robotId:
+        $ref: '#/$defs/RobotId'
+      ticks:
+        description: 待機するターン数。イベントの tick を含む
+        type: integer
+        minimum: 1
+        maximum: 9223372036854775807
 
   PrintBoolResult:
     description: 1ターンを消費して真偽値を吹き出しに表示する

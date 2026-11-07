@@ -30,7 +30,7 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 					{Type: "land", Kind: &fieldevent.LandKind{Type: "checkpoint", Order: &checkpointOrder}},
 					{Type: "rock"}, {Type: "sea"},
 				}},
-				Robots: []fieldevent.RobotState{{ID: "a", Direction: "east", DrillDurability: 3}},
+				Robots: []fieldevent.RobotState{{ID: "a", Direction: "east", DrillDurability: 3, TeamID: 1}},
 			}}}
 			wantStart := boardmsg.StartDecision{RobotID: "a"}
 			wantQuery := boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.IntegerValue{Integer: 3}}
@@ -38,16 +38,21 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 			queryReply := robotmsg.ActionReply{RobotID: "a", Action: actions.DrillDurabilityAction{}}
 			rotateReply := robotmsg.ActionReply{RobotID: "a", Action: actions.RotateAction{Rotation: values.Right}}
 
-			b, err := board.New(board.Config{
-				MaxTicks: limit,
-				Terrain: [][]board.Terrain{{
+			config, err := board.NewConfig(
+				[][]board.Terrain{{
 					board.NewLandTerrain(board.PlainLand{}, true, board.TeamID1),
 					board.NewLandTerrain(board.GoalLand{}, false, 0),
 					board.NewLandTerrain(board.NewCheckpointLand(0), false, 0),
 					board.RockTerrain{}, board.SeaTerrain{},
 				}},
-				Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
-			})
+				map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East).WithTeam(board.TeamID1)},
+				limit,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := board.New(config)
 			if err != nil {
 				t.Fatal(err)
 			}

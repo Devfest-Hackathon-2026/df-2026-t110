@@ -72,18 +72,8 @@ const lessonCopy = computed(() => {
   return local && (!tutorial.value || tutorial.value.fieldId === local.fieldId) ? local : null
 })
 const guideLines = computed(() => {
-  const remoteGuide = tutorial.value?.guide
-  if (
-    Array.isArray(remoteGuide) &&
-    remoteGuide.every((line) => typeof line === 'string') &&
-    remoteGuide.length
-  )
-    return remoteGuide
-  if (lessonCopy.value) return lessonCopy.value.guide
-  return [
-    'この課題のフィールドを見て、ロボットをどこへ動かすか考えてみよう。',
-    'まずはスタートとゴールを探してみて。進めないマスがあるかも確認しよう。',
-  ]
+  const guide = tutorial.value?.guide
+  return Array.isArray(guide) && guide.every((line) => typeof line === 'string') ? guide : []
 })
 const lessonPosition = computed(() => LOCAL_LESSONS.findIndex((item) => item.id === props.tutorialId))
 const previousLesson = computed(() => {
@@ -132,9 +122,14 @@ async function load(id: string): Promise<void> {
       if (!local) loadState.value = 'not-found'
       return
     }
-    if (typeof remote.title !== 'string' || (!remote.stage && typeof remote.fieldId !== 'string'))
-      throw new Error('教材データに title または stage / fieldId がありません')
-    tutorial.value = remote.fieldId === local?.fieldId ? { ...local, ...remote } : remote
+    if (
+      typeof remote.id !== 'string' ||
+      typeof remote.title !== 'string' ||
+      typeof remote.description !== 'string' ||
+      (!remote.stage && typeof remote.fieldId !== 'string')
+    )
+      throw new Error('教材データに id、title、description または stage / fieldId がありません')
+    tutorial.value = remote
     source.value = 'APIから取得'
     const remoteField = remote.stage ?? (await getTutorialField(remote.fieldId!, signal))
     if (signal.aborted) return
@@ -421,21 +416,21 @@ onBeforeUnmount(() => {
               <h1>{{ tutorial.title }}</h1>
               <p>
                 この章の目標:
-                {{ tutorial.goal ?? tutorial.description ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+                {{ tutorial.goal ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
               <h2 id="tutorial-note-title">この課題で考えること</h2>
-              <p>{{ tutorial.lesson ?? 'スタートとゴールの位置を見て、必要な命令を考えよう。' }}</p>
+              <p>{{ tutorial.lesson ?? tutorial.description }}</p>
             </section>
-            <div class="tutor-conversation">
+            <div v-if="guideLines.length" class="tutor-conversation">
               <TutorAvatar />
               <div class="tutor-speech">
                 <span>案内役のロボット</span>
                 <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
               </div>
             </div>
-            <div class="tutor-stepper" aria-label="説明を切り替える">
+            <div v-if="guideLines.length" class="tutor-stepper" aria-label="説明を切り替える">
               <button type="button" :disabled="guideIndex === 0" @click="guideIndex--">前の説明</button>
               <span>{{ guideIndex + 1 }} / {{ guideLines.length }}</span>
               <button type="button" :disabled="guideIndex === guideLines.length - 1" @click="guideIndex++">

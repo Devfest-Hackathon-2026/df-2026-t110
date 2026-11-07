@@ -56,6 +56,8 @@ type RobotState struct {
 	Position        Position         `json:"position"`
 	Direction       string           `json:"direction"`
 	DrillDurability int64            `json:"drillDurability"`
+	TeamID          int              `json:"teamId,omitzero"`
+	CarryingLuggage bool             `json:"carryingLuggage,omitzero"`
 }
 
 type ActionResult interface{ actionResult() }
@@ -120,6 +122,71 @@ func (r PrintBoolResult) MarshalJSON() ([]byte, error) {
 		Kind string `json:"kind"`
 		payload
 	}{Kind: "print_bool", payload: payload(r)})
+}
+
+type DrillResult struct {
+	RobotID         protocol.RobotID `json:"robotId"`
+	Success         bool             `json:"success"`
+	Target          *Position        `json:"target,omitempty"`
+	DrillDurability int64            `json:"drillDurability"`
+
+	ActionResult `json:"-"`
+}
+
+func (r DrillResult) MarshalJSON() ([]byte, error) {
+	type payload DrillResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "drill", payload: payload(r)})
+}
+
+type PickUpResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Success bool             `json:"success"`
+	Target  *Position        `json:"target,omitempty"`
+
+	ActionResult `json:"-"`
+}
+
+func (r PickUpResult) MarshalJSON() ([]byte, error) {
+	type payload PickUpResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "pick_up", payload: payload(r)})
+}
+
+type ReleaseResult struct {
+	RobotID   protocol.RobotID `json:"robotId"`
+	Success   bool             `json:"success"`
+	Target    *Position        `json:"target,omitempty"`
+	Discarded bool             `json:"discarded,omitzero"`
+
+	ActionResult `json:"-"`
+}
+
+func (r ReleaseResult) MarshalJSON() ([]byte, error) {
+	type payload ReleaseResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "release", payload: payload(r)})
+}
+
+type WaitResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Ticks   int64            `json:"ticks"`
+
+	ActionResult `json:"-"`
+}
+
+func (r WaitResult) MarshalJSON() ([]byte, error) {
+	type payload WaitResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "wait", payload: payload(r)})
 }
 
 func (e FieldEvent) MarshalJSON() ([]byte, error) {
