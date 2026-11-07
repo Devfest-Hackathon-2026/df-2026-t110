@@ -218,12 +218,6 @@
   font-size: 2rem;
   color: var(--color-muted);
 }
-.match-guest-result {
-  margin-block: var(--space-xl);
-  font-size: var(--type-section);
-  font-weight: 700;
-  color: var(--color-accent-deep) !important;
-}
 .match-back {
   display: inline-block;
   margin-top: var(--space-xl);

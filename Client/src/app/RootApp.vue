@@ -16,15 +16,12 @@ const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
-const roomMatch = /^\/rooms\/([^/]+)$/.exec(path)
-const roomId = roomMatch ? decodeURIComponent(roomMatch[1]) : null
 const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
 const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
-  if (roomId) return 'rooms'
   if (matchId) return 'match-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
