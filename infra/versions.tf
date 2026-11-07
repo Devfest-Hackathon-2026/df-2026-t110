@@ -12,8 +12,11 @@ terraform {
     }
   }
 
-  # State is kept locally for now; move to a GCS backend once the team shares applies.
-  backend "local" {}
+  # The bucket depends on the project ID, so it is passed with `-backend-config=backend.hcl`
+  # (see backend.hcl.example for the bootstrap steps).
+  backend "gcs" {
+    prefix = "infra"
+  }
 }
 
 provider "google" {
