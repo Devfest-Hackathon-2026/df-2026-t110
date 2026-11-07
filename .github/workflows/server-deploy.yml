@@ -2,6 +2,7 @@ name: Deploy (server)
 
 # Deploys a main commit once CI has passed on it, so the checks run only once.
 on:
+  workflow_dispatch:
   workflow_run:
     workflows:
       - CI (server)
@@ -21,7 +22,9 @@ concurrency:
 jobs:
   deploy:
     # `branches` also matches CI runs of fork PRs from a branch named main, so only pushes deploy.
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,12 +32,12 @@ jobs:
     env:
       # Variables are managed by infra/github_actions.tf; until it is applied, only the build runs.
       DEPLOY_ENABLED: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' }}
-      # github.sha is main's latest commit, not necessarily the one CI checked.
-      IMAGE: ${{ vars.SERVER_IMAGE_REPOSITORY }}/server:${{ github.event.workflow_run.head_sha }}
+      # Use the CI-checked commit, or the selected main commit for a manual run.
+      IMAGE: ${{ vars.SERVER_IMAGE_REPOSITORY }}/server:${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: jdx/mise-action@v5.2.6
         with:
           install: false

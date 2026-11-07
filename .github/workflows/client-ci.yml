@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'Client/**'
+      - 'infra/**'
+      - '.github/workflows/client-deploy.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
@@ -14,6 +16,8 @@ on:
   pull_request:
     paths:
       - 'Client/**'
+      - 'infra/**'
+      - '.github/workflows/client-deploy.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'

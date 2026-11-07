@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'Server/**'
+      - 'infra/**'
+      - '.github/workflows/server-deploy.yml'
       - 'mise.toml'
       - '!Server/AGENTS.md'
       - '.github/workflows/server-ci.yml'
@@ -11,6 +13,8 @@ on:
   pull_request:
     paths:
       - 'Server/**'
+      - 'infra/**'
+      - '.github/workflows/server-deploy.yml'
       - 'mise.toml'
       - '!Server/AGENTS.md'
       - '.github/workflows/server-ci.yml'
