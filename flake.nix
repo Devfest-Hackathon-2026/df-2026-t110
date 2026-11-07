@@ -1,5 +1,5 @@
 {
-  description = "mise with the host tools needed to install this project's toolchain";
+  description = "mise with toolchain dependencies and a Linux FHS environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -39,14 +39,30 @@
             stdenv.cc
             pkg-config
           ];
+          # Use `mise exec`/`mise en`, or `mise activate --shims` from a host shell.
+          fhsEnv = pkgs.buildFHSEnv {
+            name = "mise-fhs";
+            targetPkgs = _: runtimeTools ++ [ pkgs.openssl pkgs.zlib ];
+            runScript = pkgs.writeShellScript "mise-fhs-entry" ''
+              # Keep activation hooks and generated shims pointing at the FHS launcher.
+              exec -a "$MISE_FHS_ARGV0" ${pkgs.lib.getExe pkgs.mise} "$@"
+            '';
+          };
           mise = pkgs.symlinkJoin {
             name = "mise-with-dependencies-${pkgs.mise.version}";
             paths = [ pkgs.mise ];
             nativeBuildInputs = [ pkgs.makeWrapper ];
-            postBuild = ''
-              wrapProgram "$out/bin/mise" \
-                --prefix PATH : ${pkgs.lib.makeBinPath runtimeTools}
-            '';
+            postBuild =
+              if pkgs.stdenv.hostPlatform.isLinux then ''
+                rm "$out/bin/mise"
+                makeWrapper ${pkgs.lib.getExe fhsEnv} "$out/bin/mise" \
+                  --set __MISE_BIN "$out/bin/mise" \
+                  --prefix PATH : "$out/bin" \
+                  --run 'export MISE_FHS_ARGV0="$0"'
+              '' else ''
+                wrapProgram "$out/bin/mise" \
+                  --prefix PATH : ${pkgs.lib.makeBinPath runtimeTools}
+              '';
             meta = pkgs.mise.meta;
           };
         in
