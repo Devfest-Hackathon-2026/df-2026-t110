@@ -4,9 +4,15 @@ on:
   push:
     paths:
       - 'Textbooks/**'
+      - 'Schema/tutorial/tutorial-detail.schema.yaml'
+      - 'Schema/field/stage.schema.yaml'
+      - 'Schema/field/field.schema.yaml'
   pull_request:
     paths:
       - 'Textbooks/**'
+      - 'Schema/tutorial/tutorial-detail.schema.yaml'
+      - 'Schema/field/stage.schema.yaml'
+      - 'Schema/field/field.schema.yaml'
 
 permissions:
   contents: read
