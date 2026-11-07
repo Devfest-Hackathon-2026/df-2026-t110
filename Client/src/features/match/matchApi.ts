@@ -24,7 +24,7 @@ export interface MatchRecord {
 
 export interface MatchResult {
   history: unknown[]
-  summary: { score: { player: number; opposite: number } }
+  summary: { score: { player: number; opponent: number } }
 }
 
 export class MatchApiError extends Error {
@@ -96,7 +96,7 @@ export function parseMatchResult(value: unknown): MatchResult {
   if (!isObject(value) || !Array.isArray(value.history) || !isObject(value.summary))
     throw new Error('対戦結果の形式が不正です')
   const score = value.summary.score
-  if (!isObject(score) || typeof score.player !== 'number' || typeof score.opposite !== 'number')
+  if (!isObject(score) || typeof score.player !== 'number' || typeof score.opponent !== 'number')
     throw new Error('対戦得点の形式が不正です')
   return value as unknown as MatchResult
 }
