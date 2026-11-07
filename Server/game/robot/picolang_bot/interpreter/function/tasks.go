@@ -16,8 +16,10 @@ func (t parameter) run(m *Machine) {
 	variable := &m.variables[t.index]
 	m.current(bot.Source{HintID: variable.hint})
 	m.resources.Time.Increment()
-	m.resources.Events.Add(robotevent.VariableInitEvent{HintID: variable.hint, Value: m.record(variable.value)})
-	variable.announced = true
+	if m.resources.Events != nil {
+		m.resources.Events.Add(robotevent.VariableInitEvent{HintID: variable.hint, Value: m.record(variable.value)})
+		variable.announced = true
+	}
 }
 
 type enterBlock struct {
