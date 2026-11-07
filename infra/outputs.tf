@@ -5,7 +5,7 @@ output "server_url" {
 
 output "server_image_repository" {
   description = "Artifact Registry path to push server images to."
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.server.repository_id}"
+  value       = local.server_image_repository
 }
 
 output "db_connection_name" {

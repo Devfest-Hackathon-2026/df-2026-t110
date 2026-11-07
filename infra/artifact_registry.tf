@@ -25,3 +25,7 @@ resource "google_artifact_registry_repository" "server" {
 
   depends_on = [google_project_service.required]
 }
+
+locals {
+  server_image_repository = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.server.repository_id}"
+}

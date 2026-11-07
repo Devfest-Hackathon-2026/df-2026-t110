@@ -58,3 +58,22 @@ resource "google_service_account_iam_member" "github_deployer_act_as_server" {
   role               = "roles/iam.serviceAccountUser"
   member             = google_service_account.github_deployer.member
 }
+
+# Non-secret values the deploy workflow needs; managed here so they follow the infrastructure.
+locals {
+  github_actions_variables = {
+    GCP_WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github.name
+    GCP_DEPLOYER_SERVICE_ACCOUNT   = google_service_account.github_deployer.email
+    GCP_REGION                     = var.region
+    SERVER_IMAGE_REPOSITORY        = local.server_image_repository
+    SERVER_CLOUD_RUN_SERVICE       = google_cloud_run_v2_service.server.name
+  }
+}
+
+resource "github_actions_variable" "deploy" {
+  for_each = local.github_actions_variables
+
+  repository    = data.github_repository.this.name
+  variable_name = each.key
+  value         = each.value
+}
