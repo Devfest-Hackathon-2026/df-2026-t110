@@ -32,3 +32,21 @@ variable "db_deletion_protection" {
   type        = bool
   default     = true
 }
+
+variable "github_owner" {
+  description = "GitHub organization that owns the repository."
+  type        = string
+  default     = "dvpico"
+}
+
+variable "github_repository" {
+  description = "GitHub repository that builds and deploys the server."
+  type        = string
+  default     = "Programming-Learning-AR"
+}
+
+variable "github_deploy_ref" {
+  description = "Git ref allowed to push images and deploy from GitHub Actions."
+  type        = string
+  default     = "refs/heads/main"
+}

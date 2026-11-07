@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 8.10"
     }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.13"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.9"
@@ -22,4 +26,10 @@ terraform {
 provider "google" {
   project = var.project_id
   region  = var.region
+}
+
+# Authenticates with the GITHUB_TOKEN environment variable (e.g. `GITHUB_TOKEN=$(gh auth token)`),
+# which needs admin access to the repository.
+provider "github" {
+  owner = var.github_owner
 }

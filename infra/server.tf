@@ -81,6 +81,16 @@ resource "google_cloud_run_v2_service" "server" {
     }
   }
 
+  # GitHub Actions deploys new images with gcloud; Terraform only sets the initial one.
+  # client/client_version are written by gcloud on every deploy.
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      client,
+      client_version,
+    ]
+  }
+
   depends_on = [
     google_project_service.required,
     google_project_iam_member.server_cloudsql_client,
