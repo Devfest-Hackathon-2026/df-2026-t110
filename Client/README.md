@@ -26,7 +26,7 @@ pnpm install
 pnpm dev
 ```
 
-Vite 8 の標準ビルドは Rolldown と Oxc を使用します。`esbuild` は互換性のための任意の依存関係としてロックファイルに含まれ、`pnpm-workspace.yaml` でそのインストール時スクリプトを許可しています。
+Vite 8 の標準ビルドは Rolldown と Oxc を使用します。`esbuild` は互換性のための任意の依存関係としてロックファイルに含まれ、リポジトリのルートにある `pnpm-workspace.yaml` でそのインストール時スクリプトを許可しています。
 
 3dプレビュー:カメラなしで動くデバッグ用
 

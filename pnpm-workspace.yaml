@@ -1,0 +1,6 @@
+packages:
+  - Client
+  - Textbooks
+
+allowBuilds:
+  esbuild: true
