@@ -243,6 +243,8 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: drillDurability(b.state.Robots[id])}
 		case actions.SearchNowAction:
 			b.controls[id] = readyControl{value: b.searchNow(id)}
+		case actions.SearchFrontAction:
+			b.controls[id] = readyControl{value: b.searchFront(id)}
 		case actions.ForwardAction, actions.BackAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:

@@ -10,6 +10,10 @@ func (b *Board) searchNow(id protocol.RobotID) values.LandTerrain {
 	position := robot.position
 	// Robots always occupy land in the committed board state.
 	land := b.state.Terrain[position.y][position.x].(LandTerrain)
+	return observeLand(land, robot.teamID)
+}
+
+func observeLand(land LandTerrain, team TeamID) values.LandTerrain {
 	observation := values.LandTerrain{HasLuggage: land.hasLuggage}
 
 	switch kind := land.kind.(type) {
@@ -23,9 +27,9 @@ func (b *Board) searchNow(id protocol.RobotID) values.LandTerrain {
 		panic("invalid board land kind")
 	}
 
-	if robot.teamID != NoTeam && land.territoryOwner != NoTeam {
+	if team != NoTeam && land.territoryOwner != NoTeam {
 		observation.Territory = values.EnemyTerritory
-		if robot.teamID == land.territoryOwner {
+		if team == land.territoryOwner {
 			observation.Territory = values.OwnTerritory
 		}
 	}
