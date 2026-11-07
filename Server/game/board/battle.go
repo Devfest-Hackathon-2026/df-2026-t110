@@ -84,7 +84,7 @@ func (b *battleState) Result(state Snapshot, reason boardmsg.EndReason) (boardms
 	var teams [3]boardmsg.TeamResult
 	for _, team := range []TeamID{TeamID1, TeamID2} {
 		discards := b.discards[team]
-		score := int64(luggage[team])*b.config.luggagePoints - int64(discards)*b.config.discardPenalty
+		score := int64(luggage[team])*b.config.luggagePoints - int64(discards)*b.config.discardPenalty //nolint:gosec // そんなに大きくならないのでオーバーフローは心配しなくて大丈夫
 		teams[team] = boardmsg.NewTeamResult(luggage[team], discards, score)
 	}
 
