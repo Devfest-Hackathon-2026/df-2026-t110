@@ -202,7 +202,22 @@
   },
   {
     "type": "field",
-    "tick": 6,
+    "tick": 7,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "wait", "robotId": "robot-2", "ticks": 3 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 9,
+    "state": { "kind": "update" }
+  },
+  {
+    "type": "field",
+    "tick": 9,
     "state": {
       "kind": "update",
       "removedRobotIds": ["robot-2"]
