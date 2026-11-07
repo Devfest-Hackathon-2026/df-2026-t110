@@ -67,6 +67,7 @@ locals {
     GCP_REGION                     = var.region
     SERVER_IMAGE_REPOSITORY        = local.server_image_repository
     SERVER_CLOUD_RUN_SERVICE       = google_cloud_run_v2_service.server.name
+    CLIENT_BUCKET                  = google_storage_bucket.client.name
   }
 }
 

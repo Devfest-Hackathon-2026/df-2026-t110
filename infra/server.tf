@@ -26,10 +26,22 @@ resource "google_cloud_run_v2_service" "server" {
 
   template {
     service_account = google_service_account.server.email
+    # Cloud Storage volume mounts require the second generation execution environment.
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
 
     scaling {
       min_instance_count = 0
       max_instance_count = var.server_max_instances
+    }
+
+    # Volumes and mounts are listed by name: Cloud Run returns them sorted, and any other order
+    # shows up as a permanent diff in every plan.
+    volumes {
+      name = "client"
+      gcs {
+        bucket    = google_storage_bucket.client.name
+        read_only = true
+      }
     }
 
     volumes {
@@ -55,6 +67,10 @@ resource "google_cloud_run_v2_service" "server" {
       }
 
       env {
+        name  = "STATIC_DIR"
+        value = "/static"
+      }
+      env {
         name  = "DB_HOST"
         value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
       }
@@ -77,6 +93,10 @@ resource "google_cloud_run_v2_service" "server" {
       }
 
       volume_mounts {
+        name       = "client"
+        mount_path = "/static"
+      }
+      volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"
       }
@@ -98,6 +118,7 @@ resource "google_cloud_run_v2_service" "server" {
     google_project_iam_member.server_cloudsql_client,
     google_secret_manager_secret_iam_member.server_db_app_password,
     google_secret_manager_secret_version.db_app_password,
+    google_storage_bucket_iam_member.server_client_reader,
   ]
 }
 

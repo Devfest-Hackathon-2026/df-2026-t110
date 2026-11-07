@@ -12,3 +12,8 @@ output "db_connection_name" {
   description = "Cloud SQL connection name, for the Cloud SQL Auth Proxy."
   value       = google_sql_database_instance.main.connection_name
 }
+
+output "client_bucket" {
+  description = "Cloud Storage bucket the built client is uploaded to."
+  value       = google_storage_bucket.client.name
+}
