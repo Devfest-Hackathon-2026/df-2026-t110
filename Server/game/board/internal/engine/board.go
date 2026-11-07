@@ -17,6 +17,8 @@ import (
 
 var ErrTickLimit = errors.New("tick limit reached")
 
+var errMissingCompletion = errors.New("board completion rules are required")
+
 type Direction string
 
 const (
@@ -51,6 +53,8 @@ type RobotState struct {
 	position        Position
 	direction       Direction
 	drillDurability int64
+	teamID          TeamID
+	carryingLuggage bool
 }
 
 func NewRobotState(position Position, direction Direction, drillDurability int64) RobotState {
@@ -60,12 +64,30 @@ func NewRobotState(position Position, direction Direction, drillDurability int64
 func (r RobotState) Position() Position     { return r.position }
 func (r RobotState) Direction() Direction   { return r.direction }
 func (r RobotState) DrillDurability() int64 { return r.drillDurability }
+func (r RobotState) TeamID() TeamID         { return r.teamID }
+func (r RobotState) CarryingLuggage() bool  { return r.carryingLuggage }
+
+// WithTeam returns a copy of the robot with the specified team.
+func (r RobotState) WithTeam(team TeamID) RobotState {
+	r.teamID = team
+	return r
+}
 
 type Config struct {
-	// MaxTicks bounds committed ticks; zero means unlimited.
-	MaxTicks uint64
-	Terrain  [][]Terrain
-	Robots   map[protocol.RobotID]RobotState
+	maxTicks   uint64
+	completion CompletionRules
+	terrain    [][]Terrain
+	robots     map[protocol.RobotID]RobotState
+}
+
+// NewConfig binds the required completion rules to the board settings.
+// A maxTicks of zero means unlimited.
+func NewConfig(terrain [][]Terrain, robots map[protocol.RobotID]RobotState, maxTicks uint64, completion CompletionRules) (Config, error) {
+	if completion == nil {
+		return Config{}, errMissingCompletion
+	}
+	state := clone(Snapshot{Terrain: terrain, Robots: robots})
+	return Config{terrain: state.Terrain, robots: state.Robots, maxTicks: maxTicks, completion: completion}, nil
 }
 
 type Snapshot struct {
@@ -75,19 +97,23 @@ type Snapshot struct {
 }
 
 type Board struct {
-	maxTicks uint64
-	state    Snapshot
-	order    []protocol.RobotID
-	controls map[protocol.RobotID]control
-	phase    phase
+	maxTicks   uint64
+	completion CompletionRules
+	state      Snapshot
+	order      []protocol.RobotID
+	controls   map[protocol.RobotID]robotControl
+	phase      phase
 }
 
 func New(config Config) (Board, error) {
-	if len(config.Terrain) == 0 || len(config.Terrain[0]) == 0 || len(config.Robots) == 0 {
+	if config.completion == nil {
+		return Board{}, errMissingCompletion
+	}
+	if len(config.terrain) == 0 || len(config.terrain[0]) == 0 || len(config.robots) == 0 {
 		return Board{}, errors.New("nonempty terrain and robots are required")
 	}
-	width := len(config.Terrain[0])
-	for _, row := range config.Terrain {
+	width := len(config.terrain[0])
+	for _, row := range config.terrain {
 		if len(row) != width {
 			return Board{}, errors.New("terrain must be rectangular")
 		}
@@ -97,21 +123,26 @@ func New(config Config) (Board, error) {
 			}
 		}
 	}
-	occupied := make(map[Position]struct{}, len(config.Robots))
-	for id, robot := range config.Robots {
+	occupied := make(map[Position]struct{}, len(config.robots))
+	for id, robot := range config.robots {
 		p := robot.position
 		if id == "" || directionIndex(robot.direction) < 0 || robot.drillDurability < 0 ||
-			p.x < 0 || p.y < 0 || p.x >= width || p.y >= len(config.Terrain) {
+			p.x < 0 || p.y < 0 || p.x >= width || p.y >= len(config.terrain) {
 			return Board{}, fmt.Errorf("invalid robot %q", id)
 		}
-		_, isLand := config.Terrain[p.y][p.x].(LandTerrain)
+		switch robot.teamID {
+		case NoTeam, TeamID1, TeamID2:
+		default:
+			return Board{}, fmt.Errorf("invalid team %d for robot %q", robot.teamID, id)
+		}
+		_, isLand := config.terrain[p.y][p.x].(LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {
 			return Board{}, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
 		occupied[p] = struct{}{}
 	}
-	state := Snapshot{Terrain: config.Terrain, Robots: config.Robots}
-	return Board{maxTicks: config.MaxTicks, state: clone(state), phase: unstartedBoard{}}, nil
+	state := Snapshot{Terrain: config.terrain, Robots: config.robots}
+	return Board{maxTicks: config.maxTicks, completion: config.completion, state: clone(state), phase: unstartedBoard{}}, nil
 }
 
 func (b *Board) Snapshot() Snapshot { return clone(b.state) }
@@ -120,7 +151,7 @@ func (b *Board) Start(ids []protocol.RobotID) ([]fieldevent.FieldEvent, error) {
 	if _, fresh := b.phase.(unstartedBoard); !fresh || len(ids) != len(b.state.Robots) {
 		return nil, errors.New("board is single-use and robot IDs must match its configuration")
 	}
-	controls := make(map[protocol.RobotID]control, len(ids))
+	controls := make(map[protocol.RobotID]robotControl, len(ids))
 	for _, id := range ids {
 		if _, ok := b.state.Robots[id]; !ok || controls[id] != nil {
 			return nil, fmt.Errorf("unknown or duplicate robot %q", id)
@@ -128,7 +159,7 @@ func (b *Board) Start(ids []protocol.RobotID) ([]fieldevent.FieldEvent, error) {
 		controls[id] = unstartedControl{}
 	}
 	b.controls, b.order, b.phase = controls, append([]protocol.RobotID(nil), ids...), collectingBoard{}
-	return b.events(), nil
+	return []fieldevent.FieldEvent{{State: b.initialFieldState()}}, nil
 }
 
 func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
@@ -149,17 +180,27 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 	}
 
 	var output boardmsg.BoardOutput
+	turnLimit := b.completion.TurnLimit()
 	for {
-		if _, finished := b.phase.(finishedBoard); finished {
-			output.Decision = boardmsg.DoneDecision{}
-			return output, nil
+		if phase, finished := b.phase.(finishedBoard); finished {
+			output.Decision = phase.decision
+			return output, phase.err
+		}
+		if turnLimit != 0 && b.state.Tick >= turnLimit {
+			return b.finish(output, boardmsg.EndTurnLimit)
 		}
 
-		pending := false
+		hasPendingActions := false
+		hasRemovals := false
+		var earliestWait uint64
 		for _, id := range b.order {
 			switch c := b.controls[id].(type) {
 			case pendingControl:
-				pending = true
+				hasPendingActions = true
+			case waitingControl:
+				if earliestWait == 0 || c.remaining < earliestWait {
+					earliestWait = c.remaining
+				}
 			case unstartedControl:
 				b.phase = awaitingReplyBoard{robotID: id}
 				output.Decision = boardmsg.StartDecision{RobotID: id}
@@ -169,16 +210,16 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 				output.Decision = boardmsg.ResumeDecision{RobotID: id, ReturnValue: c.value}
 				return output, nil
 			case finishedControl:
+				if _, present := b.state.Robots[id]; present {
+					hasRemovals = true
+				}
 			default:
 				return output, fmt.Errorf("invalid control for robot %q", id)
 			}
 		}
 
-		if !pending {
-			clear(b.state.Robots)
-			b.phase = finishedBoard{}
-			output.Decision = boardmsg.DoneDecision{}
-			return output, nil
+		if !hasPendingActions && earliestWait == 0 {
+			return b.finish(output, boardmsg.EndAllStopped)
 		}
 
 		if b.state.Tick == math.MaxUint64 {
@@ -187,15 +228,26 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 		if b.maxTicks != 0 && b.state.Tick >= b.maxTicks {
 			return output, ErrTickLimit
 		}
-		if err := b.commit(); err != nil {
+		ticks := uint64(1)
+		if !hasPendingActions && !hasRemovals {
+			// No robot can change the board before the earliest wait completes.
+			ticks = min(earliestWait, math.MaxUint64-b.state.Tick)
+			if b.maxTicks != 0 {
+				ticks = min(ticks, b.maxTicks-b.state.Tick)
+			}
+			if turnLimit != 0 {
+				ticks = min(ticks, turnLimit-b.state.Tick)
+			}
+		}
+		update, err := b.commit(ticks)
+		if err != nil {
 			return output, err
 		}
-		output.Events = append(output.Events, b.events()...)
+		output.Events = append(output.Events, fieldevent.FieldEvent{Tick: b.state.Tick, State: update})
+		if b.completion.AfterTurn(b.Snapshot(), update) {
+			return b.finish(output, boardmsg.EndConditionMet)
+		}
 	}
-}
-
-func (b *Board) events() []fieldevent.FieldEvent {
-	return []fieldevent.FieldEvent{{Tick: b.state.Tick}}
 }
 
 func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
@@ -221,8 +273,23 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 		}
 		switch a := r.Action.(type) {
 		case actions.DrillDurabilityAction:
-			b.controls[id] = readyControl{value: values.IntegerValue{Integer: b.state.Robots[id].drillDurability}}
-		case actions.ForwardAction, actions.BackAction:
+			b.controls[id] = readyControl{value: drillDurability(b.state.Robots[id])}
+		case actions.SearchNowAction:
+			b.controls[id] = readyControl{value: b.searchNow(id)}
+		case actions.SearchFrontAction:
+			b.controls[id] = readyControl{value: b.searchFront(id)}
+		case actions.DistanceAction:
+			if !a.Target.Valid() {
+				return fmt.Errorf("invalid distance target %q", a.Target)
+			}
+			b.controls[id] = readyControl{value: values.IntegerValue{Integer: b.distance(id, a.Target)}}
+		case actions.WaitAction:
+			if a.Integer <= 0 {
+				b.controls[id] = readyControl{value: values.UnitValue{}}
+			} else {
+				b.controls[id] = pendingControl{action: a}
+			}
+		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.ReleaseAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -243,42 +310,74 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 	return nil
 }
 
-// commit resolves movement dependencies against one immutable starting state.
-func (b *Board) commit() error {
+// commit resolves actions against one immutable starting state.
+func (b *Board) commit(ticks uint64) (fieldevent.UpdateState, error) {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]protocol.RobotID, robotCount)
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
+	drillTargets := make(map[protocol.RobotID]Position)
+	pickUpTargets := make(map[protocol.RobotID]Position, robotCount)
+	pickUpCounts := make(map[Position]int, robotCount)
+	releaseTargets := make(map[protocol.RobotID]releaseTarget, robotCount)
+	releaseCounts := make(map[Position]int, robotCount)
 	next := clone(b.state)
-	next.Tick++
-	for id, robot := range b.state.Robots {
+	next.Tick += ticks
+
+	var update fieldevent.UpdateState
+	for _, id := range b.order {
+		robot, present := b.state.Robots[id]
+		if !present {
+			continue
+		}
 		if _, stopped := b.controls[id].(finishedControl); stopped {
 			delete(next.Robots, id)
+			update.RemovedRobotIDs = append(update.RemovedRobotIDs, id)
 			continue
 		}
 		occupied[robot.position] = id
 	}
+
 	for _, id := range b.order {
 		c, pending := b.controls[id].(pendingControl)
 		if !pending {
 			continue
 		}
-		a := c.action
 		robot := b.state.Robots[id]
 		delta := directionDeltas[robot.direction]
-		switch a.(type) {
+		target := Position{x: robot.position.x + delta.x, y: robot.position.y + delta.y}
+		switch c.action.(type) {
 		case actions.ForwardAction:
 		case actions.BackAction:
-			delta.x, delta.y = -delta.x, -delta.y
+			target = Position{x: robot.position.x - delta.x, y: robot.position.y - delta.y}
+		case actions.DrillAction:
+			if _, rock := b.terrainAt(target).(RockTerrain); rock && robot.drillDurability > 0 {
+				drillTargets[id] = target
+			}
+			continue
+		case actions.PickUpAction:
+			if land, ok := b.terrainAt(target).(LandTerrain); ok && land.hasLuggage && !robot.carryingLuggage {
+				pickUpTargets[id] = target
+				pickUpCounts[target]++
+			}
+			continue
+		case actions.ReleaseAction:
+			if destination, eligible := b.releaseDestination(robot, target); eligible {
+				releaseTargets[id] = destination
+				if !destination.discarded {
+					releaseCounts[target]++
+				}
+			}
+			continue
 		default:
 			continue
 		}
-		target := Position{x: robot.position.x + delta.x, y: robot.position.y + delta.y}
 		if b.land(target) {
 			targets[id] = target
 			counts[target]++
 		}
 	}
+
 	visiting := make(map[protocol.RobotID]struct{}, robotCount)
 	resolved := make(map[protocol.RobotID]struct{}, robotCount)
 	movable := make(map[protocol.RobotID]bool, robotCount)
@@ -313,40 +412,56 @@ func (b *Board) commit() error {
 		if !pending {
 			continue
 		}
-		a := c.action
+
 		robot := next.Robots[id]
 		var value values.Value = values.UnitValue{}
-		switch action := a.(type) {
+		var event fieldevent.ActionResult
+		switch action := c.action.(type) {
 		case actions.RotateAction:
-			rotation := 1
-			if action.Rotation == values.Left {
-				rotation = 3
-			}
-			robot.direction = [...]Direction{North, East, South, West}[(directionIndex(robot.direction)+rotation)%4]
-		case actions.ForwardAction, actions.BackAction:
-			moved := canMove(id)
-			value = values.BoolValue{Bool: moved}
-			if moved {
-				robot.position = targets[id]
-			}
+			event = applyRotation(id, &robot, action.Rotation)
+		case actions.ForwardAction:
+			value, event = applyMove(id, &robot, fieldevent.Forward, targets[id], canMove(id))
+		case actions.BackAction:
+			value, event = applyMove(id, &robot, fieldevent.Back, targets[id], canMove(id))
+		case actions.DrillAction:
+			target, eligible := drillTargets[id]
+			value, event = applyDrill(id, &robot, next.Terrain, target, eligible)
+		case actions.PickUpAction:
+			target, eligible := pickUpTargets[id]
+			value, event = applyPickUp(id, &robot, next.Terrain, target, eligible && pickUpCounts[target] == 1)
+		case actions.ReleaseAction:
+			target, eligible := releaseTargets[id]
+			value, event = applyRelease(id, &robot, next.Terrain, target, eligible && (target.discarded || releaseCounts[target.position] == 1))
+		case actions.WaitAction:
+			event = wait(id, action.Integer)
+		case actions.PrintIntegerAction:
+			event = printInteger(id, action.Integer)
+		case actions.PrintBoolAction:
+			event = printBool(id, action.Bool)
 		default:
-			return fmt.Errorf("%w: pending action %T", game.ErrNotSupported, a)
+			return fieldevent.UpdateState{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, c.action)
 		}
+
 		next.Robots[id] = robot
-		results = append(results, robotmsg.ActionResult{RobotID: id, Action: a, Value: value})
+		update.Actions = append(update.Actions, event)
+		results = append(results, robotmsg.ActionResult{RobotID: id, Action: c.action, Value: value})
 	}
+
 	b.state = next
+	b.advanceWaits(ticks)
 	for _, result := range results {
+		if action, ok := result.Action.(actions.WaitAction); ok && action.Integer > 1 {
+			b.controls[result.RobotID] = waitingControl{remaining: uint64(action.Integer - 1)}
+			continue
+		}
 		b.controls[result.RobotID] = readyControl{value: result.Value}
 	}
-	return nil
+
+	return update, nil
 }
 
 func (b *Board) land(p Position) bool {
-	if p.y < 0 || p.y >= len(b.state.Terrain) || p.x < 0 || p.x >= len(b.state.Terrain[0]) {
-		return false
-	}
-	_, isLand := b.state.Terrain[p.y][p.x].(LandTerrain)
+	_, isLand := b.terrainAt(p).(LandTerrain)
 	return isLand
 }
 

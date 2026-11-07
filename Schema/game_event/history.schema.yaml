@@ -7,6 +7,8 @@ description: |
   field と picolang のイベントは配列の順序で再生する。
   空のリストはイベントがまだない状態を表す。
   完全な実行履歴では最初に tick 0 の field イベントで初期状態を記録し、以後の field イベントの tick は非減少とする。
+  1ターン分の行動結果と機体の除去は一つの field イベントで記録する。全機停止時の除去は tick を進めずに記録する。
+  待機だけで盤面に変化がない区間は、区間末尾の tick を持つ空の update にまとめることがある。
   field イベントの tick の順序と interpreterId の対応は履歴の生成側で保証する。
 
 type: array

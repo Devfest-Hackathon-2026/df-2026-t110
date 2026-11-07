@@ -8,6 +8,7 @@ import type { StageAssets } from './stageAssets.ts'
 import type { StageAnimationTarget } from './stageVisuals.ts'
 import { createArmPivots } from './armController.ts'
 import { createRobotAnimator } from './robotAnimator.ts'
+import { createRockBreakEffect } from './rockBreakEffect.ts'
 import type { StageCell, StageLayout } from './stage.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
 
@@ -39,9 +40,11 @@ let stream: MediaStream | null = null
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
+let rockBreak: ReturnType<typeof createRockBreakEffect> | null = null
+let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell, reset: replaceStage, resetRobot })
+defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
@@ -68,6 +71,7 @@ function replaceStage() {
   if (!scene) return
   distance = props.previewDistance
   pendingEvent = null
+  clearRockBreak()
   if (board) {
     robotAnimator?.stop()
     if (robotRig) board.remove(robotRig)
@@ -88,6 +92,26 @@ function replaceStage() {
   setView()
 }
 
+function refreshVisuals(): void {
+  if (!scene || !board) return
+  const currentYaw = robotRig?.rotation.y
+  clearRockBreak()
+  robotAnimator?.stop()
+  if (robotRig) board.remove(robotRig)
+  scene.remove(board)
+  disposeStageVisuals(board)
+  const visuals = createStageVisuals(props.stage, stageAssets ?? undefined)
+  board = visuals.root
+  animated = visuals.animated
+  scene.add(board)
+  if (robotRig) {
+    board.add(robotRig)
+    positionRobot(robotCell.value)
+    if (currentYaw !== undefined) robotRig.rotation.y = currentYaw
+  }
+  setView()
+}
+
 function positionRobot(cell: StageCell | { x: number; y: number } | null | undefined): void {
   if (!robotRig || !cell) return
   robotRig.position.set(cell.x - (props.stage.width - 1) / 2, 0.07, cell.y - (props.stage.height - 1) / 2)
@@ -101,6 +125,7 @@ function positionRobot(cell: StageCell | { x: number; y: number } | null | undef
 
 function resetRobot(): void {
   pendingEvent = null
+  clearRockBreak()
   robotAnimator?.stop()
   const start = props.stage.cells.find((cell) => cell.start)
   robotCell.value = start ? { x: start.x, y: start.y } : null
@@ -154,6 +179,25 @@ function facingForStep(dx: number, dy: number): number | null {
   return null
 }
 
+function clearRockBreak(): void {
+  rockBreak?.dispose()
+  rockBreak = null
+  rockBreakStart = null
+}
+
+function rockAhead(): THREE.Object3D | null {
+  if (!board || !robotRig || !robotCell.value) return null
+  const direction = gridDirection(robotRig.rotation.y)
+  const x = robotCell.value.x + direction.x
+  const y = robotCell.value.y + direction.y
+  let found: THREE.Object3D | null = null
+  board.traverse((object) => {
+    if (object.name === 'stage-rock' && object.userData.cellX === x && object.userData.cellY === y)
+      found = object
+  })
+  return found
+}
+
 function playAnimationEvent(event: AnimationEvent | null): void {
   if (!event) return
   if (!robotAnimator) {
@@ -161,6 +205,7 @@ function playAnimationEvent(event: AnimationEvent | null): void {
     return
   }
   if (!robotRig) return
+  clearRockBreak()
   let destination: THREE.Vector3 | undefined
   let targetYaw: number | undefined
   let animation = event
@@ -186,6 +231,9 @@ function playAnimationEvent(event: AnimationEvent | null): void {
   } else if (event.type === 'rotate') {
     if (event.direction !== 'left' && event.direction !== 'right') return
     targetYaw = robotRig.rotation.y + (event.direction === 'left' ? Math.PI / 2 : -Math.PI / 2)
+  } else if (event.type === 'drill' && event.success !== false) {
+    const rock = rockAhead()
+    if (rock) rockBreak = createRockBreakEffect(rock)
   }
   robotAnimator.play(animation, destination, targetYaw)
 }
@@ -216,6 +264,10 @@ function animate(time: number): void {
   frame = requestAnimationFrame(animate)
   advanceWater(time)
   robotAnimator?.update(time)
+  if (rockBreak) {
+    rockBreakStart ??= time
+    rockBreak.update(Math.min(1, (time - rockBreakStart) / 1000))
+  }
   for (const target of animated) {
     target.object.rotation.y += target.kind === 'hover' ? 0.006 : 0.004
     if (target.kind === 'hover') target.object.position.y = target.baseY + Math.sin(time * 0.002) * 0.035
@@ -347,6 +399,7 @@ onBeforeUnmount(() => {
   if (resizeTimer) clearTimeout(resizeTimer)
   stopCamera()
   robotAnimator?.stop()
+  clearRockBreak()
   if (robotRig && board) board.remove(robotRig)
   robotModel?.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return

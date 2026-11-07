@@ -17,7 +17,17 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-const help = "<id> forward | back | rotate left | rotate right | drill_durability | done; help\n"
+// CommandUsage lists the commands accepted by a stdio robot session.
+const CommandUsage = `
+<id> forward | back | rotate left | rotate right |
+ wait <ticks> |
+ distance <robot|ally|enemy|rock|luggage|sea|goal|territory> |
+ drill | drill_durability | 
+ pick_up | release |
+ search_now | search_front | 
+ print_integer <integer> | print_bool true/false | 
+ done
+help`
 
 // Session owns input and shares it between robots. Calls to Robot.Start and
 // Robot.Next must be sequential. Close releases the input resource.
@@ -113,7 +123,7 @@ func (r *Stdio) readStep() (robotmsg.Step, error) {
 		}
 		fields := strings.Fields(text)
 		if len(fields) == 1 && fields[0] == "help" {
-			if _, err := io.WriteString(r.session.output, help); err != nil {
+			if _, err := fmt.Fprintln(r.session.output, CommandUsage); err != nil {
 				return nil, err
 			}
 			continue
@@ -125,7 +135,7 @@ func (r *Stdio) readStep() (robotmsg.Step, error) {
 			}
 			return step, nil
 		}
-		if _, err := fmt.Fprintf(r.session.output, "invalid command for %s; %s", r.id, help); err != nil {
+		if _, err := fmt.Fprintf(r.session.output, "invalid command for %s; %s\n", r.id, CommandUsage); err != nil {
 			return nil, err
 		}
 	}
@@ -147,10 +157,40 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 			return robotmsg.ActionStep{Action: actions.BackAction{}}, true
 		case "drill_durability":
 			return robotmsg.ActionStep{Action: actions.DrillDurabilityAction{}}, true
+		case "drill":
+			return robotmsg.ActionStep{Action: actions.DrillAction{}}, true
+		case "pick_up":
+			return robotmsg.ActionStep{Action: actions.PickUpAction{}}, true
+		case "release":
+			return robotmsg.ActionStep{Action: actions.ReleaseAction{}}, true
+		case "search_now":
+			return robotmsg.ActionStep{Action: actions.SearchNowAction{}}, true
+		case "search_front":
+			return robotmsg.ActionStep{Action: actions.SearchFrontAction{}}, true
 		}
 	}
 	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(values.Left) || fields[2] == string(values.Right)) {
 		return robotmsg.ActionStep{Action: actions.RotateAction{Rotation: values.Rotation(fields[2])}}, true
+	}
+	if len(fields) == 3 && fields[1] == "distance" {
+		target := values.DistanceTarget(fields[2])
+		if target.Valid() {
+			return robotmsg.ActionStep{Action: actions.DistanceAction{Target: target}}, true
+		}
+		return nil, false
+	}
+	if len(fields) == 3 && (fields[1] == "print_integer" || fields[1] == "wait") {
+		integer, err := strconv.ParseInt(fields[2], 10, 64)
+		if err != nil {
+			return nil, false
+		}
+		if fields[1] == "wait" {
+			return robotmsg.ActionStep{Action: actions.WaitAction{Integer: integer}}, true
+		}
+		return robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: integer}}, true
+	}
+	if len(fields) == 3 && fields[1] == "print_bool" && (fields[2] == "true" || fields[2] == "false") {
+		return robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: fields[2] == "true"}}, true
 	}
 	return nil, false
 }

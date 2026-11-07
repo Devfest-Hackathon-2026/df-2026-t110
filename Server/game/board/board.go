@@ -12,12 +12,14 @@ import (
 var ErrTickLimit = engine.ErrTickLimit
 
 type (
-	Config     = engine.Config
-	Snapshot   = engine.Snapshot
-	Position   = engine.Position
-	Direction  = engine.Direction
-	RobotState = engine.RobotState
-	TeamID     = engine.TeamID
+	Config          = engine.Config
+	CompletionRules = engine.CompletionRules
+	AllStoppedRules = engine.AllStoppedRules
+	Snapshot        = engine.Snapshot
+	Position        = engine.Position
+	Direction       = engine.Direction
+	RobotState      = engine.RobotState
+	TeamID          = engine.TeamID
 
 	Terrain        = engine.Terrain
 	LandTerrain    = engine.LandTerrain
@@ -35,12 +37,19 @@ const (
 	South = engine.South
 	West  = engine.West
 
+	NoTeam  = engine.NoTeam
 	TeamID1 = engine.TeamID1
 	TeamID2 = engine.TeamID2
 )
 
 type Board struct {
 	impl engine.Board
+}
+
+// NewConfig binds the required completion rules to the board settings.
+// A maxTicks of zero means unlimited.
+func NewConfig(terrain [][]Terrain, robots map[protocol.RobotID]RobotState, maxTicks uint64, completion CompletionRules) (Config, error) {
+	return engine.NewConfig(terrain, robots, maxTicks, completion)
 }
 
 func New(config Config) (*Board, error) {

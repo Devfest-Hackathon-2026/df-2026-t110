@@ -12,7 +12,7 @@ defineProps<{ activePage: 'home' | 'tutorials' | 'tutorial-detail' | 'rooms' | '
         >教材</a
       >
       <a href="/rooms" :aria-current="activePage === 'rooms' ? 'page' : undefined">対戦</a>
-      <a href="/account" :aria-current="activePage === 'account' ? 'page' : undefined">ログイン</a>
+      <a href="/account" :aria-current="activePage === 'account' ? 'page' : undefined">アカウント</a>
     </nav>
   </header>
 </template>

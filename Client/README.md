@@ -2,19 +2,21 @@
 
 開発とテストには Node.js 24 以上を使います。依存関係の確認には pnpm 12.17.0 を使用しました。
 
-`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` はクライアント内で部屋作成とマッチングを試せる画面、`/account` はログインの準備状況を示すページです。認証・マッチングAPIにはまだ接続していません。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` は対戦準備画面、`/matches/:matchId` は対戦結果の受信・再生画面です。`/account` はログインの準備状況を示すページです。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
 
-## 対戦のローカルプレビュー
+## 対戦
 
-`/rooms` で部屋を作成し、6文字のコードまたは共有リンクから `/rooms/:roomId` に参加できます。Piniaで画面状態を管理し、`localStorage` の変更通知で同じブラウザの別タブに反映します。参加者が2人になると待機画面はマッチング成立を表示します。プレイヤーIDはタブごとの `sessionStorage` に保存するため、確認時は複製タブではなく新しいタブを開いてください。別端末との同期、サーバーへの保存、対戦画面への遷移はまだありません。
+`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。未認証またはAPI未実装の場合、`/rooms` はゲストのローカル練習に切り替わり、サンプル教材のフィールドでPicolangを実行してゴール到達を判定します。ゲストのプログラムはこのブラウザのlocalStorageに保存され、サーバーへは送信されません。認証できた場合は、フィールドIDを入力して保存済みプログラムをロボット1台に割り当てるか、Blocklyで作成して保存します。対戦開始時は `POST /api/field/{fieldId}/match` に選択した `programId` を送り、返された対戦IDの `/matches/:matchId` で `GET /api/match/{matchId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果履歴の再生は後続の実装です。対戦相手を指定するAPIは現行スキーマにはありません。現在のServerリポジトリでは認証・対戦・プログラムのハンドラーが `501 Not Implemented` を返すため、サーバー対戦の結合にはサーバー側の実装が必要です。また現行の `User.name` はGoogleアカウント名ではなく別途設定するユーザー名なので、Googleの名前を表示するにはサーバーのユーザー情報への追加が必要です。
+
+ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 
 ## 教材詳細
 
 `/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
 
-教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex }` です。「リセット」はロボットの表示を初期位置に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。教育用エディタとゲームエンジンはこのイベントに接続する予定で、現時点では命令の実行・クリア判定は行いません。
+教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex, program }` で、`program` は `Schema/picolang/toplevel.schema.yaml` に沿った Picolang v0 のソースです。続いてクライアント内の実行器が AST を評価し、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。前進・後退・回転・待機・拾う・置く・岩破壊、条件・繰り返し・関数呼び出し、算術・論理・vector演算に対応します。岩や荷物の変化は動作後に盤面へ反映し、ゴールに着くとクリア演出を再生します。「リセット」は実行を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。サーバーのVM・型チェックとはまだ接続していません。ローカル実行器には最大10000ステップ、関数呼び出し深さ64の制限があります。旧記号マップにドリル制限が無い場合は99回とします。
 
-iPad横向きのような横長画面では、左にカテゴリ・命令見本・作業領域、右上にスクロールできる課題説明、右下にARを置きます。左右の境界はドラッグまたはフォーカス後の左右矢印キー、説明とARの境界はドラッグまたは上下矢印キーで調整できます。実行しても領域サイズは変わりません。「全画面」はブラウザの全画面表示を試し、対応していない環境では画面全体にARを重ねます。「ARを隠す」後は説明欄の「ARを表示」から戻せます。幅980px以下で縦向きに近い画面、または幅700px以下では上下に並べます。エディタ領域は `TutorialPage` の `program-editor` スロットで差し替えられます。現在の命令は見本で、編集機能は未接続です。
+iPad横向きのような横長画面では、左にPicolangのカテゴリ・命令パレット・作業領域、右上にスクロールできる課題説明、右下にARを置きます。パレットをタップすると関数の末尾のreturnの手前へ命令を追加し、ドラッグすると制御構文の内側にも追加できます。各ブロックからも命令の追加・並べ替え・削除ができ、式は入れ子で編集できます。関数と引数、型（入れ子のvectorを含む）も編集できます。教材ごとの下書きはブラウザのlocalStorageへ保存し、JSONの確認・コピー・読み込みもできます。JSONの読み込み時はノード形状と重複する `hintId` を検査します。サーバーの意味解析・型チェックはまだ接続していません。左右の境界はドラッグまたはフォーカス後の左右矢印キー、説明とARの境界はドラッグまたは上下矢印キーで調整できます。「全画面」はブラウザの全画面表示を試し、対応していない環境では画面全体にARを重ねます。「ARを隠す」後は説明欄の「ARを表示」から戻せます。幅980px以下で縦向きに近い画面、または幅700px以下では上下に並べます。
 
 ## ARフィールド表示（issues #1–3）
 
@@ -26,7 +28,7 @@ pnpm install
 pnpm dev
 ```
 
-`esbuild` は Vite の依存パッケージです。`pnpm-workspace.yaml` でインストール時スクリプトを許可しています。
+Vite 8 の標準ビルドは Rolldown と Oxc を使用します。`esbuild` は互換性のための任意の依存関係としてロックファイルに含まれ、`pnpm-workspace.yaml` でそのインストール時スクリプトを許可しています。
 
 3dプレビュー:カメラなしで動くデバッグ用
 
@@ -63,7 +65,7 @@ pnpm dev
 
 ## 抽選と動作イベント
 
-配置を切り替えて、そのフィールドの全候補を確認できます。サンプルと貼り付けJSONはローカルで配置を抽選します。APIから取得したフィールドでは、`POST /field/{id}/match` のレスポンスにある0始まりの `candidateIndex` または `selectedLayoutId` で結果を決めます。クライアントはその結果へルーレットを止めます。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex, match }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
+配置を切り替えて、そのフィールドの全候補を確認できます。開発用プレビューの抽選は、サンプル・貼り付けJSON・APIから取得したフィールドのいずれもローカルで行い、対戦作成APIは呼びません。実行開始時に `window` の `robot-field:run` イベントを発行し、`detail` は `{ fieldId, layout, candidateIndex }` です。ゲームエンジンとの接続はまだないため、現時点の「実行」は配置を決めてイベントを発行するところまでです。
 
 `StageScene` の `animationEvent` prop に `{ id, type, to?, direction?, ticks?, success? }` を渡すとロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `forward` / `back`（現在の向きに1マス進む）、`rotate`（`direction: 'left' | 'right'` で90°回る）、`wait`（`ticks` 単位時間待つ）、`pick_up` / `release`（念動力）、`drill`（目のビーム）、`clear`（クリア演出）です。これらの基本動作は1単位時間を1秒として描画します。移動先が岩・海・盤外なら進まず、`success: false` を渡した動作も失敗として演出します。旧形式の `move`（`to: {x,y}`）、`get`、`put` も受け付けます。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作り、念動力の瞬間は腕の絶対角度 Rx=-90°にします。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
 
@@ -72,8 +74,7 @@ pnpm dev
 ## 接続時に確定する項目
 
 - 現行schemaの `Stage.variants` に一意の配置IDを持たせるか。現時点ではIDが無い場合、表示側で `layout-1` などを付けます。
-- `POST /field/{id}/match` のレスポンス形式。現状は0始まりの `candidateIndex`、または候補の `id` と一致する `selectedLayoutId` を受け取ります。対戦ではサーバーの選択を唯一の結果として扱います。
-- ゲームエンジンからの動作イベントに含めるロボットID、tick、座標、向き、および対戦相手への配信方法。現在は描画確認用の仮形式です。
+- 対戦結果の `field` イベントでは移動・回転・機体の除去を盤面に反映します。岩の破壊や荷物の移動を表す状態更新は現行スキーマにないため、再生画面は初期配置のまま表示します。
 
 ```bash
 pnpm test
@@ -88,10 +89,11 @@ pnpm build
 - `src/app`: 画面の入口とルート別の表示
 - `src/features/stage`: 盤面データ、3D表示、ロボットの動作
 - `src/features/tutorial`: 教材の画面、ローカル教材、API
+- `src/features/match`: 対戦API、状態管理、履歴の再生画面
 - `src/styles`: サイト共通のスタイル
 
 `pnpm format` はClient内のソースと設定をPrettierで整形します。ESLintとTypeScriptの設定もClient内で完結しています。
 
 ## 印刷マーカーの読み取り
 
-`/rooms` の「ARマーカーを読み取る」から、Hiro（A）とKanji（B）の検出状態を確認できます。確認専用ページはありません。`src/features/rooms/roomMarkerTracking.ts` の `mountRoomMarkerTracker(container, callbacks)` は個別の検出状態、カメラ準備完了、カメラエラーをコールバックで通知します。戻り値の `markers` から各マーカーの座標を取得でき、`stop()` でカメラを停止します。印刷した黒い正方形の一辺が14 cmの場合、`size="0.14"` です。異なる倍率で印刷した場合は `MARKER_SIZE_METERS` を実測値（メートル）へ変更してください。AR.jsとA-Frame本体は配布済みJavaScriptとして `public/vendor`、パターンは `public/markers` に置いています。2点からの盤面配置やルーム作成には未接続です。
+`src/features/rooms/roomMarkerTracking.ts` の `mountRoomMarkerTracker(container, callbacks)` はHiro（A）とKanji（B）の検出状態を通知する開発用コードです。現行の対戦画面には接続していません。

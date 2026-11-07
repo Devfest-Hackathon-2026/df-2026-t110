@@ -2,7 +2,31 @@
   {
     "type": "field",
     "tick": 0,
-    "state": {}
+    "state": {
+      "kind": "initial",
+      "terrain": [
+        [
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" }, "hasLuggage": true, "territoryOwner": 1 },
+          { "type": "land", "kind": { "type": "checkpoint", "order": 2 }, "hasLuggage": true },
+          { "type": "land", "kind": { "type": "goal" } },
+          { "type": "sea" },
+          { "type": "rock" }
+        ],
+        [
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "rock" },
+          { "type": "land", "kind": { "type": "plain" } },
+          { "type": "land", "kind": { "type": "plain" } }
+        ]
+      ],
+      "robots": [
+        { "id": "robot-1", "position": { "x": 0, "y": 0 }, "direction": "east", "drillDurability": 3, "teamId": 1 },
+        { "id": "robot-2", "position": { "x": 3, "y": 0 }, "direction": "west", "drillDurability": 2, "teamId": 2 }
+      ]
+    }
   },
   {
     "type": "picolang",
@@ -50,7 +74,13 @@
   {
     "type": "field",
     "tick": 1,
-    "state": {}
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "forward", "robotId": "robot-1", "success": true, "to": { "x": 1, "y": 0 } },
+        { "kind": "back", "robotId": "robot-2", "success": false }
+      ]
+    }
   },
   {
     "type": "picolang",
@@ -115,6 +145,82 @@
     "event": {
       "kind": "variable_drop",
       "hintId": "00000000-0000-4000-8000-000000000002"
+    }
+  },
+  {
+    "type": "field",
+    "tick": 2,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "pick_up", "robotId": "robot-1", "success": true, "target": { "x": 2, "y": 0 } },
+        { "kind": "rotate", "robotId": "robot-2", "rotation": "left", "direction": "south" }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 3,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "release", "robotId": "robot-1", "success": true, "target": { "x": 2, "y": 0 } },
+        { "kind": "print_integer", "robotId": "robot-2", "integer": -42 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 4,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "print_bool", "robotId": "robot-2", "bool": false }
+      ],
+      "removedRobotIds": ["robot-1"]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 5,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "drill", "robotId": "robot-2", "success": true, "target": { "x": 3, "y": 1 }, "drillDurability": 1 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 6,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "drill", "robotId": "robot-2", "success": false, "drillDurability": 1 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 7,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "wait", "robotId": "robot-2", "ticks": 3 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 9,
+    "state": { "kind": "update" }
+  },
+  {
+    "type": "field",
+    "tick": 9,
+    "state": {
+      "kind": "update",
+      "removedRobotIds": ["robot-2"]
     }
   }
 ]

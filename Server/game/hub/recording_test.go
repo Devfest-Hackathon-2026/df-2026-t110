@@ -54,17 +54,32 @@ func TestIndependentEventMessages(t *testing.T) {
 	options := limits()
 	options.Recorder = &received
 	report, err := h.Run(options)
-	if err != nil || report.Resumes != 3 {
+	if err != nil || report.Resumes() != 3 {
 		t.Errorf("run = %+v, %v", report, err)
 	}
+	plain := fieldevent.Cell{Type: "land", Kind: &fieldevent.LandKind{Type: "plain"}}
 	want := []gameevent.GameEvent{
-		gameevent.FieldEvent{Event: fieldevent.FieldEvent{}},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{State: fieldevent.InitialState{
+			Terrain: [][]fieldevent.Cell{{plain, plain, plain}},
+			Robots: []fieldevent.RobotState{
+				{ID: "a", Direction: "east", DrillDurability: 3},
+				{ID: "b", Position: fieldevent.Position{X: 2}, Direction: "west", DrillDurability: 3},
+			},
+		}}},
 		gameevent.RobotEvent{InterpreterID: "a", Event: current},
 		gameevent.RobotEvent{InterpreterID: "a", Event: init},
 		gameevent.RobotEvent{InterpreterID: "b", Event: current},
-		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1}},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1, State: fieldevent.UpdateState{
+			Actions: []fieldevent.ActionResult{
+				fieldevent.MoveResult{Kind: fieldevent.Forward, RobotID: "a", Success: true, To: &fieldevent.Position{X: 1}},
+			},
+			RemovedRobotIDs: []protocol.RobotID{"b"},
+		}}},
 		gameevent.RobotEvent{InterpreterID: "a", Event: update},
 		gameevent.RobotEvent{InterpreterID: "a", Event: drop},
+		gameevent.FieldEvent{Event: fieldevent.FieldEvent{Tick: 1, State: fieldevent.UpdateState{
+			RemovedRobotIDs: []protocol.RobotID{"a"},
+		}}},
 	}
 	if !reflect.DeepEqual(received.Events, want) {
 		t.Errorf("deliveries = %+v, want %+v", received.Events, want)
@@ -100,7 +115,7 @@ func TestRecordingFailureStopsSuccessfulRobotReply(t *testing.T) {
 	options := limits()
 	options.Recorder = &recorder
 	report, err := newHub(t, b, hub.Participant{ID: "a", Robot: r}).Run(options)
-	if !errors.Is(err, hub.ErrRecording) || !errors.Is(err, storageErr) || boardCalls != 1 || recorder.calls != 1 || report.Outcomes["a"] != (hub.StoppedOutcome{}) {
+	if !errors.Is(err, hub.ErrRecording) || !errors.Is(err, storageErr) || boardCalls != 1 || recorder.calls != 1 || report.Outcome("a") != (hub.StoppedOutcome{}) {
 		t.Errorf("run continued after recording failure: %+v, %v", report, err)
 	}
 }
@@ -113,7 +128,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 				t.Parallel()
 				producerErr := errors.New("producer failed")
 				recordingErr := errors.New("storage failed")
-				field := []fieldevent.FieldEvent{{}}
+				field := []fieldevent.FieldEvent{{State: fieldevent.UpdateState{}}}
 				debug := []robotevent.PicolangEvent{robotevent.CurrentNodeEvent{HintID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}}
 				boardCalls, robotCalls := 0, 0
 				b := boardFunc{
@@ -131,7 +146,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 							if !ok || !errors.Is(failure.Err, producerErr) {
 								t.Errorf("producer error was not delivered to board: %+v", reply)
 							}
-							return boardmsg.DoneDecision{}, nil
+							return boardmsg.NewDoneDecision(nil, false), nil
 						}
 					},
 				}
@@ -181,7 +196,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 						if !errors.Is(err, producerErr) || robotCalls != 0 {
 							t.Errorf("board error = %v, robot calls %d", err, robotCalls)
 						}
-					} else if failure, ok := report.Outcomes["a"].(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, producerErr) {
+					} else if failure, ok := report.Outcome("a").(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, producerErr) {
 						t.Errorf("robot failure = %+v, %v", report, err)
 					}
 					if len(received.messages) != 1 {
@@ -207,14 +222,14 @@ func TestReturnedRecordsPrecedeProtocolChecks(t *testing.T) {
 				if robotCalls == 0 {
 					return boardmsg.StartDecision{RobotID: "a"}, nil
 				}
-				return boardmsg.DoneDecision{}, nil
+				return boardmsg.NewDoneDecision(nil, false), nil
 			}}
 			r := robotFuncs{start: func() (robotmsg.Step, error) {
 				robotCalls++
 				return nil, nil
 			}}
 			if source == "board" {
-				b.nextEvents = []fieldevent.FieldEvent{{}}
+				b.nextEvents = []fieldevent.FieldEvent{{State: fieldevent.UpdateState{}}}
 			} else {
 				r.startEvents = []robotevent.PicolangEvent{robotevent.CurrentNodeEvent{HintID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}}
 			}
@@ -225,7 +240,7 @@ func TestReturnedRecordsPrecedeProtocolChecks(t *testing.T) {
 				if !errors.Is(err, hub.ErrProtocol) {
 					t.Errorf("invalid decision accepted: %v", err)
 				}
-			} else if failure, ok := report.Outcomes["a"].(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, hub.ErrProtocol) {
+			} else if failure, ok := report.Outcome("a").(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, hub.ErrProtocol) {
 				t.Errorf("invalid step accepted: %+v, %v", report, err)
 			}
 			if len(received.messages) != 1 {

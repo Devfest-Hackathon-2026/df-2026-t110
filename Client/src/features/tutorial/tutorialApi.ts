@@ -6,7 +6,7 @@ export interface TutorialRecord {
   fieldId?: string
   stage?: Record<string, unknown>
   goal?: string
-  description?: string
+  description: string
   lesson?: string
   guide?: string[]
 }
