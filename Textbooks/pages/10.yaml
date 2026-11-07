@@ -1,0 +1,25 @@
+# 学び方: 練習
+id: repeat-group
+title: ひとまとまりをくり返す
+goal: いくつかの命令を、一組にしてくり返そう。
+description: 岩を3ここわして、ゴールへ進もう。同じ動きの一組を見つけよう。
+lesson: くり返しの中の命令も、上から順に動きます。
+guide:
+  - 岩の手前から、次の岩の手前までを指でたどろう。
+  - 岩をこわし、2マス進む動きが一組になります。
+  - 一組を3回くり返そう。「はじめ」は0、「ここまで」は3です。
+stage:
+  variants:
+    - width: 7
+      height: 1
+      terrain:
+        - [land, rock, land, rock, land, rock, land]
+      objects:
+        - type: goal
+          position: { x: 6, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 3
+  clearCondition:
+    type: reach_goal

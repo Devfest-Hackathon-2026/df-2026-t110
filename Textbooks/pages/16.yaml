@@ -1,0 +1,115 @@
+# 学び方: 考え方
+id: replace-number
+title: 覚えた数を入れかえる
+goal: 同じ名前の数を、あとから入れかえよう。
+description: 二つ目の道へ進む前に、「歩数」を変える命令を足そう。
+lesson: 数を入れかえると、そのあとに使うのは新しい数です。
+guide:
+  - 初めの道は2マスです。見本は、二つ目の道も2マス進みます。
+  - 二つ目の道は何マスかな。最初の数を変えず、あとから入れかえよう。
+  - 左回りの命令の下で、「歩数」を3に変えよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000016-0000-4000-8000-000000000021
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000016-0000-4000-8000-000000000020
+            stmts:
+              - kind: declare
+                hintId: a0000016-0000-4000-8000-000000000003
+                type: integer
+                ident:
+                  kind: ident
+                  hintId: a0000016-0000-4000-8000-000000000002
+                  name: 歩数
+                value:
+                  kind: literal
+                  hintId: a0000016-0000-4000-8000-000000000001
+                  type: integer
+                  value: 2
+              - kind: for
+                hintId: a0000016-0000-4000-8000-000000000009
+                ident:
+                  kind: ident
+                  hintId: a0000016-0000-4000-8000-000000000006
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: a0000016-0000-4000-8000-000000000007
+                  type: integer
+                  value: 0
+                end:
+                  kind: ident
+                  hintId: a0000016-0000-4000-8000-000000000004
+                  name: 歩数
+                body:
+                  kind: block
+                  hintId: a0000016-0000-4000-8000-000000000008
+                  stmts:
+                    - kind: call
+                      hintId: a0000016-0000-4000-8000-000000000005
+                      func: forward
+                      args: []
+              - kind: call
+                hintId: a0000016-0000-4000-8000-000000000011
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: a0000016-0000-4000-8000-000000000010
+                    type: rotation
+                    value: left
+              - kind: for
+                hintId: a0000016-0000-4000-8000-000000000017
+                ident:
+                  kind: ident
+                  hintId: a0000016-0000-4000-8000-000000000014
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: a0000016-0000-4000-8000-000000000015
+                  type: integer
+                  value: 0
+                end:
+                  kind: ident
+                  hintId: a0000016-0000-4000-8000-000000000012
+                  name: 歩数
+                body:
+                  kind: block
+                  hintId: a0000016-0000-4000-8000-000000000016
+                  stmts:
+                    - kind: call
+                      hintId: a0000016-0000-4000-8000-000000000013
+                      func: forward
+                      args: []
+              - kind: return
+                hintId: a0000016-0000-4000-8000-000000000019
+                value:
+                  kind: literal
+                  hintId: a0000016-0000-4000-8000-000000000018
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - width: 3
+      height: 4
+      terrain:
+        - [sea, sea, land]
+        - [sea, sea, land]
+        - [sea, sea, land]
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 3 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

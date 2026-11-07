@@ -1,0 +1,85 @@
+# 学び方: 考え方
+id: if-rock
+title: もし岩があったら
+goal: 「もし」を使って、必要なときだけ動かそう。
+description: 前進する命令の置き場所を直して、岩がある道とない道の両方を進もう。
+lesson: 「もし」の中は、条件が「はい」のときだけ動きます。その下の命令は、どちらでも動きます。
+guide:
+  - 岩のない道で見本を試そう。進む回数は足りるかな。
+  - 岩をこわすのは、岩があるときだけです。前進は、どちらの道でも必要です。
+  - 岩をこわす命令だけを「もし」の中に残そう。前進は二つとも外に置こう。
+  - 岩がないとき、岩をこわす命令を通らなかったかも確かめよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000007-0000-4000-8000-000000000011
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000007-0000-4000-8000-000000000010
+            stmts:
+              - kind: if
+                hintId: a0000007-0000-4000-8000-000000000006
+                condition:
+                  kind: call
+                  hintId: a0000007-0000-4000-8000-000000000002
+                  func: is_rock
+                  args:
+                    - kind: call
+                      hintId: a0000007-0000-4000-8000-000000000001
+                      func: search_front
+                      args: []
+                then:
+                  kind: block
+                  hintId: a0000007-0000-4000-8000-000000000005
+                  stmts:
+                    - kind: call
+                      hintId: a0000007-0000-4000-8000-000000000003
+                      func: drill
+                      args: []
+                    - kind: call
+                      hintId: a0000007-0000-4000-8000-000000000004
+                      func: forward
+                      args: []
+              - kind: call
+                hintId: a0000007-0000-4000-8000-000000000007
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000007-0000-4000-8000-000000000009
+                value:
+                  kind: literal
+                  hintId: a0000007-0000-4000-8000-000000000008
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - width: 3
+      height: 1
+      terrain:
+        - [land, rock, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+    - width: 3
+      height: 1
+      terrain:
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

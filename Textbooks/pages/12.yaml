@@ -1,0 +1,38 @@
+# 学び方: 考え方
+id: while-land
+title: 道が続く間は進む
+goal: 条件が合う間、同じ動きをくり返そう。
+description: 道の長さが変わっても、海の手前で左に回ってゴールへ進もう。
+lesson: 条件を毎回調べます。「はい」ならくり返し、「いいえ」ならその下に進みます。
+guide:
+  - 前のマスが陸かどうかを、くり返しの条件にしよう。
+  - くり返しの中には、前進を入れよう。進むたびに、次のマスを調べます。
+  - くり返しの外で左に回り、1マス進もう。短い道と長い道で試そう。
+stage:
+  variants:
+    - width: 5
+      height: 2
+      terrain:
+        - [sea, sea, land, sea, sea]
+        - [land, land, land, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - width: 5
+      height: 2
+      terrain:
+        - [sea, sea, sea, sea, land]
+        - [land, land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 4, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

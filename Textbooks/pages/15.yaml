@@ -1,0 +1,81 @@
+# 学び方: 考え方
+id: remember-number
+title: 数に名前をつけて覚える
+goal: 覚えた数を、くり返す回数に使おう。
+description: 見本の「歩数」の数を変えて、ゴールまで進もう。
+lesson: 名前をつけて数を覚えるしくみを「変数」といいます。
+guide:
+  - 見本の「歩数」には、最初に1が入っています。
+  - くり返しの「ここまで」には、「歩数」が入っています。必要なマス数を数えよう。
+  - 「歩数」に3を入れると、3回前進します。数を変えて動きを比べよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000015-0000-4000-8000-000000000013
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000015-0000-4000-8000-000000000012
+            stmts:
+              - kind: declare
+                hintId: a0000015-0000-4000-8000-000000000003
+                type: integer
+                ident:
+                  kind: ident
+                  hintId: a0000015-0000-4000-8000-000000000002
+                  name: 歩数
+                value:
+                  kind: literal
+                  hintId: a0000015-0000-4000-8000-000000000001
+                  type: integer
+                  value: 1
+              - kind: for
+                hintId: a0000015-0000-4000-8000-000000000009
+                ident:
+                  kind: ident
+                  hintId: a0000015-0000-4000-8000-000000000006
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: a0000015-0000-4000-8000-000000000007
+                  type: integer
+                  value: 0
+                end:
+                  kind: ident
+                  hintId: a0000015-0000-4000-8000-000000000004
+                  name: 歩数
+                body:
+                  kind: block
+                  hintId: a0000015-0000-4000-8000-000000000008
+                  stmts:
+                    - kind: call
+                      hintId: a0000015-0000-4000-8000-000000000005
+                      func: forward
+                      args: []
+              - kind: return
+                hintId: a0000015-0000-4000-8000-000000000011
+                value:
+                  kind: literal
+                  hintId: a0000015-0000-4000-8000-000000000010
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - width: 4
+      height: 1
+      terrain:
+        - [land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 3, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal
