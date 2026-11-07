@@ -193,68 +193,107 @@ func TestAtomicMovement(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			b := newBoard(t, board.Config{Terrain: tt.grid, Robots: tt.robots}, tt.ids)
-			want := tt.want
-			if want == nil {
-				want = tt.robots
+
+			wantRobots := tt.want
+			if wantRobots == nil {
+				wantRobots = tt.robots
 			}
 
+			turnReplies := []robotmsg.Reply{nil}
+			var completionReplies []robotmsg.Reply
+			var wantTurnOutputs []boardmsg.BoardOutput
+			var wantResumes []boardmsg.BoardOutput
 			var wantUpdate fieldevent.UpdateState
-			output, err := b.Next(nil)
-			if err != nil {
-				t.Fatal(err)
-			}
 
 			for _, id := range tt.ids {
-				if output.Decision != (boardmsg.StartDecision{RobotID: id}) || len(output.Events) != 0 {
-					t.Errorf("unexpected output before commit: %+v", output)
-				}
 				var action actions.Action = forward
 				if custom, ok := tt.actions[id]; ok {
 					action = custom
 				}
 
-				output, err = b.Next(robotmsg.ActionReply{RobotID: id, Action: action})
+				turnReplies = append(turnReplies, robotmsg.ActionReply{RobotID: id, Action: action})
+				completionReplies = append(completionReplies, robotmsg.DoneReply{RobotID: id})
+				wantTurnOutputs = append(wantTurnOutputs, boardmsg.BoardOutput{
+					Decision: boardmsg.StartDecision{RobotID: id},
+				})
+
+				var value values.Value = values.BoolValue{Bool: tt.moved[id]}
+				if rotate, ok := action.(actions.RotateAction); ok {
+					value = values.UnitValue{}
+					wantUpdate.Actions = append(wantUpdate.Actions, fieldevent.RotateResult{
+						RobotID:   id,
+						Rotation:  rotate.Rotation,
+						Direction: string(wantRobots[id].Direction()),
+					})
+				} else {
+					move := fieldevent.MoveResult{
+						Kind:    fieldevent.Forward,
+						RobotID: id,
+						Success: tt.moved[id],
+					}
+					if _, ok := action.(actions.BackAction); ok {
+						move.Kind = fieldevent.Back
+					}
+					if move.Success {
+						position := wantRobots[id].Position()
+						move.To = &fieldevent.Position{X: position.X(), Y: position.Y()}
+					}
+					wantUpdate.Actions = append(wantUpdate.Actions, move)
+				}
+
+				wantResumes = append(wantResumes, boardmsg.BoardOutput{
+					Decision: boardmsg.ResumeDecision{RobotID: id, ReturnValue: value},
+				})
+			}
+
+			firstResume := wantResumes[0]
+			firstResume.Events = []fieldevent.FieldEvent{{Tick: 1, State: wantUpdate}}
+			wantTurnOutputs = append(wantTurnOutputs, firstResume)
+
+			wantCompletionOutputs := append([]boardmsg.BoardOutput(nil), wantResumes[1:]...)
+			wantCompletionOutputs = append(wantCompletionOutputs, boardmsg.BoardOutput{
+				Decision: boardmsg.DoneDecision{},
+				Events: []fieldevent.FieldEvent{{Tick: 1, State: fieldevent.UpdateState{
+					RemovedRobotIDs: tt.ids,
+				}}},
+			})
+
+			b := newBoard(t, board.Config{Terrain: tt.grid, Robots: tt.robots}, tt.ids)
+
+			turnOutputs := make([]boardmsg.BoardOutput, len(turnReplies))
+			for i, reply := range turnReplies {
+				output, err := b.Next(reply)
 				if err != nil {
 					t.Fatal(err)
 				}
+				turnOutputs[i] = output
+			}
+			committed := b.Snapshot()
 
-				if rotate, ok := action.(actions.RotateAction); ok {
-					wantUpdate.Actions = append(wantUpdate.Actions, fieldevent.RotateResult{
-						RobotID: id, Rotation: rotate.Rotation, Direction: string(want[id].Direction()),
-					})
-					continue
+			completionOutputs := make([]boardmsg.BoardOutput, len(completionReplies))
+			for i, reply := range completionReplies {
+				output, err := b.Next(reply)
+				if err != nil {
+					t.Fatal(err)
 				}
-				move := fieldevent.MoveResult{Kind: fieldevent.Forward, RobotID: id, Success: tt.moved[id]}
-				if _, ok := action.(actions.BackAction); ok {
-					move.Kind = fieldevent.Back
-				}
-				if move.Success {
-					p := want[id].Position()
-					move.To = &fieldevent.Position{X: p.X(), Y: p.Y()}
-				}
-				wantUpdate.Actions = append(wantUpdate.Actions, move)
+				completionOutputs[i] = output
 			}
-			wantRecords := []fieldevent.FieldEvent{{Tick: 1, State: wantUpdate}}
-			if !reflect.DeepEqual(output.Events, wantRecords) {
-				t.Errorf("turn records = %+v, want %+v", output.Events, wantRecords)
+			finished := b.Snapshot()
+
+			if !reflect.DeepEqual(turnOutputs, wantTurnOutputs) {
+				t.Errorf("turn outputs = %+v, want %+v", turnOutputs, wantTurnOutputs)
 			}
-			if b.Snapshot().Tick != 1 {
+			if committed.Tick != 1 {
 				t.Error("missing internal commit")
 			}
-			if !reflect.DeepEqual(b.Snapshot().Robots, want) {
-				t.Errorf("got %+v, want %+v", b.Snapshot().Robots, want)
+			if !reflect.DeepEqual(committed.Robots, wantRobots) {
+				t.Errorf("got %+v, want %+v", committed.Robots, wantRobots)
 			}
-			d := output.Decision
-			for _, id := range tt.ids {
-				var value values.Value = values.BoolValue{Bool: tt.moved[id]}
-				if _, rotating := tt.actions[id].(actions.RotateAction); rotating {
-					value = values.UnitValue{}
-				}
-				if d != (boardmsg.ResumeDecision{RobotID: id, ReturnValue: value}) {
-					t.Errorf("unexpected action result: %+v", d)
-				}
-				d = next(t, b, robotmsg.DoneReply{RobotID: id})
+			if !reflect.DeepEqual(completionOutputs, wantCompletionOutputs) {
+				t.Errorf("completion outputs = %+v, want %+v", completionOutputs, wantCompletionOutputs)
+			}
+			if finished.Tick != 1 || len(finished.Robots) != 0 {
+				t.Errorf("unexpected finished state: %+v", finished)
 			}
 		})
 	}
@@ -432,43 +471,69 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 
 func TestBoardLifecycle(t *testing.T) {
 	t.Parallel()
+
+	terrain := land(1, 1)
+	ids := []protocol.RobotID{"a"}
+	failure := robotmsg.ErrorReply{RobotID: "a", Err: errors.New("robot failed")}
+	wantStart := boardmsg.BoardOutput{Decision: boardmsg.StartDecision{RobotID: "a"}}
+	wantCompletion := boardmsg.BoardOutput{
+		Decision: boardmsg.DoneDecision{},
+		Events: []fieldevent.FieldEvent{{State: fieldevent.UpdateState{
+			RemovedRobotIDs: ids,
+		}}},
+	}
+	wantRepeatedCompletion := boardmsg.BoardOutput{Decision: boardmsg.DoneDecision{}}
+	wantSnapshot := board.Snapshot{
+		Terrain: terrain,
+		Robots:  map[protocol.RobotID]board.RobotState{},
+	}
+
 	b, err := board.New(board.Config{
-		Terrain: land(1, 1),
+		Terrain: terrain,
 		Robots:  map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North)},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	initial := b.Snapshot()
-	if _, err := b.Next(nil); err == nil {
+
+	_, beforeStartErr := b.Next(nil)
+	_, startErr := b.Start(ids)
+	_, unsolicitedErr := b.Next(robotmsg.DoneReply{RobotID: "a"})
+	startOutput, startNextErr := b.Next(nil)
+
+	completionOutput, completionErr := b.Next(failure)
+	repeatedCompletionOutput, repeatedCompletionErr := b.Next(nil)
+	_, restartErr := b.Start(ids)
+	_, completedReplyErr := b.Next(robotmsg.DoneReply{RobotID: "a"})
+	finished := b.Snapshot()
+
+	if beforeStartErr == nil {
 		t.Error("unstarted board advanced")
 	}
-	if _, err := b.Start([]protocol.RobotID{"a"}); err != nil {
-		t.Fatal(err)
+	if startErr != nil {
+		t.Errorf("start failed: %v", startErr)
 	}
-	if _, err := b.Next(robotmsg.DoneReply{RobotID: "a"}); err == nil {
+	if unsolicitedErr == nil {
 		t.Error("unsolicited reply was accepted")
 	}
-	if decision := next(t, b, nil); decision != (boardmsg.StartDecision{RobotID: "a"}) {
-		t.Errorf("unexpected initial decision: %+v", decision)
+	if startNextErr != nil || !reflect.DeepEqual(startOutput, wantStart) {
+		t.Errorf("initial output = %+v, %v", startOutput, startNextErr)
 	}
-	output, err := b.Next(robotmsg.ErrorReply{RobotID: "a", Err: errors.New("robot failed")})
-	wantRecords := []fieldevent.FieldEvent{{State: fieldevent.UpdateState{RemovedRobotIDs: []protocol.RobotID{"a"}}}}
-	if err != nil || output.Decision != (boardmsg.DoneDecision{}) || !reflect.DeepEqual(output.Events, wantRecords) {
-		t.Errorf("failed robot did not finish at tick zero: %+v, %v", output, err)
+
+	if completionErr != nil || !reflect.DeepEqual(completionOutput, wantCompletion) {
+		t.Errorf("failed robot did not finish at tick zero: %+v, %v", completionOutput, completionErr)
 	}
-	output, err = b.Next(nil)
-	if err != nil || output.Decision != (boardmsg.DoneDecision{}) || len(output.Events) != 0 {
-		t.Errorf("completed board did not remain complete: %+v, %v", output, err)
+	if repeatedCompletionErr != nil || !reflect.DeepEqual(repeatedCompletionOutput, wantRepeatedCompletion) {
+		t.Errorf("completed board did not remain complete: %+v, %v", repeatedCompletionOutput, repeatedCompletionErr)
 	}
-	if _, err := b.Start([]protocol.RobotID{"a"}); err == nil {
+	if restartErr == nil {
 		t.Error("completed board restarted")
 	}
-	if _, err := b.Next(robotmsg.DoneReply{RobotID: "a"}); err == nil {
+	if completedReplyErr == nil {
 		t.Error("completed board accepted a reply")
 	}
-	clear(initial.Robots)
-	if snapshot := b.Snapshot(); !reflect.DeepEqual(snapshot, initial) {
-		t.Errorf("expected only the stopped robot to be removed: %+v", snapshot)
+
+	if !reflect.DeepEqual(finished, wantSnapshot) {
+		t.Errorf("expected only the stopped robot to be removed: %+v", finished)
 	}
 }
