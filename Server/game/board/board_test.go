@@ -373,6 +373,7 @@ func TestValidationAndCopies(t *testing.T) {
 		{Terrain: [][]board.Terrain{{board.SeaTerrain{}}}, Robots: initial.Robots},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(1, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, "invalid")}},
+		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North).WithTeam(3)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"": state(0, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North), "b": state(0, 0, board.South)}},
 	}
@@ -445,7 +446,7 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	for _, action := range []actions.Action{
 		actions.WaitAction{Integer: 7},
 		actions.PickUpAction{}, actions.ReleaseAction{}, actions.DrillAction{},
-		actions.DistanceAction{Target: values.DistanceRock}, actions.SearchFrontAction{}, actions.SearchNowAction{},
+		actions.DistanceAction{Target: values.DistanceRock},
 	} {
 		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {
 			t.Parallel()

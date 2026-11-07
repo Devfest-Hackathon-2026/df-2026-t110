@@ -30,7 +30,7 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 					{Type: "land", Kind: &fieldevent.LandKind{Type: "checkpoint", Order: &checkpointOrder}},
 					{Type: "rock"}, {Type: "sea"},
 				}},
-				Robots: []fieldevent.RobotState{{ID: "a", Direction: "east", DrillDurability: 3}},
+				Robots: []fieldevent.RobotState{{ID: "a", Direction: "east", DrillDurability: 3, TeamID: 1}},
 			}}}
 			wantStart := boardmsg.StartDecision{RobotID: "a"}
 			wantQuery := boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.IntegerValue{Integer: 3}}
@@ -46,7 +46,7 @@ func TestFieldMessagesAndBoardOwnedLimit(t *testing.T) {
 					board.NewLandTerrain(board.NewCheckpointLand(0), false, 0),
 					board.RockTerrain{}, board.SeaTerrain{},
 				}},
-				Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+				Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East).WithTeam(board.TeamID1)},
 			})
 			if err != nil {
 				t.Fatal(err)

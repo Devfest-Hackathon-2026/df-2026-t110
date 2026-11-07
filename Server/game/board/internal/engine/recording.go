@@ -19,6 +19,7 @@ func (b *Board) initialFieldState() fieldevent.InitialState {
 			Position:        fieldevent.Position{X: robot.position.x, Y: robot.position.y},
 			Direction:       string(robot.direction),
 			DrillDurability: robot.drillDurability,
+			TeamID:          int(robot.teamID),
 		})
 	}
 

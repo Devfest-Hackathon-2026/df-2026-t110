@@ -15,8 +15,8 @@
         ]
       ],
       "robots": [
-        { "id": "robot-1", "position": { "x": 0, "y": 0 }, "direction": "east", "drillDurability": 3 },
-        { "id": "robot-2", "position": { "x": 3, "y": 0 }, "direction": "west", "drillDurability": 2 }
+        { "id": "robot-1", "position": { "x": 0, "y": 0 }, "direction": "east", "drillDurability": 3, "teamId": 1 },
+        { "id": "robot-2", "position": { "x": 3, "y": 0 }, "direction": "west", "drillDurability": 2, "teamId": 2 }
       ]
     }
   },
