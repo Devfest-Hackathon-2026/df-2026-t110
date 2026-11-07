@@ -33,13 +33,14 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 		return fmt.Errorf("max-ticks must be positive")
 	}
 	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
+	luggage := board.NewLandTerrain(board.PlainLand{}, true, board.NoTeam)
 	team1Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID1)
 	team2Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID2)
 	b, err := board.New(board.Config{
 		MaxTicks: maxTicks,
 		Terrain: [][]board.Terrain{
 			{team1Territory, plain, plain, plain, team2Territory},
-			{plain, plain, board.RockTerrain{}, plain, plain},
+			{plain, luggage, board.RockTerrain{}, plain, plain},
 			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[protocol.RobotID]board.RobotState{
@@ -146,7 +147,11 @@ func render(output io.Writer, snapshot board.Snapshot) error {
 	for _, id := range ids {
 		r := snapshot.Robots[id]
 		position := r.Position()
-		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s\n", id, position.X(), position.Y(), r.Direction()); err != nil {
+		cargo := ""
+		if r.CarryingLuggage() {
+			cargo = " carrying luggage"
+		}
+		if _, err := fmt.Fprintf(output, "%s: (%d,%d) %s%s\n", id, position.X(), position.Y(), r.Direction(), cargo); err != nil {
 			return err
 		}
 	}

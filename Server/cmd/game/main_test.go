@@ -90,6 +90,25 @@ func TestInteractiveDrill(t *testing.T) {
 	}
 }
 
+func TestInteractivePickUp(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 forward\np2 done\np1 rotate right\np1 pick_up\np1 search_front\np1 done\n"
+	want := []string{"p1: (1,0) south carrying luggage", "p1 => terrain(land)", "finished at tick 3"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 3, 100)
+
+	if err != nil {
+		t.Error(err)
+	}
+	for _, line := range want {
+		if !strings.Contains(output.String(), line) {
+			t.Errorf("missing %q in output: %s", line, output.String())
+		}
+	}
+}
+
 func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {
