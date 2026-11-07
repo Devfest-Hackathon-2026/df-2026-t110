@@ -20,8 +20,8 @@ const score = computed(() => store.result?.summary.score)
 const selectedProgram = computed(() => store.programs.find((item) => item.id === store.selectedProgramId))
 const outcome = computed(() => {
   if (!score.value) return ''
-  if (score.value.player === score.value.opposite) return '引き分け'
-  return score.value.player > score.value.opposite ? '勝利' : '敗北'
+  if (score.value.player === score.value.opponent) return '引き分け'
+  return score.value.player > score.value.opponent ? '勝利' : '敗北'
 })
 
 onMounted(async () => {
@@ -221,7 +221,7 @@ function onEditorToggle(event: Event): void {
           </div>
           <span class="match-score-separator">–</span>
           <div>
-            <span>相手</span><strong>{{ score.opposite }}</strong>
+            <span>相手</span><strong>{{ score.opponent }}</strong>
           </div>
         </div>
         <p v-if="store.phase === 'finished' && !store.isGuestMatch">

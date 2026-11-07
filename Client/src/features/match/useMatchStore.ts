@@ -117,7 +117,7 @@ export const useMatchStore = defineStore('match', () => {
         const started = Date.now()
         const reached = await runGuestProgram(fieldId.value, program.source)
         await new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, 850 - (Date.now() - started))))
-        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opposite: 0 } } }
+        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opponent: 0 } } }
         return
       }
       const created = await createMatch(fieldId.value, selectedProgramId.value)
