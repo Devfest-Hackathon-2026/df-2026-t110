@@ -22,6 +22,7 @@ export interface StageLayout {
   width: number
   height: number
   rockCount: number
+  drillLimit?: number
   cells: StageCell[]
   label: string
   robot: { position: { x: number; y: number }; direction: 'north' | 'south' | 'west' | 'east' }
@@ -78,6 +79,7 @@ export function normalizeStage(source: Record<string, unknown>, index = 0): Stag
     width: rows[0].length,
     height: rows.length,
     rockCount: rows.join('').split('#').length - 1,
+    drillLimit: typeof source.drillLimit === 'number' ? source.drillLimit : undefined,
     cells,
     label: '',
     robot: { position: { x: start.x, y: start.y }, direction: 'east' },
@@ -184,6 +186,7 @@ function normalizeSchemaField(raw: Record<string, unknown>, index: number): Stag
     width: Number(width),
     height: Number(height),
     rockCount: cells.filter((cell) => cell.terrain === 'rock').length,
+    drillLimit: typeof raw.drillLimit === 'number' ? raw.drillLimit : undefined,
     cells,
     label: '',
     robot: {
