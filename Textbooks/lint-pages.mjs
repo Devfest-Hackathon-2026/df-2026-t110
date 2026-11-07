@@ -29,12 +29,16 @@ function readYaml(path) {
   return load(readFileSync(path, "utf8"), { schema: JSON_SCHEMA });
 }
 
-const ajv = new Ajv2020({ allErrors: true });
-for (const path of ["field/field.schema.yaml", "field/stage.schema.yaml"]) {
-  const url = new URL(path, schemaDir);
-  ajv.addSchema({ ...readYaml(url), $id: url.href });
-}
-const validate = ajv.compile({ ...readYaml(tutorialUrl), $id: tutorialUrl.href });
+const ajv = new Ajv2020({
+  allErrors: true,
+  // hint-id.yaml already checks the UUID syntax with its pattern.
+  formats: { uuid: true },
+  loadSchema: async (uri) => readYaml(new URL(uri)),
+});
+const validate = await ajv.compileAsync({
+  ...readYaml(tutorialUrl),
+  $id: tutorialUrl.href,
+});
 
 const descriptor = await loadTextlintrc({
   configFilePath: fileURLToPath(new URL(".textlintrc.json", textbooksDir)),
