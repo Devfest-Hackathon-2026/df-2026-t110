@@ -12,7 +12,7 @@ type PicolangEvent interface {
 // ValidPicolangEvent rejects nil and pointer variants at recording boundaries.
 func ValidPicolangEvent(message PicolangEvent) bool {
 	switch message.(type) {
-	case CurrentNodeEvent, VariableInitEvent, VariableUpdateEvent, VariableDropEvent:
+	case CurrentNodeEvent, VariableInitEvent, VariableUpdateEvent, VariableDropEvent, ExecutionFinishedEvent:
 		return true
 	default:
 		return false

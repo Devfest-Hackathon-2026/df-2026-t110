@@ -1,0 +1,59 @@
+[
+  {
+    "type": "field",
+    "tick": 0,
+    "state": {
+      "kind": "initial",
+      "terrain": [[
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } },
+        { "type": "land", "kind": { "type": "plain" } }
+      ]],
+      "robots": [
+        { "id": "robot-1", "position": { "x": 0, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-2", "position": { "x": 1, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-3", "position": { "x": 2, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-4", "position": { "x": 3, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-5", "position": { "x": 4, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-6", "position": { "x": 5, "y": 0 }, "direction": "east", "drillDurability": 3 },
+        { "id": "robot-7", "position": { "x": 6, "y": 0 }, "direction": "east", "drillDurability": 3 }
+      ]
+    }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-1",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000001", "reason": "completed", "message": "program completed" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-2",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000002", "reason": "interrupted", "message": "execution interrupted" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-3",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000003", "reason": "runtime_error", "message": "builtin get_back requires a nonempty vector" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-4",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000004", "reason": "division_by_zero", "message": "division by zero" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-5",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000005", "reason": "step_limit", "message": "VM step limit exceeded: used 101, limit 100" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-6",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000006", "reason": "memory_limit", "message": "VM memory limit exceeded: used 1025, limit 1024" }
+  },
+  {
+    "type": "picolang", "interpreterId": "robot-7",
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000007", "reason": "call_depth_limit", "message": "VM call depth limit exceeded: used 65, limit 64" }
+  },
+  {
+    "type": "field", "tick": 0,
+    "state": { "kind": "update", "removedRobotIds": ["robot-1", "robot-2", "robot-3", "robot-4", "robot-5", "robot-6", "robot-7"] }
+  }
+]

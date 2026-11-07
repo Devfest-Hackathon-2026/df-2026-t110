@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
@@ -122,8 +123,34 @@ func expectOutput(t *testing.T, output robotmsg.RobotOutput, err error, want rob
 	if !reflect.DeepEqual(output.Step, want) {
 		t.Errorf("step = %#v, want %#v", output.Step, want)
 	}
+	if _, suspended := want.(robotmsg.ActionStep); suspended {
+		for _, event := range output.Events {
+			if end, ok := event.(robotevent.ExecutionFinishedEvent); ok {
+				t.Errorf("action suspension reported execution ending: %+v", end)
+			}
+		}
+	}
 	if _, err := json.Marshal(output.Events); err != nil {
 		t.Errorf("events cannot be recorded: %v", err)
+	}
+}
+
+func expectExecutionEnd(t *testing.T, events []robotevent.PicolangEvent, reason robotevent.ExecutionEndReason, hint bot.HintID) {
+	t.Helper()
+	count := 0
+	for i, event := range events {
+		if end, ok := event.(robotevent.ExecutionFinishedEvent); ok {
+			count++
+			if end.Reason != reason || end.HintID != hint || end.Message == "" {
+				t.Errorf("execution ending = %+v, want reason %s and hint %s", end, reason, hint)
+			}
+			if i != len(events)-1 {
+				t.Error("execution ending was emitted before cleanup finished")
+			}
+		}
+	}
+	if count != 1 {
+		t.Errorf("got %d execution endings, want one", count)
 	}
 }
 
@@ -264,46 +291,69 @@ func TestDeepMutualRecursionUsesExplicitStack(t *testing.T) {
 
 func TestRuntimeFailureClosesAllFramesAndDeliversEvents(t *testing.T) {
 	t.Parallel()
-	b := &builder{}
-	vector := bot.VectorType{ElementType: bot.IntegerType{}}
-	p := b.param("input", vector)
-	local := b.declare("local", bot.IntegerType{}, b.integer(3))
-	divide := b.call("div", b.integer(1), b.integer(0))
-	bad := b.function([]param{p}, bot.IntegerType{}, local, b.ret(divide))
-	caller := b.declare("v", vector, b.call("new"))
-	main := b.function(nil, bot.UnitType{}, caller, b.assign("v", b.call("push_back", b.ref("v"), b.integer(1))), b.call("bad", b.ref("v")), b.ret(b.unit()))
-	v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "bad": bad}), 0)
-	base := snapshot(v).MemoryBytes
-	output, err := v.Start()
-	var failure *function.RuntimeError
-	if !errors.As(err, &failure) || failure.HintID != divide.HintID {
-		t.Errorf("runtime failure lost its source: %v", err)
-	}
-	if output.Step != nil {
-		t.Errorf("failed VM returned a successful step: %#v", output.Step)
-	}
-	var drops []bot.HintID
-	for _, e := range output.Events {
-		if drop, ok := e.(robotevent.VariableDropEvent); ok {
-			drops = append(drops, drop.HintID)
-		}
-	}
-	if want := []bot.HintID{local.Ident.HintID, p.Ident.HintID, caller.Ident.HintID}; !reflect.DeepEqual(drops, want) {
-		t.Errorf("cleanup order = %v, want %v", drops, want)
-	}
-	assertClean(t, v, base)
-	if _, err := json.Marshal(output.Events); err != nil {
-		t.Errorf("failure events cannot be recorded: %v", err)
-	}
-	if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
-		t.Errorf("failed VM accepted Next: %v", err)
+	for _, kind := range []string{"division", "empty vector"} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+			b := &builder{}
+			vector := bot.VectorType{ElementType: bot.IntegerType{}}
+			p := b.param("input", vector)
+			local := b.declare("local", bot.IntegerType{}, b.integer(3))
+			divide := b.call("div", b.integer(1), b.integer(0))
+			reason, detail := robotevent.EndDivisionByZero, "division by zero"
+			if kind == "empty vector" {
+				divide = b.call("get_back", b.call("pop_back", b.ref("input")))
+				reason, detail = robotevent.EndRuntimeError, "nonempty vector"
+			}
+			bad := b.function([]param{p}, bot.IntegerType{}, local, b.ret(divide))
+			caller := b.declare("v", vector, b.call("new"))
+			main := b.function(nil, bot.UnitType{}, caller, b.assign("v", b.call("push_back", b.ref("v"), b.integer(1))), b.call("bad", b.ref("v")), b.ret(b.unit()))
+			v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "bad": bad}), 0)
+			base := snapshot(v).MemoryBytes
+			output, err := v.Start()
+			var failure *function.RuntimeError
+			if !errors.As(err, &failure) || failure.HintID != divide.HintID {
+				t.Errorf("runtime failure lost its source: %v", err)
+			}
+			if output.Step != nil {
+				t.Errorf("failed VM returned a successful step: %#v", output.Step)
+			}
+			var drops []bot.HintID
+			for _, e := range output.Events {
+				if drop, ok := e.(robotevent.VariableDropEvent); ok {
+					drops = append(drops, drop.HintID)
+				}
+			}
+			if want := []bot.HintID{local.Ident.HintID, p.Ident.HintID, caller.Ident.HintID}; !reflect.DeepEqual(drops, want) {
+				t.Errorf("cleanup order = %v, want %v", drops, want)
+			}
+			expectExecutionEnd(t, output.Events, reason, divide.HintID)
+			for _, event := range output.Events {
+				if end, ok := event.(robotevent.ExecutionFinishedEvent); ok && !strings.Contains(end.Message, detail) {
+					t.Errorf("lost failure detail %q: %s", detail, end.Message)
+				}
+			}
+			assertClean(t, v, base)
+			if _, err := json.Marshal(output.Events); err != nil {
+				t.Errorf("failure events cannot be recorded: %v", err)
+			}
+			if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
+				t.Errorf("failed VM accepted Next: %v", err)
+			}
+			if err := v.Close(); err != nil {
+				t.Errorf("Close after failure: %v", err)
+			}
+			if pending := v.Collect(); len(pending) != 0 {
+				t.Errorf("Close duplicated the failure: %#v", pending)
+			}
+		})
 	}
 }
 
 func TestLifecycleAndRejectedActionResults(t *testing.T) {
 	t.Parallel()
 	b := &builder{}
-	main := b.function(nil, bot.UnitType{}, b.declare("moved", bot.BoolType{}, b.call("forward")), b.call("print_bool", b.ref("moved")), b.ret(b.unit()))
+	last := b.unit()
+	main := b.function(nil, bot.UnitType{}, b.declare("moved", bot.BoolType{}, b.call("forward")), b.call("print_bool", b.ref("moved")), b.ret(last))
 	v := newVM(t, checked(t, map[bot.Name]fn{"main": main}), 0)
 	base := snapshot(v).MemoryBytes
 	if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
@@ -315,8 +365,8 @@ func TestLifecycleAndRejectedActionResults(t *testing.T) {
 	if _, err := v.Start(); !errors.Is(err, ErrState) {
 		t.Errorf("second Start: %v", err)
 	}
-	if _, err := v.Next(values.UnitValue{}); err == nil {
-		t.Error("Next accepted the wrong action result type")
+	if output, err := v.Next(values.UnitValue{}); err == nil || len(output.Events) != 0 {
+		t.Errorf("invalid action result must be rejected without ending execution: %+v, %v", output, err)
 	}
 	if after := snapshot(v); after != before {
 		t.Errorf("rejected operation changed usage: before=%+v after=%+v", before, after)
@@ -325,12 +375,19 @@ func TestLifecycleAndRejectedActionResults(t *testing.T) {
 	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: true}})
 	output, err = v.Next(values.UnitValue{})
 	expectOutput(t, output, err, robotmsg.DoneStep{})
+	expectExecutionEnd(t, output.Events, robotevent.EndCompleted, bot.SourceOf(last, bot.Source{}).HintID)
 	assertClean(t, v, base)
 	if time := snapshot(v).Time; time != 6 {
 		t.Errorf("time = %d, want 6", time)
 	}
 	if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
 		t.Errorf("Next after completion: %v", err)
+	}
+	if err := v.Close(); err != nil {
+		t.Errorf("Close after completion: %v", err)
+	}
+	if pending := v.Collect(); len(pending) != 0 {
+		t.Errorf("Close duplicated the completion: %#v", pending)
 	}
 }
 
@@ -550,7 +607,9 @@ func TestCloseSuspendedStackReleasesEveryFrame(t *testing.T) {
 	}
 	assertClean(t, v, base)
 	drops := 0
-	for _, e := range v.Collect() {
+	cleanup := v.Collect()
+	expectExecutionEnd(t, cleanup, robotevent.EndInterrupted, v.source.HintID)
+	for _, e := range cleanup {
 		if drop, ok := e.(robotevent.VariableDropEvent); ok && drop.HintID == paramHint {
 			drops++
 		}
