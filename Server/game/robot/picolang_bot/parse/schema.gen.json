@@ -1,0 +1,726 @@
+{
+  "$comment": "Generated from Schema/picolang by go generate; DO NOT EDIT.",
+  "$defs": {
+    "toplevel.schema.yaml": {
+      "$defs": {
+        "Version0": {
+          "additionalProperties": false,
+          "description": "文法バージョン 0 と picolang.v0.program の組。他のバージョンとの同時指定は許可しない",
+          "properties": {
+            "picolang": {
+              "additionalProperties": false,
+              "description": "文法バージョン 0 のプログラムのみを指定する",
+              "properties": {
+                "v0": {
+                  "additionalProperties": false,
+                  "description": "文法バージョン 0 のプログラム",
+                  "properties": {
+                    "program": {
+                      "$ref": "#/$defs/v0~1program.yaml"
+                    }
+                  },
+                  "required": [
+                    "program"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "v0"
+              ],
+              "type": "object"
+            },
+            "picolangVersion": {
+              "const": 0,
+              "description": "picolang の文法のバージョン。0 から始まり、バージョン更新ごとに 1 ずつ増やす整数",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "picolangVersion",
+            "picolang"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/toplevel.schema.yaml/$defs/Version0"
+        }
+      ],
+      "title": "PicolangProgram"
+    },
+    "v0/args.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "関数呼び出しの実引数。空配列は引数なしを表し、先頭から順に評価する",
+      "items": {
+        "$ref": "#/$defs/v0~1expr.yaml"
+      },
+      "title": "Args",
+      "type": "array"
+    },
+    "v0/block.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "文の一覧と変数スコープを持つブロック",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "block"
+        },
+        "stmts": {
+          "$ref": "#/$defs/v0~1stmts.yaml"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "stmts"
+      ],
+      "title": "Block",
+      "type": "object"
+    },
+    "v0/bool-literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "bool 型のリテラル",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "literal"
+        },
+        "type": {
+          "const": "bool"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "type",
+        "value"
+      ],
+      "title": "BoolLiteral",
+      "type": "object"
+    },
+    "v0/call.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "関数名と実引数の一覧による関数呼び出し",
+      "properties": {
+        "args": {
+          "$ref": "#/$defs/v0~1args.yaml"
+        },
+        "func": {
+          "$ref": "#/$defs/v0~1func.yaml"
+        },
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "call"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "func",
+        "args"
+      ],
+      "title": "Call",
+      "type": "object"
+    },
+    "v0/compound-type.yaml": {
+      "$ref": "#/$defs/v0~1vector-type.yaml",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "他の型を組み合わせて構成する picolang の複合型",
+      "title": "CompoundType"
+    },
+    "v0/distance-target-literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "distance_target 型のリテラル",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "literal"
+        },
+        "type": {
+          "const": "distance_target"
+        },
+        "value": {
+          "$ref": "#/$defs/v0~1distance-target.yaml"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "type",
+        "value"
+      ],
+      "title": "DistanceTargetLiteral",
+      "type": "object"
+    },
+    "v0/distance-target.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "distance で探す対象の種類",
+      "enum": [
+        "robot",
+        "ally",
+        "enemy",
+        "rock",
+        "luggage",
+        "sea",
+        "goal",
+        "territory"
+      ],
+      "title": "DistanceTarget",
+      "type": "string"
+    },
+    "v0/expr.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "リテラル、変数参照、関数呼び出しのいずれかの式",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1literal.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1ident.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1call.yaml"
+        }
+      ],
+      "title": "Expr"
+    },
+    "v0/func.yaml": {
+      "$ref": "#/$defs/v0~1name.yaml",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "呼び出す組み込み関数またはユーザー定義関数の名前。関数は値として扱わない",
+      "title": "Func"
+    },
+    "v0/function.schema.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "引数、戻り値の型、関数本体を持つ関数定義。関数名は picolang.v0.program map のキーで表す",
+      "properties": {
+        "body": {
+          "$ref": "#/$defs/v0~1block.yaml"
+        },
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "function"
+        },
+        "params": {
+          "description": "宣言順に並べた引数の一覧",
+          "items": {
+            "$ref": "#/$defs/v0~1param.yaml"
+          },
+          "type": "array"
+        },
+        "returnType": {
+          "$ref": "#/$defs/v0~1type.yaml"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "params",
+        "returnType",
+        "body"
+      ],
+      "title": "PicolangFunctionDefinition",
+      "type": "object"
+    },
+    "v0/hint-id.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "構文ノードに対応するデバッグ用 UUID。プログラム全体での一意性は意味解析で検査する",
+      "format": "uuid",
+      "maxLength": 36,
+      "minLength": 36,
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+      "title": "HintId",
+      "type": "string"
+    },
+    "v0/ident.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "変数の参照または宣言・代入・for 文における変数名",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "ident"
+        },
+        "name": {
+          "$ref": "#/$defs/v0~1name.yaml"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "name"
+      ],
+      "title": "Ident",
+      "type": "object"
+    },
+    "v0/integer-literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "integer 型のリテラル",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "literal"
+        },
+        "type": {
+          "const": "integer"
+        },
+        "value": {
+          "description": "i64 の範囲外の値の扱いは未定義",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "type",
+        "value"
+      ],
+      "title": "IntegerLiteral",
+      "type": "object"
+    },
+    "v0/literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "bool、integer、unit、rotation、distance_target のリテラル。terrain 型にはリテラルがない",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1bool-literal.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1integer-literal.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1unit-literal.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1rotation-literal.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1distance-target-literal.yaml"
+        }
+      ],
+      "title": "Literal"
+    },
+    "v0/name.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "v0/param.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "関数の仮引数の名前と型",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "ident": {
+          "$ref": "#/$defs/v0~1ident.yaml"
+        },
+        "kind": {
+          "const": "param"
+        },
+        "type": {
+          "$ref": "#/$defs/v0~1type.yaml"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "ident",
+        "type"
+      ],
+      "title": "Param",
+      "type": "object"
+    },
+    "v0/primitive-type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "picolang の基本型。unit は () を表す",
+      "enum": [
+        "bool",
+        "integer",
+        "unit",
+        "terrain",
+        "rotation",
+        "distance_target"
+      ],
+      "title": "PrimitiveType",
+      "type": "string"
+    },
+    "v0/program.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": {
+        "$ref": "#/$defs/v0~1function.schema.yaml"
+      },
+      "description": "関数名をキー、関数定義を値とする文法バージョン 0 のプログラム",
+      "propertyNames": {
+        "$ref": "#/$defs/v0~1name.yaml"
+      },
+      "title": "PicolangV0Program",
+      "type": "object"
+    },
+    "v0/rotation-literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "rotation 型のリテラル",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "literal"
+        },
+        "type": {
+          "const": "rotation"
+        },
+        "value": {
+          "enum": [
+            "left",
+            "right"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "type",
+        "value"
+      ],
+      "title": "RotationLiteral",
+      "type": "object"
+    },
+    "v0/stmt.yaml": {
+      "$defs": {
+        "Assignment": {
+          "additionalProperties": false,
+          "description": "既存の変数への代入",
+          "properties": {
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "ident": {
+              "$ref": "#/$defs/v0~1ident.yaml"
+            },
+            "kind": {
+              "const": "assign"
+            },
+            "value": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "ident",
+            "value"
+          ],
+          "type": "object"
+        },
+        "Break": {
+          "additionalProperties": false,
+          "description": "最も内側のループを終了する",
+          "properties": {
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "kind": {
+              "const": "break"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId"
+          ],
+          "type": "object"
+        },
+        "Continue": {
+          "additionalProperties": false,
+          "description": "最も内側のループの次の反復に進む",
+          "properties": {
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "kind": {
+              "const": "continue"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId"
+          ],
+          "type": "object"
+        },
+        "Declaration": {
+          "additionalProperties": false,
+          "description": "型と初期値を指定した変数宣言",
+          "properties": {
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "ident": {
+              "$ref": "#/$defs/v0~1ident.yaml"
+            },
+            "kind": {
+              "const": "declare"
+            },
+            "type": {
+              "$ref": "#/$defs/v0~1type.yaml"
+            },
+            "value": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "type",
+            "ident",
+            "value"
+          ],
+          "type": "object"
+        },
+        "For": {
+          "additionalProperties": false,
+          "description": "integer 型の start から end までの半開区間を繰り返す。start が end 以上の場合は実行しない。ループ変数への代入は次の反復に影響しない",
+          "properties": {
+            "body": {
+              "$ref": "#/$defs/v0~1block.yaml"
+            },
+            "end": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            },
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "ident": {
+              "$ref": "#/$defs/v0~1ident.yaml"
+            },
+            "kind": {
+              "const": "for"
+            },
+            "start": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "ident",
+            "start",
+            "end",
+            "body"
+          ],
+          "type": "object"
+        },
+        "If": {
+          "additionalProperties": false,
+          "description": "bool 型の条件による分岐。else を省略した場合は偽のときに何も実行しない",
+          "properties": {
+            "condition": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            },
+            "else": {
+              "$ref": "#/$defs/v0~1block.yaml"
+            },
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "kind": {
+              "const": "if"
+            },
+            "then": {
+              "$ref": "#/$defs/v0~1block.yaml"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "condition",
+            "then"
+          ],
+          "type": "object"
+        },
+        "Return": {
+          "additionalProperties": false,
+          "description": "式を評価した値を返して関数を終了する。unit を返す場合も式を指定する",
+          "properties": {
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "kind": {
+              "const": "return"
+            },
+            "value": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "value"
+          ],
+          "type": "object"
+        },
+        "While": {
+          "additionalProperties": false,
+          "description": "bool 型の条件が真である間、ブロックを繰り返す",
+          "properties": {
+            "body": {
+              "$ref": "#/$defs/v0~1block.yaml"
+            },
+            "condition": {
+              "$ref": "#/$defs/v0~1expr.yaml"
+            },
+            "hintId": {
+              "$ref": "#/$defs/v0~1hint-id.yaml"
+            },
+            "kind": {
+              "const": "while"
+            }
+          },
+          "required": [
+            "kind",
+            "hintId",
+            "condition",
+            "body"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "式、変数宣言、代入、制御構文のいずれかの文。型・スコープ・return の配置・break と continue の使用位置は意味解析で検査する",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1expr.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/Declaration"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/Assignment"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/If"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/While"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/For"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/Return"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/Break"
+        },
+        {
+          "$ref": "#/$defs/v0~1stmt.yaml/$defs/Continue"
+        }
+      ],
+      "title": "Stmt"
+    },
+    "v0/stmts.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "実行順に並べた文の一覧。空配列は文がないことを表す",
+      "items": {
+        "$ref": "#/$defs/v0~1stmt.yaml"
+      },
+      "title": "Stmts",
+      "type": "array"
+    },
+    "v0/type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "picolang の値の型。基本型または複合型",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1primitive-type.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1compound-type.yaml"
+        }
+      ],
+      "title": "Type"
+    },
+    "v0/unit-literal.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "unit 型のリテラル",
+      "properties": {
+        "hintId": {
+          "$ref": "#/$defs/v0~1hint-id.yaml"
+        },
+        "kind": {
+          "const": "literal"
+        },
+        "type": {
+          "const": "unit"
+        },
+        "value": {
+          "description": "unit の () は JSON の null で表す",
+          "type": "null"
+        }
+      },
+      "required": [
+        "kind",
+        "hintId",
+        "type",
+        "value"
+      ],
+      "title": "UnitLiteral",
+      "type": "object"
+    },
+    "v0/vector-type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "同じ型の要素を持つ可変長配列の型",
+      "properties": {
+        "elementType": {
+          "$ref": "#/$defs/v0~1type.yaml",
+          "description": "要素の型。基本型と複合型のどちらも指定できる"
+        },
+        "kind": {
+          "const": "vector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "elementType"
+      ],
+      "title": "VectorType",
+      "type": "object"
+    }
+  },
+  "$ref": "#/$defs/toplevel.schema.yaml",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
