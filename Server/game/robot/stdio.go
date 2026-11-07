@@ -17,7 +17,7 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-const help = "<id> forward | back | rotate left | rotate right | drill_durability | print_integer <integer> | done; help\n"
+const help = "<id> forward | back | rotate left | rotate right | drill_durability | print_integer <integer> | print_bool true/false | done; help\n"
 
 // Session owns input and shares it between robots. Calls to Robot.Start and
 // Robot.Next must be sequential. Close releases the input resource.
@@ -158,6 +158,9 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 			return nil, false
 		}
 		return robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: integer}}, true
+	}
+	if len(fields) == 3 && fields[1] == "print_bool" && (fields[2] == "true" || fields[2] == "false") {
+		return robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: fields[2] == "true"}}, true
 	}
 	return nil, false
 }
