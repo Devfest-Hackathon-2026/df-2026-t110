@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { replayFrames } from '../src/features/match/matchReplay.ts'
+import { readFileSync } from 'node:fs'
+import { replayFrameToStage, replayFrames } from '../src/features/match/matchReplay.ts'
 import { parseMatch, parseMatchResult, parseMatchUser } from '../src/features/match/matchApi.ts'
 
 test('field history replays movement, rotation and removal in order', () => {
@@ -125,4 +126,24 @@ test('account response accepts an authenticated user without a registered name',
   })
   assert.deepEqual(parseMatchUser({ name: 'Ada' }), { id: undefined, name: 'Ada' })
   assert.throws(() => parseMatchUser({ name: 12 }))
+})
+
+test('schema history replays drill, messages and wait without losing board state', () => {
+  const history = JSON.parse(
+    readFileSync(new URL('../../Schema/game_event/examples/history.json', import.meta.url), 'utf8'),
+  ) as unknown[]
+  const frames = replayFrames(history)
+  const at = (tick: number) => frames.find((frame) => frame.tick === tick)!
+  assert.equal(at(2).terrain[0][2].hasLuggage, false)
+  assert.equal(at(3).robots.find((robot) => robot.id === 'robot-2')?.speech, '-42')
+  assert.equal(at(4).robots.find((robot) => robot.id === 'robot-2')?.speech, 'false')
+  assert.deepEqual(at(5).terrain[1][3], { type: 'land', kind: { type: 'plain' } })
+  assert.equal(at(5).robots.find((robot) => robot.id === 'robot-2')?.drillDurability, 1)
+  assert.equal(at(7).actions[0].ticks, 3)
+  assert.equal(frames.at(-1)?.tick, 9)
+  assert.deepEqual(frames.at(-1)?.robots, [])
+  const stage = replayFrameToStage(at(5))
+  assert.equal(stage.width, 6)
+  assert.equal(stage.cells.find((cell) => cell.x === 3 && cell.y === 1)?.terrain, 'land')
+  assert.equal(stage.cells.find((cell) => cell.x === 3 && cell.y === 0)?.objects[0]?.type, 'goal')
 })

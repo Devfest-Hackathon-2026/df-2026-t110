@@ -10,12 +10,15 @@ import type { PicoProgram } from '../picolang/picolang.ts'
 import { LOCAL_LESSONS } from '../tutorial/tutorialLessons.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/BlocklyEditor.vue'))
+const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()
 const fieldInput = ref('')
 const programName = ref('')
 const draft = ref<PicoProgram | null>(null)
 const editorOpen = ref(false)
+const isDev = import.meta.env.DEV
+const replayOpen = ref(props.matchId === 'demo')
 const score = computed(() => store.result?.summary.score)
 const selectedProgram = computed(() => store.programs.find((item) => item.id === store.selectedProgramId))
 const outcome = computed(() => {
@@ -60,6 +63,9 @@ function onEditorToggle(event: Event): void {
       <p>ロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
     <p v-if="store.error" class="match-error" role="alert">{{ store.error }}</p>
+    <p v-if="isDev && store.phase === 'preparing'" class="match-demo-link">
+      <a href="/matches/demo">開発用の再生サンプルを見る</a>
+    </p>
 
     <template v-if="store.phase === 'preparing'">
       <section class="match-account" aria-labelledby="match-account-title">
@@ -225,9 +231,18 @@ function onEditorToggle(event: Event): void {
           </div>
         </div>
         <p v-if="store.phase === 'finished' && !store.isGuestMatch">
-          計算結果の再生は後続の実装で追加します。
+          対戦の計算過程を、3Dまたはカメラに重ねて確認できます。
         </p>
       </section>
+      <details
+        v-if="store.phase === 'finished' && store.frames.length"
+        class="match-replay-details"
+        :open="replayOpen"
+        @toggle="replayOpen = ($event.target as HTMLDetailsElement).open"
+      >
+        <summary>計算過程を見る</summary>
+        <MatchReplayScene v-if="replayOpen" :frames="store.frames" />
+      </details>
       <a class="match-back" href="/rooms">{{
         store.isGuestMatch ? '別のプログラムで練習する' : '新しい対戦を準備する'
       }}</a>

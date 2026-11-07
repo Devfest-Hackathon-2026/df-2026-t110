@@ -14,6 +14,7 @@ import {
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
 import { guestFieldIds, loadGuestPrograms, runGuestProgram, saveGuestProgram } from './guestMatch.ts'
+import { replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 export const useMatchStore = defineStore('match', () => {
   const fieldId = ref('')
@@ -21,6 +22,7 @@ export const useMatchStore = defineStore('match', () => {
   const selectedProgramId = ref('')
   const match = ref<MatchRecord | null>(null)
   const result = ref<MatchResult | null>(null)
+  const frames = ref<ReplayFrame[]>([])
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const guestMode = computed(() => authStatus.value === 'guest')
@@ -44,6 +46,7 @@ export const useMatchStore = defineStore('match', () => {
     selectedProgramId.value = ''
     match.value = null
     result.value = null
+    frames.value = []
     isGuestMatch.value = false
     error.value = ''
   }
@@ -118,6 +121,7 @@ export const useMatchStore = defineStore('match', () => {
         const reached = await runGuestProgram(fieldId.value, program.source)
         await new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, 850 - (Date.now() - started))))
         result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opposite: 0 } } }
+        frames.value = []
         return
       }
       const created = await createMatch(fieldId.value, selectedProgramId.value)
@@ -136,13 +140,28 @@ export const useMatchStore = defineStore('match', () => {
 
   function watchMatch(id: string, record?: MatchRecord): void {
     stopEvents?.()
+    if (import.meta.env.DEV && id === 'demo') {
+      void import('./replayDemo.ts').then(({ replayDemoHistory }) => {
+        match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'sample' }
+        result.value = { history: replayDemoHistory, summary: { score: { player: 1, opposite: 0 } } }
+        frames.value = replayFrames(replayDemoHistory)
+        error.value = ''
+      })
+      return
+    }
     match.value = record ?? { id, fieldId: '', selectedLayoutId: '' }
     result.value = null
+    frames.value = []
     error.value = ''
     stopEvents = subscribeMatchResult(
       id,
       (received) => {
         result.value = received
+        try {
+          frames.value = replayFrames(received.history)
+        } catch (cause) {
+          error.value = cause instanceof Error ? cause.message : '再生用の履歴を読み取れませんでした。'
+        }
         stopEvents?.()
         stopEvents = undefined
       },
@@ -162,6 +181,7 @@ export const useMatchStore = defineStore('match', () => {
     selectedProgramId,
     match,
     result,
+    frames,
     user,
     authStatus,
     guestMode,
