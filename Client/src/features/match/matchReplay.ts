@@ -30,12 +30,13 @@ type FieldEvent =
       state: {
         kind: 'update'
         actions?: Array<{
-          kind: 'forward' | 'back' | 'rotate' | 'pick_up'
+          kind: 'forward' | 'back' | 'rotate' | 'pick_up' | 'release'
           robotId: string
           success?: boolean
           to?: { x: number; y: number }
           direction?: ReplayRobot['direction']
           target?: { x: number; y: number }
+          discarded?: boolean
         }>
         removedRobotIds?: string[]
       }
@@ -68,12 +69,13 @@ export function replayFrames(history: unknown[]): ReplayFrame[] {
         if ((action.kind === 'forward' || action.kind === 'back') && action.success && action.to)
           robot.position = action.to
         if (action.kind === 'rotate' && action.direction) robot.direction = action.direction
-        if (action.kind === 'pick_up' && action.success && action.target) {
+        if (action.kind === 'release' && action.success && action.discarded) robot.carryingLuggage = false
+        if ((action.kind === 'pick_up' || action.kind === 'release') && action.success && action.target) {
           const { x, y } = action.target
           const cell = next.terrain[y]?.[x]
           if (cell?.type === 'land') {
-            cell.hasLuggage = false
-            robot.carryingLuggage = true
+            cell.hasLuggage = action.kind === 'release'
+            robot.carryingLuggage = action.kind === 'pick_up'
           }
         }
       }
