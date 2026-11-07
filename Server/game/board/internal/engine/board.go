@@ -275,8 +275,8 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
 	drillTargets := make(map[protocol.RobotID]Position)
-	pickUpTargets := make(map[protocol.RobotID]Position)
-	pickUpCounts := make(map[Position]int)
+	pickUpTargets := make(map[protocol.RobotID]Position, robotCount)
+	pickUpCounts := make(map[Position]int, robotCount)
 	next := clone(b.state)
 	next.Tick++
 
