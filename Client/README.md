@@ -6,7 +6,9 @@
 
 ## 対戦
 
-`/rooms` ではフィールドIDを入力してプログラムを読み込み、既存のプログラムを選択するかBlocklyで作成して保存します。ランダム対戦を開始すると `POST /api/field/{fieldId}/match` に選択した `programId` を送り、返された対戦IDの `/matches/:matchId` で `GET /api/match/{matchId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得できます。盤面、岩、荷物、ロボットの初期状態は結果の履歴を使い、得点は `summary.score` を表示します。対戦相手を指定するAPIは現行スキーマにはありません。現在のServerリポジトリでは対戦とプログラムのハンドラーが `501 Not Implemented` を返すため、サーバー側の実装が必要です。
+`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。未認証またはAPI未実装の場合、`/rooms` はゲストのローカル練習に切り替わり、サンプル教材のフィールドでPicolangを実行してゴール到達を判定します。ゲストのプログラムはこのブラウザのlocalStorageに保存され、サーバーへは送信されません。認証できた場合は、フィールドIDを入力して保存済みプログラムをロボット1台に割り当てるか、Blocklyで作成して保存します。対戦開始時は `POST /api/field/{fieldId}/match` に選択した `programId` を送り、返された対戦IDの `/matches/:matchId` で `GET /api/match/{matchId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果履歴の再生は後続の実装です。対戦相手を指定するAPIは現行スキーマにはありません。現在のServerリポジトリでは認証・対戦・プログラムのハンドラーが `501 Not Implemented` を返すため、サーバー対戦の結合にはサーバー側の実装が必要です。また現行の `User.name` はGoogleアカウント名ではなく別途設定するユーザー名なので、Googleの名前を表示するにはサーバーのユーザー情報への追加が必要です。
+
+ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 
 ## 教材詳細
 

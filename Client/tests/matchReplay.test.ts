@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { replayFrames } from '../src/features/match/matchReplay.ts'
-import { parseMatch, parseMatchResult } from '../src/features/match/matchApi.ts'
+import { parseMatch, parseMatchResult, parseMatchUser } from '../src/features/match/matchApi.ts'
 
 test('field history replays movement, rotation and removal in order', () => {
   const frames = replayFrames([
@@ -48,4 +48,13 @@ test('match responses require identifiers and scores', () => {
     { player: 2, opposite: 1 },
   )
   assert.throws(() => parseMatchResult({ history: [], summary: {} }))
+})
+
+test('account response accepts an authenticated user without a registered name', () => {
+  assert.deepEqual(parseMatchUser({ id: 'google-subject', name: null }), {
+    id: 'google-subject',
+    name: undefined,
+  })
+  assert.deepEqual(parseMatchUser({ name: 'Ada' }), { id: undefined, name: 'Ada' })
+  assert.throws(() => parseMatchUser({ name: 12 }))
 })

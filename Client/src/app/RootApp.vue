@@ -4,7 +4,6 @@ import { Icon } from '@iconify/vue'
 import infoIcon from '@iconify-icons/lucide/info'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
-import logInIcon from '@iconify-icons/lucide/log-in'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import { LOCAL_LESSONS } from '../features/tutorial/tutorialLessons.ts'
 import AppHeader from './AppHeader.vue'
@@ -12,6 +11,7 @@ import AppHeader from './AppHeader.vue'
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
 const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
+const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
@@ -103,6 +103,7 @@ document.title = isStage
     </main>
 
     <MatchPage v-else-if="page === 'rooms' || page === 'match-detail'" :match-id="matchId" />
+    <AccountPage v-else-if="page === 'account'" />
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
@@ -126,15 +127,6 @@ document.title = isStage
             >ステージ表示の開発用プレビュー</a
           >も確認できます。
         </p>
-      </template>
-      <template v-else-if="page === 'account'">
-        <h1 class="heading-with-icon">
-          <Icon :icon="logInIcon" aria-hidden="true" /><span>ログインは、準備中です。</span>
-        </h1>
-        <p class="inner-lead">
-          教材を試すためのアカウント連携を準備しています。今はステージのプレビューを見られます。
-        </p>
-        <a class="action-primary" href="/tutorials">教材を見る</a>
       </template>
       <template v-else>
         <h1 class="heading-with-icon">

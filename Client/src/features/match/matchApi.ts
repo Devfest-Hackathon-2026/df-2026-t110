@@ -8,6 +8,13 @@ export interface ProgramRecord {
   source: PicoProgram
 }
 
+export interface MatchUser {
+  id?: string
+  name?: string
+}
+
+export const loginUrl = `${base}/login`
+
 export interface MatchRecord {
   id: string
   fieldId: string
@@ -41,6 +48,10 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
     }
     throw new MatchApiError(response.status, message)
   }
+  if (!response.headers.get('content-type')?.includes('application/json'))
+    throw new Error(
+      'APIからJSONが返されませんでした。開発サーバーを再起動し、Goサーバーの起動を確認してください。',
+    )
   return response.json()
 }
 
@@ -54,6 +65,20 @@ export function parsePrograms(value: unknown): ProgramRecord[] {
     (item): item is ProgramRecord =>
       isObject(item) && typeof item.id === 'string' && typeof item.name === 'string',
   )
+}
+
+export function parseMatchUser(value: unknown): MatchUser {
+  if (!isObject(value)) throw new Error('ユーザー情報の形式が不正です')
+  if (value.id != null && typeof value.id !== 'string') throw new Error('ユーザーIDの形式が不正です')
+  if (value.name != null && typeof value.name !== 'string') throw new Error('表示名の形式が不正です')
+  return {
+    id: typeof value.id === 'string' ? value.id : undefined,
+    name: typeof value.name === 'string' ? value.name : undefined,
+  }
+}
+
+export async function getMe(): Promise<MatchUser> {
+  return parseMatchUser(await request('/me'))
 }
 
 export function parseMatch(value: unknown): MatchRecord {
