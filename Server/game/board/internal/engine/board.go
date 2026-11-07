@@ -245,7 +245,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: b.searchNow(id)}
 		case actions.SearchFrontAction:
 			b.controls[id] = readyControl{value: b.searchFront(id)}
-		case actions.ForwardAction, actions.BackAction, actions.PrintIntegerAction, actions.PrintBoolAction:
+		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -266,12 +266,14 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 	return nil
 }
 
-// commit resolves movement dependencies against one immutable starting state.
+// commit resolves actions against one immutable starting state.
 func (b *Board) commit() (fieldevent.UpdateState, error) {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]protocol.RobotID, robotCount)
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
+	drillTargets := make(map[protocol.RobotID]Position)
+	drillCounts := make(map[Position]int)
 	next := clone(b.state)
 	next.Tick++
 
@@ -294,17 +296,22 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		if !pending {
 			continue
 		}
-		a := c.action
 		robot := b.state.Robots[id]
 		delta := directionDeltas[robot.direction]
-		switch a.(type) {
+		target := Position{x: robot.position.x + delta.x, y: robot.position.y + delta.y}
+		switch c.action.(type) {
 		case actions.ForwardAction:
 		case actions.BackAction:
-			delta.x, delta.y = -delta.x, -delta.y
+			target = Position{x: robot.position.x - delta.x, y: robot.position.y - delta.y}
+		case actions.DrillAction:
+			if _, rock := b.terrainAt(target).(RockTerrain); rock && robot.drillDurability > 0 {
+				drillTargets[id] = target
+				drillCounts[target]++
+			}
+			continue
 		default:
 			continue
 		}
-		target := Position{x: robot.position.x + delta.x, y: robot.position.y + delta.y}
 		if b.land(target) {
 			targets[id] = target
 			counts[target]++
@@ -356,6 +363,9 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 			value, event = applyMove(id, &robot, fieldevent.Forward, targets[id], canMove(id))
 		case actions.BackAction:
 			value, event = applyMove(id, &robot, fieldevent.Back, targets[id], canMove(id))
+		case actions.DrillAction:
+			target, eligible := drillTargets[id]
+			value, event = applyDrill(id, &robot, next.Terrain, target, eligible && drillCounts[target] == 1)
 		case actions.PrintIntegerAction:
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:
@@ -378,10 +388,7 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 }
 
 func (b *Board) land(p Position) bool {
-	if p.y < 0 || p.y >= len(b.state.Terrain) || p.x < 0 || p.x >= len(b.state.Terrain[0]) {
-		return false
-	}
-	_, isLand := b.state.Terrain[p.y][p.x].(LandTerrain)
+	_, isLand := b.terrainAt(p).(LandTerrain)
 	return isLand
 }
 
