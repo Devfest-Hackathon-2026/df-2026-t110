@@ -6,7 +6,6 @@ import playIcon from '@iconify-icons/lucide/play'
 import saveIcon from '@iconify-icons/lucide/save'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
-import { executionReasonText, isExecutionFailure } from './matchExecutionResults.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
 import { LOCAL_LESSONS } from '../tutorial/tutorialLessons.ts'
 
@@ -225,23 +224,6 @@ function onEditorToggle(event: Event): void {
             <span>相手</span><strong>{{ score.opponent }}</strong>
           </div>
         </div>
-        <section
-          v-if="store.executionResults.length"
-          class="match-execution-results"
-          aria-labelledby="match-execution-results-title"
-        >
-          <h3 id="match-execution-results-title">ロボットの実行結果</h3>
-          <ul>
-            <li
-              v-for="result in store.executionResults"
-              :key="result.interpreterId"
-              :class="{ 'match-execution-failed': isExecutionFailure(result) }"
-            >
-              <strong>ロボット {{ result.interpreterId }}</strong>
-              <p>{{ executionReasonText(result) }}</p>
-            </li>
-          </ul>
-        </section>
         <p v-if="store.phase === 'finished' && !store.isGuestMatch">
           計算結果の再生は後続の実装で追加します。
         </p>
