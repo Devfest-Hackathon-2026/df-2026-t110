@@ -21,6 +21,7 @@ import (
 const CommandUsage = `
 <id> forward | back | rotate left | rotate right |
  wait <ticks> |
+ distance <robot|ally|enemy|rock|luggage|sea|goal|territory> |
  drill | drill_durability | 
  pick_up | release |
  search_now | search_front | 
@@ -170,6 +171,13 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 	}
 	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(values.Left) || fields[2] == string(values.Right)) {
 		return robotmsg.ActionStep{Action: actions.RotateAction{Rotation: values.Rotation(fields[2])}}, true
+	}
+	if len(fields) == 3 && fields[1] == "distance" {
+		target := values.DistanceTarget(fields[2])
+		if target.Valid() {
+			return robotmsg.ActionStep{Action: actions.DistanceAction{Target: target}}, true
+		}
+		return nil, false
 	}
 	if len(fields) == 3 && (fields[1] == "print_integer" || fields[1] == "wait") {
 		integer, err := strconv.ParseInt(fields[2], 10, 64)

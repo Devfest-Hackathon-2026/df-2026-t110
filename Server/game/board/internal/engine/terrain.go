@@ -3,12 +3,16 @@ package engine
 // Terrain describes a cell of the shared board.
 type Terrain interface{ terrain() }
 
-func (b *Board) terrainAt(p Position) Terrain {
+func (b *Board) contains(p Position) bool {
 	terrain := b.state.Terrain
-	if p.y < 0 || p.y >= len(terrain) || p.x < 0 || p.x >= len(terrain[p.y]) {
+	return p.y >= 0 && p.y < len(terrain) && p.x >= 0 && p.x < len(terrain[p.y])
+}
+
+func (b *Board) terrainAt(p Position) Terrain {
+	if !b.contains(p) {
 		return SeaTerrain{}
 	}
-	return terrain[p.y][p.x]
+	return b.state.Terrain[p.y][p.x]
 }
 
 type TeamID int

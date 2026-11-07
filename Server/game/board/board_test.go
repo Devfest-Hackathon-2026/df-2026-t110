@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
@@ -438,32 +437,6 @@ func TestFinishedRobotRemovedAtCommit(t *testing.T) {
 	}
 	if snapshot := b.Snapshot(); snapshot.Tick != 1 || len(snapshot.Robots) != 0 {
 		t.Errorf("unexpected state after all robots stopped: %+v", snapshot)
-	}
-}
-
-func TestUnimplementedActionsAreNotSupported(t *testing.T) {
-	t.Parallel()
-	for _, action := range []actions.Action{
-		actions.DistanceAction{Target: values.DistanceRock},
-	} {
-		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {
-			t.Parallel()
-			b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[protocol.RobotID]board.RobotState{
-				"a": state(0, 0, board.East), "b": state(2, 0, board.West),
-			}}, []protocol.RobotID{"a", "b"})
-			initial := b.Snapshot()
-			next(t, b, nil)
-			// A valid action is already pending when the other robot sends an
-			// unimplemented action; neither action may mutate the board.
-			next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.ForwardAction{}})
-			_, err := b.Next(robotmsg.ActionReply{RobotID: "b", Action: action})
-			if !errors.Is(err, game.ErrNotSupported) {
-				t.Errorf("got %v, want ErrNotSupported", err)
-			}
-			if !reflect.DeepEqual(initial, b.Snapshot()) {
-				t.Error("unsupported action committed pending changes")
-			}
-		})
 	}
 }
 
