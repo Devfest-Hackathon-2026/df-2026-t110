@@ -273,8 +273,6 @@ type ClearCondition struct {
 	ReachGoal *ReachGoal `json:"-" yaml:"-"`
 
 	VisitCheckpoints *VisitCheckpoints `json:"-" yaml:"-"`
-
-	DeliverAndReachGoal *DeliverAndReachGoal `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -287,9 +285,6 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	if j.VisitCheckpoints != nil {
 		set++
 	}
-	if j.DeliverAndReachGoal != nil {
-		set++
-	}
 	if set != 1 {
 		return nil, fmt.Errorf("ClearCondition: exactly one variant must be set, got %d", set)
 	}
@@ -298,9 +293,6 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	}
 	if j.VisitCheckpoints != nil {
 		return json.Marshal(j.VisitCheckpoints)
-	}
-	if j.DeliverAndReachGoal != nil {
-		return json.Marshal(j.DeliverAndReachGoal)
 	}
 	return nil, nil // unreachable
 }
@@ -343,12 +335,6 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("ClearCondition.VisitCheckpoints: %w", err)
 		}
 		j.VisitCheckpoints = &v
-	case "deliver_and_reach_goal":
-		var v DeliverAndReachGoal
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("ClearCondition.DeliverAndReachGoal: %w", err)
-		}
-		j.DeliverAndReachGoal = &v
 	default:
 		return fmt.Errorf("ClearCondition: unknown type value %q", disc)
 	}
@@ -450,35 +436,6 @@ func (j *Declaration) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("unmarshal Declaration: %w", err)
 	}
 	*j = Declaration(plain)
-	return nil
-}
-
-// ロボットが荷物を運搬し、ゴールに到達するとクリアする条件
-type DeliverAndReachGoal struct {
-	// 荷物の運搬とゴールへの到達を求めるクリア条件の種別
-	Type string `json:"type"`
-}
-
-const DeliverAndReachGoalType = "deliver_and_reach_goal"
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *DeliverAndReachGoal) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw DeliverAndReachGoal: %w", err)
-	}
-	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in DeliverAndReachGoal: required")
-	}
-	type Plain DeliverAndReachGoal
-	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal DeliverAndReachGoal: %w", err)
-	}
-	if plain.Type != "deliver_and_reach_goal" {
-		return fmt.Errorf("field %s: must be equal to %s", "type", "deliver_and_reach_goal")
-	}
-	*j = DeliverAndReachGoal(plain)
 	return nil
 }
 
