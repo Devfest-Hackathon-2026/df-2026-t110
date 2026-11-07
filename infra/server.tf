@@ -20,6 +20,8 @@ resource "google_cloud_run_v2_service" "server" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
+  iap_enabled = var.iap_enabled
+
   deletion_protection = false
 
   template {
@@ -99,8 +101,10 @@ resource "google_cloud_run_v2_service" "server" {
   ]
 }
 
-# The API authenticates users itself (Google sign-in), so the service is publicly invokable.
+# Once IAP is off, the app authenticates users itself (Google sign-in), so the service is publicly invokable.
 resource "google_cloud_run_v2_service_iam_member" "server_public" {
+  count = var.iap_enabled ? 0 : 1
+
   name     = google_cloud_run_v2_service.server.name
   location = google_cloud_run_v2_service.server.location
   role     = "roles/run.invoker"

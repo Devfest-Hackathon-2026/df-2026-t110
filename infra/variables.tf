@@ -21,6 +21,33 @@ variable "server_max_instances" {
   default     = 3
 }
 
+variable "iap_enabled" {
+  description = "Restrict the server (frontend and API) to iap_members with IAP. Set to false to open it to everyone."
+  type        = bool
+  default     = true
+}
+
+variable "iap_members" {
+  description = "IAM members (e.g. \"user:alice@example.com\") allowed through IAP. Kept out of the repository in terraform.tfvars."
+  type        = list(string)
+  default     = []
+}
+
+# The project has no organization, so IAP needs a custom OAuth client to admit outside accounts.
+# It cannot be created with Terraform; see iap.tf.
+variable "iap_oauth_client_id" {
+  description = "Client ID of the OAuth client IAP uses to sign users in."
+  type        = string
+  default     = null
+}
+
+variable "iap_oauth_client_secret" {
+  description = "Client secret of the OAuth client IAP uses to sign users in."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "db_tier" {
   description = "Cloud SQL machine tier. Shared-core tiers keep idle cost low."
   type        = string

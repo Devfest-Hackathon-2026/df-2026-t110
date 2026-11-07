@@ -6,6 +6,11 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 8.10"
     }
+    # Only for google_project_service_identity, which is not in the GA provider.
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 8.10"
+    }
     github = {
       source  = "integrations/github"
       version = "~> 6.13"
@@ -24,6 +29,11 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "google-beta" {
   project = var.project_id
   region  = var.region
 }
