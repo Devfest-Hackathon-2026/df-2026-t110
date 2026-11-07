@@ -113,3 +113,69 @@ func TestGenerationUsagesReserveGenerationTokensSerializes(t *testing.T) {
 		t.Errorf("succeeded reservations = %d, want %d", succeeded, limit/tokens)
 	}
 }
+
+// While one reservation is deciding, a reservation by the same subject waits
+// for it and then observes its usage, whereas another subject's reservation
+// proceeds without waiting.
+func TestGenerationUsagesReserveGenerationTokensLocksPerSubject(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "sub", nil)
+	mustCreateUser(t, pool, "other", nil)
+	usages := NewGenerationUsages(pool)
+	ctx := context.Background()
+	start := time.Now().Add(-time.Hour)
+	const tokens = 10
+
+	deciding := make(chan struct{})
+	release := make(chan struct{})
+	firstDone := make(chan error, 1)
+
+	go func() {
+		firstDone <- usages.ReserveGenerationTokens(ctx, "sub", start, tokens, func(int) error {
+			close(deciding)
+			<-release
+			return nil
+		})
+	}()
+	<-deciding
+
+	type result struct {
+		used int
+		err  error
+	}
+	sameDone := make(chan result, 1)
+	go func() {
+		used := -1
+		err := usages.ReserveGenerationTokens(ctx, "sub", start, tokens, func(u int) error {
+			used = u
+			return nil
+		})
+		sameDone <- result{used, err}
+	}()
+
+	otherCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := usages.ReserveGenerationTokens(otherCtx, "other", start, tokens, func(int) error { return nil }); err != nil {
+		t.Errorf("other subject's reservation while sub is locked: error = %v, want nil", err)
+	}
+	select {
+	case r := <-sameDone:
+		t.Errorf("same subject's reservation finished while sub was locked: %+v", r)
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	close(release)
+	if err := <-firstDone; err != nil {
+		t.Errorf("first reservation error = %v", err)
+	}
+	select {
+	case r := <-sameDone:
+		if r.err != nil || r.used != tokens {
+			t.Errorf("same subject's reservation: used = %d, err = %v; want %d, nil", r.used, r.err, tokens)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("same subject's reservation did not finish after the lock was released")
+	}
+}
