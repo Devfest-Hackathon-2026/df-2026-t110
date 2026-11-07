@@ -17,6 +17,8 @@ import (
 
 var ErrTickLimit = errors.New("tick limit reached")
 
+var errMissingCompletion = errors.New("board completion rules are required")
+
 type Direction string
 
 const (
@@ -72,10 +74,20 @@ func (r RobotState) WithTeam(team TeamID) RobotState {
 }
 
 type Config struct {
-	// MaxTicks bounds committed ticks; zero means unlimited.
-	MaxTicks uint64
-	Terrain  [][]Terrain
-	Robots   map[protocol.RobotID]RobotState
+	maxTicks   uint64
+	completion CompletionRules
+	terrain    [][]Terrain
+	robots     map[protocol.RobotID]RobotState
+}
+
+// NewConfig binds the required completion rules to the board settings.
+// A maxTicks of zero means unlimited.
+func NewConfig(terrain [][]Terrain, robots map[protocol.RobotID]RobotState, maxTicks uint64, completion CompletionRules) (Config, error) {
+	if completion == nil {
+		return Config{}, errMissingCompletion
+	}
+	state := clone(Snapshot{Terrain: terrain, Robots: robots})
+	return Config{terrain: state.Terrain, robots: state.Robots, maxTicks: maxTicks, completion: completion}, nil
 }
 
 type Snapshot struct {
@@ -85,19 +97,23 @@ type Snapshot struct {
 }
 
 type Board struct {
-	maxTicks uint64
-	state    Snapshot
-	order    []protocol.RobotID
-	controls map[protocol.RobotID]robotControl
-	phase    phase
+	maxTicks   uint64
+	completion CompletionRules
+	state      Snapshot
+	order      []protocol.RobotID
+	controls   map[protocol.RobotID]robotControl
+	phase      phase
 }
 
 func New(config Config) (Board, error) {
-	if len(config.Terrain) == 0 || len(config.Terrain[0]) == 0 || len(config.Robots) == 0 {
+	if config.completion == nil {
+		return Board{}, errMissingCompletion
+	}
+	if len(config.terrain) == 0 || len(config.terrain[0]) == 0 || len(config.robots) == 0 {
 		return Board{}, errors.New("nonempty terrain and robots are required")
 	}
-	width := len(config.Terrain[0])
-	for _, row := range config.Terrain {
+	width := len(config.terrain[0])
+	for _, row := range config.terrain {
 		if len(row) != width {
 			return Board{}, errors.New("terrain must be rectangular")
 		}
@@ -107,11 +123,11 @@ func New(config Config) (Board, error) {
 			}
 		}
 	}
-	occupied := make(map[Position]struct{}, len(config.Robots))
-	for id, robot := range config.Robots {
+	occupied := make(map[Position]struct{}, len(config.robots))
+	for id, robot := range config.robots {
 		p := robot.position
 		if id == "" || directionIndex(robot.direction) < 0 || robot.drillDurability < 0 ||
-			p.x < 0 || p.y < 0 || p.x >= width || p.y >= len(config.Terrain) {
+			p.x < 0 || p.y < 0 || p.x >= width || p.y >= len(config.terrain) {
 			return Board{}, fmt.Errorf("invalid robot %q", id)
 		}
 		switch robot.teamID {
@@ -119,14 +135,14 @@ func New(config Config) (Board, error) {
 		default:
 			return Board{}, fmt.Errorf("invalid team %d for robot %q", robot.teamID, id)
 		}
-		_, isLand := config.Terrain[p.y][p.x].(LandTerrain)
+		_, isLand := config.terrain[p.y][p.x].(LandTerrain)
 		if _, exists := occupied[p]; !isLand || exists {
 			return Board{}, fmt.Errorf("robot %q must occupy a unique land cell", id)
 		}
 		occupied[p] = struct{}{}
 	}
-	state := Snapshot{Terrain: config.Terrain, Robots: config.Robots}
-	return Board{maxTicks: config.MaxTicks, state: clone(state), phase: unstartedBoard{}}, nil
+	state := Snapshot{Terrain: config.terrain, Robots: config.robots}
+	return Board{maxTicks: config.maxTicks, completion: config.completion, state: clone(state), phase: unstartedBoard{}}, nil
 }
 
 func (b *Board) Snapshot() Snapshot { return clone(b.state) }
@@ -164,10 +180,14 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 	}
 
 	var output boardmsg.BoardOutput
+	turnLimit := b.completion.TurnLimit()
 	for {
-		if _, finished := b.phase.(finishedBoard); finished {
-			output.Decision = boardmsg.DoneDecision{}
-			return output, nil
+		if phase, finished := b.phase.(finishedBoard); finished {
+			output.Decision = phase.decision
+			return output, phase.err
+		}
+		if turnLimit != 0 && b.state.Tick >= turnLimit {
+			return b.finish(output, boardmsg.EndTurnLimit)
 		}
 
 		hasPendingActions := false
@@ -199,19 +219,7 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 		}
 
 		if !hasPendingActions && earliestWait == 0 {
-			// All controls are finished here. Record the remaining robots' removal
-			// before clearing the board, at the current tick.
-			var update fieldevent.UpdateState
-			for _, id := range b.order {
-				if _, present := b.state.Robots[id]; present {
-					update.RemovedRobotIDs = append(update.RemovedRobotIDs, id)
-				}
-			}
-			clear(b.state.Robots)
-			b.phase = finishedBoard{}
-			output.Events = append(output.Events, fieldevent.FieldEvent{Tick: b.state.Tick, State: update})
-			output.Decision = boardmsg.DoneDecision{}
-			return output, nil
+			return b.finish(output, boardmsg.EndAllStopped)
 		}
 
 		if b.state.Tick == math.MaxUint64 {
@@ -227,12 +235,18 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 			if b.maxTicks != 0 {
 				ticks = min(ticks, b.maxTicks-b.state.Tick)
 			}
+			if turnLimit != 0 {
+				ticks = min(ticks, turnLimit-b.state.Tick)
+			}
 		}
 		update, err := b.commit(ticks)
 		if err != nil {
 			return output, err
 		}
 		output.Events = append(output.Events, fieldevent.FieldEvent{Tick: b.state.Tick, State: update})
+		if b.completion.AfterTurn(b.Snapshot(), update) {
+			return b.finish(output, boardmsg.EndConditionMet)
+		}
 	}
 }
 

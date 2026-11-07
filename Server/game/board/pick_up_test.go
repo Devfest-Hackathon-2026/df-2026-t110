@@ -36,10 +36,16 @@ func TestPickUpCarriesAtMostOneItem(t *testing.T) {
 	}
 	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"pick_up","robotId":"a","success":true,"target":{"x":1,"y":0}}]}}]`
 	wantTerrain := [][]board.Terrain{{plain, territory, luggage}}
-	b := newBoard(t, board.Config{
-		Terrain: [][]board.Terrain{{plain, territoryWithLuggage, luggage}},
-		Robots:  map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
-	}, []protocol.RobotID{"a"})
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, territoryWithLuggage, luggage}},
+		map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a"})
 	next(t, b, nil)
 
 	picked, pickErr := b.Next(pick)
@@ -80,13 +86,19 @@ func TestPickUpConflictLeavesLuggageInPlace(t *testing.T) {
 		}}},
 	}
 	wantB := boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.BoolValue{Bool: false}}
-	b := newBoard(t, board.Config{
-		Terrain: [][]board.Terrain{{plain, luggage, plain}},
-		Robots: map[protocol.RobotID]board.RobotState{
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, luggage, plain}},
+		map[protocol.RobotID]board.RobotState{
 			"a": state(0, 0, board.East),
 			"b": state(2, 0, board.West),
 		},
-	}, []protocol.RobotID{"a", "b"})
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 	wantState := b.Snapshot()
 	wantState.Tick = 1
 	next(t, b, nil)

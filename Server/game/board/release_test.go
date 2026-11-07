@@ -18,10 +18,16 @@ func loadedRobot(t *testing.T, id protocol.RobotID, x int, direction board.Direc
 	t.Helper()
 	terrain := land(3, 1)
 	terrain[0][1] = board.NewLandTerrain(board.PlainLand{}, true, board.NoTeam)
-	b := newBoard(t, board.Config{
-		Terrain: terrain,
-		Robots:  map[protocol.RobotID]board.RobotState{id: state(x, 0, direction)},
-	}, []protocol.RobotID{id})
+	config, err := board.NewConfig(
+		terrain,
+		map[protocol.RobotID]board.RobotState{id: state(x, 0, direction)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{id})
 	next(t, b, nil)
 	next(t, b, robotmsg.ActionReply{RobotID: id, Action: actions.PickUpAction{}})
 	robot := b.Snapshot().Robots[id]
@@ -116,10 +122,16 @@ func TestReleaseUsesTurnStartTerrain(t *testing.T) {
 				}}},
 			}
 			wantSecond := boardmsg.ResumeDecision{RobotID: "b", ReturnValue: tt.wantBValue}
-			board := newBoard(t, board.Config{
-				Terrain: [][]board.Terrain{{plain, tt.cell, plain}},
-				Robots:  map[protocol.RobotID]board.RobotState{"a": a, "b": tt.secondRobot},
-			}, []protocol.RobotID{"a", "b"})
+			config, err := board.NewConfig(
+				[][]board.Terrain{{plain, tt.cell, plain}},
+				map[protocol.RobotID]board.RobotState{"a": a, "b": tt.secondRobot},
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			board := newBoard(t, config, []protocol.RobotID{"a", "b"})
 			next(t, board, nil)
 
 			next(t, board, robotmsg.ActionReply{RobotID: "a", Action: actions.ReleaseAction{}})
@@ -144,10 +156,16 @@ func TestReleaseOverTheEdgeDiscardsLuggage(t *testing.T) {
 	terrain := land(1, 1)
 	reply := robotmsg.ActionReply{RobotID: "a", Action: actions.ReleaseAction{}}
 	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"release","robotId":"a","success":true,"discarded":true}]}}]`
-	b := newBoard(t, board.Config{
-		Terrain: terrain,
-		Robots:  map[protocol.RobotID]board.RobotState{"a": robot},
-	}, []protocol.RobotID{"a"})
+	config, err := board.NewConfig(
+		terrain,
+		map[protocol.RobotID]board.RobotState{"a": robot},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a"})
 	next(t, b, nil)
 
 	output, err := b.Next(reply)

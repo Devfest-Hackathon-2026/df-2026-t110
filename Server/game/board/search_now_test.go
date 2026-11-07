@@ -82,10 +82,16 @@ func TestSearchNowObservesCurrentLand(t *testing.T) {
 			want := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "a", ReturnValue: tt.want},
 			}
-			b := newBoard(t, board.Config{
-				Terrain: [][]board.Terrain{{board.SeaTerrain{}, tt.land}},
-				Robots:  map[protocol.RobotID]board.RobotState{"a": state(1, 0, board.West).WithTeam(tt.team)},
-			}, []protocol.RobotID{"a"})
+			config, err := board.NewConfig(
+				[][]board.Terrain{{board.SeaTerrain{}, tt.land}},
+				map[protocol.RobotID]board.RobotState{"a": state(1, 0, board.West).WithTeam(tt.team)},
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a"})
 			before := b.Snapshot()
 			next(t, b, nil)
 
