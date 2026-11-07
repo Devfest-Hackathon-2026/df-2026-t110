@@ -33,16 +33,18 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 		return fmt.Errorf("max-ticks must be positive")
 	}
 	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
+	team1Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID1)
+	team2Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID2)
 	b, err := board.New(board.Config{
 		MaxTicks: maxTicks,
 		Terrain: [][]board.Terrain{
-			{plain, plain, plain, plain, plain},
+			{team1Territory, plain, plain, plain, team2Territory},
 			{plain, plain, board.RockTerrain{}, plain, plain},
 			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
 		Robots: map[protocol.RobotID]board.RobotState{
-			"p1": board.NewRobotState(board.NewPosition(0, 0), board.East, 3),
-			"p2": board.NewRobotState(board.NewPosition(4, 0), board.West, 3),
+			"p1": board.NewRobotState(board.NewPosition(0, 0), board.East, 3).WithTeam(board.TeamID1),
+			"p2": board.NewRobotState(board.NewPosition(4, 0), board.West, 3).WithTeam(board.TeamID2),
 		},
 	})
 	if err != nil {
@@ -65,7 +67,7 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | print_integer <integer> | print_bool true/false | done; help"); err != nil {
+	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | search_now | print_integer <integer> | print_bool true/false | done; help"); err != nil {
 		return err
 	}
 	report, runErr := h.Run(hub.Options{
