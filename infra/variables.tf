@@ -27,6 +27,12 @@ variable "db_tier" {
   default     = "db-f1-micro"
 }
 
+variable "db_running" {
+  description = "Set to false to stop the Cloud SQL instance during idle periods; only storage is billed while stopped, and the server cannot reach the database."
+  type        = bool
+  default     = true
+}
+
 variable "db_deletion_protection" {
   description = "Prevents the Cloud SQL instance from being destroyed by Terraform or the API."
   type        = bool

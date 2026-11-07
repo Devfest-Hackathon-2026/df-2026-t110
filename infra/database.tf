@@ -9,6 +9,7 @@ resource "google_sql_database_instance" "main" {
     tier              = var.db_tier
     edition           = "ENTERPRISE"
     availability_type = "ZONAL"
+    activation_policy = var.db_running ? "ALWAYS" : "NEVER"
     disk_type         = "PD_HDD" # Cheapest disk; latency is not a concern at this scale. Cannot be changed later.
     disk_size         = 10
     disk_autoresize   = true
