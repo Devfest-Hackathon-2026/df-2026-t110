@@ -96,16 +96,22 @@ func TestDistanceFindsTheNearestTargetOnTheForwardRay(t *testing.T) {
 			want := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.IntegerValue{Integer: tt.want}},
 			}
-			b := newBoard(t, board.Config{
-				Terrain: terrain,
-				Robots: map[protocol.RobotID]board.RobotState{
+			config, err := board.NewConfig(
+				terrain,
+				map[protocol.RobotID]board.RobotState{
 					"a":       state(0, 0, board.East).WithTeam(tt.team),
 					"neutral": state(2, 0, board.West),
 					"enemy":   state(3, 0, board.West).WithTeam(board.TeamID2),
 					"ally":    state(5, 0, board.West).WithTeam(board.TeamID1),
 					"offRay":  state(1, 1, board.West).WithTeam(board.TeamID2),
 				},
-			}, []protocol.RobotID{"a", "neutral", "enemy", "ally", "offRay"})
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a", "neutral", "enemy", "ally", "offRay"})
 			before := b.Snapshot()
 			next(t, b, nil)
 
@@ -131,10 +137,16 @@ func TestDistanceUsesTurnStartStateAndExcludesCarriedLuggage(t *testing.T) {
 		boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.IntegerValue{Integer: -1}},
 		boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.IntegerValue{Integer: 3}},
 	}
-	b := newBoard(t, board.Config{
-		Terrain: land(3, 1),
-		Robots:  map[protocol.RobotID]board.RobotState{"a": carrier, "b": state(2, 0, board.West)},
-	}, []protocol.RobotID{"a", "b"})
+	config, err := board.NewConfig(
+		land(3, 1),
+		map[protocol.RobotID]board.RobotState{"a": carrier, "b": state(2, 0, board.West)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 	before := b.Snapshot()
 	next(t, b, nil)
 	next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.ForwardAction{}})

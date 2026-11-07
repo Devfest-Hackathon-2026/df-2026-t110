@@ -78,11 +78,16 @@ func TestWaitDurationAndTickLimit(t *testing.T) {
 			t.Parallel()
 
 			reply := robotmsg.ActionReply{RobotID: "a", Action: actions.WaitAction{Integer: tt.ticks}}
-			b := newBoard(t, board.Config{
-				MaxTicks: tt.limit,
-				Terrain:  land(1, 1),
-				Robots:   map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
-			}, []protocol.RobotID{"a"})
+			config, err := board.NewConfig(
+				land(1, 1),
+				map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+				tt.limit,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a"})
 			wantState := b.Snapshot()
 			wantState.Tick = tt.wantTick
 			next(t, b, nil)
@@ -111,13 +116,19 @@ func TestWaitKeepsCellOccupiedAndLetsOtherRobotsAct(t *testing.T) {
 		{Tick: 2, State: fieldevent.UpdateState{RemovedRobotIDs: []protocol.RobotID{"b"}}},
 		{Tick: 3, State: fieldevent.UpdateState{}},
 	}
-	b := newBoard(t, board.Config{
-		Terrain: land(2, 1),
-		Robots: map[protocol.RobotID]board.RobotState{
+	config, err := board.NewConfig(
+		land(2, 1),
+		map[protocol.RobotID]board.RobotState{
 			"a": state(1, 0, board.East),
 			"b": state(0, 0, board.East),
 		},
-	}, []protocol.RobotID{"a", "b"})
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 	next(t, b, nil)
 
 	next(t, b, wait)

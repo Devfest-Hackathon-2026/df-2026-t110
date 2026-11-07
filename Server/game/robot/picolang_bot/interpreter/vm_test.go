@@ -568,11 +568,16 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "helper": helper}), 0)
 	base := snapshot(v).MemoryBytes
 	plain := board.NewLandTerrain(board.PlainLand{}, false, 0)
-	field, err := board.New(board.Config{
-		Terrain:  [][]board.Terrain{{plain, plain}},
-		Robots:   map[protocol.RobotID]board.RobotState{"robot": board.NewRobotState(board.NewPosition(0, 0), board.East, 3)},
-		MaxTicks: 10,
-	})
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, plain}},
+		map[protocol.RobotID]board.RobotState{"robot": board.NewRobotState(board.NewPosition(0, 0), board.East, 3)},
+		10,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	field, err := board.New(config)
 	if err != nil {
 		t.Fatalf("prepare board: %v", err)
 	}
@@ -593,7 +598,7 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if report.Outcomes["robot"] != (hub.CompletedOutcome{}) || report.Resumes != 2 {
+	if report.Outcome("robot") != (hub.CompletedOutcome{}) || report.Resumes() != 2 {
 		t.Errorf("report = %+v", report)
 	}
 	if !observedMovement {

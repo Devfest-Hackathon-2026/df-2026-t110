@@ -3,6 +3,7 @@ package engine
 import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
+	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
@@ -28,7 +29,10 @@ type phase interface{ phase() }
 type unstartedBoard struct{}
 type collectingBoard struct{}
 type awaitingReplyBoard struct{ robotID protocol.RobotID }
-type finishedBoard struct{}
+type finishedBoard struct {
+	decision boardmsg.Decision
+	err      error
+}
 
 func (unstartedBoard) phase()     {}
 func (collectingBoard) phase()    {}

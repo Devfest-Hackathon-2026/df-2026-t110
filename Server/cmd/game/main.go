@@ -36,18 +36,23 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	luggage := board.NewLandTerrain(board.PlainLand{}, true, board.NoTeam)
 	team1Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID1)
 	team2Territory := board.NewLandTerrain(board.PlainLand{}, false, board.TeamID2)
-	b, err := board.New(board.Config{
-		MaxTicks: maxTicks,
-		Terrain: [][]board.Terrain{
+	config, err := board.NewConfig(
+		[][]board.Terrain{
 			{team1Territory, plain, plain, plain, team2Territory},
 			{plain, luggage, board.RockTerrain{}, plain, plain},
 			{plain, plain, board.SeaTerrain{}, plain, plain},
 		},
-		Robots: map[protocol.RobotID]board.RobotState{
+		map[protocol.RobotID]board.RobotState{
 			"p1": board.NewRobotState(board.NewPosition(0, 0), board.East, 3).WithTeam(board.TeamID1),
 			"p2": board.NewRobotState(board.NewPosition(4, 0), board.West, 3).WithTeam(board.TeamID2),
 		},
-	})
+		maxTicks,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		return err
+	}
+	b, err := board.New(config)
 	if err != nil {
 		return err
 	}
@@ -75,12 +80,12 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 		MaxResumes: maxResumes,
 		Recorder:   &boardRenderer{output: output, board: b},
 	})
-	if _, err := fmt.Fprintf(output, "\nfinished at tick %d (%d resumptions)\n", b.Snapshot().Tick, report.Resumes); err != nil && runErr == nil {
+	if _, err := fmt.Fprintf(output, "\nfinished at tick %d (%d resumptions)\n", b.Snapshot().Tick, report.Resumes()); err != nil && runErr == nil {
 		return err
 	}
 	for _, p := range participants {
 		var status string
-		switch outcome := report.Outcomes[p.ID].(type) {
+		switch outcome := report.Outcome(p.ID).(type) {
 		case hub.UnstartedOutcome, hub.StoppedOutcome:
 			status = "stopped"
 		case hub.CompletedOutcome:

@@ -64,14 +64,19 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 			}
 			wantJSON := fmt.Sprintf(`[{"type":"field","tick":1,"state":{"kind":"update","actions":[%s,{"kind":"print_integer","robotId":"b","integer":7}]}}]`, tt.encoded)
 
-			b := newBoard(t, board.Config{
-				MaxTicks: 1,
-				Terrain:  land(2, 1),
-				Robots: map[protocol.RobotID]board.RobotState{
+			config, err := board.NewConfig(
+				land(2, 1),
+				map[protocol.RobotID]board.RobotState{
 					"a": state(0, 0, board.East),
 					"b": state(1, 0, board.West),
 				},
-			}, []protocol.RobotID{"a", "b"})
+				1,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 			initial := b.Snapshot()
 			next(t, b, nil)
 

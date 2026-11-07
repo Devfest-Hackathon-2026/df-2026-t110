@@ -54,7 +54,7 @@ func TestIndependentEventMessages(t *testing.T) {
 	options := limits()
 	options.Recorder = &received
 	report, err := h.Run(options)
-	if err != nil || report.Resumes != 3 {
+	if err != nil || report.Resumes() != 3 {
 		t.Errorf("run = %+v, %v", report, err)
 	}
 	plain := fieldevent.Cell{Type: "land", Kind: &fieldevent.LandKind{Type: "plain"}}
@@ -115,7 +115,7 @@ func TestRecordingFailureStopsSuccessfulRobotReply(t *testing.T) {
 	options := limits()
 	options.Recorder = &recorder
 	report, err := newHub(t, b, hub.Participant{ID: "a", Robot: r}).Run(options)
-	if !errors.Is(err, hub.ErrRecording) || !errors.Is(err, storageErr) || boardCalls != 1 || recorder.calls != 1 || report.Outcomes["a"] != (hub.StoppedOutcome{}) {
+	if !errors.Is(err, hub.ErrRecording) || !errors.Is(err, storageErr) || boardCalls != 1 || recorder.calls != 1 || report.Outcome("a") != (hub.StoppedOutcome{}) {
 		t.Errorf("run continued after recording failure: %+v, %v", report, err)
 	}
 }
@@ -146,7 +146,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 							if !ok || !errors.Is(failure.Err, producerErr) {
 								t.Errorf("producer error was not delivered to board: %+v", reply)
 							}
-							return boardmsg.DoneDecision{}, nil
+							return boardmsg.NewDoneDecision(nil, false), nil
 						}
 					},
 				}
@@ -196,7 +196,7 @@ func TestMessagesFromFailedCallsAndRecordingFailures(t *testing.T) {
 						if !errors.Is(err, producerErr) || robotCalls != 0 {
 							t.Errorf("board error = %v, robot calls %d", err, robotCalls)
 						}
-					} else if failure, ok := report.Outcomes["a"].(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, producerErr) {
+					} else if failure, ok := report.Outcome("a").(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, producerErr) {
 						t.Errorf("robot failure = %+v, %v", report, err)
 					}
 					if len(received.messages) != 1 {
@@ -222,7 +222,7 @@ func TestReturnedRecordsPrecedeProtocolChecks(t *testing.T) {
 				if robotCalls == 0 {
 					return boardmsg.StartDecision{RobotID: "a"}, nil
 				}
-				return boardmsg.DoneDecision{}, nil
+				return boardmsg.NewDoneDecision(nil, false), nil
 			}}
 			r := robotFuncs{start: func() (robotmsg.Step, error) {
 				robotCalls++
@@ -240,7 +240,7 @@ func TestReturnedRecordsPrecedeProtocolChecks(t *testing.T) {
 				if !errors.Is(err, hub.ErrProtocol) {
 					t.Errorf("invalid decision accepted: %v", err)
 				}
-			} else if failure, ok := report.Outcomes["a"].(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, hub.ErrProtocol) {
+			} else if failure, ok := report.Outcome("a").(hub.FailedOutcome); err != nil || !ok || !errors.Is(failure.Err, hub.ErrProtocol) {
 				t.Errorf("invalid step accepted: %+v, %v", report, err)
 			}
 			if len(received.messages) != 1 {

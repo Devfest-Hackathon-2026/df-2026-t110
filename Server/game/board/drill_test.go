@@ -31,13 +31,19 @@ func TestDrillOpensTerrainForTheNextTurn(t *testing.T) {
 		}}},
 	}
 	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"drill","robotId":"a","success":true,"target":{"x":1,"y":0},"drillDurability":2},{"kind":"forward","robotId":"b","success":false}]}}]`
-	b := newBoard(t, board.Config{
-		Terrain: [][]board.Terrain{{plain, rock, plain}},
-		Robots: map[protocol.RobotID]board.RobotState{
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, rock, plain}},
+		map[protocol.RobotID]board.RobotState{
 			"a": state(0, 0, board.East),
 			"b": state(2, 0, board.West),
 		},
-	}, []protocol.RobotID{"a", "b"})
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 	initial := b.Snapshot()
 	next(t, b, nil)
 
@@ -104,13 +110,19 @@ func TestDrillSucceedsForAllEligibleRobotsAtTheSameRock(t *testing.T) {
 				}}},
 			}
 			wantSecond := boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.BoolValue{Bool: tt.wantB.Success}}
-			b := newBoard(t, board.Config{
-				Terrain: [][]board.Terrain{{plain, rock, plain}},
-				Robots: map[protocol.RobotID]board.RobotState{
+			config, err := board.NewConfig(
+				[][]board.Terrain{{plain, rock, plain}},
+				map[protocol.RobotID]board.RobotState{
 					"a": board.NewRobotState(board.NewPosition(0, 0), board.East, 1),
 					"b": board.NewRobotState(board.NewPosition(2, 0), board.West, tt.otherCapacity),
 				},
-			}, []protocol.RobotID{"a", "b"})
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 			next(t, b, nil)
 			next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.DrillAction{}})
 

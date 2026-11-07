@@ -32,9 +32,18 @@ type Options struct {
 }
 
 type Report struct {
-	Resumes  uint64
-	Outcomes map[protocol.RobotID]Outcome
+	resumes  uint64
+	outcomes map[protocol.RobotID]Outcome
+	result   boardmsg.CompletionResult
 }
+
+func newReport(participantCount int) Report {
+	return Report{outcomes: make(map[protocol.RobotID]Outcome, participantCount)}
+}
+
+func (r Report) Resumes() uint64                     { return r.resumes }
+func (r Report) Outcome(id protocol.RobotID) Outcome { return r.outcomes[id] }
+func (r Report) Result() boardmsg.CompletionResult   { return r.result }
 
 type Hub struct {
 	board        game.Board
@@ -57,7 +66,7 @@ func New(board game.Board, participants []Participant) (*Hub, error) {
 }
 
 func (h *Hub) Run(options Options) (Report, error) {
-	report := Report{Outcomes: make(map[protocol.RobotID]Outcome, len(h.participants))}
+	report := newReport(len(h.participants))
 	if h.used || options.MaxResumes == 0 {
 		return report, errors.New("hub is single-use and limits must be positive")
 	}
@@ -67,7 +76,7 @@ func (h *Hub) Run(options Options) (Report, error) {
 	for _, p := range h.participants {
 		robots[p.ID] = p.Robot
 		ids = append(ids, p.ID)
-		report.Outcomes[p.ID] = UnstartedOutcome{}
+		report.outcomes[p.ID] = UnstartedOutcome{}
 	}
 	events, err := h.board.Start(ids)
 	if options.Recorder != nil {
@@ -109,19 +118,19 @@ func (h *Hub) Run(options Options) (Report, error) {
 			}
 			switch request := decision.(type) {
 			case boardmsg.StartDecision:
-				if _, fresh := report.Outcomes[id].(UnstartedOutcome); !fresh {
+				if _, fresh := report.outcomes[id].(UnstartedOutcome); !fresh {
 					return report, fmt.Errorf("%w: robot %q already started", ErrProtocol, id)
 				}
 			case boardmsg.ResumeDecision:
-				if _, stopped := report.Outcomes[id].(StoppedOutcome); !stopped || !values.ValidValue(request.ReturnValue) {
+				if _, stopped := report.outcomes[id].(StoppedOutcome); !stopped || !values.ValidValue(request.ReturnValue) {
 					return report, fmt.Errorf("%w: invalid resume for robot %q", ErrProtocol, id)
 				}
 			}
-			if report.Resumes == options.MaxResumes {
+			if report.resumes == options.MaxResumes {
 				return report, ErrResumeLimit
 			}
-			report.Resumes++
-			report.Outcomes[id] = StoppedOutcome{}
+			report.resumes++
+			report.outcomes[id] = StoppedOutcome{}
 			var output robotmsg.RobotOutput
 			var err error
 			switch request := decision.(type) {
@@ -147,22 +156,27 @@ func (h *Hub) Run(options Options) (Report, error) {
 					}
 				case robotmsg.DoneStep:
 					reply = robotmsg.DoneReply{RobotID: id}
-					report.Outcomes[id] = CompletedOutcome{}
+					report.outcomes[id] = CompletedOutcome{}
 				default:
 					err = fmt.Errorf("%w: invalid robot step %T", ErrProtocol, output.Step)
 				}
 			}
 			if err != nil {
 				reply = robotmsg.ErrorReply{RobotID: id, Err: err}
-				report.Outcomes[id] = FailedOutcome{Err: err}
+				report.outcomes[id] = FailedOutcome{Err: err}
 			}
 		case boardmsg.DoneDecision:
-			for _, outcome := range report.Outcomes {
+			for id, outcome := range report.outcomes {
+				if _, active := outcome.(StoppedOutcome); active && decision.Interrupted() {
+					report.outcomes[id] = InterruptedOutcome{}
+					continue
+				}
 				switch outcome.(type) {
 				case UnstartedOutcome, StoppedOutcome:
 					return report, fmt.Errorf("%w: board finished with active robots", ErrProtocol)
 				}
 			}
+			report.result = decision.Result()
 			return report, nil
 		default:
 			return report, fmt.Errorf("%w: invalid board decision %T", ErrProtocol, decision)

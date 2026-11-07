@@ -54,9 +54,18 @@ func next(t *testing.T, b *board.Board, reply robotmsg.Reply) boardmsg.Decision 
 
 func TestBarrierAndImmutableQueries(t *testing.T) {
 	t.Parallel()
-	b := newBoard(t, board.Config{Terrain: land(3, 1), Robots: map[protocol.RobotID]board.RobotState{
-		"p1": state(0, 0, board.East), "p2": state(2, 0, board.West),
-	}}, []protocol.RobotID{"p1", "p2"})
+	config, err := board.NewConfig(
+		land(3, 1),
+		map[protocol.RobotID]board.RobotState{
+			"p1": state(0, 0, board.East), "p2": state(2, 0, board.West),
+		},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"p1", "p2"})
 	initial := b.Snapshot()
 	d := next(t, b, nil)
 	if d != (boardmsg.StartDecision{RobotID: "p1"}) {
@@ -251,13 +260,17 @@ func TestAtomicMovement(t *testing.T) {
 
 			wantCompletionOutputs := append([]boardmsg.BoardOutput(nil), wantResumes[1:]...)
 			wantCompletionOutputs = append(wantCompletionOutputs, boardmsg.BoardOutput{
-				Decision: boardmsg.DoneDecision{},
+				Decision: boardmsg.NewDoneDecision(nil, false),
 				Events: []fieldevent.FieldEvent{{Tick: 1, State: fieldevent.UpdateState{
 					RemovedRobotIDs: tt.ids,
 				}}},
 			})
 
-			b := newBoard(t, board.Config{Terrain: tt.grid, Robots: tt.robots}, tt.ids)
+			config, err := board.NewConfig(tt.grid, tt.robots, 0, board.AllStoppedRules{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, tt.ids)
 
 			turnOutputs := make([]boardmsg.BoardOutput, len(turnReplies))
 			for i, reply := range turnReplies {
@@ -311,10 +324,16 @@ func TestWalkableTerrainKinds(t *testing.T) {
 			if _, isTerrain := any(terrain.Kind()).(board.Terrain); isTerrain {
 				t.Errorf("%T must be nested inside LandTerrain, not used as terrain directly", terrain.Kind())
 			}
-			b := newBoard(t, board.Config{
-				Terrain: [][]board.Terrain{{terrain, terrain}},
-				Robots:  map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
-			}, []protocol.RobotID{"a"})
+			config, err := board.NewConfig(
+				[][]board.Terrain{{terrain, terrain}},
+				map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+				0,
+				board.AllStoppedRules{},
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b := newBoard(t, config, []protocol.RobotID{"a"})
 			next(t, b, nil)
 			d := next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.ForwardAction{}})
 			if d != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.BoolValue{Bool: true}}) {
@@ -331,18 +350,40 @@ func TestWalkableTerrainKinds(t *testing.T) {
 	}
 }
 
+func TestConfigRequiresCompletionRules(t *testing.T) {
+	t.Parallel()
+
+	terrain := land(1, 1)
+	robots := map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North)}
+
+	_, nilErr := board.NewConfig(terrain, robots, 0, nil)
+	_, unconfiguredErr := board.New(board.Config{})
+
+	if nilErr == nil {
+		t.Error("NewConfig accepted nil completion rules")
+	}
+	if unconfiguredErr == nil {
+		t.Error("New accepted settings without completion rules")
+	}
+}
+
 func TestValidationAndCopies(t *testing.T) {
 	t.Parallel()
-	valid := board.Config{Terrain: land(2, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)}}
+	terrain := land(2, 1)
+	robots := map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)}
 	goal := board.NewLandTerrain(board.GoalLand{}, false, 0)
-	valid.Terrain[0][0] = goal
-	b, err := board.New(valid)
+	terrain[0][0] = goal
+	config, err := board.NewConfig(terrain, robots, 0, board.AllStoppedRules{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := board.New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	initial := b.Snapshot()
-	valid.Terrain[0][0] = board.SeaTerrain{}
-	valid.Robots["a"] = state(1, 0, board.West)
+	terrain[0][0] = board.SeaTerrain{}
+	robots["a"] = state(1, 0, board.West)
 	copy := b.Snapshot()
 	copy.Terrain[0][0] = board.RockTerrain{}
 	delete(copy.Robots, "a")
@@ -353,7 +394,10 @@ func TestValidationAndCopies(t *testing.T) {
 	checkpoint := board.NewCheckpointLand(2)
 	checkpointLand := board.NewLandTerrain(checkpoint, false, 0)
 	luggage := board.NewLandTerrain(board.PlainLand{}, true, 0)
-	invalid := []board.Config{
+	invalid := []struct {
+		Terrain [][]board.Terrain
+		Robots  map[protocol.RobotID]board.RobotState
+	}{
 		{}, {Terrain: land(2, 1)},
 		{Terrain: [][]board.Terrain{{plain}, {}}, Robots: initial.Robots},
 		{Terrain: [][]board.Terrain{{nil}}, Robots: initial.Robots},
@@ -376,7 +420,12 @@ func TestValidationAndCopies(t *testing.T) {
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"": state(0, 0, board.North)}},
 		{Terrain: land(1, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North), "b": state(0, 0, board.South)}},
 	}
-	for i, config := range invalid {
+	for i, tt := range invalid {
+		config, err := board.NewConfig(tt.Terrain, tt.Robots, 0, board.AllStoppedRules{})
+		if err != nil {
+			t.Errorf("could not prepare invalid config %d: %v", i, err)
+			continue
+		}
 		if _, err := board.New(config); err == nil {
 			t.Errorf("invalid config %d accepted", i)
 		}
@@ -394,7 +443,16 @@ func TestValidationAndCopies(t *testing.T) {
 
 func TestRejectedRepliesDoNotCommit(t *testing.T) {
 	t.Parallel()
-	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)}}, []protocol.RobotID{"a"})
+	config, err := board.NewConfig(
+		land(2, 1),
+		map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a"})
 	initial := b.Snapshot()
 	next(t, b, nil)
 	for _, reply := range []robotmsg.Reply{
@@ -422,7 +480,16 @@ func TestRejectedRepliesDoNotCommit(t *testing.T) {
 
 func TestFinishedRobotRemovedAtCommit(t *testing.T) {
 	t.Parallel()
-	b := newBoard(t, board.Config{Terrain: land(2, 1), Robots: map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)}}, []protocol.RobotID{"a", "b"})
+	config, err := board.NewConfig(
+		land(2, 1),
+		map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.East), "b": state(1, 0, board.East)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := newBoard(t, config, []protocol.RobotID{"a", "b"})
 	initial := b.Snapshot()
 	next(t, b, nil)
 	next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.ForwardAction{}})
@@ -432,7 +499,7 @@ func TestFinishedRobotRemovedAtCommit(t *testing.T) {
 	if robots := b.Snapshot().Robots; len(robots) != 1 || robots["a"].Position() != initial.Robots["b"].Position() {
 		t.Errorf("unexpected robots after commit: %+v", robots)
 	}
-	if next(t, b, robotmsg.DoneReply{RobotID: "a"}) != (boardmsg.DoneDecision{}) {
+	if next(t, b, robotmsg.DoneReply{RobotID: "a"}) != boardmsg.NewDoneDecision(nil, false) {
 		t.Error("board did not finish")
 	}
 	if snapshot := b.Snapshot(); snapshot.Tick != 1 || len(snapshot.Robots) != 0 {
@@ -448,21 +515,27 @@ func TestBoardLifecycle(t *testing.T) {
 	failure := robotmsg.ErrorReply{RobotID: "a", Err: errors.New("robot failed")}
 	wantStart := boardmsg.BoardOutput{Decision: boardmsg.StartDecision{RobotID: "a"}}
 	wantCompletion := boardmsg.BoardOutput{
-		Decision: boardmsg.DoneDecision{},
+		Decision: boardmsg.NewDoneDecision(nil, false),
 		Events: []fieldevent.FieldEvent{{State: fieldevent.UpdateState{
 			RemovedRobotIDs: ids,
 		}}},
 	}
-	wantRepeatedCompletion := boardmsg.BoardOutput{Decision: boardmsg.DoneDecision{}}
+	wantRepeatedCompletion := boardmsg.BoardOutput{Decision: boardmsg.NewDoneDecision(nil, false)}
 	wantSnapshot := board.Snapshot{
 		Terrain: terrain,
 		Robots:  map[protocol.RobotID]board.RobotState{},
 	}
 
-	b, err := board.New(board.Config{
-		Terrain: terrain,
-		Robots:  map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North)},
-	})
+	config, err := board.NewConfig(
+		terrain,
+		map[protocol.RobotID]board.RobotState{"a": state(0, 0, board.North)},
+		0,
+		board.AllStoppedRules{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := board.New(config)
 	if err != nil {
 		t.Fatal(err)
 	}
