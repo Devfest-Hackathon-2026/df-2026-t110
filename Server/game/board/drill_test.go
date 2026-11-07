@@ -67,7 +67,7 @@ func TestDrillOpensTerrainForTheNextTurn(t *testing.T) {
 	}
 }
 
-func TestDrillConflictCountsOnlyEligibleRobots(t *testing.T) {
+func TestDrillSucceedsForAllEligibleRobotsAtTheSameRock(t *testing.T) {
 	t.Parallel()
 
 	plain := board.NewLandTerrain(board.PlainLand{}, false, board.NoTeam)
@@ -78,21 +78,18 @@ func TestDrillConflictCountsOnlyEligibleRobots(t *testing.T) {
 		otherCapacity int64
 		wantA         fieldevent.DrillResult
 		wantB         fieldevent.DrillResult
-		wantTerrain   board.Terrain
 	}{
 		{
 			name:          "both can drill",
 			otherCapacity: 1,
-			wantA:         fieldevent.DrillResult{RobotID: "a", DrillDurability: 1},
-			wantB:         fieldevent.DrillResult{RobotID: "b", DrillDurability: 1},
-			wantTerrain:   rock,
+			wantA:         fieldevent.DrillResult{RobotID: "a", Success: true, Target: target, DrillDurability: 0},
+			wantB:         fieldevent.DrillResult{RobotID: "b", Success: true, Target: target, DrillDurability: 0},
 		},
 		{
 			name:          "other drill is exhausted",
 			otherCapacity: 0,
 			wantA:         fieldevent.DrillResult{RobotID: "a", Success: true, Target: target, DrillDurability: 0},
 			wantB:         fieldevent.DrillResult{RobotID: "b", DrillDurability: 0},
-			wantTerrain:   plain,
 		},
 	}
 
@@ -106,6 +103,7 @@ func TestDrillConflictCountsOnlyEligibleRobots(t *testing.T) {
 					Actions: []fieldevent.ActionResult{tt.wantA, tt.wantB},
 				}}},
 			}
+			wantSecond := boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.BoolValue{Bool: tt.wantB.Success}}
 			b := newBoard(t, board.Config{
 				Terrain: [][]board.Terrain{{plain, rock, plain}},
 				Robots: map[protocol.RobotID]board.RobotState{
@@ -123,10 +121,10 @@ func TestDrillConflictCountsOnlyEligibleRobots(t *testing.T) {
 			if err != nil || !reflect.DeepEqual(output, want) {
 				t.Errorf("drill output = %+v, %v, want %+v", output, err, want)
 			}
-			if second != (boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.BoolValue{Bool: false}}) {
-				t.Errorf("second drill should fail: %+v", second)
+			if second != wantSecond {
+				t.Errorf("second drill = %+v, want %+v", second, wantSecond)
 			}
-			if snapshot.Terrain[0][1] != tt.wantTerrain || snapshot.Robots["a"].DrillDurability() != tt.wantA.DrillDurability || snapshot.Robots["b"].DrillDurability() != tt.wantB.DrillDurability {
+			if snapshot.Terrain[0][1] != plain || snapshot.Robots["a"].DrillDurability() != tt.wantA.DrillDurability || snapshot.Robots["b"].DrillDurability() != tt.wantB.DrillDurability {
 				t.Errorf("unexpected board after drilling: %+v", snapshot)
 			}
 		})

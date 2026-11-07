@@ -184,7 +184,7 @@ $defs:
         $ref: '../field/field.schema.yaml#/$defs/Direction'
 
   DrillResult:
-    description: 掘削の成否と確定後の残り回数。成功時は対象の岩を荷物・テリトリーのない通常の陸に変える
+    description: 掘削の成否と確定後の残り回数。成功時は対象の岩を荷物・テリトリーのない通常の陸に変える。同じターンに同じ岩を掘削した複数のロボットが成功することがある
     type: object
     additionalProperties: false
     required: [kind, robotId, success, drillDurability]

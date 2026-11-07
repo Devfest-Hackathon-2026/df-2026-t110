@@ -273,7 +273,6 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	targets := make(map[protocol.RobotID]Position, robotCount)
 	counts := make(map[Position]int, robotCount)
 	drillTargets := make(map[protocol.RobotID]Position)
-	drillCounts := make(map[Position]int)
 	next := clone(b.state)
 	next.Tick++
 
@@ -306,7 +305,6 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		case actions.DrillAction:
 			if _, rock := b.terrainAt(target).(RockTerrain); rock && robot.drillDurability > 0 {
 				drillTargets[id] = target
-				drillCounts[target]++
 			}
 			continue
 		default:
@@ -365,7 +363,7 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 			value, event = applyMove(id, &robot, fieldevent.Back, targets[id], canMove(id))
 		case actions.DrillAction:
 			target, eligible := drillTargets[id]
-			value, event = applyDrill(id, &robot, next.Terrain, target, eligible && drillCounts[target] == 1)
+			value, event = applyDrill(id, &robot, next.Terrain, target, eligible)
 		case actions.PrintIntegerAction:
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:
