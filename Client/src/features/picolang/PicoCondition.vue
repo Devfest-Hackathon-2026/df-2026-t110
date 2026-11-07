@@ -110,7 +110,7 @@ function restoreNumber(event: FocusEvent): void {
           {{ variable.name }} を数と比べる
         </option>
         <option v-else-if="variable.type === 'bool'" :value="`bool:${variable.name}`">
-          {{ variable.name }} が true
+          {{ variable.name }} が「はい」
         </option>
       </template>
     </select>

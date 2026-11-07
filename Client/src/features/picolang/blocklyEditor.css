@@ -1,0 +1,270 @@
+.blockly-editor {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #f4f8f6;
+  color: #173a34;
+  font: 13px var(--font-body);
+}
+.blockly-editor *,
+.blockly-editor *::before,
+.blockly-editor *::after {
+  box-sizing: border-box;
+}
+.blockly-editor button,
+.blockly-editor input,
+.blockly-editor select,
+.blockly-editor textarea {
+  font: inherit;
+}
+.blockly-editor button {
+  cursor: pointer;
+}
+.blockly-editor button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.blockly-editor-toolbar,
+.blockly-signature,
+.blockly-params {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-bottom: 1px solid #cbdad3;
+  background: #f8fbf9;
+}
+.blockly-function-tabs {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  overflow-x: auto;
+}
+.blockly-function-tabs button,
+.blockly-history button,
+.blockly-signature button,
+.blockly-params button,
+.blockly-json button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 29px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #176b62;
+  white-space: nowrap;
+}
+.blockly-function-tabs button[aria-pressed='true'] {
+  border-bottom: 2px solid #176b62;
+  color: #173a34;
+  font-weight: 700;
+}
+.blockly-function-tabs button:hover,
+.blockly-history button:hover:not(:disabled),
+.blockly-signature button:hover,
+.blockly-params button:hover {
+  background: #e2eee8;
+}
+.blockly-function-tabs form,
+.blockly-history,
+.blockly-params > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.blockly-function-tabs input,
+.blockly-params input {
+  width: 105px;
+}
+.blockly-editor input,
+.blockly-editor select,
+.blockly-editor textarea {
+  min-height: 27px;
+  padding: 3px 5px;
+  border: 1px solid #b6cbc2;
+  border-radius: 3px;
+  background: white;
+  color: #173a34;
+}
+.blockly-signature {
+  flex-wrap: wrap;
+  min-height: 38px;
+}
+.blockly-signature strong {
+  margin-right: auto;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+.blockly-signature label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.blockly-params {
+  flex-wrap: wrap;
+  gap: 5px 10px;
+}
+.blockly-params > span {
+  font-weight: 700;
+}
+.blockly-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.blockly-canvas .blocklyToolbox {
+  width: 64px !important;
+  background: #ecf4ef;
+  border-right: 1px solid #cbdad3;
+}
+.blockly-canvas .blocklyToolboxCategoryGroup {
+  width: 100%;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(1) {
+  --category-color: #347ac4;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(2) {
+  --category-color: #248b87;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(3) {
+  --category-color: #be8b32;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(4) {
+  --category-color: #bd7446;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(5) {
+  --category-color: #287d98;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(6) {
+  --category-color: #7555ac;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(7) {
+  --category-color: #549641;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(8) {
+  --category-color: #a97737;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(9) {
+  --category-color: #6476ad;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(10) {
+  --category-color: #8a67ab;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(11) {
+  --category-color: #60866a;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
+  --category-color: #875c98;
+}
+.blockly-canvas .blocklyToolboxCategory {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 5px 2px !important;
+  border-left: 0 !important;
+}
+.blockly-canvas .blocklyTreeRowContentContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.blockly-canvas .blocklyToolboxCategoryIcon {
+  display: none !important;
+}
+.blockly-canvas .blockly-pico-category-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--category-color);
+}
+.blockly-canvas .blocklyToolboxCategoryLabel {
+  font: 10px/1.2 var(--font-body);
+}
+.blockly-canvas .blocklyToolboxSelected .blocklyToolboxCategory {
+  background: #dae9e2;
+  font-weight: 700;
+}
+.blockly-canvas .blocklyMainBackground {
+  stroke: #cbdad3;
+}
+.blockly-canvas .blocklyFlyoutBackground {
+  fill: #f8fbf9;
+}
+.blockly-canvas .blocklyToolboxFlyout[style*='display: none'] + .blocklyFlyoutScrollbar {
+  display: none;
+}
+.blockly-canvas .blocklyTreeLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+.blockly-canvas .blocklyText {
+  font-family: var(--font-body);
+}
+.blockly-json {
+  max-height: 32%;
+  overflow: auto;
+  padding: 5px 12px;
+  border-top: 1px solid #cbdad3;
+  background: #f8fbf9;
+}
+.blockly-json summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.blockly-json pre {
+  max-height: 200px;
+  overflow: auto;
+  padding: 8px;
+  background: #1e302d;
+  color: #e8f6ee;
+  font-size: 11px;
+}
+.blockly-json label {
+  display: block;
+  margin: 6px 0;
+}
+.blockly-json textarea {
+  display: block;
+  width: 100%;
+  height: 110px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.blockly-message {
+  margin: 0;
+  padding: 5px 12px;
+  color: #8b4b2d;
+  background: #fff1dc;
+}
+.blockly-editor :is(button, input, select, summary, textarea):focus-visible {
+  outline: 2px solid #126d88;
+  outline-offset: 2px;
+}
+.blockly-editor button svg {
+  width: 15px;
+  height: 15px;
+}
+@media (max-width: 700px) {
+  .blockly-signature {
+    padding: 4px 8px;
+  }
+  .blockly-params {
+    padding: 4px 8px;
+  }
+  .blockly-params > div {
+    width: 100%;
+  }
+}

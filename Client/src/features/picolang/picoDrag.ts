@@ -47,5 +47,8 @@ export function expressionFromDrop(
   if (!name) return null
   const builtin = PICO_BUILTINS.find((item) => item.name === name)
   const returnType = builtin?.returns ?? functions[name]?.returnType
-  return returnType && samePicoType(expectedType, returnType) ? makeCall(name, functions) : null
+  return returnType &&
+    (samePicoType(expectedType, returnType) || (name === 'new' && typeof expectedType === 'object'))
+    ? makeCall(name, functions)
+    : null
 }

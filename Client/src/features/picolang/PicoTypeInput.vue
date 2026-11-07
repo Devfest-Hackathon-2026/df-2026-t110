@@ -7,10 +7,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: PicoType] }>()
 const kind = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : 'vector'))
 const primitives: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation']
 const typeLabels: Record<PicoPrimitive, string> = {
-  bool: '真偽',
+  bool: 'はい／いいえ',
   integer: '整数',
   unit: '値なし',
-  terrain: '地形',
+  terrain: 'マスの種類',
   rotation: '向き',
 }
 function changeKind(event: Event): void {

@@ -19,7 +19,7 @@ const number = (value: PicoValue): number => {
   return value
 }
 const bool = (value: PicoValue): boolean => {
-  if (typeof value !== 'boolean') throw new Error('真偽値が必要です')
+  if (typeof value !== 'boolean') throw new Error('真理値が必要です')
   return value
 }
 const vector = (value: PicoValue): PicoValue[] => {

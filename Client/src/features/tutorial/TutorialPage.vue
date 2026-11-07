@@ -9,11 +9,10 @@ import playIcon from '@iconify-icons/lucide/play'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
-import PicoEditor from '../picolang/PicoEditor.vue'
+import BlocklyEditor from '../picolang/BlocklyEditor.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/picolang.ts'
 import { executePicolang } from '../picolang/executePicolang.ts'
 import { createTutorialWorld } from './tutorialWorld.ts'
-import '../picolang/picolang.css'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
@@ -356,7 +355,7 @@ onBeforeUnmount(() => {
         <span>Picolang v0</span>
       </div>
       <div class="tutorial-editor-body">
-        <PicoEditor :tutorial-id="tutorialId" @update:program="picolangProgram = $event" />
+        <BlocklyEditor :tutorial-id="tutorialId" @update:program="picolangProgram = $event" />
       </div>
     </section>
 

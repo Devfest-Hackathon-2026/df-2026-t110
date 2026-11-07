@@ -83,14 +83,28 @@ const categoryIcons = {
   表示: typeIcon,
   関数: squareFunctionIcon,
 }
+const paletteHints: Record<string, string> = {
+  動き: 'ロボットを動かす命令です。上から順に実行します。',
+  操作: '目の前の荷物や岩に働きかけます。',
+  制御: '条件や回数に応じて、中に入れた命令を実行します。',
+  変数: '値に名前を付けます。作った変数は後の入力欄へドラッグできます。',
+  調べる: '周りを調べた答えを返します。答えは条件や変数に使えます。',
+  論理: '「はい／いいえ」の答えを組み合わせ、別の答えを返します。',
+  計算: '数を計算します。結果を変数やほかの式に渡します。',
+  変換: '真偽と整数を変換します。',
+  乱数: '実行時に値を決めます。結果を変数や条件に使います。',
+  配列: '複数の値をひとまとめにします。値を足したり除いたりすると、新しい配列を返します。',
+  表示: '計算結果を実行ログに表示します。',
+  関数: '自分で作った処理を呼び出します。使う値を入力欄に入れます。',
+}
 const controls = [
   { name: 'if', label: 'もし' },
   { name: 'if-else', label: 'もし／でなければ' },
   { name: 'while', label: '〜の間くり返す' },
-  { name: 'for', label: '数を変えてくり返す' },
+  { name: 'for', label: '数を1ずつ増やしてくり返す' },
   { name: 'declare', label: '変数を作る' },
-  { name: 'assign', label: '代入する' },
-  { name: 'return', label: '返す' },
+  { name: 'assign', label: '変数の値を変える' },
+  { name: 'return', label: 'この関数から返す' },
   { name: 'break', label: '抜ける' },
   { name: 'continue', label: '次へ' },
 ]
@@ -98,8 +112,11 @@ const palette = computed(() =>
   category.value === '制御' || category.value === '変数'
     ? controls.filter((item) =>
         category.value === '制御'
-          ? !['declare', 'assign'].includes(item.name)
-          : ['declare', 'assign'].includes(item.name),
+          ? !['declare', 'assign', 'break', 'continue'].includes(item.name)
+          : item.name === 'declare' ||
+            (item.name === 'assign' &&
+              (currentFunction.value.params.length > 0 ||
+                currentFunction.value.body.stmts.some((stmt) => stmt.kind === 'declare'))),
       )
     : category.value === '関数'
       ? Object.keys(functions.value)
@@ -179,7 +196,30 @@ onUnmounted(() => document.removeEventListener('keydown', handleHistoryKeydown))
 function addChoice(name: string): void {
   const stmts = currentFunction.value.body.stmts
   const index = stmts.at(-1)?.kind === 'return' ? stmts.length - 1 : stmts.length
-  stmts.splice(index, 0, makeStatement(name, functions.value))
+  const statement = makeStatement(name, functions.value)
+  if (statement.kind === 'assign') {
+    const variable = [
+      ...currentFunction.value.params.map((param) => ({ name: param.ident.name, type: param.type })),
+      ...stmts
+        .slice(0, index)
+        .flatMap((stmt) => (stmt.kind === 'declare' ? [{ name: stmt.ident.name, type: stmt.type }] : [])),
+    ][0]
+    if (!variable) return
+    statement.ident.name = variable.name
+    statement.value = defaultExpr(variable.type)
+  }
+  if (statement.kind === 'return') statement.value = defaultExpr(currentFunction.value.returnType)
+  if (statement.kind === 'declare' || statement.kind === 'for') {
+    const base = statement.kind === 'for' ? 'i' : 'x'
+    const used = new Set([
+      ...currentFunction.value.params.map((param) => param.ident.name),
+      ...stmts.slice(0, index).flatMap((stmt) => (stmt.kind === 'declare' ? [stmt.ident.name] : [])),
+    ])
+    let candidate = base
+    for (let suffix = 2; used.has(candidate); suffix++) candidate = `${base}${suffix}`
+    statement.ident.name = candidate
+  }
+  stmts.splice(index, 0, statement)
   message.value = ''
 }
 function dragChoice(event: DragEvent, name: string): void {
@@ -267,7 +307,7 @@ function importJson(): void {
     </nav>
     <aside class="pico-palette" aria-label="命令パレット">
       <h3>{{ category }}</h3>
-      <p>タップで命令を追加。ドラッグすると命令間や式の入力欄に置けます。</p>
+      <p>{{ paletteHints[category] }} タップで追加、ドラッグで命令間や式の入力欄に置けます。</p>
       <button
         v-for="item in palette"
         :key="item.name"
@@ -356,7 +396,7 @@ function importJson(): void {
           </button>
         </div>
         <div v-if="activeFunctionName !== 'main'" class="pico-params">
-          <span>引数</span>
+          <span>受け取る値</span>
           <div v-for="(param, index) in currentFunction.params" :key="param.hintId">
             <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" />
             <PicoTypeInput v-model="param.type" />
@@ -378,7 +418,9 @@ function importJson(): void {
               <Icon :icon="xIcon" aria-hidden="true" />
             </button>
           </div>
-          <button type="button" @click="addParam"><Icon :icon="plusIcon" aria-hidden="true" />引数</button>
+          <button type="button" @click="addParam">
+            <Icon :icon="plusIcon" aria-hidden="true" />受け取る値
+          </button>
         </div>
         <PicoBlock
           :block="currentFunction.body"

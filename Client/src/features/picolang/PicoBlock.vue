@@ -12,6 +12,7 @@ import { dragVariable, endPicoDrag } from './picoDrag.ts'
 import {
   PICO_BUILTINS,
   block as makeBlock,
+  defaultExpr,
   makeStatement,
   type PicoBlock,
   type PicoFunction,
@@ -26,6 +27,7 @@ const props = defineProps<{
   functions: Record<string, PicoFunction>
   variables?: PicoVariableOption[]
   returnType?: PicoType
+  loopDepth?: number
   terminalReturn?: boolean
   emptyHint?: string
 }>()
@@ -36,13 +38,42 @@ const controlChoices = [
   { value: 'if', label: 'もし' },
   { value: 'if-else', label: 'もし／でなければ' },
   { value: 'while', label: '〜の間くり返す' },
-  { value: 'for', label: '数を変えてくり返す' },
+  { value: 'for', label: '数を1ずつ増やしてくり返す' },
   { value: 'declare', label: '変数を作る' },
-  { value: 'assign', label: '変数へ代入' },
-  { value: 'return', label: '返す' },
+  { value: 'assign', label: '変数の値を変える' },
+  { value: 'return', label: 'この関数から返す' },
   { value: 'break', label: 'くり返しを抜ける' },
   { value: 'continue', label: '次のくり返しへ' },
 ]
+function availableChoices(index: number): typeof controlChoices {
+  return controlChoices.filter(
+    (item) =>
+      !(['break', 'continue'].includes(item.value) && !props.loopDepth) &&
+      !(item.value === 'assign' && !variablesBefore(index).length),
+  )
+}
+function createStatement(
+  value: string,
+  index: number,
+  visible = variablesBefore(index),
+  loopDepth = props.loopDepth ?? 0,
+): PicoStatement | null {
+  if (['break', 'continue'].includes(value) && !loopDepth) return null
+  if (value === 'assign' && !visible.length) return null
+  const statement = makeStatement(value, props.functions)
+  if (statement.kind === 'assign') {
+    statement.ident.name = visible[0]!.name
+    statement.value = defaultExpr(visible[0]!.type)
+  }
+  if (statement.kind === 'return') statement.value = defaultExpr(props.returnType ?? 'unit')
+  if (statement.kind === 'declare' || statement.kind === 'for') {
+    const base = statement.kind === 'for' ? 'i' : 'x'
+    let name = base
+    for (let suffix = 2; visible.some((item) => item.name === name); suffix++) name = `${base}${suffix}`
+    statement.ident.name = name
+  }
+  return statement
+}
 function variablesBefore(index: number): PicoVariableOption[] {
   const visible = new Map<string, PicoVariableOption>()
   for (const variable of props.variables ?? []) if (variable.name.trim()) visible.set(variable.name, variable)
@@ -54,9 +85,12 @@ function variablesBefore(index: number): PicoVariableOption[] {
 }
 function append(value = choice.value): void {
   const last = statements.value.at(-1)
-  if (props.terminalReturn && last?.kind === 'return')
-    statements.value.splice(statements.value.length - 1, 0, makeStatement(value, props.functions))
-  else statements.value.push(makeStatement(value, props.functions))
+  const index =
+    props.terminalReturn && last?.kind === 'return' ? statements.value.length - 1 : statements.value.length
+  const statement = createStatement(value, index)
+  if (!statement) return
+  if (props.terminalReturn && last?.kind === 'return') statements.value.splice(index, 0, statement)
+  else statements.value.push(statement)
 }
 function move(index: number, delta: number): void {
   const target = index + delta
@@ -105,9 +139,16 @@ function dropAt(index: number, event: DragEvent): void {
     index + (after ? 1 : 0),
     props.terminalReturn ? statements.value.length - 1 : statements.value.length,
   )
-  statements.value.splice(position, 0, makeStatement(value, props.functions))
+  const statement = createStatement(value, position)
+  if (statement) statements.value.splice(position, 0, statement)
 }
-function dropInto(target: PicoBlock, event: DragEvent): void {
+function dropInto(
+  target: PicoBlock,
+  index: number,
+  event: DragEvent,
+  insideLoop = false,
+  loopVariable?: string,
+): void {
   event.preventDefault()
   event.stopPropagation()
   const value = event.dataTransfer?.getData('application/x-picolang-choice')
@@ -116,8 +157,26 @@ function dropInto(target: PicoBlock, event: DragEvent): void {
     (controlChoices.some((item) => item.value === value) ||
       PICO_BUILTINS.some((item) => item.name === value) ||
       value in props.functions)
-  )
-    target.stmts.push(makeStatement(value, props.functions))
+  ) {
+    const visible = variablesBefore(index)
+    if (loopVariable) visible.push({ name: loopVariable, type: 'integer' })
+    const statement = createStatement(value, index, visible, (props.loopDepth ?? 0) + (insideLoop ? 1 : 0))
+    if (statement) target.stmts.push(statement)
+  }
+}
+function changeDeclarationType(stmt: Extract<PicoStatement, { kind: 'declare' }>, type: PicoType): void {
+  stmt.type = type
+  stmt.value = defaultExpr(type)
+}
+function changeAssignmentTarget(
+  stmt: Extract<PicoStatement, { kind: 'assign' }>,
+  index: number,
+  name: string,
+): void {
+  const target = variablesBefore(index).find((variable) => variable.name === name)
+  if (!target) return
+  stmt.ident.name = name
+  stmt.value = defaultExpr(target.type)
 }
 function replace(index: number, node: PicoStatement): void {
   statements.value[index] = node
@@ -194,14 +253,14 @@ function remove(index: number): void {
               :variables="variablesBefore(index)"
               @replace="stmt.condition = $event"
             />
-            <p class="pico-condition-help">条件が true なら、下の命令を実行します。</p>
+            <p class="pico-condition-help">答えが「はい」なら、下の命令を実行します。</p>
           </div>
           <div
             class="pico-control-scope"
             role="group"
             aria-label="もしの中の処理"
             @dragover.stop.prevent
-            @drop="dropInto(stmt.then, $event)"
+            @drop="dropInto(stmt.then, index, $event)"
           >
             <span class="pico-scope-label">条件が真のとき</span>
             <PicoBlock
@@ -209,6 +268,7 @@ function remove(index: number): void {
               :functions="functions"
               :variables="variablesBefore(index)"
               :return-type="returnType"
+              :loop-depth="loopDepth"
               empty-hint="条件が成り立ったときの命令をここに追加"
             />
           </div>
@@ -221,7 +281,7 @@ function remove(index: number): void {
               role="group"
               aria-label="でなければの中の処理"
               @dragover.stop.prevent
-              @drop="dropInto(stmt.else, $event)"
+              @drop="dropInto(stmt.else, index, $event)"
             >
               <span class="pico-scope-label">条件が偽のとき</span>
               <PicoBlock
@@ -229,6 +289,7 @@ function remove(index: number): void {
                 :functions="functions"
                 :variables="variablesBefore(index)"
                 :return-type="returnType"
+                :loop-depth="loopDepth"
                 empty-hint="条件が成り立たないときの命令をここに追加"
               />
             </div>
@@ -257,7 +318,7 @@ function remove(index: number): void {
             role="group"
             aria-label="whileの中の処理"
             @dragover.stop.prevent
-            @drop="dropInto(stmt.body, $event)"
+            @drop="dropInto(stmt.body, index, $event, true)"
           >
             <span class="pico-scope-label">くり返す処理</span>
             <PicoBlock
@@ -265,13 +326,14 @@ function remove(index: number): void {
               :functions="functions"
               :variables="variablesBefore(index)"
               :return-type="returnType"
+              :loop-depth="(loopDepth ?? 0) + 1"
             />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
         </div>
         <div v-else-if="stmt.kind === 'for'" class="pico-control-shell">
           <div class="pico-control-head">
-            <strong>数を変えてくり返す</strong>
+            <strong>数を1ずつ増やしてくり返す</strong>
             <span class="pico-control-brace" aria-hidden="true">{</span>
           </div>
           <div class="pico-control-settings pico-control-settings--for">
@@ -321,7 +383,7 @@ function remove(index: number): void {
             role="group"
             aria-label="forの中の処理"
             @dragover.stop.prevent
-            @drop="dropInto(stmt.body, $event)"
+            @drop="dropInto(stmt.body, index, $event, true, stmt.ident.name)"
           >
             <span class="pico-scope-label">くり返す処理</span>
             <PicoBlock
@@ -329,6 +391,7 @@ function remove(index: number): void {
               :functions="functions"
               :variables="[...variablesBefore(index), { name: stmt.ident.name, type: 'integer' }]"
               :return-type="returnType"
+              :loop-depth="(loopDepth ?? 0) + 1"
             />
           </div>
           <div class="pico-control-tail" aria-hidden="true">}</div>
@@ -343,9 +406,9 @@ function remove(index: number): void {
         />
         <template v-else-if="stmt.kind === 'declare'">
           <span>変数を作る</span>
-          <PicoTypeInput v-model="stmt.type" />
+          <PicoTypeInput :model-value="stmt.type" @update:model-value="changeDeclarationType(stmt, $event)" />
           <input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" />
-          <span>＝</span>
+          <span>に入れる値</span>
           <PicoExpression
             :node="stmt.value"
             :functions="functions"
@@ -368,7 +431,7 @@ function remove(index: number): void {
           </small>
         </template>
         <template v-else-if="stmt.kind === 'assign'">
-          <span>変数の値を変える</span>
+          <span>変数</span>
           <select
             :value="
               variablesBefore(index).some((variable) => variable.name === stmt.ident.name)
@@ -376,14 +439,14 @@ function remove(index: number): void {
                 : ''
             "
             aria-label="値を変える変数"
-            @change="stmt.ident.name = ($event.target as HTMLSelectElement).value"
+            @change="changeAssignmentTarget(stmt, index, ($event.target as HTMLSelectElement).value)"
           >
             <option value="" disabled>変数を選ぶ</option>
             <option v-for="variable in variablesBefore(index)" :key="variable.name" :value="variable.name">
               {{ variable.name }}
             </option>
           </select>
-          <span>＝</span>
+          <span>をこの値に変える</span>
           <PicoExpression
             :node="stmt.value"
             :functions="functions"
@@ -395,7 +458,7 @@ function remove(index: number): void {
           />
         </template>
         <template v-else-if="stmt.kind === 'return'">
-          <span>返す</span>
+          <span>この値を返す</span>
           <PicoExpression
             :node="stmt.value"
             :functions="functions"
@@ -419,7 +482,7 @@ function remove(index: number): void {
           </option>
         </optgroup>
         <optgroup label="制御と変数">
-          <option v-for="item in controlChoices" :key="item.value" :value="item.value">
+          <option v-for="item in availableChoices(statements.length)" :key="item.value" :value="item.value">
             {{ item.label }}
           </option>
         </optgroup>
