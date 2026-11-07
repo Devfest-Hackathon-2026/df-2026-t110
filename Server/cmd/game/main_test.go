@@ -46,6 +46,28 @@ func TestInteractiveDemo(t *testing.T) {
 	}
 }
 
+func TestInteractivePrintInteger(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 print_integer -42\np2 print_integer 9223372036854775807\np1 print_bool false\np2 print_bool true\np1 done\np2 done\n"
+	want := []string{"p1 says -42", "p2 says 9223372036854775807", "p1 says false", "p2 says true", "p1 => ()", "p2 => ()", "finished at tick 2", "p1: completed", "p2: completed"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 2, 100)
+
+	if err != nil {
+		t.Error(err)
+	}
+	for _, text := range want {
+		if !strings.Contains(output.String(), text) {
+			t.Errorf("missing %q in output: %s", text, output.String())
+		}
+	}
+	if strings.Contains(output.String(), "invalid command") {
+		t.Errorf("print command was rejected: %s", output.String())
+	}
+}
+
 func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {

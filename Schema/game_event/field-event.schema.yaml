@@ -67,6 +67,8 @@ $defs:
           oneOf:
             - $ref: '#/$defs/MoveResult'
             - $ref: '#/$defs/RotateResult'
+            - $ref: '#/$defs/PrintIntegerResult'
+            - $ref: '#/$defs/PrintBoolResult'
       removedRobotIds:
         description: 盤面から除去した機体の ID
         type: array
@@ -176,3 +178,31 @@ $defs:
       direction:
         description: 回転後の向き
         $ref: '../field/field.schema.yaml#/$defs/Direction'
+
+  PrintBoolResult:
+    description: 1ターンを消費して真偽値を吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, bool]
+    properties:
+      kind:
+        const: print_bool
+      robotId:
+        $ref: '#/$defs/RobotId'
+      bool:
+        type: boolean
+
+  PrintIntegerResult:
+    description: 1ターンを消費して整数を吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, integer]
+    properties:
+      kind:
+        const: print_integer
+      robotId:
+        $ref: '#/$defs/RobotId'
+      integer:
+        type: integer
+        minimum: -9223372036854775808
+        maximum: 9223372036854775807

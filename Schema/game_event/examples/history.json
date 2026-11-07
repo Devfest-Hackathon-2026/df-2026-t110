@@ -152,7 +152,27 @@
   },
   {
     "type": "field",
-    "tick": 2,
+    "tick": 3,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "print_integer", "robotId": "robot-2", "integer": -42 }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 4,
+    "state": {
+      "kind": "update",
+      "actions": [
+        { "kind": "print_bool", "robotId": "robot-2", "bool": false }
+      ]
+    }
+  },
+  {
+    "type": "field",
+    "tick": 4,
     "state": {
       "kind": "update",
       "removedRobotIds": ["robot-2"]

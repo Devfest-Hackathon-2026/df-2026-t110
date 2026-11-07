@@ -228,7 +228,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 		switch a := r.Action.(type) {
 		case actions.DrillDurabilityAction:
 			b.controls[id] = readyControl{value: drillDurability(b.state.Robots[id])}
-		case actions.ForwardAction, actions.BackAction:
+		case actions.ForwardAction, actions.BackAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -339,6 +339,10 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 			value, event = applyMove(id, &robot, fieldevent.Forward, targets[id], canMove(id))
 		case actions.BackAction:
 			value, event = applyMove(id, &robot, fieldevent.Back, targets[id], canMove(id))
+		case actions.PrintIntegerAction:
+			event = printInteger(id, action.Integer)
+		case actions.PrintBoolAction:
+			event = printBool(id, action.Bool)
 		default:
 			return fieldevent.UpdateState{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, c.action)
 		}

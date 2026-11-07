@@ -10,6 +10,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
+	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/recorder"
@@ -64,7 +65,7 @@ func run(input io.ReadCloser, output io.Writer, maxTicks, maxResumes uint64) err
 	if err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | done; help"); err != nil {
+	if _, err := fmt.Fprintln(output, "Commands: <id> forward | back | rotate left/right | drill_durability | print_integer <integer> | print_bool true/false | done; help"); err != nil {
 		return err
 	}
 	report, runErr := h.Run(hub.Options{
@@ -161,7 +162,23 @@ func (r *boardRenderer) Record(event gameevent.GameEvent) error {
 	if err := r.Recorder.Record(event); err != nil {
 		return err
 	}
-	if _, field := event.(gameevent.FieldEvent); field {
+	if field, ok := event.(gameevent.FieldEvent); ok {
+		if update, ok := field.Event.State.(fieldevent.UpdateState); ok {
+			for _, action := range update.Actions {
+				var speech string
+				switch action := action.(type) {
+				case fieldevent.PrintIntegerResult:
+					speech = fmt.Sprintf("%s says %d\n", action.RobotID, action.Integer)
+				case fieldevent.PrintBoolResult:
+					speech = fmt.Sprintf("%s says %t\n", action.RobotID, action.Bool)
+				}
+				if speech != "" {
+					if _, err := io.WriteString(r.output, speech); err != nil {
+						return err
+					}
+				}
+			}
+		}
 		return render(r.output, r.board.Snapshot())
 	}
 	return nil
