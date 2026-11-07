@@ -43,6 +43,9 @@ type Machine struct {
 	source    bot.Source
 }
 
+// Source identifies the most recently executed node, including after completion.
+func (m *Machine) Source() bot.Source { return m.source }
+
 // New retains args; the caller keeps its original references. fn must come from
 // successful type checking. Argument and resumed result values must match their
 // checked types, including vector element types. Only outer kinds are checked
