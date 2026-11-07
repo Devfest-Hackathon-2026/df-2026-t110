@@ -6,6 +6,11 @@ workflows:
     '.github/workflows/client-ci.yml':
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
+    '.github/workflows/client-deploy.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'google-github-actions/auth@v3.0.0'
+        - 'google-github-actions/setup-gcloud@v3.0.1'
+        - 'jdx/mise-action@v5.2.6'
     '.github/workflows/codegen-ci.yml':
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
