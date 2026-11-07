@@ -174,6 +174,21 @@ func (r ReleaseResult) MarshalJSON() ([]byte, error) {
 	}{Kind: "release", payload: payload(r)})
 }
 
+type WaitResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Ticks   int64            `json:"ticks"`
+
+	ActionResult `json:"-"`
+}
+
+func (r WaitResult) MarshalJSON() ([]byte, error) {
+	type payload WaitResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "wait", payload: payload(r)})
+}
+
 func (e FieldEvent) MarshalJSON() ([]byte, error) {
 	var payload any
 	switch state := e.State.(type) {

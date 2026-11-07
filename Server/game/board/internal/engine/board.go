@@ -88,7 +88,7 @@ type Board struct {
 	maxTicks uint64
 	state    Snapshot
 	order    []protocol.RobotID
-	controls map[protocol.RobotID]control
+	controls map[protocol.RobotID]robotControl
 	phase    phase
 }
 
@@ -135,7 +135,7 @@ func (b *Board) Start(ids []protocol.RobotID) ([]fieldevent.FieldEvent, error) {
 	if _, fresh := b.phase.(unstartedBoard); !fresh || len(ids) != len(b.state.Robots) {
 		return nil, errors.New("board is single-use and robot IDs must match its configuration")
 	}
-	controls := make(map[protocol.RobotID]control, len(ids))
+	controls := make(map[protocol.RobotID]robotControl, len(ids))
 	for _, id := range ids {
 		if _, ok := b.state.Robots[id]; !ok || controls[id] != nil {
 			return nil, fmt.Errorf("unknown or duplicate robot %q", id)
@@ -171,10 +171,16 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 		}
 
 		hasPendingActions := false
+		hasRemovals := false
+		var earliestWait uint64
 		for _, id := range b.order {
 			switch c := b.controls[id].(type) {
 			case pendingControl:
 				hasPendingActions = true
+			case waitingControl:
+				if earliestWait == 0 || c.remaining < earliestWait {
+					earliestWait = c.remaining
+				}
 			case unstartedControl:
 				b.phase = awaitingReplyBoard{robotID: id}
 				output.Decision = boardmsg.StartDecision{RobotID: id}
@@ -184,12 +190,15 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 				output.Decision = boardmsg.ResumeDecision{RobotID: id, ReturnValue: c.value}
 				return output, nil
 			case finishedControl:
+				if _, present := b.state.Robots[id]; present {
+					hasRemovals = true
+				}
 			default:
 				return output, fmt.Errorf("invalid control for robot %q", id)
 			}
 		}
 
-		if !hasPendingActions {
+		if !hasPendingActions && earliestWait == 0 {
 			// All controls are finished here. Record the remaining robots' removal
 			// before clearing the board, at the current tick.
 			var update fieldevent.UpdateState
@@ -211,7 +220,15 @@ func (b *Board) Next(reply robotmsg.Reply) (boardmsg.BoardOutput, error) {
 		if b.maxTicks != 0 && b.state.Tick >= b.maxTicks {
 			return output, ErrTickLimit
 		}
-		update, err := b.commit()
+		ticks := uint64(1)
+		if !hasPendingActions && !hasRemovals {
+			// No robot can change the board before the earliest wait completes.
+			ticks = min(earliestWait, math.MaxUint64-b.state.Tick)
+			if b.maxTicks != 0 {
+				ticks = min(ticks, b.maxTicks-b.state.Tick)
+			}
+		}
+		update, err := b.commit(ticks)
 		if err != nil {
 			return output, err
 		}
@@ -247,6 +264,12 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: b.searchNow(id)}
 		case actions.SearchFrontAction:
 			b.controls[id] = readyControl{value: b.searchFront(id)}
+		case actions.WaitAction:
+			if a.Integer <= 0 {
+				b.controls[id] = readyControl{value: values.UnitValue{}}
+			} else {
+				b.controls[id] = pendingControl{action: a}
+			}
 		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.ReleaseAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
@@ -269,7 +292,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 }
 
 // commit resolves actions against one immutable starting state.
-func (b *Board) commit() (fieldevent.UpdateState, error) {
+func (b *Board) commit(ticks uint64) (fieldevent.UpdateState, error) {
 	robotCount := len(b.state.Robots)
 	occupied := make(map[Position]protocol.RobotID, robotCount)
 	targets := make(map[protocol.RobotID]Position, robotCount)
@@ -280,7 +303,7 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	releaseTargets := make(map[protocol.RobotID]releaseTarget, robotCount)
 	releaseCounts := make(map[Position]int, robotCount)
 	next := clone(b.state)
-	next.Tick++
+	next.Tick += ticks
 
 	var update fieldevent.UpdateState
 	for _, id := range b.order {
@@ -390,6 +413,8 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		case actions.ReleaseAction:
 			target, eligible := releaseTargets[id]
 			value, event = applyRelease(id, &robot, next.Terrain, target, eligible && (target.discarded || releaseCounts[target.position] == 1))
+		case actions.WaitAction:
+			event = wait(id, action.Integer)
 		case actions.PrintIntegerAction:
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:
@@ -404,7 +429,12 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	}
 
 	b.state = next
+	b.advanceWaits(ticks)
 	for _, result := range results {
+		if action, ok := result.Action.(actions.WaitAction); ok && action.Integer > 1 {
+			b.controls[result.RobotID] = waitingControl{remaining: uint64(action.Integer - 1)}
+			continue
+		}
 		b.controls[result.RobotID] = readyControl{value: result.Value}
 	}
 
