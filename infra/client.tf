@@ -20,3 +20,9 @@ resource "google_storage_bucket_iam_member" "github_deployer_client_writer" {
   role   = "roles/storage.objectUser"
   member = google_service_account.github_deployer.member
 }
+
+resource "google_storage_bucket_iam_member" "github_deployer_client_bucket_reader" {
+  bucket = google_storage_bucket.client.name
+  role   = "roles/storage.legacyBucketReader"
+  member = google_service_account.github_deployer.member
+}
