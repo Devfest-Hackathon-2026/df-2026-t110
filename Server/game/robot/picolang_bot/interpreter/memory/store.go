@@ -20,6 +20,7 @@ type Store struct {
 	entries     map[ID]*entry
 	nextID      ID
 	memoryUsage uint64
+	peakUsage   uint64
 }
 
 // Add stores a copy of value with one owned reference for the caller. List nodes
@@ -104,6 +105,7 @@ func (s *Store) initialize() {
 func (s *Store) insert(id ID, value Value, size uint64) {
 	s.entries[id] = &entry{value: value, references: 1}
 	s.memoryUsage += size
+	s.peakUsage = max(s.peakUsage, s.memoryUsage)
 }
 
 // MemoryUsage returns an O(1) estimate in bytes of the live entries, including
@@ -113,6 +115,13 @@ func (s *Store) insert(id ID, value Value, size uint64) {
 func (s *Store) MemoryUsage() uint64 {
 	s.initialize()
 	return s.memoryUsage
+}
+
+// PeakMemoryUsage includes temporary values released within a VM transition so
+// a resource limit cannot miss allocations between its checks.
+func (s *Store) PeakMemoryUsage() uint64 {
+	s.initialize()
+	return s.peakUsage
 }
 
 // Get returns a copy of the payload without acquiring a reference. The caller

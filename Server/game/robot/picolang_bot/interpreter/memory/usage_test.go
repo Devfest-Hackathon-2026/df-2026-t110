@@ -83,3 +83,23 @@ func TestMemoryUsageCountsDistinctIDs(t *testing.T) {
 	release(t, &s, b)
 	assertUsage(t, &s, rootBytes)
 }
+
+func TestPeakMemoryUsageSurvivesReleases(t *testing.T) {
+	t.Parallel()
+	var s memory.Store
+	rootBytes := s.MemoryUsage()
+	if got := s.PeakMemoryUsage(); got != rootBytes {
+		t.Errorf("initial peak = %d, want %d", got, rootBytes)
+	}
+	a := add(t, &s, memory.Integer{Value: 1})
+	b := add(t, &s, memory.Integer{Value: 2})
+	peak := s.MemoryUsage()
+	release(t, &s, a)
+	release(t, &s, b)
+	c := add(t, &s, memory.Unit{})
+	release(t, &s, c)
+	if got := s.PeakMemoryUsage(); got != peak {
+		t.Errorf("peak after releases = %d, want %d", got, peak)
+	}
+	assertUsage(t, &s, rootBytes)
+}
