@@ -37,6 +37,9 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 	case "mul":
 		result = memory.Integer{Value: integer(0) * integer(1)}
 	case "div":
+		if integer(1) == 0 {
+			return 0, ErrDivisionByZero
+		}
 		result = memory.Integer{Value: integer(0) / integer(1)}
 	case "integer_eq":
 		result = memory.Bool{Value: integer(0) == integer(1)}

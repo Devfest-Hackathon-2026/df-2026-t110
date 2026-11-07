@@ -14,6 +14,9 @@ import (
 // ErrUnknownFunction lets the caller distinguish user functions from builtins.
 var ErrUnknownFunction = errors.New("unknown builtin function")
 
+// ErrDivisionByZero identifies a language failure independently of Go's panic text.
+var ErrDivisionByZero = errors.New("division by zero")
+
 var signatures = bot.BuiltinSignatures()
 
 type Result interface{ builtinResult() }

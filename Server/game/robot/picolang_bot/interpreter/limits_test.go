@@ -28,6 +28,10 @@ func expectLimitFailure(t *testing.T, v *VM, output robotmsg.RobotOutput, err, w
 	if !errors.As(err, &runtimeErr) || runtimeErr.HintID != hint {
 		t.Errorf("failure lost its source %s: %v", hint, err)
 	}
+	reasons := map[error]robotevent.ExecutionEndReason{
+		ErrStepLimit: robotevent.EndStepLimit, ErrMemoryLimit: robotevent.EndMemoryLimit, ErrCallDepthLimit: robotevent.EndCallDepthLimit,
+	}
+	expectExecutionEnd(t, output.Events, reasons[want], hint)
 	if output.Step != nil {
 		t.Errorf("failed VM returned a successful step: %#v", output.Step)
 	}
@@ -235,8 +239,12 @@ func TestResourceFailuresReachHubLikeDivisionByZero(t *testing.T) {
 				t.Errorf("other robot did not complete: %#v", report.Outcome("healthy"))
 			}
 			foundDrop := false
+			var endings []robotevent.ExecutionFinishedEvent
 			for _, e := range storage.Events {
 				if e, ok := e.(gameevent.RobotEvent); ok && e.InterpreterID == "failed" {
+					if end, ok := e.Event.(robotevent.ExecutionFinishedEvent); ok {
+						endings = append(endings, end)
+					}
 					if drop, ok := e.Event.(robotevent.VariableDropEvent); ok && drop.HintID == local.Ident.HintID {
 						foundDrop = true
 					}
@@ -244,6 +252,16 @@ func TestResourceFailuresReachHubLikeDivisionByZero(t *testing.T) {
 			}
 			if !foundDrop {
 				t.Error("hub did not record failure cleanup events")
+			}
+			wantReason := map[string]robotevent.ExecutionEndReason{
+				"steps": robotevent.EndStepLimit, "memory": robotevent.EndMemoryLimit,
+				"call depth": robotevent.EndCallDepthLimit, "division by zero": robotevent.EndDivisionByZero,
+			}[kind]
+			if len(endings) != 1 || endings[0].Reason != wantReason || endings[0].HintID != hint {
+				t.Errorf("recorder lost the ending: %+v, want %s at %s", endings, wantReason, hint)
+			}
+			if _, err := json.Marshal(storage.Events); err != nil {
+				t.Errorf("history cannot be encoded: %v", err)
 			}
 			if len(field.Snapshot().Robots) != 0 {
 				t.Error("finished robots remained on the board")

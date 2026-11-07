@@ -144,6 +144,7 @@ func (v *VM) step() (robotmsg.Step, error) {
 				return nil, v.fail(err)
 			}
 			v.phase = finished
+			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndCompleted, Message: "program completed"})
 			return robotmsg.DoneStep{}, nil
 		}
 		if err := v.acceptResult(state.Value); err != nil {
@@ -208,6 +209,22 @@ func (v *VM) closeFrames() error {
 func (v *VM) fail(err error) error {
 	err = errors.Join(err, v.closeFrames())
 	v.phase = failed
+	end := robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndRuntimeError, Message: err.Error()}
+	var runtimeErr *function.RuntimeError
+	if errors.As(err, &runtimeErr) {
+		end.HintID, end.Message = runtimeErr.HintID, runtimeErr.Err.Error()
+	}
+	switch {
+	case errors.Is(err, ErrStepLimit):
+		end.Reason = robotevent.EndStepLimit
+	case errors.Is(err, ErrMemoryLimit):
+		end.Reason = robotevent.EndMemoryLimit
+	case errors.Is(err, ErrCallDepthLimit):
+		end.Reason = robotevent.EndCallDepthLimit
+	case errors.Is(err, builtin.ErrDivisionByZero):
+		end.Reason = robotevent.EndDivisionByZero
+	}
+	v.events.Add(end)
 	return err
 }
 
@@ -217,7 +234,15 @@ func (v *VM) Close() error {
 	if v == nil || v.phase == closed {
 		return nil
 	}
+	active := v.phase == running || v.phase == awaiting
 	err := v.closeFrames()
+	if active {
+		if err != nil {
+			err = v.fail(err)
+		} else {
+			v.events.Add(robotevent.ExecutionFinishedEvent{HintID: v.source.HintID, Reason: robotevent.EndInterrupted, Message: "execution interrupted"})
+		}
+	}
 	v.phase = closed
 	return err
 }

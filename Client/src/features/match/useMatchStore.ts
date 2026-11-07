@@ -14,6 +14,7 @@ import {
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
 import { guestFieldIds, loadGuestPrograms, runGuestProgram, saveGuestProgram } from './guestMatch.ts'
+import { robotExecutionResults } from './matchExecutionResults.ts'
 
 export const useMatchStore = defineStore('match', () => {
   const fieldId = ref('')
@@ -21,6 +22,7 @@ export const useMatchStore = defineStore('match', () => {
   const selectedProgramId = ref('')
   const match = ref<MatchRecord | null>(null)
   const result = ref<MatchResult | null>(null)
+  const executionResults = computed(() => robotExecutionResults(result.value?.history ?? []))
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const guestMode = computed(() => authStatus.value === 'guest')
@@ -162,6 +164,7 @@ export const useMatchStore = defineStore('match', () => {
     selectedProgramId,
     match,
     result,
+    executionResults,
     user,
     authStatus,
     guestMode,
