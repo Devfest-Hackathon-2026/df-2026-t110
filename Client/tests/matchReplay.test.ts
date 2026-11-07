@@ -40,7 +40,7 @@ test('field history replays movement, rotation and removal in order', () => {
   assert.deepEqual(frames[2].robots, [])
 })
 
-test('pickup transfers luggage from the cell to the robot on success', () => {
+test('pickup and release replay luggage transfers and discards', () => {
   const frames = replayFrames([
     {
       type: 'field',
@@ -64,12 +64,48 @@ test('pickup transfers luggage from the cell to the robot on success', () => {
         actions: [{ kind: 'pick_up', robotId: 'r1', success: true, target: { x: 1, y: 0 } }],
       },
     },
+    {
+      type: 'field',
+      tick: 3,
+      state: {
+        kind: 'update',
+        actions: [{ kind: 'release', robotId: 'r1', success: true, target: { x: 1, y: 0 } }],
+      },
+    },
+    {
+      type: 'field',
+      tick: 4,
+      state: {
+        kind: 'update',
+        actions: [{ kind: 'pick_up', robotId: 'r1', success: true, target: { x: 1, y: 0 } }],
+      },
+    },
+    {
+      type: 'field',
+      tick: 5,
+      state: {
+        kind: 'update',
+        actions: [{ kind: 'rotate', robotId: 'r1', direction: 'north' }],
+      },
+    },
+    {
+      type: 'field',
+      tick: 6,
+      state: {
+        kind: 'update',
+        actions: [{ kind: 'release', robotId: 'r1', success: true, discarded: true }],
+      },
+    },
   ])
   assert.equal(frames[0].terrain[0][1].hasLuggage, true)
   assert.equal(frames[1].terrain[0][1].hasLuggage, true)
   assert.equal(frames[1].robots[0].carryingLuggage, undefined)
   assert.deepEqual(frames[2].terrain[0][1], { type: 'land', hasLuggage: false, territoryOwner: 2 })
   assert.equal(frames[2].robots[0].carryingLuggage, true)
+  assert.deepEqual(frames[3].terrain[0][1], { type: 'land', hasLuggage: true, territoryOwner: 2 })
+  assert.equal(frames[3].robots[0].carryingLuggage, false)
+  assert.deepEqual(frames[6].terrain, frames[5].terrain)
+  assert.equal(frames[6].robots[0].carryingLuggage, false)
 })
 
 test('match responses require identifiers and scores', () => {

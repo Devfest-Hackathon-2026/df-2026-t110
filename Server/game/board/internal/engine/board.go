@@ -247,7 +247,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			b.controls[id] = readyControl{value: b.searchNow(id)}
 		case actions.SearchFrontAction:
 			b.controls[id] = readyControl{value: b.searchFront(id)}
-		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.PrintIntegerAction, actions.PrintBoolAction:
+		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.ReleaseAction, actions.PrintIntegerAction, actions.PrintBoolAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -277,6 +277,8 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 	drillTargets := make(map[protocol.RobotID]Position)
 	pickUpTargets := make(map[protocol.RobotID]Position, robotCount)
 	pickUpCounts := make(map[Position]int, robotCount)
+	releaseTargets := make(map[protocol.RobotID]releaseTarget, robotCount)
+	releaseCounts := make(map[Position]int, robotCount)
 	next := clone(b.state)
 	next.Tick++
 
@@ -315,6 +317,14 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 			if land, ok := b.terrainAt(target).(LandTerrain); ok && land.hasLuggage && !robot.carryingLuggage {
 				pickUpTargets[id] = target
 				pickUpCounts[target]++
+			}
+			continue
+		case actions.ReleaseAction:
+			if destination, eligible := b.releaseDestination(robot, target); eligible {
+				releaseTargets[id] = destination
+				if !destination.discarded {
+					releaseCounts[target]++
+				}
 			}
 			continue
 		default:
@@ -377,6 +387,9 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 		case actions.PickUpAction:
 			target, eligible := pickUpTargets[id]
 			value, event = applyPickUp(id, &robot, next.Terrain, target, eligible && pickUpCounts[target] == 1)
+		case actions.ReleaseAction:
+			target, eligible := releaseTargets[id]
+			value, event = applyRelease(id, &robot, next.Terrain, target, eligible && (target.discarded || releaseCounts[target.position] == 1))
 		case actions.PrintIntegerAction:
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:

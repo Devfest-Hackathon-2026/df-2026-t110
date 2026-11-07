@@ -445,7 +445,6 @@ func TestUnimplementedActionsAreNotSupported(t *testing.T) {
 	t.Parallel()
 	for _, action := range []actions.Action{
 		actions.WaitAction{Integer: 7},
-		actions.ReleaseAction{},
 		actions.DistanceAction{Target: values.DistanceRock},
 	} {
 		t.Run(fmt.Sprintf("%T", action), func(t *testing.T) {
