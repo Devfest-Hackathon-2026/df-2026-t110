@@ -92,39 +92,7 @@
       "title": "PicolangV0Header",
       "type": "array"
     },
-    "header_v0/signature.schema.yaml": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "description": "組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する",
-      "properties": {
-        "params": {
-          "description": "呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列",
-          "items": {
-            "$ref": "#/$defs/header_v0~1type.yaml"
-          },
-          "type": "array"
-        },
-        "returnType": {
-          "$ref": "#/$defs/header_v0~1type.yaml",
-          "description": "戻り値の型。値を返さない関数は unit"
-        },
-        "typeParameters": {
-          "description": "このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない",
-          "items": {
-            "$ref": "#/$defs/v0~1name.yaml"
-          },
-          "type": "array",
-          "uniqueItems": true
-        }
-      },
-      "required": [
-        "params",
-        "returnType"
-      ],
-      "title": "PicolangV0BuiltinSignature",
-      "type": "object"
-    },
-    "header_v0/type.yaml": {
+    "header_v0/signature-type.yaml": {
       "$defs": {
         "TypeParameter": {
           "additionalProperties": false,
@@ -148,7 +116,7 @@
           "additionalProperties": false,
           "properties": {
             "elementType": {
-              "$ref": "#/$defs/header_v0~1type.yaml"
+              "$ref": "#/$defs/header_v0~1signature-type.yaml"
             },
             "kind": {
               "const": "vector",
@@ -169,13 +137,45 @@
           "$ref": "#/$defs/v0~1primitive-type.yaml"
         },
         {
-          "$ref": "#/$defs/header_v0~1type.yaml/$defs/VectorType"
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/VectorType"
         },
         {
-          "$ref": "#/$defs/header_v0~1type.yaml/$defs/TypeParameter"
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/TypeParameter"
         }
       ],
       "title": "PicolangV0SignatureType"
+    },
+    "header_v0/signature.schema.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する",
+      "properties": {
+        "params": {
+          "description": "呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列",
+          "items": {
+            "$ref": "#/$defs/header_v0~1signature-type.yaml"
+          },
+          "type": "array"
+        },
+        "returnType": {
+          "$ref": "#/$defs/header_v0~1signature-type.yaml",
+          "description": "戻り値の型。値を返さない関数は unit"
+        },
+        "typeParameters": {
+          "description": "このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない",
+          "items": {
+            "$ref": "#/$defs/v0~1name.yaml"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "params",
+        "returnType"
+      ],
+      "title": "PicolangV0BuiltinSignature",
+      "type": "object"
     },
     "toplevel.schema.yaml": {
       "$defs": {

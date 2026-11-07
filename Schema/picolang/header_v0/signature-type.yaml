@@ -17,7 +17,7 @@ $defs:
         type: string
         const: vector
       elementType:
-        $ref: './type.yaml'
+        $ref: './signature-type.yaml'
   TypeParameter:
     type: object
     additionalProperties: false

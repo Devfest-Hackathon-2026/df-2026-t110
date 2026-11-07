@@ -16,7 +16,7 @@ properties:
     description: 呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列
     type: array
     items:
-      $ref: './type.yaml'
+      $ref: './signature-type.yaml'
   returnType:
     description: 戻り値の型。値を返さない関数は unit
-    $ref: './type.yaml'
+    $ref: './signature-type.yaml'
