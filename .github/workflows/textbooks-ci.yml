@@ -1,0 +1,35 @@
+name: CI (textbooks)
+
+on:
+  push:
+    paths:
+      - 'Textbooks/**'
+      - 'Schema/tutorial/tutorial-detail.schema.yaml'
+      - 'Schema/field/stage.schema.yaml'
+      - 'Schema/field/field.schema.yaml'
+  pull_request:
+    paths:
+      - 'Textbooks/**'
+      - 'Schema/tutorial/tutorial-detail.schema.yaml'
+      - 'Schema/field/stage.schema.yaml'
+      - 'Schema/field/field.schema.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  textbooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: node
+      - name: Install textbook dependencies
+        id: install
+        run: corepack pnpm --filter programming-learning-ar-textbooks install --frozen-lockfile
+      - name: Lint textbooks
+        run: corepack pnpm -C Textbooks lint
+      - name: Check textbook formatting
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: corepack pnpm -C Textbooks format:check

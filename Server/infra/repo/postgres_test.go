@@ -1,0 +1,79 @@
+package repo
+
+import (
+	"context"
+	"crypto/rand"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// testDatabaseURLEnv names the PostgreSQL connection string used by the
+// integration tests. They are skipped when it is unset so that `go test ./...`
+// keeps working without a database.
+const testDatabaseURLEnv = "TEST_DATABASE_URL"
+
+// newTestPool returns a pool whose search_path points at a fresh schema with
+// schema.sql applied, isolating each test from the others.
+func newTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	url := os.Getenv(testDatabaseURLEnv)
+	if url == "" {
+		t.Skipf("%s is not set", testDatabaseURLEnv)
+	}
+	ctx := context.Background()
+	ddl, err := os.ReadFile("sql/schema/schema.sql")
+	if err != nil {
+		t.Fatalf("read schema: %v", err)
+	}
+
+	schema := "test_" + strings.ToLower(rand.Text())
+	admin, err := pgx.Connect(ctx, url)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(func() { _ = admin.Close(context.Background()) })
+	if _, err := admin.Exec(ctx, "CREATE SCHEMA "+pgx.Identifier{schema}.Sanitize()); err != nil {
+		t.Fatalf("create schema: %v", err)
+	}
+	t.Cleanup(func() {
+		if _, err := admin.Exec(context.Background(), "DROP SCHEMA "+pgx.Identifier{schema}.Sanitize()+" CASCADE"); err != nil {
+			t.Errorf("drop schema: %v", err)
+		}
+	})
+
+	config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+	config.ConnConfig.RuntimeParams["search_path"] = schema
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		t.Fatalf("open pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, string(ddl)); err != nil {
+		t.Fatalf("apply schema: %v", err)
+	}
+	return pool
+}
+
+func mustCreateUser(t *testing.T, pool *pgxpool.Pool, subject string, name *string) {
+	t.Helper()
+	if _, err := pool.Exec(context.Background(), "INSERT INTO users (google_subject, name) VALUES ($1, $2)", subject, name); err != nil {
+		t.Fatalf("create user %q: %v", subject, err)
+	}
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func describeName(name *string) string {
+	if name == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("%q", *name)
+}

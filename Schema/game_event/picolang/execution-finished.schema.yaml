@@ -1,0 +1,26 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangExecutionFinishedEvent
+description: |
+  VMの実行が終了したことと、その理由を報告する。
+  変数のdropなどの後処理イベントの後に一度だけ出力する。
+  mainの正常終了、実行時エラー、リソース制限超過、開始済みVMのCloseによる打ち切りを対象とする。
+  actionによる一時中断、開始前のClose、再試行できる不正な再開入力では出力しない。
+
+type: object
+additionalProperties: false
+required: [kind, hintId, reason, message]
+properties:
+  kind:
+    type: string
+    const: execution_finished
+  hintId:
+    description: 終了時に処理していた構文ノードのhintId。実行開始前の制限超過ではmain関数のhintId
+    $ref: '../../picolang/v0/hint-id.yaml'
+  reason:
+    description: 終了理由のコード。completedは正常終了、interruptedはCloseによる打ち切り、runtime_errorは個別コードのない実行時エラーを表す
+    type: string
+    enum: [completed, interrupted, runtime_error, division_by_zero, step_limit, memory_limit, call_depth_limit]
+  message:
+    description: 終了理由の詳細。表示文言の分岐にはreasonを使う
+    type: string
+    minLength: 1

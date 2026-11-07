@@ -1,0 +1,23 @@
+id: first-step
+title: ロボットを前に進めよう（仮）
+goal: 1マス進む命令の使い方を知りましょう。
+description: 前に進む命令を使って、ロボットをゴールまで動かしましょう。
+lesson: 前に進む命令を何回使えば、ゴールまで行けるか考えましょう。
+guide:
+  - 「前進する」ブロックを置くと、向いている方に1マス進みます。
+  - 「実行」ボタンをおすと、ロボットが命令を実行します。
+stage:
+  variants:
+    - width: 2
+      height: 1
+      terrain:
+        - [land, land]
+      objects:
+        - type: goal
+          position: { x: 1, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

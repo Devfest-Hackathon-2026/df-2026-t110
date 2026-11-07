@@ -2,7 +2,7 @@ $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangDebugEvent
 description: |
   1台の picolang interpreter が出力するデバッグイベント一件。
-  処理中のノード、変数の初期化、変数の値の更新、変数の drop のいずれかを報告する。
+  処理中のノード、変数の初期化、変数の値の更新、変数の drop、VMの実行終了のいずれかを報告する。
   変数は初期化時に紐づけた hintId をキーとし、更新・drop でも同じ hintId を使う。
   初期化・更新・drop の対応は生成側で保証する。
 
@@ -11,3 +11,4 @@ oneOf:
   - $ref: './variable-init.schema.yaml'
   - $ref: './variable-update.schema.yaml'
   - $ref: './variable-drop.schema.yaml'
+  - $ref: './execution-finished.schema.yaml'

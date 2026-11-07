@@ -1707,6 +1707,57 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 教材詳細ページに表示する目標、課題、案内文とステージ
+type TutorialDetail struct {
+	// 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
+	Description string `json:"description"`
+
+	// ページの目標としてタイトルの下に表示する短い文
+	Goal *string `json:"goal,omitempty,omitzero"`
+
+	// 案内役が順番に表示する説明文。未指定または空配列なら案内役を表示しない
+	Guide []string `json:"guide,omitempty,omitzero"`
+
+	// チュートリアルのID
+	Id string `json:"id"`
+
+	// 「この課題で考えること」に表示する本文
+	Lesson *string `json:"lesson,omitempty,omitzero"`
+
+	// チュートリアルで使用するステージ
+	Stage StageDefinition `json:"stage"`
+
+	// チュートリアルのタイトル
+	Title string `json:"title"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TutorialDetail) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw TutorialDetail: %w", err)
+	}
+	if _, ok := raw["description"]; raw != nil && !ok {
+		return fmt.Errorf("field description in TutorialDetail: required")
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in TutorialDetail: required")
+	}
+	if _, ok := raw["stage"]; raw != nil && !ok {
+		return fmt.Errorf("field stage in TutorialDetail: required")
+	}
+	if _, ok := raw["title"]; raw != nil && !ok {
+		return fmt.Errorf("field title in TutorialDetail: required")
+	}
+	type Plain TutorialDetail
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal TutorialDetail: %w", err)
+	}
+	*j = TutorialDetail(plain)
+	return nil
+}
+
 // picolang の値の型。基本型または複合型
 type Type interface{}
 
