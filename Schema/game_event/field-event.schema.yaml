@@ -1,6 +1,6 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: FieldEvent
-description: フィールドの状態遷移イベント。状態の詳細な形式は今後定義する
+description: フィールドの初期状態または確定した状態の変化を表すイベント
 
 type: object
 additionalProperties: false
@@ -15,6 +15,164 @@ properties:
     type: integer
     minimum: 0
   state:
-    description: フィールドの状態を格納する placeholder。内部構造は未定義
+    oneOf:
+      - $ref: '#/$defs/InitialState'
+      - $ref: '#/$defs/UpdateState'
+
+if:
+  properties:
+    state:
+      properties:
+        kind:
+          const: initial
+then:
+  properties:
+    tick:
+      const: 0
+
+$defs:
+  InitialState:
     type: object
-    additionalProperties: true
+    additionalProperties: false
+    required: [kind, terrain, robots]
+    properties:
+      kind:
+        const: initial
+      terrain:
+        description: 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する
+        type: array
+        minItems: 1
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/$defs/Cell'
+      robots:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/$defs/RobotState'
+
+  UpdateState:
+    description: 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する
+    type: object
+    additionalProperties: false
+    required: [kind]
+    properties:
+      kind:
+        const: update
+      actions:
+        type: array
+        items:
+          oneOf:
+            - $ref: '#/$defs/MoveResult'
+            - $ref: '#/$defs/RotateResult'
+      removedRobotIds:
+        description: 盤面から除去した機体の ID
+        type: array
+        uniqueItems: true
+        items:
+          $ref: '#/$defs/RobotId'
+
+  Cell:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        $ref: '../field/field.schema.yaml#/$defs/Terrain'
+      kind:
+        $ref: '#/$defs/LandKind'
+      hasLuggage:
+        description: 荷物の有無。省略時は false
+        type: boolean
+      territoryOwner:
+        description: テリトリーの所有チーム ID。省略または 0 はテリトリー外
+        type: integer
+    if:
+      properties:
+        type:
+          const: land
+    then:
+      required: [kind]
+    else:
+      maxProperties: 1
+
+  LandKind:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        enum: [plain, goal, checkpoint]
+      order:
+        description: チェックポイントの通過順
+        type: integer
+    if:
+      properties:
+        type:
+          const: checkpoint
+    then:
+      required: [order]
+    else:
+      maxProperties: 1
+
+  RobotId:
+    type: string
+    minLength: 1
+
+  RobotState:
+    type: object
+    additionalProperties: false
+    required: [id, position, direction, drillDurability]
+    properties:
+      id:
+        $ref: '#/$defs/RobotId'
+      position:
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+      direction:
+        $ref: '../field/field.schema.yaml#/$defs/Direction'
+      drillDurability:
+        description: 掘削の残り回数
+        type: integer
+        minimum: 0
+
+  MoveResult:
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, success]
+    properties:
+      kind:
+        enum: [forward, back]
+      robotId:
+        $ref: '#/$defs/RobotId'
+      success:
+        type: boolean
+      to:
+        description: 成功時に確定した移動先
+        $ref: '../field/field.schema.yaml#/$defs/Position'
+    if:
+      properties:
+        success:
+          const: true
+    then:
+      required: [to]
+    else:
+      not:
+        required: [to]
+
+  RotateResult:
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, rotation, direction]
+    properties:
+      kind:
+        const: rotate
+      robotId:
+        $ref: '#/$defs/RobotId'
+      rotation:
+        description: 相対的な回転方向
+        enum: [left, right]
+      direction:
+        description: 回転後の向き
+        $ref: '../field/field.schema.yaml#/$defs/Direction'
