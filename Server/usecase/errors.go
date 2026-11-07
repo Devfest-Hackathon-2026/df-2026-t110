@@ -2,7 +2,11 @@
 // (repositories and external services) they depend on.
 package usecase
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+)
 
 var (
 	// ErrNotFound reports that the requested entity does not exist.
@@ -19,4 +23,6 @@ var (
 	ErrUsernameTaken = errors.New("username already taken")
 	// ErrUsernameAlreadySet reports that the user's name cannot be changed.
 	ErrUsernameAlreadySet = errors.New("username already set")
+	// ErrNoOpponent reports that no other user has submitted to the field.
+	ErrNoOpponent = domain.ErrNoOpponent
 )
