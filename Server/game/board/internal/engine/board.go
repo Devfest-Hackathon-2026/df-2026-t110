@@ -227,7 +227,7 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 		}
 		switch a := r.Action.(type) {
 		case actions.DrillDurabilityAction:
-			b.controls[id] = readyControl{value: values.IntegerValue{Integer: b.state.Robots[id].drillDurability}}
+			b.controls[id] = readyControl{value: drillDurability(b.state.Robots[id])}
 		case actions.ForwardAction, actions.BackAction:
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
@@ -331,34 +331,20 @@ func (b *Board) commit() (fieldevent.UpdateState, error) {
 
 		robot := next.Robots[id]
 		var value values.Value = values.UnitValue{}
+		var event fieldevent.ActionResult
 		switch action := c.action.(type) {
 		case actions.RotateAction:
-			rotation := 1
-			if action.Rotation == values.Left {
-				rotation = 3
-			}
-			robot.direction = [...]Direction{North, East, South, West}[(directionIndex(robot.direction)+rotation)%4]
-			update.Actions = append(update.Actions, fieldevent.RotateResult{
-				RobotID: id, Rotation: action.Rotation, Direction: string(robot.direction),
-			})
-		case actions.ForwardAction, actions.BackAction:
-			moved := canMove(id)
-			value = values.BoolValue{Bool: moved}
-			kind := fieldevent.Forward
-			if _, backward := action.(actions.BackAction); backward {
-				kind = fieldevent.Back
-			}
-			move := fieldevent.MoveResult{Kind: kind, RobotID: id, Success: moved}
-			if moved {
-				robot.position = targets[id]
-				move.To = &fieldevent.Position{X: robot.position.x, Y: robot.position.y}
-			}
-			update.Actions = append(update.Actions, move)
+			event = applyRotation(id, &robot, action.Rotation)
+		case actions.ForwardAction:
+			value, event = applyMove(id, &robot, fieldevent.Forward, targets[id], canMove(id))
+		case actions.BackAction:
+			value, event = applyMove(id, &robot, fieldevent.Back, targets[id], canMove(id))
 		default:
 			return fieldevent.UpdateState{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, c.action)
 		}
 
 		next.Robots[id] = robot
+		update.Actions = append(update.Actions, event)
 		results = append(results, robotmsg.ActionResult{RobotID: id, Action: c.action, Value: value})
 	}
 
