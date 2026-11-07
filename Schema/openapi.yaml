@@ -303,9 +303,9 @@ paths:
                   description: self と std は大文字・小文字を問わず名前空間の予約名のため使用不可
                   minLength: 1
                   maxLength: 32
-                  pattern: '^[A-Za-z0-9_-]{1,32}$'
+                  pattern: "^[A-Za-z0-9_-]{1,32}$"
                   not:
-                    pattern: '^([sS][eE][lL][fF]|[sS][tT][dD])$'
+                    pattern: "^([sS][eE][lL][fF]|[sS][tT][dD])$"
       responses:
         "204":
           description: ユーザー名を設定した
@@ -539,26 +539,28 @@ components:
       type: object
       description: 教材詳細ページに表示する目標、課題、案内文とステージ
       additionalProperties: false
-      required: [title, stage]
+      required: [id, title, description, stage]
       properties:
+        id:
+          type: string
+          description: チュートリアルのID
         title:
           type: string
           description: チュートリアルのタイトル
         goal:
           type: string
-          description: 章の目標としてタイトルの下に表示する短い文
+          description: ページの目標としてタイトルの下に表示する短い文
         lesson:
           type: string
           description: 「この課題で考えること」に表示する本文
         guide:
           type: array
-          description: 案内役が順番に表示する説明文。未指定または空配列ならクライアントの案内文を使う
+          description: 案内役が順番に表示する説明文。未指定または空配列なら案内役を表示しない
           items:
             type: string
         description:
           type: string
-          description: 従来の説明文。goal がない場合だけ章の目標欄にプレーンテキストとして表示する
-          deprecated: true
+          description: 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
         stage:
           description: チュートリアルで使用するステージ
           $ref: "#/components/schemas/Stage"

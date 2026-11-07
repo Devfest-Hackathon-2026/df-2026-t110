@@ -83,15 +83,17 @@ type Tutorial struct {
 
 // TutorialDetail 教材詳細ページに表示する目標、課題、案内文とステージ
 type TutorialDetail struct {
-	// Description 従来の説明文。goal がない場合だけ章の目標欄にプレーンテキストとして表示する
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	Description *string `json:"description,omitempty"`
+	// Description 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
+	Description string `json:"description"`
 
-	// Goal 章の目標としてタイトルの下に表示する短い文
+	// Goal ページの目標としてタイトルの下に表示する短い文
 	Goal *string `json:"goal,omitempty"`
 
-	// Guide 案内役が順番に表示する説明文。未指定または空配列ならクライアントの案内文を使う
+	// Guide 案内役が順番に表示する説明文。未指定または空配列なら案内役を表示しない
 	Guide *[]string `json:"guide,omitempty"`
+
+	// Id チュートリアルのID
+	Id string `json:"id"`
 
 	// Lesson 「この課題で考えること」に表示する本文
 	Lesson *string `json:"lesson,omitempty"`
