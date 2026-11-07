@@ -4,25 +4,28 @@ import { Icon } from '@iconify/vue'
 import infoIcon from '@iconify-icons/lucide/info'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
-import logInIcon from '@iconify-icons/lucide/log-in'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import { LOCAL_LESSONS } from '../features/tutorial/tutorialLessons.ts'
 import AppHeader from './AppHeader.vue'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
-const RoomsPage = defineAsyncComponent(() => import('../features/rooms/RoomsPage.vue'))
+const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
+const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
 const roomMatch = /^\/rooms\/([^/]+)$/.exec(path)
 const roomId = roomMatch ? decodeURIComponent(roomMatch[1]) : null
+const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
+const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
-  if (roomId) return 'room-detail'
+  if (roomId) return 'rooms'
+  if (matchId) return 'match-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
   return 'missing'
@@ -32,8 +35,8 @@ document.title = isStage
   ? 'preview'
   : tutorialId
     ? '教材 | Robot Field'
-    : roomId
-      ? '対戦待機 | Robot Field'
+    : matchId
+      ? '対戦結果 | Robot Field'
       : path === '/rooms'
         ? '対戦 | Robot Field'
         : 'Robot Field'
@@ -41,7 +44,7 @@ document.title = isStage
 
 <template>
   <div :class="isStage ? 'stage-page' : 'site'">
-    <AppHeader :active-page="isStage ? 'tutorials' : page === 'room-detail' ? 'rooms' : page" />
+    <AppHeader :active-page="isStage ? 'tutorials' : page === 'match-detail' ? 'rooms' : page" />
 
     <StageViewer v-if="isStage" />
 
@@ -99,7 +102,8 @@ document.title = isStage
       <TutorialPage :tutorial-id="tutorialId ?? ''" />
     </main>
 
-    <RoomsPage v-else-if="page === 'rooms' || page === 'room-detail'" :room-id="roomId" />
+    <MatchPage v-else-if="page === 'rooms' || page === 'match-detail'" :match-id="matchId" />
+    <AccountPage v-else-if="page === 'account'" />
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
@@ -123,15 +127,6 @@ document.title = isStage
             >ステージ表示の開発用プレビュー</a
           >も確認できます。
         </p>
-      </template>
-      <template v-else-if="page === 'account'">
-        <h1 class="heading-with-icon">
-          <Icon :icon="logInIcon" aria-hidden="true" /><span>ログインは、準備中です。</span>
-        </h1>
-        <p class="inner-lead">
-          教材を試すためのアカウント連携を準備しています。今はステージのプレビューを見られます。
-        </p>
-        <a class="action-primary" href="/tutorials">教材を見る</a>
       </template>
       <template v-else>
         <h1 class="heading-with-icon">
