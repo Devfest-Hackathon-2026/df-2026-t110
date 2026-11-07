@@ -40,6 +40,38 @@ test('field history replays movement, rotation and removal in order', () => {
   assert.deepEqual(frames[2].robots, [])
 })
 
+test('pickup transfers luggage from the cell to the robot on success', () => {
+  const frames = replayFrames([
+    {
+      type: 'field',
+      tick: 0,
+      state: {
+        kind: 'initial',
+        terrain: [[{ type: 'land' }, { type: 'land', hasLuggage: true, territoryOwner: 2 }]],
+        robots: [{ id: 'r1', position: { x: 0, y: 0 }, direction: 'east' }],
+      },
+    },
+    {
+      type: 'field',
+      tick: 1,
+      state: { kind: 'update', actions: [{ kind: 'pick_up', robotId: 'r1', success: false }] },
+    },
+    {
+      type: 'field',
+      tick: 2,
+      state: {
+        kind: 'update',
+        actions: [{ kind: 'pick_up', robotId: 'r1', success: true, target: { x: 1, y: 0 } }],
+      },
+    },
+  ])
+  assert.equal(frames[0].terrain[0][1].hasLuggage, true)
+  assert.equal(frames[1].terrain[0][1].hasLuggage, true)
+  assert.equal(frames[1].robots[0].carryingLuggage, undefined)
+  assert.deepEqual(frames[2].terrain[0][1], { type: 'land', hasLuggage: false, territoryOwner: 2 })
+  assert.equal(frames[2].robots[0].carryingLuggage, true)
+})
+
 test('match responses require identifiers and scores', () => {
   assert.equal(parseMatch({ id: 'm1', fieldId: 'f1', selectedLayoutId: 'l1' }).id, 'm1')
   assert.throws(() => parseMatch({ id: 'm1' }))

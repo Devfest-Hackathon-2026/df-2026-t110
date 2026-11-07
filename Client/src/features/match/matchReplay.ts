@@ -9,6 +9,7 @@ export interface ReplayRobot {
   id: string
   position: { x: number; y: number }
   direction: 'north' | 'south' | 'west' | 'east'
+  carryingLuggage?: boolean
 }
 
 export interface ReplayFrame {
@@ -29,11 +30,12 @@ type FieldEvent =
       state: {
         kind: 'update'
         actions?: Array<{
-          kind: 'forward' | 'back' | 'rotate'
+          kind: 'forward' | 'back' | 'rotate' | 'pick_up'
           robotId: string
           success?: boolean
           to?: { x: number; y: number }
           direction?: ReplayRobot['direction']
+          target?: { x: number; y: number }
         }>
         removedRobotIds?: string[]
       }
@@ -66,6 +68,14 @@ export function replayFrames(history: unknown[]): ReplayFrame[] {
         if ((action.kind === 'forward' || action.kind === 'back') && action.success && action.to)
           robot.position = action.to
         if (action.kind === 'rotate' && action.direction) robot.direction = action.direction
+        if (action.kind === 'pick_up' && action.success && action.target) {
+          const { x, y } = action.target
+          const cell = next.terrain[y]?.[x]
+          if (cell?.type === 'land') {
+            cell.hasLuggage = false
+            robot.carryingLuggage = true
+          }
+        }
       }
       if (update.removedRobotIds?.length)
         next.robots = next.robots.filter((robot) => !update.removedRobotIds?.includes(robot.id))
