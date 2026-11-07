@@ -92,6 +92,21 @@ func (r RotateResult) MarshalJSON() ([]byte, error) {
 	}{Kind: "rotate", payload: payload(r)})
 }
 
+type PrintIntegerResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Integer int64            `json:"integer"`
+
+	ActionResult `json:"-"`
+}
+
+func (r PrintIntegerResult) MarshalJSON() ([]byte, error) {
+	type payload PrintIntegerResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "print_integer", payload: payload(r)})
+}
+
 func (e FieldEvent) MarshalJSON() ([]byte, error) {
 	var payload any
 	switch state := e.State.(type) {
