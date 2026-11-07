@@ -109,6 +109,28 @@ func TestInteractiveLuggage(t *testing.T) {
 	}
 }
 
+func TestInteractiveWait(t *testing.T) {
+	t.Parallel()
+
+	input := "p1 wait abc\np1 wait 0\np1 wait 3\np2 wait 1\np2 done\np1 done\n"
+	want := []string{"invalid command for p1", "p1 => ()", "p2 => ()", "\ntick 1\n", "\ntick 2\n", "\ntick 3\n", "finished at tick 3"}
+	var output bytes.Buffer
+
+	err := run(io.NopCloser(strings.NewReader(input)), &output, 3, 100)
+
+	if err != nil {
+		t.Error(err)
+	}
+	for _, line := range want {
+		if !strings.Contains(output.String(), line) {
+			t.Errorf("missing %q in output: %s", line, output.String())
+		}
+	}
+	if strings.Count(output.String(), "invalid command") != 1 {
+		t.Errorf("unexpected command errors: %s", output.String())
+	}
+}
+
 func TestEOFFinishesPendingTick(t *testing.T) {
 	t.Parallel()
 	for _, input := range []string{"", "p1 forward\n"} {

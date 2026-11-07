@@ -186,7 +186,9 @@ func (r *boardRenderer) Record(event gameevent.GameEvent) error {
 				}
 			}
 		}
-		return render(r.output, r.board.Snapshot())
+		snapshot := r.board.Snapshot()
+		snapshot.Tick = field.Event.Tick
+		return render(r.output, snapshot)
 	}
 	return nil
 }

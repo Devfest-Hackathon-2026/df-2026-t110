@@ -67,6 +67,7 @@ $defs:
           oneOf:
             - $ref: '#/$defs/MoveResult'
             - $ref: '#/$defs/RotateResult'
+            - $ref: '#/$defs/WaitResult'
             - $ref: '#/$defs/DrillResult'
             - $ref: '#/$defs/PickUpResult'
             - $ref: '#/$defs/ReleaseResult'
@@ -268,6 +269,22 @@ $defs:
         anyOf:
           - required: [target]
           - required: [discarded]
+
+  WaitResult:
+    description: 機体の待機開始。イベントの tick は待機で消費する最初のターンを示す
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, ticks]
+    properties:
+      kind:
+        const: wait
+      robotId:
+        $ref: '#/$defs/RobotId'
+      ticks:
+        description: 待機するターン数。イベントの tick を含む
+        type: integer
+        minimum: 1
+        maximum: 9223372036854775807
 
   PrintBoolResult:
     description: 1ターンを消費して真偽値を吹き出しに表示する

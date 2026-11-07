@@ -6,11 +6,16 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-type control interface{ control() }
+type robotControl interface{ control() }
 
 type unstartedControl struct{}
 type readyControl struct{ value values.Value }
 type pendingControl struct{ action actions.Action }
+type waitingControl struct {
+	remaining uint64
+
+	robotControl
+}
 type finishedControl struct{}
 
 func (unstartedControl) control() {}

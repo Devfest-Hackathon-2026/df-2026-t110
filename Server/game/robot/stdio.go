@@ -20,6 +20,7 @@ import (
 // CommandUsage lists the commands accepted by a stdio robot session.
 const CommandUsage = `
 <id> forward | back | rotate left | rotate right |
+ wait <ticks> |
  drill | drill_durability | 
  pick_up | release |
  search_now | search_front | 
@@ -170,10 +171,13 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 	if len(fields) == 3 && fields[1] == "rotate" && (fields[2] == string(values.Left) || fields[2] == string(values.Right)) {
 		return robotmsg.ActionStep{Action: actions.RotateAction{Rotation: values.Rotation(fields[2])}}, true
 	}
-	if len(fields) == 3 && fields[1] == "print_integer" {
+	if len(fields) == 3 && (fields[1] == "print_integer" || fields[1] == "wait") {
 		integer, err := strconv.ParseInt(fields[2], 10, 64)
 		if err != nil {
 			return nil, false
+		}
+		if fields[1] == "wait" {
+			return robotmsg.ActionStep{Action: actions.WaitAction{Integer: integer}}, true
 		}
 		return robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: integer}}, true
 	}
