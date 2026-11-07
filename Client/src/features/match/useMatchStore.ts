@@ -14,7 +14,7 @@ import {
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
 import { guestFieldIds, loadGuestPrograms, runGuestProgram, saveGuestProgram } from './guestMatch.ts'
-import { replayFrames, type ReplayFrame } from './matchReplay.ts'
+import { parseBoardEventHistory, replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 export const useMatchStore = defineStore('match', () => {
   const fieldId = ref('')
@@ -23,6 +23,7 @@ export const useMatchStore = defineStore('match', () => {
   const match = ref<MatchRecord | null>(null)
   const result = ref<MatchResult | null>(null)
   const frames = ref<ReplayFrame[]>([])
+  const importedBoardEvents = ref(false)
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const guestMode = computed(() => authStatus.value === 'guest')
@@ -47,6 +48,7 @@ export const useMatchStore = defineStore('match', () => {
     match.value = null
     result.value = null
     frames.value = []
+    importedBoardEvents.value = false
     isGuestMatch.value = false
     error.value = ''
   }
@@ -140,8 +142,10 @@ export const useMatchStore = defineStore('match', () => {
 
   function watchMatch(id: string, record?: MatchRecord): void {
     stopEvents?.()
+    importedBoardEvents.value = false
     if (import.meta.env.DEV && id === 'demo') {
       void import('./replayDemo.ts').then(({ replayDemoHistory }) => {
+        if (importedBoardEvents.value) return
         match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'sample' }
         result.value = { history: replayDemoHistory, summary: { score: { player: 1, opposite: 0 } } }
         frames.value = replayFrames(replayDemoHistory)
@@ -171,6 +175,19 @@ export const useMatchStore = defineStore('match', () => {
     )
   }
 
+  function importBoardEvents(json: string): void {
+    const history = parseBoardEventHistory(json)
+    const nextFrames = replayFrames(history)
+    if (nextFrames.length === 0) throw new Error('再生できるfieldイベントがありません。')
+    stopEvents?.()
+    stopEvents = undefined
+    match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'Boardイベント' }
+    result.value = { history, summary: { score: { player: 0, opposite: 0 } } }
+    frames.value = nextFrames
+    importedBoardEvents.value = true
+    error.value = ''
+  }
+
   function reconnect(): void {
     if (match.value) watchMatch(match.value.id, match.value)
   }
@@ -182,6 +199,7 @@ export const useMatchStore = defineStore('match', () => {
     match,
     result,
     frames,
+    importedBoardEvents,
     user,
     authStatus,
     guestMode,
@@ -195,6 +213,7 @@ export const useMatchStore = defineStore('match', () => {
     saveProgram,
     startMatch,
     watchMatch,
+    importBoardEvents,
     reconnect,
     dispose,
   }

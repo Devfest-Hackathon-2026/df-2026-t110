@@ -233,6 +233,34 @@
 .match-replay-details {
   margin-top: var(--space-xl);
 }
+.match-board-import {
+  margin-block: var(--space-lg);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-rule);
+}
+.match-board-import > summary {
+  color: var(--color-accent-deep);
+  font-weight: 700;
+  cursor: pointer;
+}
+.match-board-import label {
+  display: block;
+  margin-block: var(--space-md);
+}
+.match-board-import input,
+.match-board-import textarea {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-sm);
+}
+.match-board-import textarea {
+  padding: var(--space-sm);
+  font: inherit;
+  font-family: monospace;
+}
+.match-board-import [role='alert'] {
+  color: #9b3d30;
+}
 .match-replay-details > summary {
   width: fit-content;
   color: var(--color-accent-deep);

@@ -18,8 +18,10 @@ const programName = ref('')
 const draft = ref<PicoProgram | null>(null)
 const editorOpen = ref(false)
 const isDev = import.meta.env.DEV
+const boardJson = ref('')
+const boardImportError = ref('')
 const replayOpen = ref(props.matchId === 'demo')
-const score = computed(() => store.result?.summary.score)
+const score = computed(() => (store.importedBoardEvents ? null : store.result?.summary.score))
 const selectedProgram = computed(() => store.programs.find((item) => item.id === store.selectedProgramId))
 const outcome = computed(() => {
   if (!score.value) return ''
@@ -39,6 +41,23 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => store.dispose())
+
+function importBoardJson(): void {
+  boardImportError.value = ''
+  try {
+    store.importBoardEvents(boardJson.value)
+    replayOpen.value = true
+  } catch (cause) {
+    boardImportError.value = cause instanceof Error ? cause.message : 'イベントを読み込めませんでした。'
+  }
+}
+
+async function importBoardFile(event: Event): Promise<void> {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  boardJson.value = await file.text()
+  importBoardJson()
+}
 
 async function chooseField(): Promise<void> {
   store.setField(fieldInput.value)
@@ -181,6 +200,23 @@ function onEditorToggle(event: Event): void {
     </template>
 
     <template v-else>
+      <details v-if="isDev && props.matchId === 'demo'" class="match-board-import">
+        <summary>BoardイベントJSONを読み込む</summary>
+        <p>
+          Board.Start() の初期イベントと BoardOutput.Events
+          の更新イベントを含むJSONを読み込みます。データはサーバーへ送信しません。
+        </p>
+        <label>
+          JSONファイル
+          <input type="file" accept=".json,application/json" @change="importBoardFile" />
+        </label>
+        <label>
+          またはJSONを貼り付け
+          <textarea v-model="boardJson" rows="5" spellcheck="false" />
+        </label>
+        <button type="button" @click="importBoardJson">このイベントを再生</button>
+        <p v-if="boardImportError" role="alert">{{ boardImportError }}</p>
+      </details>
       <section class="match-status" aria-live="polite">
         <p class="match-eyebrow">
           {{
@@ -198,12 +234,17 @@ function onEditorToggle(event: Event): void {
                 ? 'ローカル練習結果'
                 : 'プログラムを実行中'
               : store.phase === 'finished'
-                ? `対戦結果 · ${outcome}`
+                ? store.importedBoardEvents
+                  ? 'Boardイベントの再生'
+                  : `対戦結果 · ${outcome}`
                 : '結果を待っています'
           }}
         </h2>
         <p v-if="!store.isGuestMatch">対戦ID: {{ store.match?.id }}</p>
         <p v-if="store.match?.selectedLayoutId">選ばれた配置: {{ store.match.selectedLayoutId }}</p>
+        <p v-if="store.importedBoardEvents">
+          Go BoardのイベントJSONを再生中です。得点判定は含まれていません。
+        </p>
         <template v-if="store.phase === 'running'">
           <div class="match-progress" aria-hidden="true"><span /></div>
           <p>

@@ -1,8 +1,39 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readFileSync } from 'node:fs'
-import { replayFrameToStage, replayFrames } from '../src/features/match/matchReplay.ts'
+import {
+  parseBoardEventHistory,
+  replayFrameToStage,
+  replayFrames,
+} from '../src/features/match/matchReplay.ts'
 import { parseMatch, parseMatchResult, parseMatchUser } from '../src/features/match/matchApi.ts'
+
+test('Go BoardOutput events can be imported for replay', () => {
+  const initial = {
+    type: 'field',
+    tick: 0,
+    state: {
+      kind: 'initial',
+      terrain: [[{ type: 'land', kind: { type: 'plain' } }, { type: 'rock' }]],
+      robots: [{ id: 'a', position: { x: 0, y: 0 }, direction: 'east' }],
+    },
+  }
+  const update = {
+    type: 'field',
+    tick: 1,
+    state: {
+      kind: 'update',
+      actions: [{ kind: 'drill', robotId: 'a', success: true, target: { x: 1, y: 0 }, drillDurability: 2 }],
+    },
+  }
+  const history = parseBoardEventHistory(
+    JSON.stringify([{ Events: [initial] }, { Decision: { RobotID: 'a' }, Events: [update] }]),
+  )
+  const frames = replayFrames(history)
+  assert.equal(frames.length, 2)
+  assert.equal(frames[1].terrain[0][1].type, 'land')
+  assert.throws(() => parseBoardEventHistory(JSON.stringify([{ Events: [update] }])), /初期盤面/)
+})
 
 test('field history replays movement, rotation and removal in order', () => {
   const frames = replayFrames([

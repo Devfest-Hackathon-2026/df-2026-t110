@@ -59,6 +59,33 @@ function isFieldEvent(value: unknown): value is FieldEvent {
   return value !== null && typeof value === 'object' && (value as { type?: unknown }).type === 'field'
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+// Accept a MatchResult, a field-event array, or BoardOutput objects from Go.
+export function parseBoardEventHistory(json: string): unknown[] {
+  const source: unknown = JSON.parse(json)
+  const history: unknown[] = []
+
+  function collect(value: unknown): void {
+    if (Array.isArray(value)) {
+      for (const item of value) collect(item)
+    } else if (isFieldEvent(value)) {
+      history.push(value)
+    } else if (isRecord(value)) {
+      const events = value.history ?? value.events ?? value.Events
+      if (Array.isArray(events)) collect(events)
+    }
+  }
+
+  collect(source)
+  if (!history.some((event) => isFieldEvent(event) && event.state?.kind === 'initial'))
+    throw new Error('初期盤面のfieldイベントがありません。Board.Start()のイベントも含めてください。')
+  if (replayFrames(history).length < 1) throw new Error('再生できるfieldイベントがありません。')
+  return history
+}
+
 export function replayFrames(history: unknown[]): ReplayFrame[] {
   const frames: ReplayFrame[] = []
   let current: ReplayFrame | null = null
