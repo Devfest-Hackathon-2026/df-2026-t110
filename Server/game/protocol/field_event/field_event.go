@@ -107,6 +107,21 @@ func (r PrintIntegerResult) MarshalJSON() ([]byte, error) {
 	}{Kind: "print_integer", payload: payload(r)})
 }
 
+type PrintBoolResult struct {
+	RobotID protocol.RobotID `json:"robotId"`
+	Bool    bool             `json:"bool"`
+
+	ActionResult `json:"-"`
+}
+
+func (r PrintBoolResult) MarshalJSON() ([]byte, error) {
+	type payload PrintBoolResult
+	return json.Marshal(struct {
+		Kind string `json:"kind"`
+		payload
+	}{Kind: "print_bool", payload: payload(r)})
+}
+
 func (e FieldEvent) MarshalJSON() ([]byte, error) {
 	var payload any
 	switch state := e.State.(type) {

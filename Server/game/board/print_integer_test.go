@@ -17,21 +17,44 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
-func TestPrintIntegerCommitsWithOtherRobots(t *testing.T) {
+func TestPrintCommitsWithOtherRobots(t *testing.T) {
 	t.Parallel()
 
+	type testCase struct {
+		name    string
+		action  actions.Action
+		result  fieldevent.ActionResult
+		encoded string
+	}
+	var tests []testCase
 	for _, integer := range []int64{0, -42, math.MinInt64, math.MaxInt64} {
-		t.Run(fmt.Sprint(integer), func(t *testing.T) {
+		tests = append(tests, testCase{
+			name:    fmt.Sprint(integer),
+			action:  actions.PrintIntegerAction{Integer: integer},
+			result:  fieldevent.PrintIntegerResult{RobotID: "a", Integer: integer},
+			encoded: fmt.Sprintf(`{"kind":"print_integer","robotId":"a","integer":%d}`, integer),
+		})
+	}
+	for _, value := range []bool{false, true} {
+		tests = append(tests, testCase{
+			name:    fmt.Sprint(value),
+			action:  actions.PrintBoolAction{Bool: value},
+			result:  fieldevent.PrintBoolResult{RobotID: "a", Bool: value},
+			encoded: fmt.Sprintf(`{"kind":"print_bool","robotId":"a","bool":%t}`, value),
+		})
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			firstReply := robotmsg.ActionReply{RobotID: "a", Action: actions.PrintIntegerAction{Integer: integer}}
+			firstReply := robotmsg.ActionReply{RobotID: "a", Action: tt.action}
 			secondReply := robotmsg.ActionReply{RobotID: "b", Action: actions.PrintIntegerAction{Integer: 7}}
 			wantFirst := boardmsg.BoardOutput{Decision: boardmsg.StartDecision{RobotID: "b"}}
 			wantCommit := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.UnitValue{}},
 				Events: []fieldevent.FieldEvent{{Tick: 1, State: fieldevent.UpdateState{
 					Actions: []fieldevent.ActionResult{
-						fieldevent.PrintIntegerResult{RobotID: "a", Integer: integer},
+						tt.result,
 						fieldevent.PrintIntegerResult{RobotID: "b", Integer: 7},
 					},
 				}}},
@@ -39,7 +62,7 @@ func TestPrintIntegerCommitsWithOtherRobots(t *testing.T) {
 			wantSecondResume := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.UnitValue{}},
 			}
-			wantJSON := fmt.Sprintf(`[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"print_integer","robotId":"a","integer":%d},{"kind":"print_integer","robotId":"b","integer":7}]}}]`, integer)
+			wantJSON := fmt.Sprintf(`[{"type":"field","tick":1,"state":{"kind":"update","actions":[%s,{"kind":"print_integer","robotId":"b","integer":7}]}}]`, tt.encoded)
 
 			b := newBoard(t, board.Config{
 				MaxTicks: 1,
