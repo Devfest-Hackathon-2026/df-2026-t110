@@ -22,12 +22,56 @@ func TestSearchNowObservesCurrentLand(t *testing.T) {
 		team board.TeamID
 		want values.LandTerrain
 	}{
-		{"own territory with luggage", territory, board.TeamID2, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}},
-		{"enemy territory with luggage", territory, board.TeamID1, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.EnemyTerritory}},
-		{"unassigned robot in territory", territory, board.NoTeam, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true}},
-		{"plain land outside territory", board.NewLandTerrain(board.PlainLand{}, false, board.NoTeam), board.TeamID1, values.LandTerrain{Kind: values.PlainLand{}}},
-		{"goal", board.NewLandTerrain(board.GoalLand{}, false, board.NoTeam), board.NoTeam, values.LandTerrain{Kind: values.GoalLand{}}},
-		{"checkpoint", board.NewLandTerrain(board.NewCheckpointLand(2), true, board.NoTeam), board.NoTeam, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}, HasLuggage: true}},
+		{
+			name: "own territory with luggage",
+			land: territory,
+			team: board.TeamID2,
+			want: values.LandTerrain{
+				Kind:       values.PlainLand{},
+				HasLuggage: true,
+				Territory:  values.OwnTerritory,
+			},
+		},
+		{
+			name: "enemy territory with luggage",
+			land: territory,
+			team: board.TeamID1,
+			want: values.LandTerrain{
+				Kind:       values.PlainLand{},
+				HasLuggage: true,
+				Territory:  values.EnemyTerritory,
+			},
+		},
+		{
+			name: "unassigned robot in territory",
+			land: territory,
+			team: board.NoTeam,
+			want: values.LandTerrain{
+				Kind:       values.PlainLand{},
+				HasLuggage: true,
+			},
+		},
+		{
+			name: "plain land outside territory",
+			land: board.NewLandTerrain(board.PlainLand{}, false, board.NoTeam),
+			team: board.TeamID1,
+			want: values.LandTerrain{Kind: values.PlainLand{}},
+		},
+		{
+			name: "goal",
+			land: board.NewLandTerrain(board.GoalLand{}, false, board.NoTeam),
+			team: board.NoTeam,
+			want: values.LandTerrain{Kind: values.GoalLand{}},
+		},
+		{
+			name: "checkpoint",
+			land: board.NewLandTerrain(board.NewCheckpointLand(2), true, board.NoTeam),
+			team: board.NoTeam,
+			want: values.LandTerrain{
+				Kind:       values.CheckpointLand{Order: 2},
+				HasLuggage: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
