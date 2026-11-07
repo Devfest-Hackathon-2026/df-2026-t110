@@ -39,35 +39,13 @@
             stdenv.cc
             pkg-config
           ];
+          # Use `mise exec`/`mise en`, or `mise activate --shims` from a host shell.
           fhsEnv = pkgs.buildFHSEnv {
             name = "mise-fhs";
             targetPkgs = _: runtimeTools ++ [ pkgs.openssl pkgs.zlib ];
             runScript = pkgs.writeShellScript "mise-fhs-entry" ''
-              # Host shells must dispatch tools through this FHS launcher.
-              # Inspect only mise's subcommand, not arguments passed to a tool or task.
-              extraArgs=()
-              case "''${MISE_FHS_ARGV0##*/}" in
-                mise|mise-*)
-                  args=("$@")
-                  for ((i = 0; i < ''${#args[@]}; i++)); do
-                    case "''${args[i]}" in
-                      -C|--cd|-E|--env|-P|--profile|-j|--jobs|--log-level|--output)
-                        i=$((i + 1)) ;;
-                      --) break ;;
-                      -*) ;;
-                      activate)
-                        extraArgs=(--shims)
-                        for arg in "''${args[@]}"; do
-                          if [[ "$arg" == --shims ]]; then extraArgs=(); break; fi
-                        done
-                        break ;;
-                      *) break ;;
-                    esac
-                  done
-                  ;;
-              esac
               # Keep activation hooks and generated shims pointing at the FHS launcher.
-              exec -a "$MISE_FHS_ARGV0" ${pkgs.lib.getExe pkgs.mise} "$@" "''${extraArgs[@]}"
+              exec -a "$MISE_FHS_ARGV0" ${pkgs.lib.getExe pkgs.mise} "$@"
             '';
           };
           mise = pkgs.symlinkJoin {
