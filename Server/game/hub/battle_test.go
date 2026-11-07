@@ -122,3 +122,66 @@ func TestBattleEndsWhenAllRobotsStop(t *testing.T) {
 		t.Errorf("unexpected robot outcomes: %+v", report)
 	}
 }
+
+func TestBattleEndsWhenAllLuggageIsDiscarded(t *testing.T) {
+	t.Parallel()
+
+	plain := board.NewLandTerrain(board.PlainLand{}, false, board.NoTeam)
+	luggage := board.NewLandTerrain(board.PlainLand{}, true, board.NoTeam)
+	want := boardmsg.NewBattleResult(
+		4, boardmsg.EndAllLuggageDiscarded,
+		boardmsg.NewTeamResult(0, 1, -2),
+		boardmsg.NewTeamResult(0, 1, -2),
+		0,
+	)
+	rules, err := board.NewBattleConfig(10, 5, 2).CompletionRules()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := board.NewConfig(
+		[][]board.Terrain{{plain, luggage, luggage, plain}},
+		map[protocol.RobotID]board.RobotState{
+			"a": board.NewRobotState(board.NewPosition(0, 0), board.East, 0).WithTeam(board.TeamID1),
+			"b": board.NewRobotState(board.NewPosition(3, 0), board.West, 0).WithTeam(board.TeamID2),
+		},
+		0,
+		rules,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := board.New(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := func(commands ...actions.Action) robotFunc {
+		return func(values.Value) (robotmsg.Step, error) {
+			if len(commands) == 0 {
+				t.Error("robot resumed after the final discard")
+				return robotmsg.DoneStep{}, nil
+			}
+			action := commands[0]
+			commands = commands[1:]
+			return robotmsg.ActionStep{Action: action}, nil
+		}
+	}
+	h := newHub(t, b,
+		hub.Participant{ID: "a", Robot: script(
+			actions.PickUpAction{}, actions.RotateAction{Rotation: values.Left},
+			actions.ReleaseAction{}, actions.WaitAction{Integer: 1},
+		)},
+		hub.Participant{ID: "b", Robot: script(
+			actions.PickUpAction{}, actions.RotateAction{Rotation: values.Right},
+			actions.WaitAction{Integer: 1}, actions.ReleaseAction{},
+		)},
+	)
+
+	report, runErr := h.Run(limits())
+
+	if runErr != nil || report.Result() != want {
+		t.Errorf("battle = %+v, %v, want %+v", report.Result(), runErr, want)
+	}
+	if report.Outcome("a") != (hub.InterruptedOutcome{}) || report.Outcome("b") != (hub.InterruptedOutcome{}) {
+		t.Errorf("unexpected robot outcomes: %+v", report)
+	}
+}

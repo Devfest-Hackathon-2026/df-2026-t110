@@ -1,5 +1,7 @@
 package board
 
+const EndAllLuggageDiscarded EndReason = "all_luggage_discarded"
+
 type TeamResult struct {
 	luggage  uint64
 	discards uint64

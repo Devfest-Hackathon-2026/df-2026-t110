@@ -19,8 +19,10 @@ func NewBattleConfig(turns uint64, luggagePoints, discardPenalty int64) BattleCo
 }
 
 type battleState struct {
-	config   BattleConfig
-	discards [3]uint64
+	config           BattleConfig
+	discards         [3]uint64
+	countedLuggage   bool
+	remainingLuggage uint64
 }
 
 // CompletionRules creates independent scoring state for a single battle.
@@ -34,17 +36,42 @@ func (c BattleConfig) CompletionRules() (CompletionRules, error) {
 func (b *battleState) TurnLimit() uint64 { return b.config.turns }
 
 func (b *battleState) AfterTurn(state Snapshot, update fieldevent.UpdateState) bool {
+	if !b.countedLuggage {
+		// Robots start empty-handed and can take only one action in the first turn.
+		// Any luggage picked up in that turn still counts toward the starting total.
+		for _, row := range state.Terrain {
+			for _, cell := range row {
+				if land, ok := cell.(LandTerrain); ok && land.HasLuggage() {
+					b.remainingLuggage++
+				}
+			}
+		}
+		for _, robot := range state.Robots {
+			if robot.CarryingLuggage() {
+				b.remainingLuggage++
+			}
+		}
+		b.countedLuggage = true
+	}
+
+	discarded := false
 	for _, action := range update.Actions {
 		release, ok := action.(fieldevent.ReleaseResult)
 		if ok && release.Discarded {
 			team := state.Robots[release.RobotID].TeamID()
 			b.discards[team]++
+			b.remainingLuggage--
+			discarded = true
 		}
 	}
-	return false
+	return discarded && b.remainingLuggage == 0
 }
 
 func (b *battleState) Result(state Snapshot, reason boardmsg.EndReason) (boardmsg.CompletionResult, error) {
+	if reason == boardmsg.EndConditionMet {
+		reason = boardmsg.EndAllLuggageDiscarded
+	}
+
 	var luggage [3]uint64
 	for _, row := range state.Terrain {
 		for _, cell := range row {
