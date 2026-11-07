@@ -1,6 +1,9 @@
 import type { PicoProgram } from '../picolang/picolang.ts'
 
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+const authAppOrigin = (
+  import.meta.env?.VITE_AUTH_APP_ORIGIN ?? 'https://server-639320660675.asia-northeast1.run.app'
+).replace(/\/$/, '')
 
 export interface ProgramRecord {
   id?: string
@@ -13,7 +16,8 @@ export interface MatchUser {
   name?: string
 }
 
-export const loginUrl = `${base}/login`
+// IAP handles Google sign-in before the deployed app is served.
+export const loginUrl = `${authAppOrigin}/account`
 
 export interface MatchRecord {
   id: string

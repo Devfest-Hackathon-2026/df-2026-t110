@@ -13,7 +13,6 @@ import {
   type ProgramRecord,
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/picolang.ts'
-import { guestFieldIds, loadGuestPrograms, runGuestProgram, saveGuestProgram } from './guestMatch.ts'
 import { parseBoardEventHistory, replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 export const useMatchStore = defineStore('match', () => {
@@ -26,8 +25,6 @@ export const useMatchStore = defineStore('match', () => {
   const importedBoardEvents = ref(false)
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
-  const guestMode = computed(() => authStatus.value === 'guest')
-  const isGuestMatch = ref(false)
   const busy = ref(false)
   const error = ref('')
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
@@ -49,7 +46,6 @@ export const useMatchStore = defineStore('match', () => {
     result.value = null
     frames.value = []
     importedBoardEvents.value = false
-    isGuestMatch.value = false
     error.value = ''
   }
 
@@ -66,12 +62,7 @@ export const useMatchStore = defineStore('match', () => {
 
   async function loadPrograms(): Promise<void> {
     if (!fieldId.value) return
-    if (guestMode.value) {
-      programs.value = loadGuestPrograms(fieldId.value)
-      if (!programs.value.some((item) => item.id === selectedProgramId.value)) selectedProgramId.value = ''
-      error.value = ''
-      return
-    }
+    if (authStatus.value !== 'signed-in') return
     loadController?.abort()
     loadController = new AbortController()
     busy.value = true
@@ -87,13 +78,11 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function saveProgram(name: string, source: PicoProgram): Promise<void> {
-    if (!fieldId.value || !name.trim()) return
+    if (authStatus.value !== 'signed-in' || !fieldId.value || !name.trim()) return
     busy.value = true
     error.value = ''
     try {
-      const saved = guestMode.value
-        ? saveGuestProgram(fieldId.value, name, source)
-        : await createProgram(fieldId.value, { name: name.trim(), source })
+      const saved = await createProgram(fieldId.value, { name: name.trim(), source })
       programs.value = [...programs.value, saved]
       selectedProgramId.value = saved.id ?? ''
     } catch (cause) {
@@ -104,36 +93,14 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function startMatch(): Promise<void> {
-    if (!fieldId.value || !selectedProgramId.value) return
+    if (authStatus.value !== 'signed-in' || !fieldId.value || !selectedProgramId.value) return
     busy.value = true
     error.value = ''
     try {
-      if (guestMode.value) {
-        if (!guestFieldIds().includes(fieldId.value)) throw new Error('サンプルフィールドを選んでください。')
-        const program = programs.value.find((item) => item.id === selectedProgramId.value)
-        if (!program) throw new Error('プログラムを選び直してください。')
-        isGuestMatch.value = true
-        match.value = {
-          id: `guest-${crypto.randomUUID()}`,
-          fieldId: fieldId.value,
-          selectedLayoutId: fieldId.value,
-          status: 'running',
-        }
-        const started = Date.now()
-        const reached = await runGuestProgram(fieldId.value, program.source)
-        await new Promise<void>((resolve) => setTimeout(resolve, Math.max(0, 850 - (Date.now() - started))))
-        result.value = { history: [], summary: { score: { player: reached ? 1 : 0, opponent: 0 } } }
-        frames.value = []
-        return
-      }
       const created = await createMatch(fieldId.value, selectedProgramId.value)
       watchMatch(created.id, created)
       window.history.pushState(null, '', `/matches/${encodeURIComponent(created.id)}`)
     } catch (cause) {
-      if (isGuestMatch.value) {
-        match.value = null
-        isGuestMatch.value = false
-      }
       error.value = errorText(cause)
     } finally {
       busy.value = false
@@ -202,8 +169,6 @@ export const useMatchStore = defineStore('match', () => {
     importedBoardEvents,
     user,
     authStatus,
-    guestMode,
-    isGuestMatch,
     busy,
     error,
     phase,
