@@ -50,13 +50,21 @@ export type PicoStatement =
   | (NodeBase & { kind: 'break' | 'continue' })
 export interface PicoFunction extends NodeBase {
   kind: 'function'
-  params: Array<NodeBase & { kind: 'param'; ident: PicoIdent; type: PicoType }>
-  returnType: PicoType
+  params: Array<NodeBase & { kind: 'param'; ident: PicoIdent; type?: PicoType }>
+  returnType?: PicoType
   body: PicoBlock
 }
 export interface PicoProgram {
   picolangVersion: 0
   picolang: { v0: { program: Record<string, PicoFunction> } }
+}
+/** Execution JSON always carries concrete function types required by the server schema. */
+export interface PicoTypedFunction extends PicoFunction {
+  params: Array<PicoFunction['params'][number] & { type: PicoType }>
+  returnType: PicoType
+}
+export interface PicoTypedProgram extends PicoProgram {
+  picolang: { v0: { program: Record<string, PicoTypedFunction> } }
 }
 export interface PicoBuiltin {
   name: string
@@ -123,8 +131,8 @@ export const PICO_BUILTINS = [
 ]
 export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
 
-export function samePicoType(left: PicoType | undefined, right: PicoType): boolean {
-  if (!left) return true
+export function samePicoType(left: PicoType | undefined, right: PicoType | undefined): boolean {
+  if (!left || !right) return true
   if (typeof left === 'string' || typeof right === 'string') return left === right
   return samePicoType(left.elementType, right.elementType)
 }
@@ -319,7 +327,7 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
       return false
   }
 }
-export function isPicoProgram(value: unknown): value is PicoProgram {
+function validProgram(value: unknown, draft: boolean): boolean {
   if (!object(value) || !exact(value, ['picolangVersion', 'picolang']) || value.picolangVersion !== 0)
     return false
   if (
@@ -336,17 +344,22 @@ export function isPicoProgram(value: unknown): value is PicoProgram {
     if (
       !name(functionName) ||
       !object(definition) ||
-      !node(definition, 'function', ['params', 'returnType', 'body'], seen) ||
+      !node(
+        definition,
+        'function',
+        ['params', ...('returnType' in definition ? ['returnType'] : []), 'body'],
+        seen,
+      ) ||
       !Array.isArray(definition.params) ||
-      !type(definition.returnType)
+      (!(draft && !('returnType' in definition)) && !type(definition.returnType))
     )
       return false
     for (const param of definition.params) {
       if (
         !object(param) ||
-        !node(param, 'param', ['ident', 'type'], seen) ||
+        !node(param, 'param', ['ident', ...('type' in param ? ['type'] : [])], seen) ||
         !validIdent(param.ident, seen) ||
-        !type(param.type)
+        (!(draft && !('type' in param)) && !type(param.type))
       )
         return false
     }
@@ -354,8 +367,24 @@ export function isPicoProgram(value: unknown): value is PicoProgram {
     if (definition.body.stmts.at(-1)?.kind !== 'return') return false
   }
   return (
-    functions.main.returnType === 'unit' &&
+    (draft || functions.main.returnType === 'unit') &&
     Array.isArray(functions.main.params) &&
     functions.main.params.length === 0
   )
+}
+
+export function isPicoProgram(value: unknown): value is PicoTypedProgram {
+  return validProgram(value, false)
+}
+export function isPicoDraft(value: unknown): value is PicoProgram {
+  return validProgram(value, true)
+}
+/** Discard imported annotations: they are output of inference, never constraints on editing. */
+export function picoDraft(program: PicoProgram): PicoProgram {
+  const draft = JSON.parse(JSON.stringify(program)) as PicoProgram
+  for (const fn of Object.values(programFunctions(draft))) {
+    delete fn.returnType
+    for (const param of fn.params) delete param.type
+  }
+  return draft
 }

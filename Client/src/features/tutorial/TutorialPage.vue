@@ -184,7 +184,7 @@ function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> 
 async function runProgram(): Promise<void> {
   if (!field.value || runState.value === 'running') return
   if (!isPicoProgram(picolangProgram.value)) {
-    sceneError.value = 'プログラムの構造を確認してください。'
+    sceneError.value = 'エディタのエラーを解消してから実行してください。'
     return
   }
   sceneError.value = ''

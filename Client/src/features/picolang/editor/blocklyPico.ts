@@ -75,7 +75,8 @@ export function keyType(key: string): PicoType {
       ? (key as PicoType)
       : 'integer'
 }
-function typeCheck(type: PicoType): string[] {
+function typeCheck(type: PicoType | undefined): string[] | null {
+  if (type === undefined) return null
   const key = typeKey(type)
   return typeof type === 'string' ? [key] : [key, 'stack']
 }
@@ -109,7 +110,7 @@ function field(block: Block, name: string, fallback = ''): string {
 function value(
   block: Block,
   input: string,
-  fallback: PicoType,
+  fallback: PicoType | undefined,
   functions: Record<string, PicoFunction>,
 ): PicoExpr {
   const child = block.getInputTargetBlock(input)
@@ -128,7 +129,7 @@ function callName(block: Block): string {
 function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
-): { args: PicoType[]; returns: PicoType; category: string; label: string } {
+): { args: Array<PicoType | undefined>; returns: PicoType | undefined; category: string; label: string } {
   const builtin = PICO_BUILTIN_OPTIONS.find((item) => item.name === name)
   if (builtin)
     return { args: builtin.args, returns: builtin.returns, category: builtin.category, label: builtin.label }
@@ -320,6 +321,7 @@ export function registerPicoBlocks(functions: Record<string, PicoFunction>): voi
 }
 function defineCall(name: string, functions: Record<string, PicoFunction>): void {
   const signature = callSignature(name, functions)
+  const userFunction = Object.hasOwn(functions, name)
   const genericStack = ['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)
   const missing = !PICO_BUILTIN_OPTIONS.some((item) => item.name === name) && !Object.hasOwn(functions, name)
   for (const statement of [false, true]) {
@@ -328,7 +330,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
         this.appendDummyInput().appendField(signature.label)
         signature.args.forEach((type, index) =>
           this.appendValueInput(`ARG${index}`)
-            .setCheck(genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
+            .setCheck(userFunction ? null : genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
             .appendField(argumentLabel(name, index, functions)),
         )
         if (statement) {
@@ -341,7 +343,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
               ? name === 'get_back'
                 ? null
                 : 'stack'
-              : missing
+              : missing || userFunction
                 ? null
                 : typeCheck(signature.returns),
           )
@@ -541,11 +543,7 @@ function readExpr(block: Block, functions: Record<string, PicoFunction>): PicoEx
       .map((input, index) => value(block, input.name, signature.args[index] ?? 'integer', functions)),
   }
 }
-function readStack(
-  first: Block | null,
-  functions: Record<string, PicoFunction>,
-  returnType: PicoType,
-): PicoStatement[] {
+function readStack(first: Block | null, functions: Record<string, PicoFunction>): PicoStatement[] {
   const statements: PicoStatement[] = []
   for (let current = first; current; current = current.getNextBlock()) {
     const hintId = metaId(current)
@@ -566,11 +564,11 @@ function readStack(
         value: value(current, 'VALUE', 'integer', functions),
       })
     } else if (current.type === 'pico_if' || current.type === 'pico_if_else') {
-      const then = picoBlock(readStack(current.getInputTargetBlock('THEN'), functions, returnType))
+      const then = picoBlock(readStack(current.getInputTargetBlock('THEN'), functions))
       then.hintId = metaId(current, 'thenId')
       let otherwise: PicoBlock | undefined
       if (current.type === 'pico_if_else') {
-        otherwise = picoBlock(readStack(current.getInputTargetBlock('ELSE'), functions, returnType))
+        otherwise = picoBlock(readStack(current.getInputTargetBlock('ELSE'), functions))
         otherwise.hintId = metaId(current, 'elseId')
       }
       statements.push({
@@ -581,7 +579,7 @@ function readStack(
         ...(otherwise ? { else: otherwise } : {}),
       })
     } else if (current.type === 'pico_while' || current.type === 'pico_for') {
-      const body = picoBlock(readStack(current.getInputTargetBlock('BODY'), functions, returnType))
+      const body = picoBlock(readStack(current.getInputTargetBlock('BODY'), functions))
       body.hintId = metaId(current, 'bodyId')
       if (current.type === 'pico_while')
         statements.push({
@@ -600,7 +598,7 @@ function readStack(
           body,
         })
     } else if (current.type === 'pico_return')
-      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', returnType, functions) })
+      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', 'unit', functions) })
     else if (current.type === 'pico_break' || current.type === 'pico_continue')
       statements.push({ kind: current.type === 'pico_break' ? 'break' : 'continue', hintId })
     else if (current.type === 'pico_expr_statement')
@@ -619,14 +617,14 @@ export function readFunction(
   functions: Record<string, PicoFunction>,
 ): PicoFunction {
   const tops = workspace.getTopBlocks(true).filter((item) => !!item.previousConnection && !item.isShadow())
-  const statements = tops.flatMap((top) => readStack(top, functions, original.returnType))
+  const statements = tops.flatMap((top) => readStack(top, functions))
   const returns = statements.filter((item) => item.kind === 'return')
   const originalReturn = original.body.stmts.find((item) => item.kind === 'return')
   const lastReturn = returns.at(-1) ??
     originalReturn ?? {
       kind: 'return' as const,
       hintId: id(),
-      value: defaultExpr(original.returnType),
+      value: defaultExpr('unit'),
     }
   const body = picoBlock([...statements.filter((item) => item !== lastReturn), lastReturn])
   body.hintId = original.body.hintId
@@ -635,7 +633,7 @@ export function readFunction(
 
 function toolboxBlock(
   type: string,
-  args: PicoType[] = [],
+  args: Array<PicoType | undefined> = [],
   functions: Record<string, PicoFunction> = {},
 ): Blockly.utils.toolbox.BlockInfo {
   const defaults: Record<string, PicoType> = {
@@ -702,14 +700,13 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
             functions,
           ),
         )
-        if (functions[name]!.returnType !== 'unit')
-          contents.push(
-            toolboxBlock(
-              callType(name, false),
-              functions[name]!.params.map((param) => param.type),
-              functions,
-            ),
-          )
+        contents.push(
+          toolboxBlock(
+            callType(name, false),
+            functions[name]!.params.map((param) => param.type),
+            functions,
+          ),
+        )
       }
     } else {
       for (const builtin of PICO_BUILTIN_OPTIONS.filter((item) => item.category === category))

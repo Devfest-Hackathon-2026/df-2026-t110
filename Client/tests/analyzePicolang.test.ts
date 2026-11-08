@@ -1,12 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { analyzePicolang } from '../src/features/picolang/language/analyzePicolang.ts'
+import { analyzePicolang, inferPicolang } from '../src/features/picolang/language/analyzePicolang.ts'
 import {
   block,
   defaultExpr,
   id,
   ident,
+  isPicoDraft,
+  isPicoProgram,
   newProgram,
+  picoDraft,
   programFunctions,
   type PicoExpr,
   type PicoFunction,
@@ -225,13 +228,14 @@ test('initializers, assignments, conditions, loop bounds, arguments, and returns
     },
     call('print_integer', defaultExpr('bool')),
   )
-  programFunctions(program).other = fn([ret(defaultExpr('bool'))], 'integer')
+  programFunctions(program).other = fn([ret(defaultExpr('bool')), ret(defaultExpr())])
   assert.equal(analyzePicolang(program).filter((d) => d.code === 'type_mismatch').length, 8)
 })
 
 test('user function argument counts and compound return types are checked', () => {
   const program = source(
     call('other'),
+    declare('result', stack('bool'), call('other', defaultExpr())),
     call('other', defaultExpr('bool')),
     call('other', defaultExpr(), defaultExpr()),
   )
@@ -316,4 +320,181 @@ test('function conflicts and loop controls match server restrictions', () => {
   assert.equal(diagnostics.filter((d) => d.code === 'function_conflict').length, 1)
   assert.equal(diagnostics.filter((d) => d.code === 'function_name_conflict').length, 1)
   assert.equal(diagnostics.filter((d) => d.code === 'invalid_loop_control').length, 2)
+})
+
+const inferredFunction = (names: string[], ...stmts: PicoStatement[]): PicoFunction => ({
+  kind: 'function',
+  hintId: id(),
+  params: names.map((name) => ({ kind: 'param', hintId: id(), ident: ident(name) })),
+  body: block(stmts),
+})
+
+test('function body and all call sites infer a signature without annotations', () => {
+  const program = source(call('print_integer', call('increment', defaultExpr())))
+  programFunctions(program).increment = inferredFunction(['n'], ret(call('add', ident('n'), defaultExpr())))
+  const before = structuredClone(program)
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.increment, { params: ['integer'], returns: 'integer' })
+  assert.ok(analysis.program)
+  assert.equal(isPicoProgram(analysis.program), true)
+  assert.deepEqual(program, before)
+  assert.equal(programFunctions(analysis.program).increment.params[0].type, 'integer')
+  assert.equal(programFunctions(analysis.program).increment.returnType, 'integer')
+})
+
+test('a caller constrains an identity function and export does not reuse imported annotations', () => {
+  const program = source(call('print_bool', call('identity', defaultExpr('bool'))))
+  const identity = inferredFunction(['x'], ret(ident('x')))
+  identity.params[0].type = 'integer'
+  identity.returnType = 'rotation'
+  programFunctions(program).identity = identity
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.identity, { params: ['bool'], returns: 'bool' })
+  assert.equal(programFunctions(analysis.program!).identity.returnType, 'bool')
+  assert.equal(identity.returnType, 'rotation')
+})
+
+test('function constraints are resolved across forward calls and mutual recursion', () => {
+  const program = source(call('print_integer', call('alpha', defaultExpr())))
+  const functions = programFunctions(program)
+  functions.alpha = inferredFunction(['n'], ret(call('zeta', ident('n'))))
+  functions.zeta = inferredFunction(
+    ['n'],
+    conditional([ret(call('alpha', ident('n')))]),
+    ret(call('add', ident('n'), defaultExpr())),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.alpha, { params: ['integer'], returns: 'integer' })
+  assert.deepEqual(analysis.signatures.zeta, analysis.signatures.alpha)
+  const reversed = {
+    ...program,
+    picolang: { v0: { program: Object.fromEntries(Object.entries(functions).reverse()) } },
+  }
+  assert.deepEqual(inferPicolang(reversed).signatures, analysis.signatures)
+})
+
+test('recursive calls share parameter and result constraints with their function body', () => {
+  const program = source(call('print_integer', call('factorial', defaultExpr())))
+  programFunctions(program).factorial = inferredFunction(
+    ['n'],
+    conditional([ret(defaultExpr())]),
+    ret(call('mul', ident('n'), call('factorial', call('sub', ident('n'), defaultExpr())))),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.factorial, { params: ['integer'], returns: 'integer' })
+})
+
+test('nested stack results are resolved after constraints from later functions', () => {
+  const program = source(declare('items', stack(stack('rotation')), call('make_nested')))
+  const functions = programFunctions(program)
+  functions.make_nested = inferredFunction([], ret(call('wrap', call('new'))))
+  functions.wrap = inferredFunction(['x'], ret(call('push_back', call('new'), ident('x'))))
+  const analysis = inferPicolang(program)
+  assert.equal(
+    analysis.diagnostics.some((d) => d.severity === 'error'),
+    false,
+  )
+  assert.deepEqual(analysis.signatures.make_nested, { params: [], returns: stack(stack('rotation')) })
+  assert.deepEqual(analysis.signatures.wrap, {
+    params: [stack('rotation')],
+    returns: stack(stack('rotation')),
+  })
+  assert.equal(isPicoProgram(analysis.program), true)
+})
+
+test('incompatible calls to one function cannot be generalized independently', () => {
+  const program = source(
+    call('print_integer', call('identity', defaultExpr())),
+    call('print_bool', call('identity', defaultExpr('bool'))),
+  )
+  programFunctions(program).identity = inferredFunction(['x'], ret(ident('x')))
+  const analysis = inferPicolang(program)
+  assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+  assert.equal(analysis.program, null)
+})
+
+test('incompatible return paths fail inference and prevent export', () => {
+  const program = source(call('choose'))
+  programFunctions(program).choose = inferredFunction(
+    [],
+    conditional([ret(defaultExpr())]),
+    ret(defaultExpr('bool')),
+  )
+  const analysis = inferPicolang(program)
+  assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+  assert.equal(analysis.program, null)
+})
+
+test('unresolved signatures are diagnosed even for uncalled functions', () => {
+  const program = source()
+  programFunctions(program).identity = inferredFunction(['x'], ret(ident('x')))
+  const analysis = inferPicolang(program)
+  assert.ok(analysis.diagnostics.some((d) => d.code === 'cannot_infer_type' && d.functionName === 'identity'))
+  assert.equal(analysis.signatures.identity.params[0], undefined)
+  assert.equal(analysis.signatures.identity.returns, undefined)
+  assert.equal(analysis.program, null)
+})
+
+test('occurs check rejects infinitely nested types in recursive calls', () => {
+  const program = source()
+  programFunctions(program).grow = inferredFunction(
+    ['x'],
+    ret(call('grow', call('push_back', call('new'), ident('x')))),
+  )
+  const analysis = inferPicolang(program)
+  assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+  assert.equal(analysis.program, null)
+})
+
+test('main remains a zero-argument function returning unit', () => {
+  const program = source()
+  programFunctions(program).main.body.stmts = [ret(defaultExpr())]
+  assert.ok(analyzePicolang(program).some((d) => d.code === 'type_mismatch'))
+  programFunctions(program).main = inferredFunction(['x'], ret(defaultExpr('unit')))
+  assert.ok(analyzePicolang(program).some((d) => d.code === 'argument_count'))
+})
+
+test('annotation-free drafts persist and typed execution JSON round trips without freezing inferred types', () => {
+  const original = source(call('print_bool', call('identity', defaultExpr('bool'))))
+  programFunctions(original).identity = inferredFunction(['x'], ret(ident('x')))
+  const draft = picoDraft(original)
+  assert.equal(isPicoDraft(draft), true)
+  assert.equal(isPicoProgram(draft), false)
+  const serialized = JSON.parse(JSON.stringify(draft))
+  assert.equal(isPicoDraft(serialized), true)
+  const compiled = inferPicolang(serialized).program
+  assert.ok(compiled)
+  assert.equal(isPicoProgram(JSON.parse(JSON.stringify(compiled))), true)
+  const imported = picoDraft(compiled)
+  assert.equal('returnType' in programFunctions(imported).identity, false)
+  assert.equal('type' in programFunctions(imported).identity.params[0], false)
+  assert.deepEqual(inferPicolang(imported).program, compiled)
+})
+
+test('every primitive function type is inferred and emitted without manual annotations', () => {
+  for (const type of ['integer', 'bool', 'unit', 'terrain', 'rotation', 'distance_target'] as const) {
+    const program = source(call(`print_${type}`, call('identity', defaultExpr(type))))
+    programFunctions(program).identity = inferredFunction(['x'], ret(ident('x')))
+    const analysis = inferPicolang(program)
+    assert.deepEqual(analysis.diagnostics, [], type)
+    assert.deepEqual(analysis.signatures.identity, { params: [type], returns: type }, type)
+    assert.ok(analysis.program, type)
+    assert.equal(isPicoProgram(analysis.program), true, type)
+  }
+})
+
+test('assignment to a parameter constrains its type and the return type', () => {
+  const program = source()
+  programFunctions(program).set_flag = inferredFunction(
+    ['x'],
+    { kind: 'assign', hintId: id(), ident: ident('x'), value: defaultExpr('bool') },
+    ret(ident('x')),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.set_flag, { params: ['bool'], returns: 'bool' })
 })

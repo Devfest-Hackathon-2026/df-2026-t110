@@ -42,7 +42,8 @@ export function argumentLabel(name: string, index: number, functions: Record<str
   return builtinArguments[name]?.[index] ?? functions[name]?.params[index]?.ident.name ?? `引数 ${index + 1}`
 }
 
-export function typeLabel(type: PicoType): string {
+export function typeLabel(type: PicoType | undefined): string {
+  if (!type) return '未確定'
   if (typeof type !== 'string') return `${typeLabel(type.elementType)}のスタック`
   return {
     bool: '真理値',

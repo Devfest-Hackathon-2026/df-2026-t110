@@ -7,7 +7,7 @@ export interface PicoFunctionOption extends PicoBuiltin {
 
 export interface PicoVariableOption {
   name: string
-  type: PicoType
+  type?: PicoType
 }
 
 const builtinLabels = {

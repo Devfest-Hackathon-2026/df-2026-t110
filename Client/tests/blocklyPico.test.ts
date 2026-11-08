@@ -359,3 +359,45 @@ test('undefined function blocks retain arguments of different arities for diagno
     workspace.dispose()
   }
 })
+
+test('annotation-free user functions retain arguments and return expressions through Blockly', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  functions.identity = {
+    kind: 'function',
+    hintId: id(),
+    params: [{ kind: 'param', hintId: id(), ident: ident('x') }],
+    body: block([{ kind: 'return', hintId: id(), value: ident('x') }]),
+  }
+  const statement = {
+    kind: 'call' as const,
+    hintId: id(),
+    func: 'print_bool',
+    args: [{ kind: 'call' as const, hintId: id(), func: 'identity', args: [defaultExpr('bool')] }],
+  }
+  functions.main.body.stmts.unshift(statement)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    refreshVariableBlocks(workspace)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), functions.main)
+    assert.equal(workspace.getTopBlocks(false).length, 1)
+    const call = workspace.getAllBlocks(false).find((item) => item.type === 'pico_expr_identity')!
+    assert.equal(call.getInputTargetBlock('ARG0')!.type, 'pico_bool')
+    const toolbox = picoToolbox(functions)
+    const category = toolbox.contents.find(
+      (item) => item.kind === 'category' && 'name' in item && item.name === '関数',
+    ) as Blockly.utils.toolbox.StaticCategoryInfo
+    assert.ok(
+      category.contents.some(
+        (item) => item.kind === 'block' && 'type' in item && item.type === 'pico_expr_identity',
+      ),
+    )
+    loadFunction(workspace, functions.identity, functions)
+    assert.deepEqual(readFunction(workspace, functions.identity, functions), functions.identity)
+    assert.deepEqual(analyzePicolang(program), [])
+  } finally {
+    workspace.dispose()
+  }
+})

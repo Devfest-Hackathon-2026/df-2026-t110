@@ -24,23 +24,22 @@ import zoomInIcon from '@iconify-icons/lucide/zoom-in'
 import zoomOutIcon from '@iconify-icons/lucide/zoom-out'
 import {
   diagnosticBlock,
-  keyType,
   loadFunction,
   picoToolbox,
   readFunction,
   refreshVariableBlocks,
   registerPicoBlocks,
-  typeKey,
   updatePicoDiagnostics,
 } from './blocklyPico.ts'
 import PicoDiagnostics from './PicoDiagnostics.vue'
-import { analyzePicolang, type PicoDiagnostic } from '../language/analyzePicolang.ts'
+import { inferPicolang, type PicoDiagnostic } from '../language/analyzePicolang.ts'
 import {
   block,
   defaultExpr,
   id,
   ident,
-  isPicoProgram,
+  isPicoDraft,
+  picoDraft,
   newProgram,
   programFunctions,
   type PicoExpr,
@@ -51,9 +50,9 @@ import { typeLabel } from './picoGuidance.ts'
 import './blocklyEditor.css'
 
 const props = defineProps<{ tutorialId: string }>()
-const emit = defineEmits<{ 'update:program': [program: PicoProgram] }>()
+const emit = defineEmits<{ 'update:program': [program: PicoProgram | null] }>()
 const host = ref<HTMLElement | null>(null)
-const program = ref<PicoProgram>(newProgram())
+const program = ref<PicoProgram>(picoDraft(newProgram()))
 const activeName = ref('main')
 const showAddFunction = ref(false)
 const newName = ref('')
@@ -65,25 +64,16 @@ const historyIndex = ref(0)
 const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 const functions = computed(() => programFunctions(program.value))
-const diagnostics = computed(() => analyzePicolang(program.value))
-const activeFunction = computed(() => functions.value[activeName.value] ?? functions.value.main)
-const signature = computed(
-  () =>
-    `${activeName.value}(${activeFunction.value.params.map((param) => `${param.ident.name}: ${typeLabel(param.type)}`).join(', ')}) → ${typeLabel(activeFunction.value.returnType)}`,
+const analysis = computed(() => inferPicolang(program.value))
+const diagnostics = computed(() => analysis.value.diagnostics)
+const executionJson = computed(() =>
+  analysis.value.program ? JSON.stringify(analysis.value.program, null, 2) : null,
 )
-const typeOptions: [string, string][] = [
-  ['整数', 'integer'],
-  ['真理値', 'bool'],
-  ['値なし', 'unit'],
-  ['マスの種類', 'terrain'],
-  ['向き', 'rotation'],
-  ['探索対象', 'distance_target'],
-  ['整数のスタック', 'stack:integer'],
-  ['真理値のスタック', 'stack:bool'],
-  ['マスのスタック', 'stack:terrain'],
-  ['向きのスタック', 'stack:rotation'],
-  ['探索対象のスタック', 'stack:distance_target'],
-]
+const activeFunction = computed(() => functions.value[activeName.value] ?? functions.value.main)
+const signature = computed(() => {
+  const inferred = analysis.value.signatures[activeName.value]
+  return `${activeName.value}(${activeFunction.value.params.map((param, index) => `${param.ident.name}: ${typeLabel(inferred?.params[index])}`).join(', ')}) → ${typeLabel(inferred?.returns)}`
+})
 let workspace: Blockly.WorkspaceSvg | null = null
 let observer: ResizeObserver | null = null
 let loading = false
@@ -161,7 +151,7 @@ function save(): void {
     if (history.value.length > 101) history.value.shift()
     historyIndex.value = history.value.length - 1
   }
-  emit('update:program', program.value)
+  emit('update:program', analysis.value.program)
   try {
     localStorage.setItem(`picolang:draft:${props.tutorialId}`, snapshot)
   } catch {
@@ -263,7 +253,6 @@ function addFunction(): void {
     kind: 'function',
     hintId: id(),
     params: [],
-    returnType: 'unit',
     body: block([{ kind: 'return', hintId: id(), value: defaultExpr('unit') }]),
   }
   showAddFunction.value = false
@@ -312,7 +301,7 @@ function updateFunctionCalls(name: string): void {
       visitStatement(stmt, (expr) => {
         if (expr.kind !== 'call' || expr.func !== name) return
         expr.args.splice(params.length)
-        while (expr.args.length < params.length) expr.args.push(defaultExpr(params[expr.args.length]!.type))
+        while (expr.args.length < params.length) expr.args.push(defaultExpr())
       }),
     ),
   )
@@ -322,7 +311,7 @@ function addParam(): void {
   const fn = activeFunction.value
   let name = `arg${fn.params.length + 1}`
   while (fn.params.some((param) => param.ident.name === name)) name += '_'
-  fn.params.push({ kind: 'param', hintId: id(), ident: ident(name), type: 'integer' })
+  fn.params.push({ kind: 'param', hintId: id(), ident: ident(name) })
   updateFunctionCalls(activeName.value)
   save()
   loadActive()
@@ -331,29 +320,6 @@ function removeParam(index: number): void {
   readWorkspace()
   activeFunction.value.params.splice(index, 1)
   updateFunctionCalls(activeName.value)
-  save()
-  loadActive()
-}
-function changeParamType(index: number, key: string): void {
-  readWorkspace()
-  activeFunction.value.params[index]!.type = keyType(key)
-  Object.values(functions.value).forEach((definition) =>
-    definition.body.stmts.forEach((stmt) =>
-      visitStatement(stmt, (expr) => {
-        if (expr.kind === 'call' && expr.func === activeName.value && expr.args[index])
-          expr.args[index] = defaultExpr(activeFunction.value.params[index]!.type)
-      }),
-    ),
-  )
-  save()
-  loadActive()
-}
-function changeReturnType(key: string): void {
-  readWorkspace()
-  const fn = activeFunction.value
-  fn.returnType = keyType(key)
-  const last = fn.body.stmts.at(-1)
-  if (last?.kind === 'return') last.value = defaultExpr(fn.returnType)
   save()
   loadActive()
 }
@@ -378,7 +344,11 @@ function renameParam(index: number, value: string): void {
 }
 async function copyJson(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(JSON.stringify(program.value, null, 2))
+    if (!executionJson.value) {
+      message.value = 'エラーを解消するとJSONを出力できます。'
+      return
+    }
+    await navigator.clipboard.writeText(executionJson.value)
     message.value = 'JSONをコピーしました。'
   } catch {
     message.value = 'コピーできませんでした。'
@@ -387,8 +357,8 @@ async function copyJson(): Promise<void> {
 function importJson(): void {
   try {
     const parsed: unknown = JSON.parse(jsonInput.value)
-    if (!isPicoProgram(parsed)) throw new Error('Picolang v0 の正しいJSONを入力してください。')
-    program.value = parsed
+    if (!isPicoDraft(parsed)) throw new Error('Picolang v0 の正しいJSONを入力してください。')
+    program.value = picoDraft(parsed)
     activeName.value = 'main'
     save()
     loadActive()
@@ -409,11 +379,11 @@ watch(diagnostics, (items) => {
 watch(
   () => props.tutorialId,
   (tutorialId) => {
-    let loaded: PicoProgram = newProgram()
+    let loaded: PicoProgram = picoDraft(newProgram())
     try {
       const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
       const parsed: unknown = saved ? JSON.parse(saved) : null
-      if (isPicoProgram(parsed)) loaded = parsed
+      if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
     } catch {
       /* Use an empty program. */
     }
@@ -497,15 +467,6 @@ onBeforeUnmount(() => {
     </div>
     <div class="blockly-signature">
       <strong>{{ signature }}</strong>
-      <label v-if="activeName !== 'main'"
-        >返す値の種類
-        <select
-          :value="typeKey(activeFunction.returnType)"
-          @change="changeReturnType(($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="[label, key] in typeOptions" :key="key" :value="key">{{ label }}</option>
-        </select></label
-      >
       <button v-if="activeName !== 'main'" type="button" @click="removeFunction">
         <Icon :icon="trashIcon" />関数を削除
       </button>
@@ -519,13 +480,7 @@ onBeforeUnmount(() => {
           data-1p-ignore
           @change="renameParam(index, ($event.target as HTMLInputElement).value)"
         />
-        <select
-          :value="typeKey(param.type)"
-          :aria-label="`受け取る値 ${index + 1} の種類`"
-          @change="changeParamType(index, ($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="[label, key] in typeOptions" :key="key" :value="key">{{ label }}</option>
-        </select>
+        <span>{{ typeLabel(analysis.signatures[activeName]?.params[index]) }}</span>
         <button type="button" :aria-label="`受け取る値 ${index + 1} を削除`" @click="removeParam(index)">
           <Icon :icon="trashIcon" />
         </button>
@@ -540,8 +495,8 @@ onBeforeUnmount(() => {
       @toggle="showJson = ($event.target as HTMLDetailsElement).open"
     >
       <summary>Schema形式のJSON</summary>
-      <button type="button" @click="copyJson">JSONをコピー</button>
-      <pre>{{ JSON.stringify(program, null, 2) }}</pre>
+      <button type="button" :disabled="!executionJson" @click="copyJson">JSONをコピー</button>
+      <pre>{{ executionJson ?? 'エラーを解消すると推論した型付きのJSONを表示します。' }}</pre>
       <label for="blockly-json-input">JSONを読み込む</label>
       <textarea
         id="blockly-json-input"

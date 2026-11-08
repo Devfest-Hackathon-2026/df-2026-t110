@@ -7,6 +7,7 @@ import {
   type PicoProgram,
   type PicoStatement,
   type PicoType,
+  type PicoTypedProgram,
 } from './picolang.ts'
 
 export type PicoDiagnosticCode =
@@ -102,7 +103,7 @@ interface Scope {
 }
 interface Binding {
   ident: PicoIdent
-  type: PicoType
+  type: Term
   scope: Scope
   order: number
   used: boolean
@@ -118,27 +119,46 @@ function containsScope(ancestor: Scope, scope: Scope): boolean {
   return false
 }
 
-/** Analyze a complete editor AST without changing it or stopping at the first error. */
-export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
+export interface PicoInferredSignature {
+  params: Array<PicoType | undefined>
+  returns: PicoType | undefined
+}
+export interface PicoAnalysis {
+  diagnostics: PicoDiagnostic[]
+  signatures: Record<string, PicoInferredSignature>
+  program: PicoTypedProgram | null
+}
+function resolvedType(type: Term): PicoType | undefined {
+  type = prune(type)
+  if (typeof type === 'string') return type === invalid ? undefined : (type as PicoType)
+  if (type.kind === 'variable') return undefined
+  const elementType = resolvedType(type.args[0])
+  return elementType ? { kind: 'stack', elementType } : undefined
+}
+
+/** Share monomorphic function signatures across every body and call, including recursive calls. */
+export function inferPicolang(program: PicoProgram): PicoAnalysis {
   const diagnostics: PicoDiagnostic[] = []
   const functions = programFunctions(program)
   const builtins = new Map(PICO_BUILTINS.map((builtin) => [builtin.name as string, builtin]))
-  const signatures = new Map<string, Term>()
+  const signatures = new Map<string, { params: Term[]; result: Term }>()
+  const variables: Array<{ variable: TypeVariable; hintId: string; functionName: string }> = []
+  function fresh(functionName: string, hintId: string): TypeVariable {
+    const variable: TypeVariable = { kind: 'variable' }
+    variables.push({ variable, hintId, functionName })
+    return variable
+  }
   for (const [name, fn] of Object.entries(functions))
-    signatures.set(
-      name,
-      functionType(
-        fn.params.map((param) => term(param.type)),
-        term(fn.returnType),
-      ),
-    )
+    signatures.set(name, {
+      params: fn.params.map((param) => fresh(name, param.ident.hintId)),
+      result: name === 'main' ? 'unit' : fresh(name, fn.hintId),
+    })
 
   for (const functionName of Object.keys(functions).sort()) {
     const fn = functions[functionName]
     const bindings: Binding[] = []
     const unresolved: Reference[] = []
     const active = new Map<string, Binding>()
-    const variables: Array<{ variable: TypeVariable; hintId: string }> = []
     let order = 0
     const report = (
       code: PicoDiagnosticCode,
@@ -162,7 +182,7 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
       invalidate(expected)
       invalidate(actual)
     }
-    function declare(ident: PicoIdent, type: PicoType, scope: Scope): Binding | undefined {
+    function declare(ident: PicoIdent, type: Term, scope: Scope): Binding | undefined {
       const binding: Binding = { ident, type, scope, order: order++, used: false }
       bindings.push(binding)
       const previous = active.get(ident.name)
@@ -199,7 +219,7 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
       const binding = active.get(ident.name)
       if (binding) {
         if (read) binding.used = true
-        return term(binding.type)
+        return binding.type
       }
       report(
         'undefined_variable',
@@ -212,10 +232,12 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
     }
     function signature(name: string, hintId: string): Term | undefined {
       const builtin = builtins.get(name)
-      if (!builtin) return signatures.get(name)
+      if (!builtin) {
+        const signature = signatures.get(name)
+        return signature ? functionType(signature.params, signature.result) : undefined
+      }
       if (['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)) {
-        const variable: TypeVariable = { kind: 'variable' }
-        variables.push({ variable, hintId })
+        const variable = fresh(functionName, hintId)
         const value = stack(variable)
         switch (name) {
           case 'new':
@@ -251,8 +273,9 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
           expr.hintId,
           `関数「${expr.func}」には ${params.length} 個の引数が必要ですが、${args.length} 個渡されています。`,
         )
-        invalidate(callee)
+        if (builtins.has(expr.func)) invalidate(callee)
         args.forEach(invalidate)
+        return invalid
       }
       args.forEach((arg, index) => {
         if (index < params.length) expect(expr.args[index].hintId, params[index], arg)
@@ -275,7 +298,7 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
         case 'declare': {
           const actual = expression(stmt.value, scope)
           expect(stmt.value.hintId, term(stmt.type), actual)
-          const binding = declare(stmt.ident, stmt.type, scope)
+          const binding = declare(stmt.ident, term(stmt.type), scope)
           if (binding) locals.push(binding)
           break
         }
@@ -283,7 +306,7 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
           expect(stmt.value.hintId, reference(stmt.ident, scope, false), expression(stmt.value, scope))
           break
         case 'return':
-          expect(stmt.value.hintId, term(fn.returnType), expression(stmt.value, scope))
+          expect(stmt.value.hintId, signatures.get(functionName)!.result, expression(stmt.value, scope))
           break
         case 'if':
           expect(stmt.condition.hintId, 'bool', expression(stmt.condition, scope))
@@ -314,7 +337,11 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
     if (builtins.has(functionName))
       report('function_conflict', 'error', fn.hintId, `「${functionName}」は組み込み関数の名前です。`)
     const parameterScope: Scope = {}
-    for (const param of fn.params) declare(param.ident, param.type, parameterScope)
+    fn.params.forEach((param, index) =>
+      declare(param.ident, signatures.get(functionName)!.params[index], parameterScope),
+    )
+    if (functionName === 'main' && fn.params.length)
+      report('argument_count', 'error', fn.hintId, 'main 関数は引数を受け取れません。')
     visitBlock(fn.body, parameterScope, 0)
     // Classify unresolved uses after collecting declarations, including future ones.
     for (const ref of unresolved) {
@@ -351,19 +378,50 @@ export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
           binding.ident.hintId,
           `変数「${binding.ident.name}」の値が使われていません。`,
         )
-    const reported = new Set<TypeVariable>()
-    for (const { variable, hintId } of variables) {
-      const root = prune(variable)
-      if (typeof root !== 'string' && root.kind === 'variable' && !reported.has(root)) {
-        reported.add(root)
-        report(
-          'cannot_infer_type',
-          'error',
-          hintId,
-          'スタックの要素の型を決められません。型を指定した変数に入れるか、要素の型が分かる値を渡してください。',
-        )
-      }
+  }
+  // Resolve only after every function and call has contributed constraints.
+  const reported = new Set<TypeVariable>()
+  function reportUnresolved(type: Term, functionName: string, hintId: string): void {
+    const root = prune(type)
+    if (typeof root === 'string') return
+    if (root.kind === 'compound') {
+      root.args.forEach((arg) => reportUnresolved(arg, functionName, hintId))
+      return
+    }
+    if (reported.has(root)) return
+    reported.add(root)
+    diagnostics.push({
+      code: 'cannot_infer_type',
+      severity: 'error',
+      functionName,
+      hintId,
+      message: '型を決められません。関数本体や呼び出し先で値を使い、型が分かる値と組み合わせてください。',
+    })
+  }
+  for (const { variable, functionName, hintId } of variables) reportUnresolved(variable, functionName, hintId)
+  const inferred = Object.fromEntries(
+    [...signatures].map(([name, signature]) => [
+      name,
+      {
+        params: signature.params.map(resolvedType),
+        returns: resolvedType(signature.result),
+      },
+    ]),
+  )
+  let compiled: PicoTypedProgram | null = null
+  if (!diagnostics.some((item) => item.severity === 'error')) {
+    compiled = JSON.parse(JSON.stringify(program)) as PicoTypedProgram
+    for (const [name, fn] of Object.entries(compiled.picolang.v0.program)) {
+      fn.returnType = inferred[name].returns!
+      fn.params.forEach((param, index) => {
+        param.type = inferred[name].params[index]!
+      })
     }
   }
-  return diagnostics
+  return { diagnostics, signatures: inferred, program: compiled }
+}
+
+/** Analyze without mutating the authoring AST. */
+export function analyzePicolang(program: PicoProgram): PicoDiagnostic[] {
+  return inferPicolang(program).diagnostics
 }
