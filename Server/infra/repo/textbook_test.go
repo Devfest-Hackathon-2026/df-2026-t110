@@ -33,14 +33,17 @@ stage:
     type: reach_goal
 `
 
-func TestTextbooksReadCurrentFiles(t *testing.T) {
+func TestTextbooksLoadAndIndex(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "01.yaml")
 	if err := os.WriteFile(path, []byte(textbookPage), 0600); err != nil {
 		t.Fatal(err)
 	}
-	repo := NewTextbooks(os.DirFS(dir))
+	repo, err := NewTextbooks(context.Background(), os.DirFS(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
 	list, err := repo.List(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -58,12 +61,29 @@ func TestTextbooksReadCurrentFiles(t *testing.T) {
 	if err := os.WriteFile(path, []byte(strings.Replace(textbookPage, "First step", "Updated title", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	updated, err := repo.Get(context.Background(), "first-step")
+	unchanged, err := repo.Get(context.Background(), "first-step")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.Title != "First step" {
+		t.Errorf("loaded page changed after startup: %q", unchanged.Title)
+	}
+	reloaded, err := NewTextbooks(context.Background(), os.DirFS(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := reloaded.Get(context.Background(), "first-step")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if updated.Title != "Updated title" {
-		t.Errorf("Get after YAML change: title = %q, want Updated title", updated.Title)
+		t.Errorf("Get after restart: title = %q, want Updated title", updated.Title)
+	}
+	if err := os.WriteFile(path, []byte("stage: [invalid"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewTextbooks(context.Background(), os.DirFS(dir)); err == nil {
+		t.Error("NewTextbooks() succeeded with invalid YAML")
 	}
 	if _, err := repo.Get(context.Background(), "missing"); !errors.Is(err, usecase.ErrNotFound) {
 		t.Errorf("Get(missing) error = %v, want ErrNotFound", err)

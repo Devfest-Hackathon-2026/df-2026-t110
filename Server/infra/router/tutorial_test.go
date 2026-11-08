@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +37,11 @@ stage:
 `)},
 	}
 	e := echo.New()
-	api.RegisterHandlersWithBaseURL(e, NewRouter(Config{Tutorials: repo.NewTextbooks(pages)}), "/api")
+	textbooks, err := repo.NewTextbooks(context.Background(), pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	api.RegisterHandlersWithBaseURL(e, NewRouter(Config{Tutorials: textbooks}), "/api")
 	for _, tt := range []struct {
 		path       string
 		wantStatus int

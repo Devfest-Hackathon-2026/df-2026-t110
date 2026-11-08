@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -19,12 +20,12 @@ func main() {
 		e.Use(static.Middleware(dir, "/api"))
 	}
 
-	textbookDir := os.Getenv("TEXTBOOK_DIR")
-	if textbookDir == "" {
-		textbookDir = "../Textbooks/pages"
+	textbooks, err := repo.NewTextbooks(context.Background(), textbookPages())
+	if err != nil {
+		log.Fatal(err)
 	}
 	r := router.NewRouter(router.Config{
-		Tutorials: repo.NewTextbooks(os.DirFS(textbookDir)),
+		Tutorials: textbooks,
 	})
 	api.RegisterHandlersWithBaseURL(e, r, "/api")
 

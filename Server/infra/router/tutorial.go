@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
@@ -22,7 +23,7 @@ func (r *Router) ListTutorials(ctx *echo.Context) error {
 	}
 	tutorials, err := r.cfg.Tutorials.List(ctx.Request().Context())
 	if err != nil {
-		return err
+		return fmt.Errorf("list tutorials: %w", err)
 	}
 	list := make([]tutorialSummary, 0, len(tutorials))
 	for _, tutorial := range tutorials {
@@ -30,7 +31,7 @@ func (r *Router) ListTutorials(ctx *echo.Context) error {
 	}
 	data, err := json.Marshal(list)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal tutorial list: %w", err)
 	}
 	return ctx.Blob(http.StatusOK, "application/json", data)
 }
@@ -44,7 +45,7 @@ func (r *Router) GetTutorial(ctx *echo.Context, tutorialID string) error {
 		return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound))
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("get tutorial %q: %w", tutorialID, err)
 	}
 	data, err := json.Marshal(struct {
 		ID             string         `json:"id"`
@@ -61,7 +62,7 @@ func (r *Router) GetTutorial(ctx *echo.Context, tutorialID string) error {
 		InitialProgram: tutorial.InitialProgram, Stage: tutorial.Stage,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal tutorial %q: %w", tutorialID, err)
 	}
 	return ctx.Blob(http.StatusOK, "application/json", data)
 }

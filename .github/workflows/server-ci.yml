@@ -53,6 +53,13 @@ jobs:
         env:
           # Enables the PostgreSQL integration tests, which skip without it.
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+      - name: Validate textbook pages
+        run: go run ./cmd/validate_textbooks ../Textbooks/pages
+      - name: Build embedded textbooks
+        run: |
+          mkdir -p cmd/textbooks
+          cp -a ../Textbooks/pages/. cmd/textbooks/
+          go build -tags textbook_embed -o /tmp/server-embed ./cmd
       - name: golangci-lint
         run: |
           golangci-lint config verify

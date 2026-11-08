@@ -15,10 +15,10 @@ var _ api.ServerInterface = (*Router)(nil)
 type Config struct {
 	Sessions  SessionUserLookup
 	Users     UsernameSetter
-	Tutorials TutorialReader
+	Tutorials TutorialService
 }
 
-type TutorialReader interface {
+type TutorialService interface {
 	List(ctx context.Context) ([]domain.Tutorial, error)
 	Get(ctx context.Context, id string) (domain.Tutorial, error)
 }

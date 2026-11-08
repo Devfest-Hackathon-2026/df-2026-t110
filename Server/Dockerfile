@@ -10,10 +10,12 @@ RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,source=Server/go.sum,target=go.sum \
     go mod download
 
+COPY Server/ /src/Server/
+COPY Textbooks/pages/ /src/Server/cmd/textbooks/
+
 ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,source=Server,target=. \
-    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/server ./cmd
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -tags textbook_embed -o /bin/server ./cmd
 
 FROM alpine:latest AS final
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -25,6 +27,4 @@ RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
 USER appuser
 
 COPY --from=build /bin/server /bin/
-COPY Textbooks/pages/ /textbooks/
-ENV TEXTBOOK_DIR=/textbooks
 ENTRYPOINT ["/bin/server"]
