@@ -13,6 +13,8 @@ var (
 	ErrNotFound = errors.New("not found")
 	// ErrUnauthenticated reports that the request has no valid session.
 	ErrUnauthenticated = errors.New("unauthenticated")
+	// ErrForbidden reports access to another user's resource.
+	ErrForbidden = errors.New("forbidden")
 	// ErrInvalidLogin reports a rejected, expired, replayed, or unverifiable login attempt.
 	ErrInvalidLogin = errors.New("invalid login")
 	// ErrLoginUnavailable reports that no identity provider is configured.

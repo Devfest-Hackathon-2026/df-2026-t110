@@ -22,6 +22,15 @@ CREATE TABLE programs (
 
 CREATE INDEX programs_google_subject_idx ON programs (google_subject);
 
+CREATE TABLE runs (
+    id uuid PRIMARY KEY,
+    google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
+    tutorial_id text NOT NULL,
+    field_id text NOT NULL,
+    program_id text NOT NULL REFERENCES programs (id),
+    result jsonb
+);
+
 -- Usage is appended per reservation rather than kept as a per-window counter,
 -- so the window length can change without migrating stored counters.
 CREATE TABLE generation_usages (

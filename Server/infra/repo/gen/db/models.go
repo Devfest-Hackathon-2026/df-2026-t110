@@ -24,6 +24,15 @@ type Program struct {
 	TutorialID    pgtype.Text
 }
 
+type Run struct {
+	ID            pgtype.UUID
+	GoogleSubject string
+	TutorialID    string
+	FieldID       string
+	ProgramID     string
+	Result        []byte
+}
+
 type Session struct {
 	ID            string
 	GoogleSubject string
