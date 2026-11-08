@@ -15,6 +15,14 @@ type GenerationUsage struct {
 	ReservedAt    pgtype.Timestamptz
 }
 
+type LoginAttempt struct {
+	ID           string
+	State        string
+	Nonce        string
+	CodeVerifier string
+	ExpiresAt    pgtype.Timestamptz
+}
+
 type Program struct {
 	ID            string
 	GoogleSubject string

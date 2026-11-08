@@ -36,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 	cfg := router.Config{Tutorials: textbooks}
-	var sessions *usecase.Session
+	var sessions router.SessionUserLookup
 	clientID, clientSecret, redirectURL := os.Getenv("GOOGLE_CLIENT_ID"), os.Getenv("GOOGLE_CLIENT_SECRET"), os.Getenv("GOOGLE_REDIRECT_URL")
 	if (clientID != "" || clientSecret != "" || redirectURL != "") && os.Getenv("DATABASE_URL") == "" {
 		log.Fatal("Google login requires DATABASE_URL")
@@ -48,8 +48,9 @@ func main() {
 		}
 		defer pool.Close()
 		users := usecase.NewUser(repo.NewUsers(pool))
-		sessions = usecase.NewSession(usecase.SessionDeps{Sessions: repo.NewSessions(pool), Users: users})
-		cfg.Sessions = sessions
+		sessionService := usecase.NewSession(usecase.SessionDeps{Sessions: repo.NewSessions(pool), Users: users})
+		sessions = sessionService
+		cfg.Sessions = sessionService
 		cfg.Users = users
 		cfg.Programs = usecase.NewPrograms(repo.NewPrograms(pool), router.ProgramSourceValidator{})
 		if clientID != "" || clientSecret != "" || redirectURL != "" {
@@ -60,7 +61,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			cfg.Auth = usecase.NewAuth(usecase.AuthDeps{Provider: googleauth.Provider{Client: provider}, LoginAttempts: repo.NewLoginAttempts(pool), Users: users, Sessions: sessions})
+			cfg.Auth = usecase.NewAuth(usecase.AuthDeps{Provider: googleauth.Provider{Client: provider}, LoginAttempts: repo.NewLoginAttempts(pool), Users: users, Sessions: sessionService})
 			parsedRedirect, err := url.Parse(redirectURL)
 			if err != nil {
 				log.Fatal(err)

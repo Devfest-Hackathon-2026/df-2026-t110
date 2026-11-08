@@ -21,7 +21,7 @@ func (r *Router) Login(ctx *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	ctx.SetCookie(&http.Cookie{Name: "login_attempt", Value: attempt.ID, Path: "/api/login", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: attempt.ExpiresAt})
+	ctx.SetCookie(&http.Cookie{Name: "login_attempt", Value: attempt.ID, Path: "/api/login", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: attempt.ExpiresAt}) //nolint:gosec // OAuth on localhost HTTP requires a non-Secure cookie; HTTPS deployments set SecureCookies.
 	return ctx.Redirect(http.StatusFound, attempt.Request.URL)
 }
 
@@ -33,7 +33,7 @@ func (r *Router) LoginCallback(ctx *echo.Context, params api.LoginCallbackParams
 	if err != nil || cookie.Value == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 	}
-	ctx.SetCookie(&http.Cookie{Name: "login_attempt", Path: "/api/login", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	ctx.SetCookie(&http.Cookie{Name: "login_attempt", Path: "/api/login", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Cookie security follows the configured OAuth redirect scheme, including localhost HTTP.
 	callback := usecase.LoginCallback{AttemptID: cookie.Value, State: params.State}
 	if params.Code != nil {
 		callback.Code = *params.Code
@@ -51,7 +51,7 @@ func (r *Router) LoginCallback(ctx *echo.Context, params api.LoginCallbackParams
 	if err != nil {
 		return err
 	}
-	ctx.SetCookie(&http.Cookie{Name: "session", Value: session.ID, Path: "/", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: session.ExpiresAt})
+	ctx.SetCookie(&http.Cookie{Name: "session", Value: session.ID, Path: "/", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: session.ExpiresAt}) //nolint:gosec // OAuth on localhost HTTP requires a non-Secure cookie; HTTPS deployments set SecureCookies.
 	return ctx.Redirect(http.StatusFound, "/account")
 }
 
@@ -66,6 +66,6 @@ func (r *Router) Logout(ctx *echo.Context) error {
 	if err := r.cfg.Sessions.Logout(ctx.Request().Context(), cookie.Value); err != nil {
 		return err
 	}
-	ctx.SetCookie(&http.Cookie{Name: "session", Path: "/", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(0, 0)})
+	ctx.SetCookie(&http.Cookie{Name: "session", Path: "/", HttpOnly: true, Secure: r.cfg.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(0, 0)}) //nolint:gosec // Cookie security follows the configured OAuth redirect scheme, including localhost HTTP.
 	return ctx.NoContent(http.StatusNoContent)
 }

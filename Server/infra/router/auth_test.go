@@ -64,7 +64,7 @@ func TestAuthRoutes(t *testing.T) {
 	if got := call(http.MethodGet, "/api/login/callback?state=state&code=code"); got.Code != http.StatusBadRequest {
 		t.Errorf("callback without attempt = %d", got.Code)
 	}
-	callback := call(http.MethodGet, "/api/login/callback?state=state&code=code", &http.Cookie{Name: "login_attempt", Value: "attempt-1"})
+	callback := call(http.MethodGet, "/api/login/callback?state=state&code=code", &http.Cookie{Name: "login_attempt", Value: "attempt-1", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	if callback.Code != http.StatusFound || callback.Header().Get("Location") != "/account" {
 		t.Fatalf("callback = %d %s", callback.Code, callback.Header().Get("Location"))
 	}
