@@ -9,6 +9,7 @@ import type { StageAnimationTarget } from './stageVisuals.ts'
 import { createArmPivots } from './armController.ts'
 import { createRobotAnimator } from './robotAnimator.ts'
 import { createRockBreakEffect } from './rockBreakEffect.ts'
+import { MarkerPoseStabilizer } from './markerPoseStabilizer.ts'
 import {
   mountRoomMarkerTracker,
   type RoomMarkerId,
@@ -53,6 +54,8 @@ const trackingPoseAvailable = ref(false)
 const calibrated = ref(false)
 let anchorMarker: RoomMarkerId | null = null
 let alternateToAnchor: THREE.Matrix4 | null = null
+const markerPose = new MarkerPoseStabilizer()
+let lastMarkerPoseTime: number | null = null
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
@@ -88,8 +91,18 @@ function setView() {
   }
 }
 
+function retainCameraBoardPose(previous: THREE.Group | undefined): boolean {
+  if (!previous || props.mode !== 'camera' || !markerTracker || !placementConfirmed.value) return false
+  board.position.copy(previous.position)
+  board.quaternion.copy(previous.quaternion)
+  board.scale.copy(previous.scale)
+  board.visible = previous.visible
+  return true
+}
+
 function replaceStage() {
   if (!scene) return
+  const previousBoard = board
   distance = props.previewDistance
   pendingEvent = null
   clearRockBreak()
@@ -110,11 +123,12 @@ function replaceStage() {
     positionRobot(start)
   }
   board.position.z = 0
-  setView()
+  if (!retainCameraBoardPose(previousBoard)) setView()
 }
 
 function refreshVisuals(): void {
   if (!scene || !board) return
+  const previousBoard = board
   const currentYaw = robotRig?.rotation.y
   clearRockBreak()
   robotAnimator?.stop()
@@ -130,7 +144,7 @@ function refreshVisuals(): void {
     positionRobot(robotCell.value)
     if (currentYaw !== undefined) robotRig.rotation.y = currentYaw
   }
-  setView()
+  if (!retainCameraBoardPose(previousBoard)) setView()
 }
 
 function positionRobot(cell: StageCell | { x: number; y: number } | null | undefined): void {
@@ -292,13 +306,16 @@ function confirmPlacement(): void {
   anchorMarker = markerState.value.a ? 'a' : 'b'
   alternateToAnchor = null
   calibrated.value = false
+  markerPose.reset()
+  lastMarkerPoseTime = null
   placementConfirmed.value = true
 }
 
-function updateMarkerPlacement(): void {
+function updateMarkerPlacement(time: number): void {
   if (!board || !anchorMarker || !placementConfirmed.value) {
     if (board) board.visible = false
     trackingPoseAvailable.value = false
+    lastMarkerPoseTime = null
     return
   }
   const alternateId = anchorMarker === 'a' ? 'b' : 'a'
@@ -310,12 +327,23 @@ function updateMarkerPlacement(): void {
   }
   const pose =
     anchorPose ?? (alternatePose && alternateToAnchor ? alternatePose.multiply(alternateToAnchor) : null)
-  trackingPoseAvailable.value = Boolean(pose)
-  board.visible = Boolean(pose)
-  if (!pose) return
+  if (!pose) {
+    if (lastMarkerPoseTime !== null && time - lastMarkerPoseTime < 300) return
+    trackingPoseAvailable.value = false
+    board.visible = false
+    markerPose.reset()
+    lastMarkerPoseTime = null
+    return
+  }
+  lastMarkerPoseTime = time
+  trackingPoseAvailable.value = true
+  board.visible = true
   board.matrix.copy(pose)
   board.matrix.decompose(board.position, board.quaternion, board.scale)
-  board.scale.multiplyScalar(0.11)
+  markerPose.update(pose, time)
+  board.position.copy(markerPose.position)
+  board.quaternion.copy(markerPose.quaternion)
+  board.scale.multiplyScalar(1)
 }
 
 function animate(time: number): void {
@@ -336,7 +364,7 @@ function animate(time: number): void {
       }
       camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert()
     }
-    updateMarkerPlacement()
+    updateMarkerPlacement(time)
   }
   advanceWater(time)
   robotAnimator?.update(time)
@@ -419,6 +447,8 @@ function stopMarkerTracking(): void {
   calibrated.value = false
   anchorMarker = null
   alternateToAnchor = null
+  markerPose.reset()
+  lastMarkerPoseTime = null
   if (board) board.visible = true
   if (camera) camera.updateProjectionMatrix()
 }
