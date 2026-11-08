@@ -598,7 +598,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
-body.room-marker-tracking {
+/* AR.js keeps a resize listener after the scene is removed and can resize body again. */
+body {
   width: auto !important;
   height: auto !important;
   margin: 0 !important;
