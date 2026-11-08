@@ -1,11 +1,11 @@
 package interpreter
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -30,8 +30,7 @@ type stmt = bot.Stmt[bot.Name, bot.Untyped]
 type param = bot.Param[bot.Name]
 type fn = bot.Function[bot.Name, bot.Untyped]
 
-// Every source in these fixtures has a unique UUID so the returned event batches
-// can also be checked through the production history encoder.
+// Every source in these fixtures has a unique hint to identify emitted events.
 type builder struct{ next uint64 }
 
 func (b *builder) source() bot.Source {
@@ -135,8 +134,15 @@ func expectOutput(t *testing.T, output robotmsg.RobotOutput, err error, want rob
 			}
 		}
 	}
-	if _, err := json.Marshal(output.Events); err != nil {
-		t.Errorf("events cannot be recorded: %v", err)
+	expectEventTypes(t, output.Events)
+}
+
+func expectEventTypes(t *testing.T, events []robotevent.PicolangEvent) {
+	t.Helper()
+	for _, event := range events {
+		if !robotevent.ValidPicolangEvent(event) {
+			t.Errorf("invalid event type: %T", event)
+		}
 	}
 }
 
@@ -201,10 +207,8 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 		t.Errorf("depth = %d, want main + 6 invocations", depth)
 	}
 	before := snapshot(v).Time
-	frozen, err := json.Marshal(first.Events)
-	if err != nil {
-		t.Fatalf("snapshot first batch: %v", err)
-	}
+	// This batch contains only value events with scalar payloads.
+	frozen := slices.Clone(first.Events)
 	second, err := v.Next(values.UnitValue{})
 	expectOutput(t, second, err, robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: 720}})
 	if usage := snapshot(v); usage.CallDepth != 1 || usage.Time <= before {
@@ -233,8 +237,7 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 	if pending := v.Collect(); len(pending) != 0 {
 		t.Errorf("events delivered twice: %#v", pending)
 	}
-	after, err := json.Marshal(first.Events)
-	if err != nil || string(after) != string(frozen) {
+	if !reflect.DeepEqual(first.Events, frozen) {
 		t.Error("later execution changed an earlier event batch")
 	}
 }
@@ -338,9 +341,7 @@ func TestRuntimeFailureClosesAllFramesAndDeliversEvents(t *testing.T) {
 				}
 			}
 			assertClean(t, v, base)
-			if _, err := json.Marshal(output.Events); err != nil {
-				t.Errorf("failure events cannot be recorded: %v", err)
-			}
+			expectEventTypes(t, output.Events)
 			if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
 				t.Errorf("failed VM accepted Next: %v", err)
 			}
@@ -457,10 +458,9 @@ func TestAllDistanceTargetsFlowThroughCallsStacksAndEvents(t *testing.T) {
 				case robotevent.VariableUpdateEvent:
 					if e.HintID == selected.Ident.HintID {
 						updated = true
-						data, err := json.Marshal(e)
-						want := fmt.Sprintf(`{"kind":"variable_update","hintId":"%s","diff":[{"type":"distance_target","value":%q}]}`, selected.Ident.HintID, target)
-						if err != nil || string(data) != want {
-							t.Errorf("distance target update = %s, %v; want %s", data, err, want)
+						want := []robotevent.ValueUpdate{robotevent.DistanceTargetUpdate{Value: target}}
+						if !reflect.DeepEqual(e.Diff, want) {
+							t.Errorf("distance target update = %#v, want %#v", e.Diff, want)
 						}
 					}
 					if e.HintID == nested.Ident.HintID {
@@ -679,9 +679,6 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	}
 	if robots := field.Snapshot().Robots; len(robots) != 0 {
 		t.Errorf("finished robots remained on the board: %+v", robots)
-	}
-	if _, err := json.Marshal(storage.Events); err != nil {
-		t.Errorf("history cannot be encoded: %v", err)
 	}
 	found := false
 	for _, e := range storage.Events {

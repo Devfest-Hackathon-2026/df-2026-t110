@@ -3,13 +3,13 @@ package tutorial_test
 import (
 	json "encoding/json/v2"
 	"fmt"
-	"io"
-	"strings"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
+	actions "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/action"
 	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
-	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
+	robotmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/tutorial"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 )
@@ -25,35 +25,35 @@ func TestTutorialClearConditions(t *testing.T) {
 		name      string
 		condition string
 		objects   string
-		input     string
+		actions   []actions.Action
 		want      boardmsg.TutorialResult
 	}{
 		{
 			name:      "reach goal",
 			condition: schema.ReachGoalType,
 			objects:   goal,
-			input:     "p1 forward\np1 forward\n",
+			actions:   []actions.Action{actions.ForwardAction{}, actions.ForwardAction{}},
 			want:      boardmsg.NewTutorialResult(2, boardmsg.EndConditionMet),
 		},
 		{
 			name:      "stop before goal",
 			condition: schema.ReachGoalType,
 			objects:   goal,
-			input:     "p1 forward\np1 done\n",
+			actions:   []actions.Action{actions.ForwardAction{}},
 			want:      boardmsg.NewTutorialResult(1, boardmsg.EndAllStopped),
 		},
 		{
 			name:      "revisit a checkpoint in order",
 			condition: schema.VisitCheckpointsType,
 			objects:   checkpoints,
-			input:     "p1 forward\np1 forward\np1 back\n",
+			actions:   []actions.Action{actions.ForwardAction{}, actions.ForwardAction{}, actions.BackAction{}},
 			want:      boardmsg.NewTutorialResult(3, boardmsg.EndConditionMet),
 		},
 		{
 			name:      "visit checkpoints in the wrong order",
 			condition: schema.VisitCheckpointsType,
 			objects:   checkpoints,
-			input:     "p1 forward\np1 forward\np1 done\n",
+			actions:   []actions.Action{actions.ForwardAction{}, actions.ForwardAction{}},
 			want:      boardmsg.NewTutorialResult(2, boardmsg.EndAllStopped),
 		},
 	}
@@ -82,15 +82,7 @@ func TestTutorialClearConditions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, err := robot.NewSession(io.NopCloser(strings.NewReader(tt.input)), io.Discard)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = session.Close() })
-			r, err := robot.NewStdio(id, session)
-			if err != nil {
-				t.Fatal(err)
-			}
+			r := &tutorialRobot{actions: tt.actions}
 			h, err := hub.New(b, []hub.Participant{{ID: id, Robot: r}})
 			if err != nil {
 				t.Fatal(err)
@@ -110,4 +102,19 @@ func TestTutorialClearConditions(t *testing.T) {
 			}
 		})
 	}
+}
+
+type tutorialRobot struct{ actions []actions.Action }
+
+func (r *tutorialRobot) Start() (robotmsg.RobotOutput, error) {
+	if len(r.actions) == 0 {
+		return robotmsg.RobotOutput{Step: robotmsg.DoneStep{}}, nil
+	}
+	action := r.actions[0]
+	r.actions = r.actions[1:]
+	return robotmsg.RobotOutput{Step: robotmsg.ActionStep{Action: action}}, nil
+}
+
+func (r *tutorialRobot) Next(values.Value) (robotmsg.RobotOutput, error) {
+	return r.Start()
 }

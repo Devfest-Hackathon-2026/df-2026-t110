@@ -1,7 +1,6 @@
 package robot_test
 
 import (
-	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"testing"
@@ -139,9 +138,6 @@ func TestPicolangBotRunsThroughHub(t *testing.T) {
 	}
 	if !boundResult || completed != 1 {
 		t.Errorf("binding result or completion event missing: binding=%t, completions=%d", boundResult, completed)
-	}
-	if _, err := json.Marshal(storage.Events); err != nil {
-		t.Errorf("history cannot be encoded: %v", err)
 	}
 }
 

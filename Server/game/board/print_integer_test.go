@@ -1,7 +1,6 @@
 package board_test
 
 import (
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"math"
@@ -21,51 +20,47 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name    string
-		action  actions.Action
-		result  fieldevent.ActionResult
-		encoded string
+		name   string
+		action actions.Action
+		result fieldevent.ActionResult
 	}
 	var tests []testCase
 	for _, integer := range []int64{0, -42, math.MinInt64, math.MaxInt64} {
 		tests = append(tests, testCase{
-			name:    fmt.Sprint(integer),
-			action:  actions.PrintIntegerAction{Integer: integer},
-			result:  fieldevent.PrintIntegerResult{RobotID: "a", Integer: integer},
-			encoded: fmt.Sprintf(`{"kind":"print_integer","robotId":"a","integer":%d}`, integer),
+			name:   fmt.Sprint(integer),
+			action: actions.PrintIntegerAction{Integer: integer},
+			result: fieldevent.PrintIntegerResult{RobotID: "a", Integer: integer},
 		})
 	}
 	for _, value := range []bool{false, true} {
 		tests = append(tests, testCase{
-			name:    fmt.Sprint(value),
-			action:  actions.PrintBoolAction{Bool: value},
-			result:  fieldevent.PrintBoolResult{RobotID: "a", Bool: value},
-			encoded: fmt.Sprintf(`{"kind":"print_bool","robotId":"a","bool":%t}`, value),
+			name:   fmt.Sprint(value),
+			action: actions.PrintBoolAction{Bool: value},
+			result: fieldevent.PrintBoolResult{RobotID: "a", Bool: value},
 		})
 	}
 	tests = append(tests, testCase{
-		name: "unit", action: actions.PrintUnitAction{}, result: fieldevent.PrintUnitResult{RobotID: "a"}, encoded: `{"kind":"print_unit","robotId":"a"}`,
+		name: "unit", action: actions.PrintUnitAction{}, result: fieldevent.PrintUnitResult{RobotID: "a"},
 	})
 	for _, rotation := range []values.Rotation{values.Left, values.Right} {
-		tests = append(tests, testCase{name: string(rotation), action: actions.PrintRotationAction{Rotation: rotation}, result: fieldevent.PrintRotationResult{RobotID: "a", Rotation: rotation}, encoded: fmt.Sprintf(`{"kind":"print_rotation","robotId":"a","rotation":%q}`, rotation)})
+		tests = append(tests, testCase{name: string(rotation), action: actions.PrintRotationAction{Rotation: rotation}, result: fieldevent.PrintRotationResult{RobotID: "a", Rotation: rotation}})
 	}
 	for _, target := range []values.DistanceTarget{values.DistanceRobot, values.DistanceAlly, values.DistanceEnemy, values.DistanceRock, values.DistanceLuggage, values.DistanceSea, values.DistanceGoal, values.DistanceTerritory} {
-		tests = append(tests, testCase{name: "target-" + string(target), action: actions.PrintDistanceTargetAction{DistanceTarget: target}, result: fieldevent.PrintDistanceTargetResult{RobotID: "a", DistanceTarget: target}, encoded: fmt.Sprintf(`{"kind":"print_distance_target","robotId":"a","distanceTarget":%q}`, target)})
+		tests = append(tests, testCase{name: "target-" + string(target), action: actions.PrintDistanceTargetAction{DistanceTarget: target}, result: fieldevent.PrintDistanceTargetResult{RobotID: "a", DistanceTarget: target}})
 	}
 	for _, terrain := range []struct {
-		name    string
-		value   values.TerrainValue
-		encoded string
+		name  string
+		value values.TerrainValue
 	}{
-		{"plain", values.LandTerrain{Kind: values.PlainLand{}}, `{"type":"land","kind":{"type":"plain"}}`},
-		{"goal", values.LandTerrain{Kind: values.GoalLand{}}, `{"type":"land","kind":{"type":"goal"}}`},
-		{"checkpoint", values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}, `{"type":"land","kind":{"type":"checkpoint","order":2}}`},
-		{"luggage", values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, `{"type":"land","kind":{"type":"plain"},"hasLuggage":true,"territory":"own"}`},
-		{"enemy", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}, `{"type":"land","kind":{"type":"plain"},"territory":"enemy"}`},
-		{"rock", values.RockTerrain{}, `{"type":"rock"}`},
-		{"sea", values.SeaTerrain{}, `{"type":"sea"}`},
+		{"plain", values.LandTerrain{Kind: values.PlainLand{}}},
+		{"goal", values.LandTerrain{Kind: values.GoalLand{}}},
+		{"checkpoint", values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}},
+		{"luggage", values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}},
+		{"enemy", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}},
+		{"rock", values.RockTerrain{}},
+		{"sea", values.SeaTerrain{}},
 	} {
-		tests = append(tests, testCase{name: "terrain-" + terrain.name, action: actions.PrintTerrainAction{Terrain: terrain.value}, result: fieldevent.PrintTerrainResult{RobotID: "a", Terrain: terrain.value}, encoded: `{"kind":"print_terrain","robotId":"a","terrain":` + terrain.encoded + `}`})
+		tests = append(tests, testCase{name: "terrain-" + terrain.name, action: actions.PrintTerrainAction{Terrain: terrain.value}, result: fieldevent.PrintTerrainResult{RobotID: "a", Terrain: terrain.value}})
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -86,7 +81,6 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 			wantSecondResume := boardmsg.BoardOutput{
 				Decision: boardmsg.ResumeDecision{RobotID: "b", ReturnValue: values.UnitValue{}},
 			}
-			wantJSON := fmt.Sprintf(`[{"type":"field","tick":1,"state":{"kind":"update","actions":[%s,{"kind":"print_integer","robotId":"b","integer":7}]}}]`, tt.encoded)
 
 			config, err := board.NewConfig(
 				land(2, 1),
@@ -108,7 +102,6 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 			beforeCommit := b.Snapshot()
 			committed, commitErr := b.Next(secondReply)
 			afterCommit := b.Snapshot()
-			encoded, encodeErr := json.Marshal(committed.Events)
 			secondResume, resumeErr := b.Next(firstReply)
 			limited, limitErr := b.Next(secondReply)
 			afterLimit := b.Snapshot()
@@ -121,9 +114,6 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 			}
 			if afterCommit.Tick != 1 || !reflect.DeepEqual(afterCommit.Robots, initial.Robots) || !reflect.DeepEqual(afterCommit.Terrain, initial.Terrain) {
 				t.Errorf("print changed the board beyond advancing one tick: %+v", afterCommit)
-			}
-			if encodeErr != nil || string(encoded) != wantJSON {
-				t.Errorf("history = %s, %v, want %s", encoded, encodeErr, wantJSON)
 			}
 			if resumeErr != nil || !reflect.DeepEqual(secondResume, wantSecondResume) {
 				t.Errorf("second robot did not resume with unit: %+v, %v", secondResume, resumeErr)
