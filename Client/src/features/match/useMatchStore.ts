@@ -50,9 +50,9 @@ export const useMatchStore = defineStore('match', () => {
     error.value = ''
   }
 
-  function loadMe(): Promise<void> {
+  function loadMe(force = false): Promise<void> {
     if (authRequest) return authRequest
-    if (authStatus.value !== 'checking') return Promise.resolve()
+    if (!force && authStatus.value !== 'checking') return Promise.resolve()
     authRequest = (async () => {
       try {
         user.value = await getMe()
