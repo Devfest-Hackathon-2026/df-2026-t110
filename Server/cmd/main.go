@@ -48,6 +48,7 @@ func main() {
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
 		cfg.TutorialRuns = runs
+		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
 	}
 	r := router.NewRouter(cfg)
 	authenticate := router.Authentication(sessions)
@@ -56,6 +57,7 @@ func main() {
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
 			"createProgram": {authenticate, middleware.BodyLimit(1 << 20)},
 			"runTutorial":   {authenticate, middleware.BodyLimit(1 << 20)},
+			"runEvents":     {authenticate},
 			"setMyUsername": {authenticate},
 		},
 	})

@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"net/http"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
@@ -17,11 +18,16 @@ type Config struct {
 	Programs     ProgramCreator
 	Tutorials    TutorialService
 	TutorialRuns TutorialRunner
+	RunResults   RunResultGetter
 }
 
 type TutorialService interface {
 	List(ctx context.Context) ([]domain.Tutorial, error)
 	Get(ctx context.Context, id string) (domain.Tutorial, error)
+}
+
+type RunResultGetter interface {
+	Result(ctx context.Context, subject, runID string) (jsontext.Value, error)
 }
 
 type TutorialRunner interface {

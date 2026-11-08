@@ -143,6 +143,7 @@ export interface paths {
          *     副作用を持たないため、切断後に再接続して結果を取り直せる。
          *     チュートリアルでは run の作成者、対戦では match の参加者だけが購読できる。
          *     チュートリアルの結果にはデバッグ情報を含み、対戦の結果には含まない。
+         *     チュートリアルの result は TutorialResult、対戦の result は MatchResult 形式。
          */
         get: operations["runEvents"];
         put?: never;
@@ -1650,7 +1651,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description SSEストリーム。result イベントの data は MatchResult 形式の JSON。 */
+            /** @description SSEストリーム。result イベントの data は TutorialResult または MatchResult 形式の JSON。 */
             200: {
                 headers: {
                     [name: string]: unknown;
