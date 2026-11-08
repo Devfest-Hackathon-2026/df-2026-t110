@@ -146,6 +146,7 @@ function addSchemaObject(
 ): void {
   const model = placeAsset(group, assets, object.type === 'dock' ? 'dock' : object.type)
   if (object.type === 'luggage') {
+    model.name = 'stage-luggage'
     animated.push({ object: model, kind: 'hover', baseY: model.position.y })
   } else if (object.type === 'checkpoint') {
     const core = model.getObjectByName('RF_checkpoint-core')
@@ -168,6 +169,7 @@ function addMarker(group: THREE.Group, symbol: string, animated: THREE.Mesh[]): 
     label(group, 'G', '#fff3bb', [0, 0.85, 0])
   } else if (symbol === 'O') {
     const parcel = mesh(group, new THREE.OctahedronGeometry(0.27), parcelMaterial, [0, 0.39, 0])
+    parcel.name = 'stage-luggage'
     parcel.rotation.y = 0.4
     animated.push(parcel)
   } else if (symbol === 'X') {
@@ -195,6 +197,8 @@ export function createStageVisuals(
   const fallbackAnimated: THREE.Mesh[] = []
   for (const cell of stage.cells) {
     const tile = new THREE.Group()
+    tile.userData.cellX = cell.x
+    tile.userData.cellY = cell.y
     tile.position.set(cell.x - (stage.width - 1) / 2, 0, cell.y - (stage.height - 1) / 2)
     if (cell.terrain === 'sea') {
       if (assets) placeAsset(tile, assets, 'sea-frame')

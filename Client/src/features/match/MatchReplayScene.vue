@@ -3,6 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createArmPivots } from '../stage/armController.ts'
+import {
+  CARRIED_LUGGAGE_HEIGHT,
+  createCarriedLuggage,
+  disposeCarriedLuggage,
+} from '../stage/carriedLuggage.ts'
 import { createRobotAnimator, type AnimationEvent } from '../stage/robotAnimator.ts'
 import { createRockBreakEffect } from '../stage/rockBreakEffect.ts'
 import { loadStageAssets, type StageAssets } from '../stage/stageAssets.ts'
@@ -52,9 +57,16 @@ const actionLabel: Record<ReplayAction['kind'], string> = {
   print_distance_target: '探索対象を表示',
 }
 
-type Rig = { group: THREE.Group; model: THREE.Object3D; animator: ReturnType<typeof createRobotAnimator> }
+type Rig = {
+  group: THREE.Group
+  model: THREE.Object3D
+  animator: ReturnType<typeof createRobotAnimator>
+  cargo: THREE.Group | null
+  cargoFromAssets: boolean
+}
 function disposeRig(rig: Rig): void {
   rig.animator.stop()
+  if (rig.cargo) disposeCarriedLuggage(rig.cargo)
   rig.model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
@@ -71,6 +83,12 @@ let assets: StageAssets | undefined
 let animated: StageAnimationTarget[] = []
 const rigs = new Map<string, Rig>()
 let effects: Array<{ effect: ReturnType<typeof createRockBreakEffect>; start: number | null }> = []
+let cargoTransitions: Array<{
+  cargo: THREE.Group
+  from: THREE.Vector3
+  to: THREE.Vector3
+  start: number | null
+}> = []
 let raf = 0
 let timer: ReturnType<typeof setTimeout> | null = null
 let observer: ResizeObserver | null = null
@@ -150,10 +168,39 @@ function makeRig(teamId?: number): Rig | null {
   const group = new THREE.Group()
   group.position.y = 0.07
   group.add(model)
-  return { group, model, animator: createRobotAnimator(group, model, pivots) }
+  return {
+    group,
+    model,
+    animator: createRobotAnimator(group, model, pivots),
+    cargo: null,
+    cargoFromAssets: false,
+  }
+}
+function syncCargo(rig: Rig, carrying: boolean): void {
+  if (!carrying) {
+    if (rig.cargo) disposeCarriedLuggage(rig.cargo)
+    rig.cargo = null
+    return
+  }
+  if (rig.cargo && rig.cargoFromAssets === Boolean(assets)) return
+  if (rig.cargo) disposeCarriedLuggage(rig.cargo)
+  rig.cargo = createCarriedLuggage(assets)
+  rig.cargoFromAssets = Boolean(assets)
+  rig.group.add(rig.cargo)
+}
+function luggagePoint(rig: Rig, target?: { x: number; y: number }): THREE.Vector3 {
+  board?.updateMatrixWorld(true)
+  const tile = board?.children.find(
+    (child) => child.userData.cellX === target?.x && child.userData.cellY === target?.y,
+  )
+  const world = tile
+    ? tile.localToWorld(new THREE.Vector3(0, 0.39, 0))
+    : rig.group.localToWorld(new THREE.Vector3(0, 0.39, -0.9))
+  return rig.group.worldToLocal(world)
 }
 function renderFrame(): void {
   if (!scene || !current.value) return
+  cargoTransitions = []
   for (const item of effects) item.effect.dispose()
   effects = []
   if (board) {
@@ -188,6 +235,8 @@ function renderFrame(): void {
       robot.position.y - (stage.height - 1) / 2,
     )
     rig.group.rotation.y = directionYaw[robot.direction]
+    rig.animator.setCarrying(Boolean(robot.carryingLuggage))
+    syncCargo(rig, Boolean(robot.carryingLuggage))
   }
   setView()
 }
@@ -196,6 +245,12 @@ function animate(time: number): void {
   raf = requestAnimationFrame(animate)
   advanceWater(time)
   for (const rig of rigs.values()) rig.animator.update(time)
+  for (const entry of cargoTransitions) {
+    entry.start ??= time
+    const progress = Math.min(1, (time - entry.start) / 900)
+    const eased = progress * progress * (3 - 2 * progress)
+    entry.cargo.position.lerpVectors(entry.from, entry.to, eased)
+  }
   for (const entry of effects) {
     entry.start ??= time
     entry.effect.update(Math.min(1, (time - entry.start) / 1000))
@@ -269,6 +324,25 @@ function animateAction(action: ReplayAction): void {
       )
         effects.push({ effect: createRockBreakEffect(object), start: null })
     })
+  }
+  if (action.kind === 'pick_up' && action.success && action.target) {
+    syncCargo(rig, true)
+    if (rig.cargo) {
+      const tile = board.children.find(
+        (child) => child.userData.cellX === action.target?.x && child.userData.cellY === action.target?.y,
+      )
+      const groundLuggage = tile?.getObjectByName('stage-luggage')
+      if (groundLuggage) groundLuggage.visible = false
+      const from = luggagePoint(rig, action.target)
+      const to = new THREE.Vector3(0, CARRIED_LUGGAGE_HEIGHT, 0)
+      rig.cargo.position.copy(from)
+      cargoTransitions.push({ cargo: rig.cargo, from, to, start: null })
+    }
+  }
+  if (action.kind === 'release' && action.success && rig.cargo) {
+    const from = rig.cargo.position.clone()
+    const to = action.target ? luggagePoint(rig, action.target) : new THREE.Vector3(0, -0.2, -0.6)
+    cargoTransitions.push({ cargo: rig.cargo, from, to, start: null })
   }
   rig.animator.play(event, destination, targetYaw)
 }

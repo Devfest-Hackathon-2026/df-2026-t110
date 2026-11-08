@@ -7,6 +7,7 @@ import { loadStageAssets } from './stageAssets.ts'
 import type { StageAssets } from './stageAssets.ts'
 import type { StageAnimationTarget } from './stageVisuals.ts'
 import { createArmPivots } from './armController.ts'
+import { CARRIED_LUGGAGE_HEIGHT, createCarriedLuggage, disposeCarriedLuggage } from './carriedLuggage.ts'
 import { createRobotAnimator } from './robotAnimator.ts'
 import { createRockBreakEffect } from './rockBreakEffect.ts'
 import { MarkerPoseStabilizer } from './markerPoseStabilizer.ts'
@@ -59,11 +60,14 @@ let lastMarkerPoseTime: number | null = null
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
+let carriedLuggage: THREE.Group | null = null
+let cargoFromAssets = false
+let cargoTransition: { from: THREE.Vector3; to: THREE.Vector3; start: number | null } | null = null
 let rockBreak: ReturnType<typeof createRockBreakEffect> | null = null
 let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals })
+defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals, setCarrying })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
@@ -105,6 +109,7 @@ function replaceStage() {
   const previousBoard = board
   distance = props.previewDistance
   pendingEvent = null
+  setCarrying(false)
   clearRockBreak()
   if (board) {
     robotAnimator?.stop()
@@ -147,6 +152,32 @@ function refreshVisuals(): void {
   if (!retainCameraBoardPose(previousBoard)) setView()
 }
 
+function setCarrying(value: boolean): void {
+  cargoTransition = null
+  robotAnimator?.setCarrying(value)
+  if (!value || !robotRig) {
+    if (carriedLuggage) disposeCarriedLuggage(carriedLuggage)
+    carriedLuggage = null
+    return
+  }
+  if (carriedLuggage && cargoFromAssets === Boolean(stageAssets)) return
+  if (carriedLuggage) disposeCarriedLuggage(carriedLuggage)
+  carriedLuggage = createCarriedLuggage(stageAssets ?? undefined)
+  cargoFromAssets = Boolean(stageAssets)
+  robotRig.add(carriedLuggage)
+}
+
+function cargoPoint(target: { x: number; y: number }): THREE.Vector3 {
+  board.updateMatrixWorld(true)
+  const tile = board.children.find(
+    (child) => child.userData.cellX === target.x && child.userData.cellY === target.y,
+  )
+  const world = tile
+    ? tile.localToWorld(new THREE.Vector3(0, 0.39, 0))
+    : robotRig!.localToWorld(new THREE.Vector3(0, 0.39, -0.9))
+  return robotRig!.worldToLocal(world)
+}
+
 function positionRobot(cell: StageCell | { x: number; y: number } | null | undefined): void {
   if (!robotRig || !cell) return
   robotRig.position.set(cell.x - (props.stage.width - 1) / 2, 0.07, cell.y - (props.stage.height - 1) / 2)
@@ -162,6 +193,7 @@ function resetRobot(): void {
   pendingEvent = null
   clearRockBreak()
   robotAnimator?.stop()
+  setCarrying(false)
   const start = props.stage.cells.find((cell) => cell.start)
   robotCell.value = start ? { x: start.x, y: start.y } : null
   positionRobot(start)
@@ -270,6 +302,34 @@ function playAnimationEvent(event: AnimationEvent | null): void {
     const rock = rockAhead()
     if (rock) rockBreak = createRockBreakEffect(rock)
   }
+  if ((event.type === 'get' || event.type === 'pick_up') && event.success !== false && robotCell.value) {
+    const facing = gridDirection(robotRig.rotation.y)
+    const target = { x: robotCell.value.x + facing.x, y: robotCell.value.y + facing.y }
+    const tile = board.children.find(
+      (child) => child.userData.cellX === target.x && child.userData.cellY === target.y,
+    )
+    const luggage = tile?.getObjectByName('stage-luggage')
+    if (luggage) luggage.visible = false
+    setCarrying(true)
+    robotAnimator.setCarrying(false)
+    if (carriedLuggage) {
+      const from = cargoPoint(target)
+      const to = new THREE.Vector3(0, CARRIED_LUGGAGE_HEIGHT, 0)
+      carriedLuggage.position.copy(from)
+      cargoTransition = { from, to, start: null }
+    }
+  }
+  if ((event.type === 'put' || event.type === 'release') && event.success !== false && carriedLuggage) {
+    const facing = gridDirection(robotRig.rotation.y)
+    const target = robotCell.value
+      ? { x: robotCell.value.x + facing.x, y: robotCell.value.y + facing.y }
+      : null
+    cargoTransition = {
+      from: carriedLuggage.position.clone(),
+      to: target ? cargoPoint(target) : new THREE.Vector3(0, -0.2, -0.6),
+      start: null,
+    }
+  }
   robotAnimator.play(animation, destination, targetYaw)
 }
 
@@ -368,6 +428,12 @@ function animate(time: number): void {
   }
   advanceWater(time)
   robotAnimator?.update(time)
+  if (cargoTransition && carriedLuggage) {
+    cargoTransition.start ??= time
+    const progress = Math.min(1, (time - cargoTransition.start) / 900)
+    const eased = progress * progress * (3 - 2 * progress)
+    carriedLuggage.position.lerpVectors(cargoTransition.from, cargoTransition.to, eased)
+  }
   if (rockBreak) {
     rockBreakStart ??= time
     rockBreak.update(Math.min(1, (time - rockBreakStart) / 1000))
@@ -497,7 +563,7 @@ onMounted(() => {
       (loaded) => {
         if (!mounted) return
         stageAssets = loaded
-        replaceStage()
+        refreshVisuals()
       },
       (error) =>
         emit(
@@ -534,6 +600,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   stopCamera()
   robotAnimator?.stop()
+  setCarrying(false)
   clearRockBreak()
   if (robotRig && board) board.remove(robotRig)
   robotModel?.traverse((object) => {
