@@ -15,6 +15,15 @@ type GenerationUsage struct {
 	ReservedAt    pgtype.Timestamptz
 }
 
+type Program struct {
+	ID            string
+	GoogleSubject string
+	Name          string
+	Source        []byte
+	IsBattle      bool
+	TutorialID    pgtype.Text
+}
+
 type Session struct {
 	ID            string
 	GoogleSubject string

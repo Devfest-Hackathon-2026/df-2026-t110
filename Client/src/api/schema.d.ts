@@ -92,7 +92,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** プログラムを作成 */
+        /**
+         * プログラムを作成
+         * @description セッションのユーザーを所有者として新規保存する。id を指定しても新しいIDを発行する。name は空白のみ不可。ソースは文法を検証するが、保存時には型検査を要求しない。
+         */
         post: operations["createProgram"];
         delete?: never;
         options?: never;
@@ -1548,6 +1551,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
+            };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
