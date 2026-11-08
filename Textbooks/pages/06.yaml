@@ -1,14 +1,15 @@
 # 学び方: 操作
-# 制作用メモ: 観測値の表示は画面側で終了メッセージに上書きされる。二つの答えを残して見比べる表示が必要。
+# 制作用メモ: 一本道の固定盤面で観測前後の違いを学ぶ。見本は岩の手前で止まる。観測結果を残す表示が必要で、到着だけでは理解を判定しない。
 id: look-ahead
 title: 前のマスを見分ける
-goal: 前のマスを調べ、岩と陸を見分けよう。
-description: 前のマスを見て、二つの答えを予想しよう。見本で調べて確かめよう。
-lesson: 調べるのは、向いている方のとなり1マスです。ゴールのマスも陸に入ります。
+goal: 前の1マスを調べ、変わった答えを比べよう。
+description: 岩をこわす前とあとで、二つの答えを比べよう。最後はゴールへ進もう。
+lesson: 調べるのは、向いている方のとなり1マスです。進んだり岩をこわしたりすると、答えが変わります。
 guide:
-  - 岩かな、陸かな。道ごとに二つの答えを考えよう。
-  - 海なら、岩かどうかも陸かどうかも「いいえ」です。道の外も海です。
-  - trueは「はい」、falseは「いいえ」です。見本は調べたあと、上の道を進みます。
+  - trueは「はい」、falseは「いいえ」です。
+  - 見本は、陸を調べて1マス進み、次に岩を調べます。答えを比べよう。
+  - 岩をこわし、同じ二つの命令でもう一度調べよう。こわしたマスは陸です。
+  - 答えを見たあと、2マス進もう。ゴールのマスも陸です。
 initialProgram:
   picolangVersion: 0
   picolang:
@@ -16,109 +17,84 @@ initialProgram:
       program:
         main:
           kind: function
-          hintId: a0000006-0000-4000-8000-000000000017
+          hintId: c0000006-0000-4000-8000-000000000017
           params: []
           returnType: unit
           body:
             kind: block
-            hintId: a0000006-0000-4000-8000-000000000016
+            hintId: c0000006-0000-4000-8000-000000000016
             stmts:
               - kind: call
-                hintId: a0000006-0000-4000-8000-000000000003
+                hintId: c0000006-0000-4000-8000-000000000003
                 func: print_bool
                 args:
                   - kind: call
-                    hintId: a0000006-0000-4000-8000-000000000002
+                    hintId: c0000006-0000-4000-8000-000000000002
                     func: is_rock
                     args:
                       - kind: call
-                        hintId: a0000006-0000-4000-8000-000000000001
+                        hintId: c0000006-0000-4000-8000-000000000001
                         func: search_front
                         args: []
               - kind: call
-                hintId: a0000006-0000-4000-8000-000000000006
+                hintId: c0000006-0000-4000-8000-000000000006
                 func: print_bool
                 args:
                   - kind: call
-                    hintId: a0000006-0000-4000-8000-000000000005
+                    hintId: c0000006-0000-4000-8000-000000000005
                     func: is_land
                     args:
                       - kind: call
-                        hintId: a0000006-0000-4000-8000-000000000004
+                        hintId: c0000006-0000-4000-8000-000000000004
                         func: search_front
                         args: []
               - kind: call
-                hintId: a0000006-0000-4000-8000-000000000008
-                func: rotate
+                hintId: c0000006-0000-4000-8000-000000000007
+                func: forward
+                args: []
+              - kind: call
+                hintId: c0000006-0000-4000-8000-000000000010
+                func: print_bool
                 args:
-                  - kind: literal
-                    hintId: a0000006-0000-4000-8000-000000000007
-                    type: rotation
-                    value: left
+                  - kind: call
+                    hintId: c0000006-0000-4000-8000-000000000009
+                    func: is_rock
+                    args:
+                      - kind: call
+                        hintId: c0000006-0000-4000-8000-000000000008
+                        func: search_front
+                        args: []
               - kind: call
-                hintId: a0000006-0000-4000-8000-000000000009
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000006-0000-4000-8000-000000000011
-                func: rotate
+                hintId: c0000006-0000-4000-8000-000000000013
+                func: print_bool
                 args:
-                  - kind: literal
-                    hintId: a0000006-0000-4000-8000-000000000010
-                    type: rotation
-                    value: right
-              - kind: call
-                hintId: a0000006-0000-4000-8000-000000000012
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000006-0000-4000-8000-000000000013
-                func: forward
-                args: []
+                  - kind: call
+                    hintId: c0000006-0000-4000-8000-000000000012
+                    func: is_land
+                    args:
+                      - kind: call
+                        hintId: c0000006-0000-4000-8000-000000000011
+                        func: search_front
+                        args: []
               - kind: return
-                hintId: a0000006-0000-4000-8000-000000000015
+                hintId: c0000006-0000-4000-8000-000000000015
                 value:
                   kind: literal
-                  hintId: a0000006-0000-4000-8000-000000000014
+                  hintId: c0000006-0000-4000-8000-000000000014
                   type: unit
                   value: null
 stage:
   variants:
-    - width: 3
-      height: 2
+    - width: 4
+      height: 1
       terrain:
-        - [land, land, land]
-        - [land, rock, sea]
+        - [land, land, rock, land]
       objects:
         - type: goal
-          position: { x: 2, y: 0 }
+          position: { x: 3, y: 0 }
       robot:
-        position: { x: 0, y: 1 }
+        position: { x: 0, y: 0 }
         direction: east
-      drillLimit: 0
-    - width: 3
-      height: 2
-      terrain:
-        - [land, land, land]
-        - [land, land, sea]
-      objects:
-        - type: goal
-          position: { x: 2, y: 0 }
-      robot:
-        position: { x: 0, y: 1 }
-        direction: east
-      drillLimit: 0
-    - width: 3
-      height: 2
-      terrain:
-        - [land, land, land]
-        - [land, sea, sea]
-      objects:
-        - type: goal
-          position: { x: 2, y: 0 }
-      robot:
-        position: { x: 0, y: 1 }
-        direction: east
-      drillLimit: 0
+      drillLimit: 1
   clearCondition:
     type: reach_goal

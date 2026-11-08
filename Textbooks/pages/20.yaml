@@ -1,0 +1,100 @@
+# 学び方: 操作
+# 制作用メモ: distance_target は正式な picolang スキーマに従う。教材画面では対象の選択・実行と、観測値を残す表示への対応が必要。見本は2回目の観測後に止まる。
+id: measure-distance
+title: きょりを調べる
+goal: 岩やゴールまでのきょりを調べよう。
+description: きょりを調べる関数の答えを見よう。岩の手前まで進み、岩をこわしてゴールへ進もう。
+lesson: 向いている方の一直線上にある、一番近い岩やゴールまでを数えます。
+guide:
+  - きょりを調べる関数は、用意されています。調べるものを岩かゴールから選び、引数にします。
+  - 返ってきた数を、表示する命令にわたすと、答えを読めます。となりまでの答えは1です。
+  - 見本は1マス進んでもう一度調べます。二つの答えは、いくつへったかな。
+  - 岩までの数から1を引くと、岩の手前までに進む回数になります。岩をこわして先へ進もう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000017-0000-4000-8000-000000000023
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000017-0000-4000-8000-000000000022
+            stmts:
+              - kind: call
+                hintId: a0000017-0000-4000-8000-000000000003
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: a0000017-0000-4000-8000-000000000002
+                    func: distance
+                    args:
+                      - kind: literal
+                        hintId: a0000017-0000-4000-8000-000000000001
+                        type: distance_target
+                        value: rock
+              - kind: call
+                hintId: a0000017-0000-4000-8000-000000000006
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: a0000017-0000-4000-8000-000000000005
+                    func: distance
+                    args:
+                      - kind: literal
+                        hintId: a0000017-0000-4000-8000-000000000004
+                        type: distance_target
+                        value: goal
+              - kind: call
+                hintId: a0000017-0000-4000-8000-000000000007
+                func: forward
+                args: []
+              - kind: call
+                hintId: a0000017-0000-4000-8000-000000000010
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: a0000017-0000-4000-8000-000000000009
+                    func: distance
+                    args:
+                      - kind: literal
+                        hintId: a0000017-0000-4000-8000-000000000008
+                        type: distance_target
+                        value: rock
+              - kind: call
+                hintId: a0000017-0000-4000-8000-000000000013
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: a0000017-0000-4000-8000-000000000012
+                    func: distance
+                    args:
+                      - kind: literal
+                        hintId: a0000017-0000-4000-8000-000000000011
+                        type: distance_target
+                        value: goal
+              - kind: return
+                hintId: a0000017-0000-4000-8000-000000000021
+                value:
+                  kind: literal
+                  hintId: a0000017-0000-4000-8000-000000000020
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - width: 7
+      height: 1
+      terrain:
+        - [land, land, land, rock, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 6, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

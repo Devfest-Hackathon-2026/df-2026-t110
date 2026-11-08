@@ -1,0 +1,49 @@
+# 学び方: 練習
+# 制作用メモ: 教材画面で distance の対象に岩を選び、実行できるようにする必要がある。
+id: use-distance
+title: 調べた数を使って進む
+goal: 調べた数を覚え、あとの動きに使おう。
+description: 岩までのきょりを覚え、どの道が選ばれてもゴールへ進もう。
+lesson: スタートから岩までと、岩からゴールまでは、同じマス数です。
+guide:
+  - 最初に、岩までのきょりを「歩数」に覚えよう。
+  - 「歩数」から1を引いた数だけ進むと、岩の手前に着きます。
+  - 岩をこわして1マス進み、覚えた数だけ進もう。
+  - 実行で選ばれた道でも、覚えた数でゴールに着くか確かめよう。
+stage:
+  variants:
+    - width: 5
+      height: 1
+      terrain:
+        - [land, land, rock, land, land]
+      objects:
+        - type: goal
+          position: { x: 4, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+    - width: 7
+      height: 1
+      terrain:
+        - [land, land, land, rock, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 6, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+    - width: 9
+      height: 1
+      terrain:
+        - [land, land, land, land, rock, land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 8, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

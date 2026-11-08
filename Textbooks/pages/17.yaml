@@ -1,14 +1,14 @@
-# 学び方: 操作
-# 制作用メモ: distance_target は正式な picolang スキーマに従う。教材画面では対象の選択・実行と、観測値を残す表示への対応が必要。
-id: measure-distance
-title: きょりを調べる
-goal: 岩やゴールまでのきょりを調べよう。
-description: 岩とゴールまでのマス数を予想し、見本で調べよう。
-lesson: 向いている方の一直線上にある、一番近い岩やゴールまでを数えます。
+# 学び方: 考え方
+id: call-function
+title: 動きに名前をつける
+goal: 動きをまとめた関数を、名前でよび出そう。
+description: 「二歩進む」をよび出す命令を足し、ゴールへ進もう。
+lesson: いくつかの命令をまとめ、名前をつけたものを「関数」といいます。作るだけでは動きません。
 guide:
-  - 調べるものを、岩かゴールから選びます。となりのマスまでのきょりは1です。
-  - 1マス進むと、調べた数はどう変わるかな。
-  - 岩まで3マスなら、2マス進むと岩の手前です。岩のマスまで進む数とはちがいます。
+  - 「二歩進む」を開こう。前進が二つ入っています。
+  - 「main」は最初に動く場所です。ここに「二歩進む」を一つ置くと、2マス進みます。
+  - 関数が終わると、よび出した命令の次にもどります。
+  - ゴールまで6マスです。「main」から「二歩進む」を3回よび出そう。
 initialProgram:
   picolangVersion: 0
   picolang:
@@ -16,94 +16,42 @@ initialProgram:
       program:
         main:
           kind: function
-          hintId: a0000017-0000-4000-8000-000000000023
+          hintId: c0000017-0000-4000-8000-000000000004
           params: []
           returnType: unit
           body:
             kind: block
-            hintId: a0000017-0000-4000-8000-000000000022
+            hintId: c0000017-0000-4000-8000-000000000003
+            stmts:
+              - kind: return
+                hintId: c0000017-0000-4000-8000-000000000002
+                value:
+                  kind: literal
+                  hintId: c0000017-0000-4000-8000-000000000001
+                  type: unit
+                  value: null
+        二歩進む:
+          kind: function
+          hintId: c0000017-0000-4000-8000-000000000010
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000017-0000-4000-8000-000000000009
             stmts:
               - kind: call
-                hintId: a0000017-0000-4000-8000-000000000003
-                func: print_integer
-                args:
-                  - kind: call
-                    hintId: a0000017-0000-4000-8000-000000000002
-                    func: distance
-                    args:
-                      - kind: literal
-                        hintId: a0000017-0000-4000-8000-000000000001
-                        type: distance_target
-                        value: rock
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000006
-                func: print_integer
-                args:
-                  - kind: call
-                    hintId: a0000017-0000-4000-8000-000000000005
-                    func: distance
-                    args:
-                      - kind: literal
-                        hintId: a0000017-0000-4000-8000-000000000004
-                        type: distance_target
-                        value: goal
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000007
+                hintId: c0000017-0000-4000-8000-000000000005
                 func: forward
                 args: []
               - kind: call
-                hintId: a0000017-0000-4000-8000-000000000010
-                func: print_integer
-                args:
-                  - kind: call
-                    hintId: a0000017-0000-4000-8000-000000000009
-                    func: distance
-                    args:
-                      - kind: literal
-                        hintId: a0000017-0000-4000-8000-000000000008
-                        type: distance_target
-                        value: rock
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000013
-                func: print_integer
-                args:
-                  - kind: call
-                    hintId: a0000017-0000-4000-8000-000000000012
-                    func: distance
-                    args:
-                      - kind: literal
-                        hintId: a0000017-0000-4000-8000-000000000011
-                        type: distance_target
-                        value: goal
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000014
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000015
-                func: drill
-                args: []
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000016
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000017
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000018
-                func: forward
-                args: []
-              - kind: call
-                hintId: a0000017-0000-4000-8000-000000000019
+                hintId: c0000017-0000-4000-8000-000000000006
                 func: forward
                 args: []
               - kind: return
-                hintId: a0000017-0000-4000-8000-000000000021
+                hintId: c0000017-0000-4000-8000-000000000008
                 value:
                   kind: literal
-                  hintId: a0000017-0000-4000-8000-000000000020
+                  hintId: c0000017-0000-4000-8000-000000000007
                   type: unit
                   value: null
 stage:
@@ -111,13 +59,13 @@ stage:
     - width: 7
       height: 1
       terrain:
-        - [land, land, land, rock, land, land, land]
+        - [land, land, land, land, land, land, land]
       objects:
         - type: goal
           position: { x: 6, y: 0 }
       robot:
         position: { x: 0, y: 0 }
         direction: east
-      drillLimit: 1
+      drillLimit: 0
   clearCondition:
     type: reach_goal
