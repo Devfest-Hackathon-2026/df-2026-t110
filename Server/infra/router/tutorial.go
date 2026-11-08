@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
@@ -81,14 +80,10 @@ func (r *Router) RunTutorial(ctx *echo.Context, tutorialID api.TutorialId) error
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 	}
-	body, err := io.ReadAll(ctx.Request().Body)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("read tutorial run request: %w", err))
-	}
 	var request struct {
 		ProgramID *string `json:"programId"`
 	}
-	if err := json.Unmarshal(body, &request, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.UnmarshalRead(ctx.Request().Body, &request, json.RejectUnknownMembers(true)); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("decode tutorial run request: %w", err))
 	}
 	if request.ProgramID == nil {
