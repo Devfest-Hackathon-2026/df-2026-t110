@@ -25,9 +25,7 @@ const CommandUsage = `
  drill | drill_durability | 
  pick_up | release |
  search_now | search_front | 
- print_integer <integer> | print_bool true/false | print_unit () |
- print_terrain <compact-terrain-json> | print_rotation left/right |
- print_distance_target robot/ally/enemy/rock/luggage/sea/goal/territory |
+ print_integer <integer> | print_bool true/false |
  done
 help`
 
@@ -193,28 +191,6 @@ func parse(id protocol.RobotID, fields []string) (robotmsg.Step, bool) {
 	}
 	if len(fields) == 3 && fields[1] == "print_bool" && (fields[2] == "true" || fields[2] == "false") {
 		return robotmsg.ActionStep{Action: actions.PrintBoolAction{Bool: fields[2] == "true"}}, true
-	}
-	if len(fields) == 3 {
-		switch fields[1] {
-		case "print_unit":
-			if fields[2] == "()" {
-				return robotmsg.ActionStep{Action: actions.PrintUnitAction{}}, true
-			}
-		case "print_rotation":
-			if fields[2] == "left" || fields[2] == "right" {
-				return robotmsg.ActionStep{Action: actions.PrintRotationAction{Rotation: values.Rotation(fields[2])}}, true
-			}
-		case "print_distance_target":
-			target := values.DistanceTarget(fields[2])
-			if target.Valid() {
-				return robotmsg.ActionStep{Action: actions.PrintDistanceTargetAction{DistanceTarget: target}}, true
-			}
-		case "print_terrain":
-			terrain, err := values.ParseTerrainJSON([]byte(fields[2]))
-			if err == nil {
-				return robotmsg.ActionStep{Action: actions.PrintTerrainAction{Terrain: terrain}}, true
-			}
-		}
 	}
 	return nil, false
 }

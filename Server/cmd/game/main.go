@@ -1,7 +1,6 @@
 package main
 
 import (
-	json "encoding/json/v2"
 	"flag"
 	"fmt"
 	"io"
@@ -219,18 +218,6 @@ func (r *boardRenderer) Record(event gameevent.GameEvent) error {
 					speech = fmt.Sprintf("%s says %d\n", action.RobotID, action.Integer)
 				case fieldevent.PrintBoolResult:
 					speech = fmt.Sprintf("%s says %t\n", action.RobotID, action.Bool)
-				case fieldevent.PrintUnitResult:
-					speech = fmt.Sprintf("%s says ()\n", action.RobotID)
-				case fieldevent.PrintTerrainResult:
-					terrain, err := json.Marshal(action.Terrain)
-					if err != nil {
-						return err
-					}
-					speech = fmt.Sprintf("%s says %s\n", action.RobotID, terrain)
-				case fieldevent.PrintRotationResult:
-					speech = fmt.Sprintf("%s says %s\n", action.RobotID, action.Rotation)
-				case fieldevent.PrintDistanceTargetResult:
-					speech = fmt.Sprintf("%s says %s\n", action.RobotID, action.DistanceTarget)
 				}
 				if speech != "" {
 					if _, err := io.WriteString(r.output, speech); err != nil {
