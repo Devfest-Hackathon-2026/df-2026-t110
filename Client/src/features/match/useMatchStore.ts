@@ -30,6 +30,7 @@ export const useMatchStore = defineStore('match', () => {
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
   let stopEvents: (() => void) | undefined
   let loadController: AbortController | undefined
+  let authRequest: Promise<void> | undefined
 
   function dispose(): void {
     stopEvents?.()
@@ -49,15 +50,21 @@ export const useMatchStore = defineStore('match', () => {
     error.value = ''
   }
 
-  async function loadMe(): Promise<void> {
-    authStatus.value = 'checking'
-    try {
-      user.value = await getMe()
-      authStatus.value = 'signed-in'
-    } catch {
-      user.value = null
-      authStatus.value = 'guest'
-    }
+  function loadMe(): Promise<void> {
+    if (authRequest) return authRequest
+    if (authStatus.value !== 'checking') return Promise.resolve()
+    authRequest = (async () => {
+      try {
+        user.value = await getMe()
+        authStatus.value = 'signed-in'
+      } catch {
+        user.value = null
+        authStatus.value = 'guest'
+      }
+    })().finally(() => {
+      authRequest = undefined
+    })
+    return authRequest
   }
 
   async function loadPrograms(): Promise<void> {

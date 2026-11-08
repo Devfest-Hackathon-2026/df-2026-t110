@@ -85,10 +85,24 @@ body,
 .site-nav nav a {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 36px;
   color: var(--color-ink-2);
   font-size: var(--type-small);
   text-decoration: none;
+  white-space: nowrap;
+}
+.site-nav nav a svg {
+  flex: none;
+  width: 1.05em;
+  height: 1.05em;
+}
+.site-account-name {
+  display: inline-block;
+  max-width: min(28vw, 24ch);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 .site-nav nav a:hover,
 .site-nav nav a[aria-current='page'] {
@@ -387,6 +401,20 @@ body,
   }
 }
 @media (max-width: 400px) {
+  .site-nav {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .site-nav nav {
+    gap: 8px;
+  }
+  .site-nav nav a {
+    gap: 4px;
+    font-size: 0.75rem;
+  }
+  .site-account-name {
+    max-width: 16vw;
+  }
   .next-links a {
     display: grid;
     gap: var(--space-xs);
