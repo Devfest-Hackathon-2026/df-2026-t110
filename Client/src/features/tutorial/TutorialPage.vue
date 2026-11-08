@@ -45,7 +45,12 @@ const mode = ref<'preview' | 'camera'>('preview')
 const modeBeforeHide = ref<'preview' | 'camera' | null>(null)
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
-const sceneRef = ref<{ reset: () => void; resetRobot: () => void; refreshVisuals: () => void } | null>(null)
+const sceneRef = ref<{
+  reset: () => void
+  resetRobot: () => void
+  refreshVisuals: () => void
+  setCarrying: (value: boolean) => void
+} | null>(null)
 const activeStage = ref<StageLayout | null>(null)
 const animationEvent = ref<AnimationEvent | null>(null)
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
@@ -224,6 +229,7 @@ async function runProgram(): Promise<void> {
               result.animation.type === 'wait' ? Math.max(1, result.animation.ticks ?? 1) * 1000 : 1000
             await waitForAnimation(duration + 40, signal)
             if (result.changed) sceneRef.value?.refreshVisuals()
+            sceneRef.value?.setCarrying(Boolean(world.held))
           }
           return result.value
         },

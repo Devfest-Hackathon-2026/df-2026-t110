@@ -4,6 +4,7 @@ import { createEyeBeam } from './beamEffect.ts'
 import { createTelekinesisEffect } from './telekinesisEffect.ts'
 
 const TICK_MS = 1000
+export const HOLD_ARM_ANGLE = (Math.PI * 2) / 3
 const DURATION = {
   move: TICK_MS,
   forward: TICK_MS,
@@ -49,12 +50,18 @@ export function createRobotAnimator(rig: THREE.Object3D, model: THREE.Object3D, 
   const restRigY = rig.position.y
   let action: ActiveAction | null = null
   let effect: { update: (progress: number, time: number) => void; dispose: () => void } | null = null
+  let carrying = false
+
+  function setCarrying(value: boolean): void {
+    carrying = value
+    if (!action) for (const pivot of pivots) pivot.rotation.x = carrying ? HOLD_ARM_ANGLE : 0
+  }
 
   function stop(): void {
     effect?.dispose()
     effect = null
     action = null
-    for (const pivot of pivots) pivot.rotation.x = 0
+    for (const pivot of pivots) pivot.rotation.x = carrying ? HOLD_ARM_ANGLE : 0
     rig.position.y = restRigY
     model.position.copy(restPosition)
     model.rotation.copy(restRotation)
@@ -113,8 +120,14 @@ export function createRobotAnimator(rig: THREE.Object3D, model: THREE.Object3D, 
       event.type === 'release'
     ) {
       if (event.success !== false) {
-        // +30° from the imported -120° pose reaches the requested -90° interaction pose.
-        const angle = armAngleAt(progress * TICK_MS, Math.PI / 6)
+        // The imported resting arms are about -120°. +30° is the interaction pose;
+        // after pickup they rise above the robot and stay there while it carries cargo.
+        const interaction = armAngleAt(progress * TICK_MS, Math.PI / 6)
+        const pickingUp = event.type === 'get' || event.type === 'pick_up'
+        const hold = pickingUp
+          ? HOLD_ARM_ANGLE * ease(Math.max(0, (progress - 0.55) / 0.45))
+          : HOLD_ARM_ANGLE * (1 - ease(Math.min(1, progress / 0.45)))
+        const angle = Math.max(interaction, hold)
         for (const pivot of pivots) pivot.rotation.x = angle
         model.rotation.x -= 0.045 * pulse
       }
@@ -136,11 +149,15 @@ export function createRobotAnimator(rig: THREE.Object3D, model: THREE.Object3D, 
     if (progress >= 1) {
       const finalPosition = action.to.clone()
       const finalYaw = action.endYaw
+      if (event.success !== false) {
+        if (event.type === 'get' || event.type === 'pick_up') carrying = true
+        if (event.type === 'put' || event.type === 'release') carrying = false
+      }
       stop()
       rig.position.copy(finalPosition)
       rig.rotation.y = finalYaw
     }
   }
 
-  return { play, update, stop }
+  return { play, update, stop, setCarrying }
 }
