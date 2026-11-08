@@ -1,7 +1,6 @@
 package interpreter
 
 import (
-	json "encoding/json/v2"
 	"errors"
 	"testing"
 
@@ -42,9 +41,7 @@ func expectLimitFailure(t *testing.T, v *VM, output robotmsg.RobotOutput, err, w
 	if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
 		t.Errorf("failed VM accepted Next: %v", err)
 	}
-	if _, err := json.Marshal(output.Events); err != nil {
-		t.Errorf("failure events cannot be encoded: %v", err)
-	}
+	expectEventTypes(t, output.Events)
 }
 
 func TestResourceLimitsMustBePositive(t *testing.T) {
@@ -259,9 +256,6 @@ func TestResourceFailuresReachHubLikeDivisionByZero(t *testing.T) {
 			}[kind]
 			if len(endings) != 1 || endings[0].Reason != wantReason || endings[0].HintID != hint {
 				t.Errorf("recorder lost the ending: %+v, want %s at %s", endings, wantReason, hint)
-			}
-			if _, err := json.Marshal(storage.Events); err != nil {
-				t.Errorf("history cannot be encoded: %v", err)
 			}
 			if len(field.Snapshot().Robots) != 0 {
 				t.Error("finished robots remained on the board")

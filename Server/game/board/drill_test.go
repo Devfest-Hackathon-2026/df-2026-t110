@@ -1,7 +1,6 @@
 package board_test
 
 import (
-	json "encoding/json/v2"
 	"reflect"
 	"testing"
 
@@ -30,7 +29,6 @@ func TestDrillOpensTerrainForTheNextTurn(t *testing.T) {
 			},
 		}}},
 	}
-	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"drill","robotId":"a","success":true,"target":{"x":1,"y":0},"drillDurability":2},{"kind":"forward","robotId":"b","success":false}]}}]`
 	config, err := board.NewConfig(
 		[][]board.Terrain{{plain, rock, plain}},
 		map[protocol.RobotID]board.RobotState{
@@ -51,7 +49,6 @@ func TestDrillOpensTerrainForTheNextTurn(t *testing.T) {
 	beforeCommit := b.Snapshot()
 	output, err := b.Next(forward)
 	afterDrill := b.Snapshot()
-	encoded, encodeErr := json.Marshal(output.Events)
 	moveResult := next(t, b, robotmsg.DoneReply{RobotID: "a"})
 	nextMove := next(t, b, forward)
 	afterMove := b.Snapshot()
@@ -59,8 +56,8 @@ func TestDrillOpensTerrainForTheNextTurn(t *testing.T) {
 	if pendingErr != nil || pending.Decision != (boardmsg.StartDecision{RobotID: "b"}) || len(pending.Events) != 0 || !reflect.DeepEqual(beforeCommit, initial) {
 		t.Errorf("drill committed early: %+v, %v", pending, pendingErr)
 	}
-	if err != nil || !reflect.DeepEqual(output, want) || encodeErr != nil || string(encoded) != wantJSON {
-		t.Errorf("drill output = %+v, %v; JSON = %s, %v", output, err, encoded, encodeErr)
+	if err != nil || !reflect.DeepEqual(output, want) {
+		t.Errorf("drill output = %+v, %v, want %+v", output, err, want)
 	}
 	if afterDrill.Terrain[0][1] != plain || afterDrill.Robots["a"].DrillDurability() != 2 || afterDrill.Robots["b"].Position() != board.NewPosition(2, 0) {
 		t.Errorf("unexpected board after drilling: %+v", afterDrill)

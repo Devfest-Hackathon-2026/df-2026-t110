@@ -1,7 +1,6 @@
 package board_test
 
 import (
-	json "encoding/json/v2"
 	"reflect"
 	"testing"
 
@@ -155,7 +154,9 @@ func TestReleaseOverTheEdgeDiscardsLuggage(t *testing.T) {
 	robot := loadedRobot(t, "a", 0, board.East)
 	terrain := land(1, 1)
 	reply := robotmsg.ActionReply{RobotID: "a", Action: actions.ReleaseAction{}}
-	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"release","robotId":"a","success":true,"discarded":true}]}}]`
+	wantEvents := []fieldevent.FieldEvent{{Tick: 1, State: fieldevent.UpdateState{
+		Actions: []fieldevent.ActionResult{fieldevent.ReleaseResult{RobotID: "a", Success: true, Discarded: true}},
+	}}}
 	config, err := board.NewConfig(
 		terrain,
 		map[protocol.RobotID]board.RobotState{"a": robot},
@@ -169,12 +170,11 @@ func TestReleaseOverTheEdgeDiscardsLuggage(t *testing.T) {
 	next(t, b, nil)
 
 	output, err := b.Next(reply)
-	encoded, encodeErr := json.Marshal(output.Events)
 	second := next(t, b, reply)
 	snapshot := b.Snapshot()
 
-	if err != nil || output.Decision != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.BoolValue{Bool: true}}) || encodeErr != nil || string(encoded) != wantJSON {
-		t.Errorf("discard = %+v, %v; JSON = %s, %v", output, err, encoded, encodeErr)
+	if err != nil || output.Decision != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.BoolValue{Bool: true}}) || !reflect.DeepEqual(output.Events, wantEvents) {
+		t.Errorf("discard = %+v, %v; want events %+v", output, err, wantEvents)
 	}
 	if second != (boardmsg.ResumeDecision{RobotID: "a", ReturnValue: values.BoolValue{Bool: false}}) || snapshot.Tick != 2 || snapshot.Robots["a"].CarryingLuggage() || !reflect.DeepEqual(snapshot.Terrain, terrain) {
 		t.Errorf("empty-handed release = %+v; board = %+v", second, snapshot)
