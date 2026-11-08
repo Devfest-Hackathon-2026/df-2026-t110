@@ -588,6 +588,9 @@ type FieldDefinition struct {
 	// フィールドの縦方向のマス数
 	Height int `json:"height"`
 
+	// フィールドを識別するための空でない文字列
+	Id string `json:"id"`
+
 	// フィールド上に配置するゴール、チェックポイント、荷物の一覧
 	Objects []FieldObject `json:"objects"`
 
@@ -658,6 +661,9 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["height"]; raw != nil && !ok {
 		return fmt.Errorf("field height in FieldDefinition: required")
 	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in FieldDefinition: required")
+	}
 	if _, ok := raw["objects"]; raw != nil && !ok {
 		return fmt.Errorf("field objects in FieldDefinition: required")
 	}
@@ -684,6 +690,9 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	}
 	if 1 > plain.Height {
 		return fmt.Errorf("field %s: must be >= %v", "height", 1)
+	}
+	if utf8.RuneCountInString(string(plain.Id)) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "id", 1)
 	}
 	if plain.Terrain != nil && len(plain.Terrain) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "terrain", 1)

@@ -2,7 +2,11 @@ package: api
 generate:
   models: true
   echo5-server: true
+import-mapping:
+  "../../openapi.yaml": "-"
 output-options:
+  # References from external Path Items do not keep local components during pruning.
+  skip-prune: true
   overlay:
     path: oapi-codegen-overlay.yaml
 output: infra/router/gen/api/api.gen.go

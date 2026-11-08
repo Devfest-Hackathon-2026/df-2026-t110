@@ -33,6 +33,10 @@ func TestRouterHandlersAreNotImplementedYet(t *testing.T) {
 	}{
 		{name: "registered route is not implemented yet", method: http.MethodGet, path: "/tutorial", want: http.StatusNotImplemented},
 		{name: "path parameter route is not implemented yet", method: http.MethodGet, path: "/field/field-1", want: http.StatusNotImplemented},
+		{name: "tutorial execution route is not implemented yet", method: http.MethodPost, path: "/tutorial/tutorial-1/run", want: http.StatusNotImplemented},
+		{name: "run events route is not implemented yet", method: http.MethodGet, path: "/run/019a5aa3-c000-7000-8000-000000000001/events", want: http.StatusNotImplemented},
+		{name: "run ID must be a UUID", method: http.MethodGet, path: "/run/not-a-uuid/events", want: http.StatusBadRequest},
+		{name: "program execution route is removed", method: http.MethodPost, path: "/program/program-1/run", want: http.StatusMethodNotAllowed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

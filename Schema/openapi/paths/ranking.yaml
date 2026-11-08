@@ -1,0 +1,16 @@
+/ranking:
+  get:
+    tags:
+      - ranking
+    summary: ランキングを取得
+    operationId: getRanking
+    responses:
+      "200":
+        description: ランキング
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: true

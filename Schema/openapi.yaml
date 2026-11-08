@@ -3,9 +3,8 @@ info:
   title: Programming Learning AR API
   version: 0.1.1
   description: |
-    暫定API契約。
     Field、Stage、PicolangProgramはSchema以下のJSON Schemaを参照する。
-    Programは保存用のID、名前、picolangのソースを持つ。
+    Programは保存用のID、名前、picolangのソース、対戦用かどうかを表すフラグを持つ。チュートリアル用の場合はチュートリアルIDも持つ。
 
 servers:
   - url: /api
@@ -25,345 +24,39 @@ paths:
                 $ref: "#/components/schemas/PicolangV0Header"
 
   /field/{fieldId}:
-    get:
-      summary: フィールドを取得
-      description: 単一のフィールドの盤面情報を返す。
-      operationId: getField
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-      responses:
-        "200":
-          description: フィールド
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Field"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /field/{fieldId}/program:
-    get:
-      summary: フィールドのプログラム一覧を取得
-      operationId: listPrograms
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-      responses:
-        "200":
-          description: プログラム一覧
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Program"
-    post:
-      summary: プログラムを作成
-      operationId: createProgram
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Program"
-      responses:
-        "201":
-          description: 作成したプログラム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Program"
-
-  /field/{fieldId}/program/{programId}:
-    get:
-      summary: プログラムを取得
-      operationId: getProgram
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-        - $ref: "#/components/parameters/ProgramId"
-      responses:
-        "200":
-          description: プログラム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Program"
-        "404":
-          $ref: "#/components/responses/NotFound"
-    put:
-      summary: プログラムを更新
-      operationId: updateProgram
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-        - $ref: "#/components/parameters/ProgramId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Program"
-      responses:
-        "200":
-          description: 更新したプログラム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Program"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /field/{fieldId}/program/create-with-vibe:
-    post:
-      summary: 自然言語からプログラムを生成
-      operationId: createProgramWithVibe
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [prompt]
-              properties:
-                prompt:
-                  type: string
-      responses:
-        "201":
-          description: 生成したプログラム
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Program"
-
-  /field/{fieldId}/match:
-    post:
-      summary: ランク対戦を作成し、シミュレーションを開始
-      description: |
-        自分のプログラムで対戦を申し込む。
-        サーバーはフィールド内の候補配置を1つ選び、
-        このフィールドに提出している自分以外のユーザーからランダムに相手を1人選んで、
-        そのユーザーがこのフィールドで最後に更新したプログラムと対戦させる。
-        シミュレーションはサーバーで実行し、結果は matchEvents で受け取る。
-        抽選結果を取得・変更する独立したAPIは設けない。
-        レートは対戦を申し込んだ側だけ変動する。
-      operationId: createMatch
-      parameters:
-        - $ref: "#/components/parameters/FieldId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [programId]
-              properties:
-                programId:
-                  type: string
-      responses:
-        "201":
-          description: 作成した対戦と抽選結果。シミュレーション中のため status は running
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Match"
-        "401":
-          description: 認証されていない
-        "403":
-          $ref: "#/components/responses/Forbidden"
-          description: DisplayName が設定されていないためランク対戦に参加できない
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-          description: このフィールドに対戦相手の候補がいない
-
-  /match/{matchId}/events:
-    get:
-      summary: 対戦結果を購読
-      description: |
-        Server-Sent Events。
-        シミュレーション完了時に result イベントを1回送り、ストリームを閉じる。
-        接続時点で完了済みなら、接続直後に result イベントを送る。
-        副作用を持たないため、切断後に再接続して結果を取り直せる。
-        result の data は MatchResult 形式の JSON。
-      operationId: matchEvents
-      parameters:
-        - $ref: "#/components/parameters/MatchId"
-      responses:
-        "200":
-          description: SSEストリーム
-          content:
-            text/event-stream:
-              schema:
-                type: string
-              example: |
-                event: result
-                data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opponent":1}}}
-        "401":
-          description: 認証されていない
-        "404":
-          $ref: "#/components/responses/NotFound"
-
+    $ref: "./openapi/paths/field.yaml#/~1field~1%7BfieldId%7D"
+  /program/{programId}:
+    $ref: "./openapi/paths/program.yaml#/~1program~1%7BprogramId%7D"
+  /program/create-with-vibe:
+    $ref: "./openapi/paths/program.yaml#/~1program~1create-with-vibe"
+  /program:
+    $ref: "./openapi/paths/program.yaml#/~1program"
+  /match:
+    $ref: "./openapi/paths/battle.yaml#/~1match"
+  /run/{runId}/events:
+    $ref: "./openapi/paths/run.yaml#/~1run~1%7BrunId%7D~1events"
   /login:
-    get:
-      summary: Google ログインを開始
-      description: |
-        ブラウザの画面遷移で呼び出す。
-        ログイン試行を紐づける cookie を発行し、Google の認可画面へリダイレクトする。
-      operationId: login
-      responses:
-        "302":
-          description: Google の認可画面へリダイレクト
-          headers:
-            Location:
-              $ref: "#/components/headers/Location"
-            Set-Cookie:
-              $ref: "#/components/headers/SetCookie"
-
+    $ref: "./openapi/paths/auth.yaml#/~1login"
   /login/callback:
-    get:
-      summary: Google ログインを完了
-      description: |
-        Google の認可後のリダイレクト先。Google Cloud にリダイレクト URI として登録する。
-        state、認可コード、ID トークンを検証してセッション cookie を発行し、クライアントの画面へリダイレクトする。
-      operationId: loginCallback
-      parameters:
-        - name: state
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: code
-          in: query
-          description: 認可された場合に Google が付与する認可コード
-          schema:
-            type: string
-        - name: error
-          in: query
-          description: 認可されなかった場合に Google が付与するエラーコード
-          schema:
-            type: string
-      responses:
-        "302":
-          description: ログインに成功し、クライアントの画面へリダイレクト
-          headers:
-            Location:
-              $ref: "#/components/headers/Location"
-            Set-Cookie:
-              $ref: "#/components/headers/SetCookie"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
+    $ref: "./openapi/paths/auth.yaml#/~1login~1callback"
   /logout:
-    post:
-      summary: ログアウト
-      description: セッション cookie を削除する。
-      operationId: logout
-      security:
-        - sessionCookie: []
-      responses:
-        "204":
-          description: ログアウトした
-          headers:
-            Set-Cookie:
-              $ref: "#/components/headers/SetCookie"
-
+    $ref: "./openapi/paths/auth.yaml#/~1logout"
   /ranking:
-    get:
-      summary: ランキングを取得
-      operationId: getRanking
-      responses:
-        "200":
-          description: ランキング
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  additionalProperties: true
-
+    $ref: "./openapi/paths/ranking.yaml#/~1ranking"
   /me:
-    get:
-      summary: 自分の情報を取得
-      operationId: getMe
-      responses:
-        "200":
-          description: ユーザー情報
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
+    $ref: "./openapi/paths/user.yaml#/~1me"
   /me/username:
-    post:
-      summary: ユーザー名を一度だけ設定
-      operationId: setMyUsername
-      security:
-        - sessionCookie: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [username]
-              properties:
-                username:
-                  type: string
-                  description: self と std は大文字・小文字を問わず名前空間の予約名のため使用不可
-                  minLength: 1
-                  maxLength: 32
-                  pattern: "^[A-Za-z0-9_-]{1,32}$"
-                  not:
-                    pattern: "^([sS][eE][lL][fF]|[sS][tT][dD])$"
-      responses:
-        "204":
-          description: ユーザー名を設定した
-        "400":
-          description: 不正なユーザー名またはリクエスト
-        "401":
-          description: 認証されていない
-        "409":
-          description: ユーザー名が使用済み、または既に設定済み
-        "501":
-          description: ユーザー管理が設定されていない
-
+    $ref: "./openapi/paths/user.yaml#/~1me~1username"
   /tutorial:
-    get:
-      summary: チュートリアル一覧を取得
-      operationId: listTutorials
-      responses:
-        "200":
-          description: チュートリアル一覧
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Tutorial"
-
+    $ref: "./openapi/paths/tutorial.yaml#/~1tutorial"
   /tutorial/{tutorialId}:
-    get:
-      summary: チュートリアルのタイトル、説明、ステージを取得
-      operationId: getTutorial
-      parameters:
-        - name: tutorialId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: チュートリアルのタイトル、説明、ステージ
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TutorialDetail"
-        "404":
-          $ref: "#/components/responses/NotFound"
+    $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D"
+  /tutorial/{tutorialId}/program:
+    $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D~1program"
+  /tutorial/{tutorialId}/run:
+    $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D~1run"
+  /battle/program:
+    $ref: "./openapi/paths/battle.yaml#/~1battle~1program"
 
 components:
   parameters:
@@ -379,8 +72,16 @@ components:
       required: true
       schema:
         type: string
-    MatchId:
-      name: matchId
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: 実行作成時に発行される UUIDv7
+    TutorialId:
+      name: tutorialId
       in: path
       required: true
       schema:
@@ -431,6 +132,15 @@ components:
             $ref: "#/components/schemas/ApiError"
 
   schemas:
+    RunCreated:
+      type: object
+      required: [runId]
+      properties:
+        runId:
+          type: string
+          format: uuid
+          description: 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+
     MatchResult:
       type: object
       description: 対戦の再生履歴と結果の要約
@@ -474,7 +184,7 @@ components:
       type: object
       additionalProperties: false
       description: プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
-      required: [name, source]
+      required: [name, source, isBattle]
       properties:
         id:
           type: string
@@ -485,9 +195,26 @@ components:
         source:
           description: 文法のバージョンと picolang.v0.program の関数定義の map を持つ picolang のソース
           $ref: "#/components/schemas/PicolangProgram"
+        isBattle:
+          type: boolean
+          description: 対戦用プログラムなら true、チュートリアル用プログラムなら false
+        tutorialID:
+          type: string
+          description: チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。
+      if:
+        properties:
+          isBattle:
+            const: true
+      then:
+        not:
+          required: [tutorialID]
+      else:
+        required: [tutorialID]
       examples:
         - id: program-1
           name: 前進する
+          isBattle: false
+          tutorialID: tutorial-1
           source:
             picolangVersion: 0
             picolang:
@@ -518,9 +245,15 @@ components:
                             type: unit
                             value: null
 
+    SavedProgram:
+      description: 保存済みのプログラム
+      allOf:
+        - $ref: "#/components/schemas/Program"
+        - required: [id]
+
     Match:
       type: object
-      required: [id, fieldId, selectedLayoutId]
+      required: [id, fieldId, selectedLayoutId, opponentName, runId]
       properties:
         id:
           type: string
@@ -532,6 +265,12 @@ components:
         status:
           type: string
           enum: [ready, running, finished]
+        opponentName:
+          type: string
+        runId:
+          type: string
+          format: uuid
+          description: この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
 
     User:
       type: object

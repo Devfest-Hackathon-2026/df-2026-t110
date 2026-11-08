@@ -44,25 +44,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/field/{fieldId}/program": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** フィールドのプログラム一覧を取得 */
-        get: operations["listPrograms"];
-        put?: never;
-        /** プログラムを作成 */
-        post: operations["createProgram"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/field/{fieldId}/program/{programId}": {
+    "/program/{programId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -80,7 +62,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/field/{fieldId}/program/create-with-vibe": {
+    "/program/create-with-vibe": {
         parameters: {
             query?: never;
             header?: never;
@@ -89,7 +71,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 自然言語からプログラムを生成 */
+        /**
+         * 自然言語からプログラムを生成
+         * @description picolang のソースだけを生成し、保存や対戦用の登録は行わない。
+         *     生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
+         */
         post: operations["createProgramWithVibe"];
         delete?: never;
         options?: never;
@@ -97,7 +83,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/field/{fieldId}/match": {
+    "/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** プログラムを作成 */
+        post: operations["createProgram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/match": {
         parameters: {
             query?: never;
             header?: never;
@@ -108,11 +111,10 @@ export interface paths {
         put?: never;
         /**
          * ランク対戦を作成し、シミュレーションを開始
-         * @description 自分のプログラムで対戦を申し込む。
-         *     サーバーはフィールド内の候補配置を1つ選び、
-         *     このフィールドに提出している自分以外のユーザーからランダムに相手を1人選んで、
-         *     そのユーザーがこのフィールドで最後に更新したプログラムと対戦させる。
-         *     シミュレーションはサーバーで実行し、結果は matchEvents で受け取る。
+         * @description 自分のプログラムで対戦を申し込む。ロボットが複数あるので、それぞれに対戦用のプログラムのidを指定する。
+         *     サーバーは候補配置を1つ選び、自分以外のユーザーからランダムに相手を1人選んで、
+         *     そのユーザーが登録している対戦用プログラムと対戦させる。
+         *     シミュレーションはサーバーで実行し、結果はレスポンスの runId を使って runEvents で受け取る。
          *     抽選結果を取得・変更する独立したAPIは設けない。
          *     レートは対戦を申し込んだ側だけ変動する。
          */
@@ -123,7 +125,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/match/{matchId}/events": {
+    "/run/{runId}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -131,14 +133,15 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * 対戦結果を購読
+         * 実行結果を購読
          * @description Server-Sent Events。
          *     シミュレーション完了時に result イベントを1回送り、ストリームを閉じる。
          *     接続時点で完了済みなら、接続直後に result イベントを送る。
          *     副作用を持たないため、切断後に再接続して結果を取り直せる。
-         *     result の data は MatchResult 形式の JSON。
+         *     チュートリアルでは run の作成者、対戦では match の参加者だけが購読できる。
+         *     チュートリアルの結果にはデバッグ情報を含み、対戦の結果には含まない。
          */
-        get: operations["matchEvents"];
+        get: operations["runEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -294,10 +297,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tutorial/{tutorialId}/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チュートリアルでユーザーが作ったプログラム一覧を取得 */
+        get: operations["listTutorialPrograms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tutorial/{tutorialId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チュートリアルでプログラムを実行
+         * @description チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+         *     結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
+         */
+        post: operations["runTutorial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/battle/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 対戦用のプログラム設定を取得
+         * @description 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを取得する。
+         */
+        get: operations["getBattlePrograms"];
+        /**
+         * 対戦用のプログラムを設定
+         * @description 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを設定する。
+         */
+        put: operations["setBattlePrograms"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        RunCreated: {
+            /**
+             * Format: uuid
+             * @description 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
+        };
         /** @description 対戦の再生履歴と結果の要約 */
         MatchResult: {
             history: components["schemas"]["history.schema"];
@@ -322,6 +394,8 @@ export interface components {
          * @example {
          *       "id": "program-1",
          *       "name": "前進する",
+         *       "isBattle": false,
+         *       "tutorialID": "tutorial-1",
          *       "source": {
          *         "picolangVersion": 0,
          *         "picolang": {
@@ -374,7 +448,13 @@ export interface components {
             name: string;
             /** @description 文法のバージョンと picolang.v0.program の関数定義の map を持つ picolang のソース */
             source: components["schemas"]["toplevel.schema"];
+            /** @description 対戦用プログラムなら true、チュートリアル用プログラムなら false */
+            isBattle: boolean;
+            /** @description チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。 */
+            tutorialID?: string;
         };
+        /** @description 保存済みのプログラム */
+        SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
             id: string;
             fieldId: string;
@@ -382,6 +462,12 @@ export interface components {
             selectedLayoutId: string;
             /** @enum {string} */
             status?: "ready" | "running" | "finished";
+            opponentName: string;
+            /**
+             * Format: uuid
+             * @description この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
         };
         User: {
             id?: string;
@@ -563,6 +649,8 @@ export interface components {
          * @description 単一のフィールドのスキーマ定義
          */
         "field.schema": {
+            /** @description フィールドを識別するための空でない文字列 */
+            id: string;
             /** @description フィールドの横方向のマス数 */
             width: number;
             /** @description フィールドの縦方向のマス数 */
@@ -1274,7 +1362,8 @@ export interface components {
     parameters: {
         FieldId: string;
         ProgramId: string;
-        MatchId: string;
+        RunId: string;
+        TutorialId: string;
     };
     requestBodies: never;
     headers: {
@@ -1330,60 +1419,11 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    listPrograms: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                fieldId: components["parameters"]["FieldId"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description プログラム一覧 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Program"][];
-                };
-            };
-        };
-    };
-    createProgram: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                fieldId: components["parameters"]["FieldId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Program"];
-            };
-        };
-        responses: {
-            /** @description 作成したプログラム */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Program"];
-                };
-            };
-        };
-    };
     getProgram: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                fieldId: components["parameters"]["FieldId"];
                 programId: components["parameters"]["ProgramId"];
             };
             cookie?: never;
@@ -1396,7 +1436,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Program"];
+                    "application/json": components["schemas"]["SavedProgram"];
                 };
             };
             404: components["responses"]["NotFound"];
@@ -1407,7 +1447,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                fieldId: components["parameters"]["FieldId"];
                 programId: components["parameters"]["ProgramId"];
             };
             cookie?: never;
@@ -1424,7 +1463,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Program"];
+                    "application/json": components["schemas"]["SavedProgram"];
                 };
             };
             404: components["responses"]["NotFound"];
@@ -1434,26 +1473,52 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                fieldId: components["parameters"]["FieldId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
                     prompt: string;
+                    /** @description Field IDを指定すると、LLM にフィールドの情報を渡すことができる */
+                    fieldId?: string;
+                    /** @description 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す */
+                    isBattle?: boolean;
                 };
             };
         };
         responses: {
-            /** @description 生成したプログラム */
+            /** @description 生成した picolang のソース */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Program"];
+                    "application/json": components["schemas"]["toplevel.schema"];
+                };
+            };
+        };
+    };
+    createProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Program"];
+            };
+        };
+        responses: {
+            /** @description 作成したプログラム */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedProgram"];
                 };
             };
         };
@@ -1462,16 +1527,14 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                fieldId: components["parameters"]["FieldId"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
                 "application/json": {
                     programId: string;
-                };
+                }[];
             };
         };
         responses: {
@@ -1498,18 +1561,18 @@ export interface operations {
             409: components["responses"]["Conflict"];
         };
     };
-    matchEvents: {
+    runEvents: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                matchId: components["parameters"]["MatchId"];
+                runId: components["parameters"]["RunId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description SSEストリーム */
+            /** @description SSEストリーム。result イベントの data は MatchResult 形式の JSON。 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1517,11 +1580,12 @@ export interface operations {
                 content: {
                     /**
                      * @example event: result
-                     *     data: {"history":[{"type":"field","tick":0,"state":{}}],"summary":{"score":{"player":2,"opponent":1}}}
+                     *     data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
                      */
                     "text/event-stream": string;
                 };
             };
+            400: components["responses"]["BadRequest"];
             /** @description 認証されていない */
             401: {
                 headers: {
@@ -1529,6 +1593,7 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
         };
     };
@@ -1638,6 +1703,13 @@ export interface operations {
                     "application/json": components["schemas"]["User"];
                 };
             };
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     setMyUsername: {
@@ -1734,6 +1806,123 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+        };
+    };
+    listTutorialPrograms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tutorialId: components["parameters"]["TutorialId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description プログラム一覧 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedProgram"][];
+                };
+            };
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    runTutorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tutorialId: components["parameters"]["TutorialId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description このチュートリアル用に保存したプログラムのID */
+                    programId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 実行を開始した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getBattlePrograms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 対戦用のプログラム設定 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    setBattlePrograms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": string[];
+            };
+        };
+        responses: {
+            /** @description 対戦用のプログラム設定を保存した */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

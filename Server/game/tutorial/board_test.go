@@ -64,6 +64,7 @@ func TestTutorialClearConditions(t *testing.T) {
 
 			stageJSON := fmt.Sprintf(`{
 				"variants":[{
+					"id":"field-1",
 					"width":4,"height":1,
 					"terrain":[["land","land","land","sea"]],
 					"objects":[%s],

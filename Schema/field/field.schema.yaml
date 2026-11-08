@@ -5,6 +5,7 @@ description: 単一のフィールドのスキーマ定義
 type: object
 additionalProperties: false
 required:
+  - id
   - width
   - height
   - terrain
@@ -12,6 +13,10 @@ required:
   - robot
   - drillLimit
 properties:
+  id:
+    description: フィールドを識別するための空でない文字列
+    type: string
+    minLength: 1
   width:
     description: フィールドの横方向のマス数
     type: integer
@@ -32,14 +37,14 @@ properties:
       minItems: 1
       items:
         description: 各マスの地形
-        $ref: '#/$defs/Terrain'
+        $ref: "#/$defs/Terrain"
 
   objects:
     description: フィールド上に配置するゴール、チェックポイント、荷物の一覧
     type: array
     items:
       description: フィールド上に配置する一つのオブジェクト
-      $ref: '#/$defs/FieldObject'
+      $ref: "#/$defs/FieldObject"
 
   robot:
     description: ロボットの初期位置と初期方向
@@ -51,10 +56,10 @@ properties:
     properties:
       position:
         description: ロボットの初期位置
-        $ref: '#/$defs/Position'
+        $ref: "#/$defs/Position"
       direction:
         description: ロボットが最初に向いている方向
-        $ref: '#/$defs/Direction'
+        $ref: "#/$defs/Direction"
 
   drillLimit:
     description: ドリルを使用できる回数の上限
@@ -97,11 +102,11 @@ $defs:
   FieldObject:
     description: フィールドに配置するゴール、チェックポイント、荷物のいずれか
     oneOf:
-      - $ref: '#/$defs/Goal'
+      - $ref: "#/$defs/Goal"
         description: ゴールの定義
-      - $ref: '#/$defs/Checkpoint'
+      - $ref: "#/$defs/Checkpoint"
         description: チェックポイントの定義
-      - $ref: '#/$defs/Luggage'
+      - $ref: "#/$defs/Luggage"
         description: 荷物の定義
 
   Goal:
@@ -116,7 +121,7 @@ $defs:
         const: goal
       position:
         description: ゴールを配置するマスの座標
-        $ref: '#/$defs/Position'
+        $ref: "#/$defs/Position"
 
   Checkpoint:
     description: 指定した順序で通過するチェックポイント
@@ -130,7 +135,7 @@ $defs:
         const: checkpoint
       position:
         description: チェックポイントを配置するマスの座標
-        $ref: '#/$defs/Position'
+        $ref: "#/$defs/Position"
       order:
         description: チェックポイントを通過する順序
         type: integer
@@ -151,4 +156,4 @@ $defs:
         minLength: 1
       position:
         description: 荷物の初期位置
-        $ref: '#/$defs/Position'
+        $ref: "#/$defs/Position"
