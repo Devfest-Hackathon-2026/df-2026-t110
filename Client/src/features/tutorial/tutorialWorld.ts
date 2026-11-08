@@ -1,4 +1,4 @@
-import type { PicoValue } from '../picolang/executePicolang.ts'
+import type { PicoValue } from '../picolang/language/executePicolang.ts'
 import type { StageCell, StageLayout, StageObject } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { PicoPrimitive, PicoType } from './picolang.ts'
+import type { PicoPrimitive, PicoType } from '../language/picolang.ts'
 
 const props = defineProps<{ modelValue: PicoType }>()
 const emit = defineEmits<{ 'update:modelValue': [value: PicoType] }>()

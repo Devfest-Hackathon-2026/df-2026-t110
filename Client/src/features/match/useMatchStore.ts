@@ -12,7 +12,7 @@ import {
   type MatchUser,
   type ProgramRecord,
 } from './matchApi.ts'
-import type { PicoProgram } from '../picolang/picolang.ts'
+import type { PicoProgram } from '../picolang/language/picolang.ts'
 import { parseBoardEventHistory, replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 export const useMatchStore = defineStore('match', () => {

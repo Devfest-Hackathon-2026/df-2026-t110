@@ -24,8 +24,8 @@ import redoIcon from '@iconify-icons/lucide/redo-2'
 import PicoBlock from './PicoBlock.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
 import { beginPicoDrag, dragVariable, endPicoDrag } from './picoDrag.ts'
+import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
-  PICO_BUILTINS,
   block,
   defaultExpr,
   id,
@@ -36,7 +36,7 @@ import {
   programFunctions,
   type PicoProgram,
   type PicoType,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 
 const props = defineProps<{ tutorialId: string }>()
 const emit = defineEmits<{ 'update:program': [program: PicoProgram] }>()
@@ -122,7 +122,7 @@ const palette = computed(() =>
       ? Object.keys(functions.value)
           .filter((name) => name !== 'main')
           .map((name) => ({ name, label: name }))
-      : PICO_BUILTINS.filter((item) => item.category === category.value),
+      : PICO_BUILTIN_OPTIONS.filter((item) => item.category === category.value),
 )
 
 watch(
@@ -229,7 +229,7 @@ function dragChoice(event: DragEvent, name: string): void {
 }
 function addFunction(): void {
   const name = newFunctionName.value.trim()
-  if (!name || name in functions.value || PICO_BUILTINS.some((item) => item.name === name)) {
+  if (!name || name in functions.value || PICO_BUILTIN_OPTIONS.some((item) => item.name === name)) {
     message.value = '別の関数名を指定してください。'
     return
   }

@@ -42,7 +42,7 @@ import {
   type PicoExpr,
   type PicoProgram,
   type PicoStatement,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 import { typeLabel } from './picoGuidance.ts'
 import './blocklyEditor.css'
 

@@ -1,4 +1,4 @@
-import type { PicoFunction, PicoType } from './picolang.ts'
+import type { PicoFunction, PicoType } from '../language/picolang.ts'
 
 const builtinArguments: Record<string, string[]> = {
   rotate: ['回す向き'],
