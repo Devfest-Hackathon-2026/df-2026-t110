@@ -41,7 +41,7 @@ export interface PicoBlock extends NodeBase {
 }
 export type PicoStatement =
   | PicoExpr
-  | (NodeBase & { kind: 'declare'; type: PicoType; ident: PicoIdent; value: PicoExpr })
+  | (NodeBase & { kind: 'declare'; type?: PicoType; ident: PicoIdent; value: PicoExpr })
   | (NodeBase & { kind: 'assign'; ident: PicoIdent; value: PicoExpr })
   | (NodeBase & { kind: 'if'; condition: PicoExpr; then: PicoBlock; else?: PicoBlock })
   | (NodeBase & { kind: 'while'; condition: PicoExpr; body: PicoBlock })
@@ -58,10 +58,19 @@ export interface PicoProgram {
   picolangVersion: 0
   picolang: { v0: { program: Record<string, PicoFunction> } }
 }
-/** Execution JSON always carries concrete function types required by the server schema. */
+export type PicoTypedStatement =
+  | Exclude<PicoStatement, { kind: 'declare' | 'if' | 'while' | 'for' }>
+  | (Extract<PicoStatement, { kind: 'declare' }> & { type: PicoType })
+  | (Extract<PicoStatement, { kind: 'if' }> & { then: PicoTypedBlock; else?: PicoTypedBlock })
+  | (Extract<PicoStatement, { kind: 'while' | 'for' }> & { body: PicoTypedBlock })
+export interface PicoTypedBlock extends PicoBlock {
+  stmts: PicoTypedStatement[]
+}
+/** Execution JSON always carries concrete types required by the server schema. */
 export interface PicoTypedFunction extends PicoFunction {
   params: Array<PicoFunction['params'][number] & { type: PicoType }>
   returnType: PicoType
+  body: PicoTypedBlock
 }
 export interface PicoTypedProgram extends PicoProgram {
   picolang: { v0: { program: Record<string, PicoTypedFunction> } }
@@ -163,7 +172,7 @@ export function makeStatement(
 ): PicoStatement {
   switch (choice) {
     case 'declare':
-      return { kind: 'declare', hintId: id(), type: 'integer', ident: ident(), value: defaultExpr() }
+      return { kind: 'declare', hintId: id(), ident: ident(), value: defaultExpr() }
     case 'assign':
       return { kind: 'assign', hintId: id(), ident: ident(), value: defaultExpr() }
     case 'if':
@@ -264,15 +273,15 @@ function validExpr(value: unknown, seen: Set<string>): boolean {
       return false
   }
 }
-function validBlock(value: unknown, seen: Set<string>): value is PicoBlock {
+function validBlock(value: unknown, seen: Set<string>, draft: boolean): value is PicoBlock {
   return (
     object(value) &&
     node(value, 'block', ['stmts'], seen) &&
     Array.isArray(value.stmts) &&
-    value.stmts.every((stmt) => validStmt(stmt, seen))
+    value.stmts.every((stmt) => validStmt(stmt, seen, draft))
   )
 }
-function validStmt(value: unknown, seen: Set<string>): boolean {
+function validStmt(value: unknown, seen: Set<string>, draft: boolean): boolean {
   if (!object(value)) return false
   switch (value.kind) {
     case 'literal':
@@ -281,8 +290,8 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
       return validExpr(value, seen)
     case 'declare':
       return (
-        node(value, 'declare', ['type', 'ident', 'value'], seen) &&
-        type(value.type) &&
+        node(value, 'declare', [...('type' in value ? ['type'] : []), 'ident', 'value'], seen) &&
+        ((draft && !('type' in value)) || type(value.type)) &&
         validIdent(value.ident, seen) &&
         validExpr(value.value, seen)
       )
@@ -301,14 +310,14 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
           seen,
         ) &&
         validExpr(value.condition, seen) &&
-        validBlock(value.then, seen) &&
-        (value.else === undefined || validBlock(value.else, seen))
+        validBlock(value.then, seen, draft) &&
+        (value.else === undefined || validBlock(value.else, seen, draft))
       )
     case 'while':
       return (
         node(value, 'while', ['condition', 'body'], seen) &&
         validExpr(value.condition, seen) &&
-        validBlock(value.body, seen)
+        validBlock(value.body, seen, draft)
       )
     case 'for':
       return (
@@ -316,7 +325,7 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
         validIdent(value.ident, seen) &&
         validExpr(value.start, seen) &&
         validExpr(value.end, seen) &&
-        validBlock(value.body, seen)
+        validBlock(value.body, seen, draft)
       )
     case 'return':
       return node(value, 'return', ['value'], seen) && validExpr(value.value, seen)
@@ -363,7 +372,7 @@ function validProgram(value: unknown, draft: boolean): boolean {
       )
         return false
     }
-    if (!validBlock(definition.body, seen)) return false
+    if (!validBlock(definition.body, seen, draft)) return false
     if (definition.body.stmts.at(-1)?.kind !== 'return') return false
   }
   return (
@@ -385,6 +394,20 @@ export function picoDraft(program: PicoProgram): PicoProgram {
   for (const fn of Object.values(programFunctions(draft))) {
     delete fn.returnType
     for (const param of fn.params) delete param.type
+    walkPicoStatements(fn.body, (stmt) => {
+      if (stmt.kind === 'declare') delete stmt.type
+    })
   }
   return draft
+}
+
+/** Visit declarations in every nested lexical block as well as top-level statements. */
+export function walkPicoStatements(body: PicoBlock, visit: (stmt: PicoStatement) => void): void {
+  for (const stmt of body.stmts) {
+    visit(stmt)
+    if (stmt.kind === 'if') {
+      walkPicoStatements(stmt.then, visit)
+      if (stmt.else) walkPicoStatements(stmt.else, visit)
+    } else if (stmt.kind === 'while' || stmt.kind === 'for') walkPicoStatements(stmt.body, visit)
+  }
 }
