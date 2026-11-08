@@ -133,8 +133,11 @@ function makeRig(teamId?: number): Rig | null {
     const material = object.material
     if (!(material instanceof THREE.MeshStandardMaterial)) return
     const copy = material.clone()
-    if (teamId === 2 && copy.color.g > copy.color.r * 1.2 && copy.color.g > copy.color.b * 1.2)
-      copy.color.set(0xff9838)
+    if (teamId === 2 && /^(Body|left_arm|right_arm)$/.test(object.name)) {
+      copy.color.set('#9860d7')
+      copy.emissive.set('#492471')
+      copy.emissiveIntensity = 0.12
+    }
     object.material = copy
   })
   const { pivots } = createArmPivots(model, THREE)

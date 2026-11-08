@@ -3,6 +3,10 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
+const props = withDefaults(defineProps<{ variant?: 'orange' | 'green' | 'purple'; animated?: boolean }>(), {
+  variant: 'orange',
+  animated: true,
+})
 const host = ref<HTMLElement | null>(null)
 const failed = ref(false)
 let renderer!: THREE.WebGLRenderer
@@ -21,6 +25,7 @@ function resize() {
   renderer.setSize(width, height, false)
   camera.aspect = width / height
   camera.updateProjectionMatrix()
+  if (!props.animated) renderer.render(scene, camera)
 }
 
 function animate(time: number): void {
@@ -53,7 +58,7 @@ onMounted(() => {
     observer = new ResizeObserver(resize)
     observer.observe(host.value)
     resize()
-    frame = requestAnimationFrame(animate)
+    if (props.animated) frame = requestAnimationFrame(animate)
 
     new GLTFLoader().load(
       '/robot.glb',
@@ -63,10 +68,12 @@ onMounted(() => {
         model.traverse((node) => {
           if (!(node instanceof THREE.Mesh) || !/^(Body|left_arm|right_arm)$/.test(node.name)) return
           if (!(node.material instanceof THREE.MeshStandardMaterial)) return
-          node.material = node.material.clone()
-          node.material.color.set('#ee783d')
-          node.material.emissive.set('#8f360f')
-          node.material.emissiveIntensity = 0.12
+          if (props.variant !== 'green') {
+            node.material = node.material.clone()
+            node.material.color.set(props.variant === 'purple' ? '#9860d7' : '#ee783d')
+            node.material.emissive.set(props.variant === 'purple' ? '#492471' : '#8f360f')
+            node.material.emissiveIntensity = 0.12
+          }
         })
         const bounds = new THREE.Box3().setFromObject(model)
         const size = bounds.getSize(new THREE.Vector3())
@@ -76,6 +83,7 @@ onMounted(() => {
         baseY = -bounds.min.y * scale
         model.position.set(-center.x * scale, baseY, -center.z * scale)
         scene.add(model)
+        if (!props.animated) renderer.render(scene, camera)
       },
       undefined,
       () => {
@@ -103,7 +111,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="host" class="tutor-avatar" role="img" aria-label="オレンジ色の案内ロボット">
-    <span v-if="failed" class="tutor-avatar-fallback">案内役</span>
+  <div
+    ref="host"
+    class="tutor-avatar"
+    role="img"
+    :aria-label="`${props.variant === 'green' ? '緑' : props.variant === 'purple' ? '紫' : 'オレンジ'}色のロボット`"
+  >
+    <span v-if="failed" class="tutor-avatar-fallback">ロボット</span>
   </div>
 </template>

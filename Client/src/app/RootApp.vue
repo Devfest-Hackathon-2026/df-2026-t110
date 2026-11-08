@@ -46,7 +46,7 @@ document.title = tutorialId
             <Icon :icon="infoIcon" aria-hidden="true" /><span>About</span>
           </h1>
           <p class="hero-lead">
-            命令を組んで、ロボットを動かそう。岩をこわし、海に道をつくりながら、ゴールまでの道を考える教材です。
+            命令を組んで、ロボットを動かそう。<br>岩をこわし、海に道をつくりながら、ゴールまでの道を考える教材です。
           </p>
           <div class="hero-actions">
             <a class="action-primary" href="/tutorials">教材を始める</a>
