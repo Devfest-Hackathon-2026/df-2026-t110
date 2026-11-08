@@ -12,12 +12,29 @@ export interface TutorialRecord {
 }
 
 async function getJson(path: string, signal: AbortSignal): Promise<unknown | null> {
-  const response = await fetch(`${base}${path}`, { signal })
-  if (response.status === 404) return null
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  if (!response.headers.get('content-type')?.includes('json'))
-    throw new Error('教材APIからJSONを取得できませんでした')
-  return response.json()
+  const request = new AbortController()
+  const abort = () => request.abort()
+  let timedOut = false
+  const timer = window.setTimeout(() => {
+    timedOut = true
+    request.abort()
+  }, 20_000)
+  signal.addEventListener('abort', abort, { once: true })
+  if (signal.aborted) request.abort()
+  try {
+    const response = await fetch(`${base}${path}`, { signal: request.signal })
+    if (response.status === 404) return null
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.headers.get('content-type')?.includes('json'))
+      throw new Error('教材APIからJSONを取得できませんでした')
+    return response.json()
+  } catch (error) {
+    if (timedOut && !signal.aborted) throw new Error('教材APIの応答が20秒以内に返りませんでした')
+    throw error
+  } finally {
+    window.clearTimeout(timer)
+    signal.removeEventListener('abort', abort)
+  }
 }
 
 export async function getTutorial(id: string, signal: AbortSignal): Promise<TutorialRecord | null> {
