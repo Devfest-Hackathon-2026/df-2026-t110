@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
+import houseIcon from '@iconify-icons/lucide/house'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
 import userRoundIcon from '@iconify-icons/lucide/user-round'
@@ -16,6 +17,9 @@ onMounted(() => void matchStore.loadMe())
   <header class="site-nav container">
     <a class="site-logo" href="/" aria-label="Robot Field ホーム">Robot <span>Field</span></a>
     <nav aria-label="メインナビゲーション">
+      <a href="/" :aria-current="activePage === 'home' ? 'page' : undefined"
+        ><Icon :icon="houseIcon" aria-hidden="true" /><span>ホーム</span></a
+      >
       <a
         href="/tutorials"
         :aria-current="activePage === 'tutorials' || activePage === 'tutorial-detail' ? 'page' : undefined"
