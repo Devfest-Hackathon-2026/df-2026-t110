@@ -36,11 +36,11 @@ examples:
       signature:
         typeParameters: [T]
         params:
-          - kind: vector
+          - kind: stack
             elementType: { kind: type_parameter, name: T }
           - kind: type_parameter
             name: T
         returnType:
-          kind: vector
+          kind: stack
           elementType: { kind: type_parameter, name: T }
-      tags: [vector]
+      tags: [stack]

@@ -22,7 +22,7 @@ func TestPicolangPrimitiveTypeNames(t *testing.T) {
 		{name: "rotation", valid: true},
 		{name: "distance_target", valid: true},
 		{name: "direction", valid: false},
-		{name: "vector", valid: false},
+		{name: "stack", valid: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,23 +39,24 @@ func TestPicolangPrimitiveTypeNames(t *testing.T) {
 	}
 }
 
-func TestVectorType(t *testing.T) {
+func TestStackType(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
 		data  string
 		valid bool
 	}{
-		{name: "integer elements", data: `{"kind":"vector","elementType":"integer"}`, valid: true},
-		{name: "nested vector", data: `{"kind":"vector","elementType":{"kind":"vector","elementType":"bool"}}`, valid: true},
+		{name: "integer elements", data: `{"kind":"stack","elementType":"integer"}`, valid: true},
+		{name: "nested stack", data: `{"kind":"stack","elementType":{"kind":"stack","elementType":"bool"}}`, valid: true},
 		{name: "missing kind", data: `{"elementType":"integer"}`, valid: false},
 		{name: "wrong kind", data: `{"kind":"array","elementType":"integer"}`, valid: false},
-		{name: "missing element type", data: `{"kind":"vector"}`, valid: false},
+		{name: "old vector kind", data: `{"kind":"vector","elementType":"integer"}`, valid: false},
+		{name: "missing element type", data: `{"kind":"stack"}`, valid: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			var got schema.VectorType
+			var got schema.StackType
 			err := json.Unmarshal([]byte(tt.data), &got)
 			if (err == nil) != tt.valid {
 				t.Errorf("got error %v, valid = %t", err, tt.valid)

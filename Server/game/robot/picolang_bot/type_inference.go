@@ -41,8 +41,8 @@ func (inference *Inference) instantiate(t Type, source Source, variable **infere
 			inference.variables = append(inference.variables, *variable)
 		}
 		return *variable
-	case VectorType:
-		return VectorType{ElementType: inference.instantiate(t.ElementType, source, variable)}
+	case StackType:
+		return StackType{ElementType: inference.instantiate(t.ElementType, source, variable)}
 	default:
 		return t
 	}
@@ -72,13 +72,13 @@ func (*inferenceVariable) annotation()   {}
 func (*inferenceVariable) languageType() {}
 
 // CanonicalType copies and validates declared types, also detecting cycles in
-// pointer-based vector types supplied through the public AST API.
+// pointer-based stack types supplied through the public AST API.
 func CanonicalType(t Type) (Type, bool) {
-	return canonicalType(t, make(map[*VectorType]struct{}))
+	return canonicalType(t, make(map[*StackType]struct{}))
 }
 
-func canonicalType(t Type, visiting map[*VectorType]struct{}) (Type, bool) {
-	if v, ok := t.(*VectorType); ok && v != nil {
+func canonicalType(t Type, visiting map[*StackType]struct{}) (Type, bool) {
+	if v, ok := t.(*StackType); ok && v != nil {
 		if _, cycle := visiting[v]; cycle {
 			return invalidType{}, false
 		}
@@ -88,10 +88,10 @@ func canonicalType(t Type, visiting map[*VectorType]struct{}) (Type, bool) {
 	switch t := NodeValue(t).(type) {
 	case BoolType, IntegerType, UnitType, TerrainType, RotationType, DistanceTargetType:
 		return t, true
-	case VectorType:
+	case StackType:
 		element, ok := canonicalType(t.ElementType, visiting)
 		if ok {
-			return VectorType{ElementType: element}, true
+			return StackType{ElementType: element}, true
 		}
 	}
 	return invalidType{}, false
@@ -110,8 +110,8 @@ func occurs(variable *inferenceVariable, t Type) bool {
 	if t == variable {
 		return true
 	}
-	if vector, ok := t.(VectorType); ok {
-		return occurs(variable, vector.ElementType)
+	if stack, ok := t.(StackType); ok {
+		return occurs(variable, stack.ElementType)
 	}
 	return false
 }
@@ -131,7 +131,7 @@ func invalidateInference(t Type) {
 	switch t := prune(t).(type) {
 	case *inferenceVariable:
 		t.binding = invalidType{}
-	case VectorType:
+	case StackType:
 		invalidateInference(t.ElementType)
 	}
 }
@@ -178,9 +178,9 @@ func unifyTypes(expected, actual Type) bool {
 	case DistanceTargetType:
 		_, ok := actual.(DistanceTargetType)
 		return ok
-	case VectorType:
-		vector, ok := actual.(VectorType)
-		return ok && unifyTypes(expected.ElementType, vector.ElementType)
+	case StackType:
+		stack, ok := actual.(StackType)
+		return ok && unifyTypes(expected.ElementType, stack.ElementType)
 	default:
 		return false
 	}
@@ -189,8 +189,8 @@ func unifyTypes(expected, actual Type) bool {
 // ResolveType replaces solved parameters with concrete value types.
 func ResolveType(t Type) Type {
 	t = prune(t)
-	if vector, ok := t.(VectorType); ok {
-		return VectorType{ElementType: ResolveType(vector.ElementType)}
+	if stack, ok := t.(StackType); ok {
+		return StackType{ElementType: ResolveType(stack.ElementType)}
 	}
 	return t
 }
@@ -209,8 +209,8 @@ func TypeName(t Type) string {
 		return "rotation"
 	case DistanceTargetType:
 		return "distance_target"
-	case VectorType:
-		return "vector<" + TypeName(t.ElementType) + ">"
+	case StackType:
+		return "stack<" + TypeName(t.ElementType) + ">"
 	case *inferenceVariable:
 		return "?"
 	case invalidType:

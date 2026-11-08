@@ -135,8 +135,8 @@ func (p *parser) parseFunction(node map[string]any) bot.Function[bot.Name, bot.U
 }
 
 func (p *parser) parseType(value any) bot.Type {
-	if vector, ok := value.(map[string]any); ok {
-		return bot.VectorType{ElementType: p.parseType(vector["elementType"])}
+	if stack, ok := value.(map[string]any); ok {
+		return bot.StackType{ElementType: p.parseType(stack["elementType"])}
 	}
 	switch value.(string) {
 	case "bool":

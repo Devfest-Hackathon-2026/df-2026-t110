@@ -54,8 +54,8 @@ func marshalRecordValue(value values.RecordValue) ([]byte, error) {
 		return []byte(`{"type":"rock"}`), nil
 	case values.SeaTerrain:
 		return []byte(`{"type":"sea"}`), nil
-	case values.VectorRecordValue:
-		return marshalVectorElements(value.Elements)
+	case values.StackRecordValue:
+		return marshalStackElements(value.Elements)
 	default:
 		return nil, fmt.Errorf("invalid recording value %T", value)
 	}
@@ -77,12 +77,12 @@ func marshalLandKind(kind values.LandKind) ([]byte, error) {
 	}
 }
 
-func marshalVectorElements(elements []values.RecordValue) ([]byte, error) {
+func marshalStackElements(elements []values.RecordValue) ([]byte, error) {
 	values := make([]json.RawMessage, len(elements))
 	for i, element := range elements {
 		value, err := marshalRecordValue(element)
 		if err != nil {
-			return nil, fmt.Errorf("vector element %d: %w", i, err)
+			return nil, fmt.Errorf("stack element %d: %w", i, err)
 		}
 		values[i] = value
 	}
@@ -103,15 +103,15 @@ func marshalValueUpdate(update ValueUpdate) ([]byte, error) {
 		return marshalPrimitiveUpdate("distance_target", update.Value)
 	case RotationUpdate:
 		return marshalPrimitiveUpdate("rotation", values.RotationRecordValue{Rotation: update.Value})
-	case VectorUpdate:
-		operation, err := marshalVectorOperation(update.Update)
+	case StackUpdate:
+		operation, err := marshalStackOperation(update.Update)
 		if err != nil {
 			return nil, err
 		}
 		return json.Marshal(struct {
 			Type   string          `json:"type"`
 			Update json.RawMessage `json:"update"`
-		}{Type: "vector", Update: operation})
+		}{Type: "stack", Update: operation})
 	default:
 		return nil, fmt.Errorf("invalid recording update %T", update)
 	}
@@ -128,21 +128,21 @@ func marshalPrimitiveUpdate(kind string, value values.RecordValue) ([]byte, erro
 	}{Type: kind, Value: encoded})
 }
 
-func marshalVectorOperation(operation VectorOperation) ([]byte, error) {
+func marshalStackOperation(operation StackOperation) ([]byte, error) {
 	var name string
 	var value []byte
 	var err error
 	switch operation := operation.(type) {
-	case VectorReplace:
+	case StackReplace:
 		name = "replace"
-		value, err = marshalVectorElements(operation.Value)
+		value, err = marshalStackElements(operation.Value)
 	case PushBack:
 		name = "push_back"
 		value, err = marshalRecordValue(operation.Value)
 	case PopBack:
 		return []byte(`{"op":"pop_back"}`), nil
 	default:
-		return nil, fmt.Errorf("invalid recording vector operation %T", operation)
+		return nil, fmt.Errorf("invalid recording stack operation %T", operation)
 	}
 	if err != nil {
 		return nil, err

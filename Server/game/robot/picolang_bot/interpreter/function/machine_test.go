@@ -429,9 +429,9 @@ func TestIfElseReturnsFromNestedScope(t *testing.T) {
 	}
 }
 
-func TestVectorSnapshotsOutliveValuesAndReassignment(t *testing.T) {
+func TestStackSnapshotsOutliveValuesAndReassignment(t *testing.T) {
 	t.Parallel()
-	vv := bot.VectorType{ElementType: bot.VectorType{ElementType: bot.IntegerType{}}}
+	vv := bot.StackType{ElementType: bot.StackType{ElementType: bot.IntegerType{}}}
 	p := checked(t, []param{parameter("v", vv)}, vv,
 		decl("saved", vv, ref("v")), assign("v", call("new")), ret(ref("saved")))
 	env := resources()
@@ -452,8 +452,8 @@ func TestVectorSnapshotsOutliveValuesAndReassignment(t *testing.T) {
 	result := run(t, m, env, p)
 	release(t, env, result)
 	assertUsage(t, env, base)
-	innerValue := values.VectorRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}}}
-	want := values.VectorRecordValue{Elements: []values.RecordValue{innerValue, innerValue}}
+	innerValue := values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}}}
+	want := values.StackRecordValue{Elements: []values.RecordValue{innerValue, innerValue}}
 	initCount, updateCount := 0, 0
 	for _, e := range env.Events.Collect() {
 		switch e := e.(type) {
@@ -464,7 +464,7 @@ func TestVectorSnapshotsOutliveValuesAndReassignment(t *testing.T) {
 			}
 		case robotevent.VariableUpdateEvent:
 			updateCount++
-			if !reflect.DeepEqual(e.Diff, []robotevent.ValueUpdate{robotevent.VectorUpdate{Update: robotevent.VectorReplace{}}}) {
+			if !reflect.DeepEqual(e.Diff, []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{}}}) {
 				t.Errorf("unexpected replacement snapshot: %#v", e.Diff)
 			}
 		}
@@ -596,8 +596,8 @@ func TestNewAndResumeRejectInvalidInputs(t *testing.T) {
 
 func TestDistanceTargetArgumentsAndCallResults(t *testing.T) {
 	t.Parallel()
-	vector := bot.VectorType{ElementType: bot.DistanceTargetType{}}
-	p := checked(t, []param{parameter("v", vector)}, bot.DistanceTargetType{}, ret(call("get_back", ref("v"))))
+	stack := bot.StackType{ElementType: bot.DistanceTargetType{}}
+	p := checked(t, []param{parameter("v", stack)}, bot.DistanceTargetType{}, ret(call("get_back", ref("v"))))
 	env := resources()
 	base := env.Memory.MemoryUsage()
 	target := add(t, env, memory.DistanceTarget{Value: values.DistanceEnemy})
@@ -736,9 +736,9 @@ func TestBooleanBuiltinsEvaluateActionArgumentsWithoutShortCircuit(t *testing.T)
 	}
 }
 
-func TestBuiltinVectorUpdatesUseReplaceEvents(t *testing.T) {
+func TestBuiltinStackUpdatesUseReplaceEvents(t *testing.T) {
 	t.Parallel()
-	v := bot.VectorType{ElementType: bot.IntegerType{}}
+	v := bot.StackType{ElementType: bot.IntegerType{}}
 	p := checked(t, nil, bot.IntegerType{},
 		decl("v", v, call("new")),
 		call("push_back", ref("v"), integer(99)), // A discarded result does not update v.
@@ -757,17 +757,17 @@ func TestBuiltinVectorUpdatesUseReplaceEvents(t *testing.T) {
 	for _, e := range env.Events.Collect() {
 		if update, ok := e.(robotevent.VariableUpdateEvent); ok && update.HintID == "v-definition" {
 			if len(update.Diff) != 1 {
-				t.Errorf("unexpected vector diff: %#v", update.Diff)
+				t.Errorf("unexpected stack diff: %#v", update.Diff)
 				continue
 			}
-			vector, ok := update.Diff[0].(robotevent.VectorUpdate)
+			stack, ok := update.Diff[0].(robotevent.StackUpdate)
 			if !ok {
 				t.Errorf("unexpected update kind: %T", update.Diff[0])
 				continue
 			}
-			replacement, ok := vector.Update.(robotevent.VectorReplace)
+			replacement, ok := stack.Update.(robotevent.StackReplace)
 			if !ok {
-				t.Errorf("vector update is %T, want replace", vector.Update)
+				t.Errorf("stack update is %T, want replace", stack.Update)
 				continue
 			}
 			replacements = append(replacements, replacement.Value)
@@ -779,6 +779,6 @@ func TestBuiltinVectorUpdatesUseReplaceEvents(t *testing.T) {
 		{values.IntegerValue{Integer: 1}},
 	}
 	if !reflect.DeepEqual(replacements, want) {
-		t.Errorf("vector snapshots = %#v, want %#v", replacements, want)
+		t.Errorf("stack snapshots = %#v, want %#v", replacements, want)
 	}
 }

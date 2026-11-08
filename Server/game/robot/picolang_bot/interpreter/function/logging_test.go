@@ -21,11 +21,11 @@ func TestUnloggedVariablesDoNotAllocateSnapshots(t *testing.T) {
 		}
 	})
 	item := m.allocate(memory.Integer{Value: 42})
-	vector := memory.RootID
+	stack := memory.RootID
 	for range 64 {
-		vector = m.allocate(memory.ListNode{Prev: vector, Value: item})
+		stack = m.allocate(memory.ListNode{Prev: stack, Value: item})
 	}
-	nested := m.allocate(memory.ListNode{Prev: memory.RootID, Value: vector})
+	nested := m.allocate(memory.ListNode{Prev: memory.RootID, Value: stack})
 	ident := bot.Ident[bot.VariableIndex]{Source: bot.Source{HintID: "variable"}, Variable: 0}
 	m.define(ident, m.retain(nested))
 	for name, run := range map[string]func(){

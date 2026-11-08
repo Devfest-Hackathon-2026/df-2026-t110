@@ -1470,7 +1470,7 @@ type PicolangV0Header []struct {
 // 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
 type PicolangV0Program map[string]PicolangFunctionDefinition
 
-// シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照
+// シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
 type PicolangV0SignatureType interface{}
 
 // フィールド上のマスの座標
@@ -1755,6 +1755,75 @@ func (j *RotationLiteral) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 同じ型の要素を持つ連結リストで表現するスタックの型
+type StackType struct {
+	// 要素の型。基本型と複合型のどちらも指定できる
+	ElementType Type `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const StackTypeKind = "stack"
+
+type StackType_1 struct {
+	// ElementType corresponds to the JSON schema field "elementType".
+	ElementType PicolangV0SignatureType `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const StackType_1Kind = "stack"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StackType_1) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw StackType_1: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in StackType_1: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in StackType_1: required")
+	}
+	type Plain StackType_1
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal StackType_1: %w", err)
+	}
+	if plain.Kind != "stack" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "stack")
+	}
+	*j = StackType_1(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *StackType) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw StackType: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in StackType: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in StackType: required")
+	}
+	type Plain StackType
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal StackType: %w", err)
+	}
+	if plain.Kind != "stack" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "stack")
+	}
+	*j = StackType(plain)
+	return nil
+}
+
 // 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
 type StageDefinition struct {
 	// 全ての候補フィールドに共通するクリア条件
@@ -1990,75 +2059,6 @@ func (j *UnitLiteral) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be null", "value")
 	}
 	*j = UnitLiteral(plain)
-	return nil
-}
-
-// 同じ型の要素を持つ可変長配列の型
-type VectorType struct {
-	// 要素の型。基本型と複合型のどちらも指定できる
-	ElementType Type `json:"elementType"`
-
-	// Kind corresponds to the JSON schema field "kind".
-	Kind string `json:"kind"`
-}
-
-const VectorTypeKind = "vector"
-
-type VectorType_1 struct {
-	// ElementType corresponds to the JSON schema field "elementType".
-	ElementType PicolangV0SignatureType `json:"elementType"`
-
-	// Kind corresponds to the JSON schema field "kind".
-	Kind string `json:"kind"`
-}
-
-const VectorType_1Kind = "vector"
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *VectorType_1) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw VectorType_1: %w", err)
-	}
-	if _, ok := raw["elementType"]; raw != nil && !ok {
-		return fmt.Errorf("field elementType in VectorType_1: required")
-	}
-	if _, ok := raw["kind"]; raw != nil && !ok {
-		return fmt.Errorf("field kind in VectorType_1: required")
-	}
-	type Plain VectorType_1
-	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal VectorType_1: %w", err)
-	}
-	if plain.Kind != "vector" {
-		return fmt.Errorf("field %s: must be equal to %s", "kind", "vector")
-	}
-	*j = VectorType_1(plain)
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *VectorType) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw VectorType: %w", err)
-	}
-	if _, ok := raw["elementType"]; raw != nil && !ok {
-		return fmt.Errorf("field elementType in VectorType: required")
-	}
-	if _, ok := raw["kind"]; raw != nil && !ok {
-		return fmt.Errorf("field kind in VectorType: required")
-	}
-	type Plain VectorType
-	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal VectorType: %w", err)
-	}
-	if plain.Kind != "vector" {
-		return fmt.Errorf("field %s: must be equal to %s", "kind", "vector")
-	}
-	*j = VectorType(plain)
 	return nil
 }
 

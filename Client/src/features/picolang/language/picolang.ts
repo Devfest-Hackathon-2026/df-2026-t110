@@ -1,5 +1,5 @@
 export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation'
-export type PicoType = PicoPrimitive | { kind: 'vector'; elementType: PicoType }
+export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
 interface NodeBase {
   hintId: string
 }
@@ -46,7 +46,7 @@ export interface PicoBuiltin {
   args: PicoType[]
   returns: PicoType
 }
-const vectorInteger: PicoType = { kind: 'vector', elementType: 'integer' }
+const stackInteger: PicoType = { kind: 'stack', elementType: 'integer' }
 const builtin = <Name extends string>(
   name: Name,
   args: PicoType[],
@@ -94,11 +94,11 @@ export const PICO_BUILTINS = [
   builtin('integer_to_bool', ['integer'], 'bool'),
   builtin('random_bool', [], 'bool'),
   builtin('random_integer', ['integer', 'integer'], 'integer'),
-  builtin('new', [], vectorInteger),
-  builtin('push_back', [vectorInteger, 'integer'], vectorInteger),
-  builtin('pop_back', [vectorInteger], vectorInteger),
-  builtin('get_back', [vectorInteger], 'integer'),
-  builtin('size', [vectorInteger], 'integer'),
+  builtin('new', [], stackInteger),
+  builtin('push_back', [stackInteger, 'integer'], stackInteger),
+  builtin('pop_back', [stackInteger], stackInteger),
+  builtin('get_back', [stackInteger], 'integer'),
+  builtin('size', [stackInteger], 'integer'),
   builtin('print_integer', ['integer'], 'unit'),
   builtin('print_bool', ['bool'], 'unit'),
 ]
@@ -197,7 +197,7 @@ function type(value: unknown): boolean {
     ? primitiveTypes.includes(value as PicoPrimitive)
     : object(value) &&
         exact(value, ['kind', 'elementType']) &&
-        value.kind === 'vector' &&
+        value.kind === 'stack' &&
         type(value.elementType)
 }
 function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>): boolean {

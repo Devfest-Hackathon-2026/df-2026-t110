@@ -1,21 +1,21 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangV0SignatureType
-description: シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照
+description: シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
 
 oneOf:
   - $ref: '../v0/primitive-type.yaml'
-  - $ref: '#/$defs/VectorType'
+  - $ref: '#/$defs/StackType'
   - $ref: '#/$defs/TypeParameter'
 
 $defs:
-  VectorType:
+  StackType:
     type: object
     additionalProperties: false
     required: [kind, elementType]
     properties:
       kind:
         type: string
-        const: vector
+        const: stack
       elementType:
         $ref: './signature-type.yaml'
   TypeParameter:

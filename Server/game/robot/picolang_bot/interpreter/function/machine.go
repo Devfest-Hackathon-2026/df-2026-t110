@@ -48,8 +48,8 @@ func (m *Machine) Source() bot.Source { return m.source }
 
 // New retains args; the caller keeps its original references. fn must come from
 // successful type checking. Argument and resumed result values must match their
-// checked types, including vector element types. Only outer kinds are checked
-// here so retaining shared vectors remains O(1).
+// checked types, including stack element types. Only outer kinds are checked
+// here so retaining shared stacks remains O(1).
 // Call requests charge time at their call site; entry into this machine does not
 // charge the function call again. Parameters charge variable-definition time.
 func New(fn bot.Function[bot.VariableIndex, bot.Type], args []memory.ID, resources Resources) (*Machine, error) {

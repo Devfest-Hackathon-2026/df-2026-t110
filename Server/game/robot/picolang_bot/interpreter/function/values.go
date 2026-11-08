@@ -34,7 +34,7 @@ func matches(store *memory.Store, id memory.ID, t bot.Type) bool {
 	case bot.DistanceTargetType:
 		_, ok := value.(memory.DistanceTarget)
 		return ok
-	case bot.VectorType:
+	case bot.StackType:
 		switch value.(type) {
 		case memory.ListRoot, memory.ListNode:
 			return true
@@ -66,7 +66,7 @@ func (m *Machine) assign(index bot.VariableIndex, id memory.ID) {
 	m.drop(previous)
 }
 
-// Snapshots own their vector slices. Subsequent assignments or memory releases
+// Snapshots own their stack slices. Subsequent assignments or memory releases
 // cannot change values already emitted to the event collector.
 func (m *Machine) record(id memory.ID) values.RecordValue {
 	switch v := m.value(id).(type) {
@@ -83,7 +83,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 	case memory.DistanceTarget:
 		return v.Value
 	case memory.ListRoot:
-		return values.VectorRecordValue{}
+		return values.StackRecordValue{}
 	case memory.ListNode:
 		var elements []values.RecordValue
 		for {
@@ -91,7 +91,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 			switch prev := m.value(v.Prev).(type) {
 			case memory.ListRoot:
 				slices.Reverse(elements)
-				return values.VectorRecordValue{Elements: elements}
+				return values.StackRecordValue{Elements: elements}
 			case memory.ListNode:
 				v = prev
 			default:
@@ -104,7 +104,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 }
 
 // Full replacements also cover assignments from another variable or from
-// get_back; choosing a smaller vector diff can be added without changing values.
+// get_back; choosing a smaller stack diff can be added without changing values.
 func (m *Machine) replacement(id memory.ID) robotevent.ValueUpdate {
 	switch v := m.record(id).(type) {
 	case values.BoolValue:
@@ -119,8 +119,8 @@ func (m *Machine) replacement(id memory.ID) robotevent.ValueUpdate {
 		return robotevent.RotationUpdate{Value: v.Rotation}
 	case values.DistanceTarget:
 		return robotevent.DistanceTargetUpdate{Value: v}
-	case values.VectorRecordValue:
-		return robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: v.Elements}}
+	case values.StackRecordValue:
+		return robotevent.StackUpdate{Update: robotevent.StackReplace{Value: v.Elements}}
 	default:
 		panic(fmt.Errorf("cannot replace recorded value %T", v))
 	}

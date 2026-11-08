@@ -42,7 +42,7 @@ const colours: Record<string, string> = {
   計算: '#549641',
   変換: '#a97737',
   乱数: '#6476ad',
-  配列: '#8a67ab',
+  スタック: '#8a67ab',
   表示: '#60866a',
   関数: '#875c98',
 }
@@ -52,27 +52,27 @@ const typeChoices: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
-  ['整数の配列', 'vector:integer'],
-  ['真理値の配列', 'vector:bool'],
-  ['マスの配列', 'vector:terrain'],
-  ['向きの配列', 'vector:rotation'],
+  ['整数のスタック', 'stack:integer'],
+  ['真理値のスタック', 'stack:bool'],
+  ['マスのスタック', 'stack:terrain'],
+  ['向きのスタック', 'stack:rotation'],
 ]
 const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
 
 export function typeKey(type: PicoType): string {
-  return typeof type === 'string' ? type : `vector:${typeKey(type.elementType)}`
+  return typeof type === 'string' ? type : `stack:${typeKey(type.elementType)}`
 }
 export function keyType(key: string): PicoType {
-  return key.startsWith('vector:')
-    ? { kind: 'vector', elementType: keyType(key.slice(7)) }
+  return key.startsWith('stack:')
+    ? { kind: 'stack', elementType: keyType(key.slice(6)) }
     : ['bool', 'integer', 'unit', 'terrain', 'rotation'].includes(key)
       ? (key as PicoType)
       : 'integer'
 }
 function typeCheck(type: PicoType): string[] {
   const key = typeKey(type)
-  return typeof type === 'string' ? [key] : [key, 'vector']
+  return typeof type === 'string' ? [key] : [key, 'stack']
 }
 function nodeData(hintId: string, extra: Record<string, string> = {}): string {
   return JSON.stringify({ hintId, ...extra })
@@ -624,7 +624,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
     '計算',
     '変換',
     '乱数',
-    '配列',
+    'スタック',
     '表示',
     '関数',
   ]) {

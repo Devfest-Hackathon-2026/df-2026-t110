@@ -98,15 +98,15 @@ func TestVMProgramScenarios(t *testing.T) {
 			},
 		},
 		{
-			name: "vector_argument_value_semantics",
+			name: "stack_argument_value_semantics",
 			build: func(b *builder) map[bot.Name]fn {
-				// Drain a function-local vector copy to sum [1,2,3,4]; the caller keeps all four elements.
-				vector := bot.VectorType{ElementType: bot.IntegerType{}}
-				drain := b.function([]param{b.param("items", vector)}, bot.IntegerType{}, b.declare("total", bot.IntegerType{}, b.integer(0)),
+				// Drain a function-local stack copy to sum [1,2,3,4]; the caller keeps all four elements.
+				stack := bot.StackType{ElementType: bot.IntegerType{}}
+				drain := b.function([]param{b.param("items", stack)}, bot.IntegerType{}, b.declare("total", bot.IntegerType{}, b.integer(0)),
 					b.whileLoop(b.call("gt", b.call("size", b.ref("items")), b.integer(0)),
 						b.assign("total", b.call("add", b.ref("total"), b.call("get_back", b.ref("items")))),
 						b.assign("items", b.call("pop_back", b.ref("items")))), b.ret(b.ref("total")))
-				main := b.function(nil, bot.UnitType{}, b.declare("items", vector, b.call("new")),
+				main := b.function(nil, bot.UnitType{}, b.declare("items", stack, b.call("new")),
 					b.forRange("i", b.integer(1), b.integer(5), b.assign("items", b.call("push_back", b.ref("items"), b.ref("i")))),
 					b.call("print_integer", b.call("drain_sum", b.ref("items"))),
 					b.call("print_integer", b.call("size", b.ref("items"))), b.ret(b.unit()))
