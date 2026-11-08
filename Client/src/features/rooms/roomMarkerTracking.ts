@@ -66,6 +66,12 @@ export async function mountRoomMarkerTracker(
   const state: RoomMarkerState = { a: false, b: false }
   const markers = {} as Record<RoomMarkerId, HTMLElement>
   const listeners: Array<() => void> = []
+  const bodyStyle = {
+    width: document.body.style.width,
+    height: document.body.style.height,
+    marginLeft: document.body.style.marginLeft,
+    marginTop: document.body.style.marginTop,
+  }
 
   for (const id of ['a', 'b'] as const) {
     const marker = document.createElement('a-marker')
@@ -118,6 +124,7 @@ export async function mountRoomMarkerTracker(
     document.removeEventListener('camera-error', onCameraError)
   })
 
+  document.body.classList.add('room-marker-tracking')
   container.append(scene)
   callbacks.onChange({ ...state })
 
@@ -139,6 +146,8 @@ export async function mountRoomMarkerTracker(
       cameraVideo?.remove()
       ;(scene as HTMLElement & { pause?: () => void }).pause?.()
       scene.remove()
+      document.body.classList.remove('room-marker-tracking')
+      Object.assign(document.body.style, bodyStyle)
     },
   }
 }

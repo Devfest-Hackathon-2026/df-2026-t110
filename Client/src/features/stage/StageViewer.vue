@@ -139,7 +139,9 @@ async function loadField() {
         <span>{{ field.title }}　配置 {{ selected + 1 }} / {{ layouts.length }}</span
         ><strong>{{ stage.label }}</strong
         ><small>{{
-          mode === 'camera' ? '画面をタップして盤面を動かす' : 'ドラッグで回転、ホイールで拡大縮小'
+          mode === 'camera'
+            ? 'Hiro または Kanji マーカーを映して配置を確定します'
+            : 'ドラッグで回転、ホイールで拡大縮小'
         }}</small>
       </div>
       <div class="scene-legend">
