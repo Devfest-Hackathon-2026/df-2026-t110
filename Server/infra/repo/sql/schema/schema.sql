@@ -3,19 +3,9 @@ CREATE TABLE users (
     name text UNIQUE
 );
 
-CREATE UNIQUE INDEX users_name_case_insensitive_idx ON users (lower(name)) WHERE name IS NOT NULL;
-
 CREATE TABLE sessions (
     id text PRIMARY KEY,
     google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
-    expires_at timestamptz NOT NULL
-);
-
-CREATE TABLE login_attempts (
-    id text PRIMARY KEY,
-    state text NOT NULL,
-    nonce text NOT NULL,
-    code_verifier text NOT NULL,
     expires_at timestamptz NOT NULL
 );
 
