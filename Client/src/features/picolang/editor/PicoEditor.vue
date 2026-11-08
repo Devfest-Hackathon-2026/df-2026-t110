@@ -8,7 +8,6 @@ import variableIcon from '@iconify-icons/lucide/variable'
 import searchIcon from '@iconify-icons/lucide/search'
 import bracesIcon from '@iconify-icons/lucide/braces'
 import calculatorIcon from '@iconify-icons/lucide/calculator'
-import repeatIcon from '@iconify-icons/lucide/repeat-2'
 import shuffleIcon from '@iconify-icons/lucide/shuffle'
 import listIcon from '@iconify-icons/lucide/list'
 import typeIcon from '@iconify-icons/lucide/type'
@@ -63,7 +62,6 @@ const categories = [
   '調べる',
   '論理',
   '計算',
-  '変換',
   '乱数',
   'スタック',
   '表示',
@@ -77,7 +75,6 @@ const categoryIcons = {
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  変換: repeatIcon,
   乱数: shuffleIcon,
   スタック: listIcon,
   表示: typeIcon,
@@ -91,7 +88,6 @@ const paletteHints: Record<string, string> = {
   調べる: '周りを調べた答えを返します。答えは条件や変数に使えます。',
   論理: '「はい／いいえ」の答えを組み合わせ、別の答えを返します。',
   計算: '数を計算します。結果を変数やほかの式に渡します。',
-  変換: '真偽と整数を変換します。',
   乱数: '実行時に値を決めます。結果を変数や条件に使います。',
   スタック: '複数の値をひとまとめにします。値を足したり除いたりすると、新しいスタックを返します。',
   表示: '計算結果を実行ログに表示します。',

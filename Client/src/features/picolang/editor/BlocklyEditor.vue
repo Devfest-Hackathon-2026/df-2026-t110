@@ -14,7 +14,6 @@ import variableIcon from '@iconify-icons/lucide/variable'
 import searchIcon from '@iconify-icons/lucide/search'
 import bracesIcon from '@iconify-icons/lucide/braces'
 import calculatorIcon from '@iconify-icons/lucide/calculator'
-import repeatIcon from '@iconify-icons/lucide/repeat-2'
 import shuffleIcon from '@iconify-icons/lucide/shuffle'
 import listIcon from '@iconify-icons/lucide/list'
 import typeIcon from '@iconify-icons/lucide/type'
@@ -90,7 +89,6 @@ const categoryIcons = {
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  変換: repeatIcon,
   乱数: shuffleIcon,
   スタック: listIcon,
   表示: typeIcon,

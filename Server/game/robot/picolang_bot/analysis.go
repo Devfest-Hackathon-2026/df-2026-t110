@@ -70,8 +70,6 @@ func BuiltinSignatures() map[Name]Signature {
 		"lt":                 {[]Type{i, i}, b},
 		"geq":                {[]Type{i, i}, b},
 		"leq":                {[]Type{i, i}, b},
-		"bool_to_integer":    {[]Type{b}, i},
-		"integer_to_bool":    {[]Type{i}, b},
 		"random_bool":        {nil, b},
 		"random_integer":     {[]Type{i, i}, i},
 		"new":                {nil, v},

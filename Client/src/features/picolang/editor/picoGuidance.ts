@@ -25,8 +25,6 @@ const builtinArguments: Record<string, string[]> = {
   lt: ['左の数', '右の数'],
   geq: ['左の数', '右の数'],
   leq: ['左の数', '右の数'],
-  bool_to_integer: ['数にする答え'],
-  integer_to_bool: ['変換する数'],
   random_integer: ['最小値', '最大値'],
   push_back: ['値を足すスタック', '足す値'],
   pop_back: ['最後を除くスタック'],

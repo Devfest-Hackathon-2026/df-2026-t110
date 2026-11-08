@@ -98,7 +98,7 @@ func TestBooleanBuiltins(t *testing.T) {
 	}
 }
 
-func TestIntegerAndCastBuiltins(t *testing.T) {
+func TestIntegerBuiltins(t *testing.T) {
 	t.Parallel()
 	i := func(n int64) memory.Value { return memory.Integer{Value: n} }
 	b := func(value bool) memory.Value { return memory.Bool{Value: value} }
@@ -126,12 +126,6 @@ func TestIntegerAndCastBuiltins(t *testing.T) {
 		{"geq", []memory.Value{i(1), i(2)}, b(false)},
 		{"leq", []memory.Value{i(2), i(2)}, b(true)},
 		{"leq", []memory.Value{i(2), i(1)}, b(false)},
-		{"bool_to_integer", []memory.Value{b(false)}, i(0)},
-		{"bool_to_integer", []memory.Value{b(true)}, i(1)},
-		{"integer_to_bool", []memory.Value{i(-1)}, b(false)},
-		{"integer_to_bool", []memory.Value{i(0)}, b(false)},
-		{"integer_to_bool", []memory.Value{i(1)}, b(true)},
-		{"integer_to_bool", []memory.Value{i(2)}, b(false)},
 	} {
 		t.Run(string(tc.name), func(t *testing.T) { t.Parallel(); scalar(t, tc.name, tc.args, tc.want) })
 	}
@@ -403,6 +397,11 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 	}
 	if _, err := e.Evaluate("is_laggage", nil); !errors.Is(err, builtin.ErrUnknownFunction) {
 		t.Errorf("obsolete terrain predicate is still recognized: %v", err)
+	}
+	for _, name := range []bot.Name{"bool_to_integer", "integer_to_bool"} {
+		if _, err := e.Evaluate(name, nil); !errors.Is(err, builtin.ErrUnknownFunction) {
+			t.Errorf("removed cast %q is still recognized: %v", name, err)
+		}
 	}
 	if _, err := e.Evaluate("not", []memory.ID{999}); err == nil {
 		t.Error("unknown argument ID accepted")

@@ -83,8 +83,6 @@ export async function executePicolang(
     if (name === 'lt') return number(args[0]) < number(args[1])
     if (name === 'geq') return number(args[0]) >= number(args[1])
     if (name === 'leq') return number(args[0]) <= number(args[1])
-    if (name === 'bool_to_integer') return bool(args[0]) ? 1 : 0
-    if (name === 'integer_to_bool') return number(args[0]) === 1
     if (name === 'random_bool') return Math.random() < 0.5
     if (name === 'random_integer') {
       const start = number(args[0]),

@@ -29,7 +29,6 @@ func builtinCases() []builtinCase {
 		{"mul", []bot.Type{i, i}, i}, {"div", []bot.Type{i, i}, i},
 		{"integer_eq", []bot.Type{i, i}, b}, {"integer_neq", []bot.Type{i, i}, b},
 		{"gt", []bot.Type{i, i}, b}, {"lt", []bot.Type{i, i}, b}, {"geq", []bot.Type{i, i}, b}, {"leq", []bot.Type{i, i}, b},
-		{"bool_to_integer", []bot.Type{b}, i}, {"integer_to_bool", []bot.Type{i}, b},
 		{"random_bool", nil, b}, {"random_integer", []bot.Type{i, i}, i},
 		{"new", nil, stack}, {"push_back", []bot.Type{stack, i}, stack}, {"pop_back", []bot.Type{stack}, stack},
 		{"get_back", []bot.Type{stack}, i}, {"size", []bot.Type{stack}, i},
@@ -137,6 +136,24 @@ func TestTypeCheckRemovedStackBuiltins(t *testing.T) {
 				t.Errorf("expected one undefined-function error, got %v", ds)
 			}
 			testutil.RequireDiagnostic(t, ds, bot.CodeUndefinedFunction, "main", "removed")
+		})
+	}
+}
+
+func TestTypeCheckRemovedCastBuiltins(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []builtinCase{
+		{"bool_to_integer", []bot.Type{bot.BoolType{}}, bot.IntegerType{}},
+		{"integer_to_bool", []bot.Type{bot.IntegerType{}}, bot.BoolType{}},
+	} {
+		t.Run(string(tc.name), func(t *testing.T) {
+			t.Parallel()
+			_, err := typecheck.TypeCheck(builtinProgram(tc, tc.params))
+			ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
+			if len(ds) != 1 {
+				t.Errorf("expected one undefined-function error, got %v", ds)
+			}
+			testutil.RequireDiagnostic(t, ds, bot.CodeUndefinedFunction, "probe", "call")
 		})
 	}
 }

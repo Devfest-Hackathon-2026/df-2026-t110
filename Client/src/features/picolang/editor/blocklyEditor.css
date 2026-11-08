@@ -152,21 +152,18 @@
   --category-color: #549641;
 }
 .blockly-canvas .blocklyToolboxCategoryContainer:nth-child(8) {
-  --category-color: #a97737;
-}
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(9) {
   --category-color: #6476ad;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(10) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(9) {
   --category-color: #8a67ab;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(11) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(10) {
   --category-color: #60866a;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(11) {
   --category-color: #875c98;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(13) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
   --category-color: #65758b;
 }
 .blockly-canvas .blocklyToolboxCategory {
