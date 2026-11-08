@@ -10,6 +10,7 @@ import {
   ident,
   makeCall,
   samePicoType,
+  PICO_DISTANCE_TARGETS,
   type PicoExpr,
   type PicoFunction,
   type PicoType,
@@ -67,7 +68,9 @@ const availableCalls = computed(() =>
   ),
 )
 const literalTypes = computed(() =>
-  (['integer', 'bool', 'unit', 'rotation'] as const).filter((type) => samePicoType(props.expectedType, type)),
+  (['integer', 'bool', 'unit', 'rotation', 'distance_target'] as const).filter((type) =>
+    samePicoType(props.expectedType, type),
+  ),
 )
 const invalidType = computed(() => {
   if (!props.expectedType) return false
@@ -101,7 +104,7 @@ function changeMode(event: Event): void {
       : availableCalls.value[0]!.name
     emit('replace', makeCall(name, props.functions))
   } else if (literalTypes.value.some((type) => type === value))
-    emit('replace', defaultExpr(value as 'integer' | 'bool' | 'unit' | 'rotation'))
+    emit('replace', defaultExpr(value as 'integer' | 'bool' | 'unit' | 'rotation' | 'distance_target'))
 }
 function changeFunction(event: Event): void {
   const name = (event.target as HTMLSelectElement).value
@@ -114,6 +117,8 @@ function setLiteral(value: string): void {
     emit('replace', { ...props.node, value: Number.isSafeInteger(Number(value)) ? Number(value) : 0 })
   if (props.node.type === 'bool') emit('replace', { ...props.node, value: value === 'true' })
   if (props.node.type === 'rotation') emit('replace', { ...props.node, value: value as 'left' | 'right' })
+  if (props.node.type === 'distance_target')
+    emit('replace', { ...props.node, value: value as (typeof PICO_DISTANCE_TARGETS)[number] })
 }
 function setName(value: string): void {
   if (props.node.kind === 'ident' && availableVariables.value.some((item) => item.name === value))
@@ -180,6 +185,7 @@ function dropExpression(event: DragEvent): void {
       <option v-if="literalTypes.includes('bool')" value="bool">はい／いいえ</option>
       <option v-if="literalTypes.includes('unit')" value="unit">値なし</option>
       <option v-if="literalTypes.includes('rotation')" value="rotation">向き</option>
+      <option v-if="literalTypes.includes('distance_target')" value="distance_target">探索対象</option>
       <option value="ident" :disabled="!availableVariables.length">変数</option>
       <option value="call" :disabled="!availableCalls.length">命令の答え</option>
     </select>
@@ -210,6 +216,14 @@ function dropExpression(event: DragEvent): void {
       >
         <option value="left">左</option>
         <option value="right">右</option>
+      </select>
+      <select
+        v-else-if="node.type === 'distance_target'"
+        :value="node.value"
+        aria-label="探索対象"
+        @change="setLiteral(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="target in PICO_DISTANCE_TARGETS" :key="target" :value="target">{{ target }}</option>
       </select>
       <span v-else>値なし</span>
     </template>

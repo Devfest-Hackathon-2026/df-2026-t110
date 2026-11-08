@@ -25,7 +25,7 @@ const CommandUsage = `
  drill | drill_durability | 
  pick_up | release |
  search_now | search_front | 
- print_integer <integer> | print_bool true/false | 
+ print_integer <integer> | print_bool true/false |
  done
 help`
 

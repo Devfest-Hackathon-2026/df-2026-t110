@@ -1,7 +1,14 @@
-import type { PicoBlock, PicoExpr, PicoProgram, PicoStatement } from './picolang.ts'
+import type {
+  PicoBlock,
+  PicoExpr,
+  PicoProgram,
+  PicoStatement,
+  PicoDistanceTarget,
+  PicoTerrain,
+} from './picolang.ts'
 
 export type PicoValue =
-  boolean | number | null | 'left' | 'right' | PicoValue[] | { type: 'land' | 'rock' | 'sea'; kind?: string }
+  boolean | number | null | 'left' | 'right' | PicoDistanceTarget | PicoValue[] | PicoTerrain
 export interface PicoRuntimeHost {
   call(name: string, args: PicoValue[], signal: AbortSignal): Promise<PicoValue>
 }

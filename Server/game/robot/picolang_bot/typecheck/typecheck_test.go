@@ -39,6 +39,8 @@ func builtinCases() []builtinCase {
 		{"pick_up", nil, b}, {"release", nil, b}, {"drill", nil, b}, {"drill_durability", nil, i},
 		{"distance", []bot.Type{bot.DistanceTargetType{}}, i}, {"search_front", nil, terrain}, {"search_now", nil, terrain},
 		{"print_integer", []bot.Type{i}, u}, {"print_bool", []bot.Type{b}, u},
+		{"print_unit", []bot.Type{u}, u}, {"print_terrain", []bot.Type{terrain}, u},
+		{"print_rotation", []bot.Type{rotation}, u}, {"print_distance_target", []bot.Type{bot.DistanceTargetType{}}, u},
 	}
 }
 
@@ -104,6 +106,9 @@ func TestTypeCheckBuiltinArgumentErrors(t *testing.T) {
 			if len(tc.params) > 0 {
 				wrongTypes := slices.Clone(tc.params)
 				wrongTypes[0] = bot.UnitType{}
+				if _, unit := tc.params[0].(bot.UnitType); unit {
+					wrongTypes[0] = bot.BoolType{}
+				}
 				_, err = typecheck.TypeCheck(builtinProgram(tc, wrongTypes))
 				ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
 				if len(ds) != 1 {

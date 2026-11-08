@@ -24,6 +24,19 @@ type SearchFrontAction struct{}
 type SearchNowAction struct{}
 type PrintIntegerAction struct{ Integer int64 }
 type PrintBoolAction struct{ Bool bool }
+type PrintUnitAction struct{ Action }
+type PrintTerrainAction struct {
+	Terrain values.TerrainValue
+	Action
+}
+type PrintRotationAction struct {
+	Rotation values.Rotation
+	Action
+}
+type PrintDistanceTargetAction struct {
+	DistanceTarget values.DistanceTarget
+	Action
+}
 
 func (ForwardAction) action()         {}
 func (BackAction) action()            {}
@@ -44,8 +57,14 @@ func ValidAction(action Action) bool {
 	switch action := action.(type) {
 	case ForwardAction, BackAction, RotateAction, WaitAction, PickUpAction,
 		ReleaseAction, DrillAction, DrillDurabilityAction,
-		SearchFrontAction, SearchNowAction, PrintIntegerAction, PrintBoolAction:
+		SearchFrontAction, SearchNowAction, PrintIntegerAction, PrintBoolAction, PrintUnitAction:
 		return true
+	case PrintTerrainAction:
+		return values.ValidValue(action.Terrain)
+	case PrintRotationAction:
+		return action.Rotation == values.Left || action.Rotation == values.Right
+	case PrintDistanceTargetAction:
+		return action.DistanceTarget.Valid()
 	case DistanceAction:
 		return action.Target.Valid()
 	default:

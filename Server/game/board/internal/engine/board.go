@@ -289,7 +289,12 @@ func (b *Board) accept(id protocol.RobotID, reply robotmsg.Reply) error {
 			} else {
 				b.controls[id] = pendingControl{action: a}
 			}
-		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.ReleaseAction, actions.PrintIntegerAction, actions.PrintBoolAction:
+		case actions.ForwardAction, actions.BackAction, actions.DrillAction, actions.PickUpAction, actions.ReleaseAction, actions.PrintIntegerAction, actions.PrintBoolAction, actions.PrintUnitAction:
+			b.controls[id] = pendingControl{action: a}
+		case actions.PrintTerrainAction, actions.PrintRotationAction, actions.PrintDistanceTargetAction:
+			if !actions.ValidAction(a) {
+				return errors.New("print requires a valid primitive value")
+			}
 			b.controls[id] = pendingControl{action: a}
 		case actions.RotateAction:
 			if a.Rotation != values.Left && a.Rotation != values.Right {
@@ -438,6 +443,14 @@ func (b *Board) commit(ticks uint64) (fieldevent.UpdateState, error) {
 			event = printInteger(id, action.Integer)
 		case actions.PrintBoolAction:
 			event = printBool(id, action.Bool)
+		case actions.PrintUnitAction:
+			event = fieldevent.PrintUnitResult{RobotID: id}
+		case actions.PrintTerrainAction:
+			event = fieldevent.PrintTerrainResult{RobotID: id, Terrain: action.Terrain}
+		case actions.PrintRotationAction:
+			event = fieldevent.PrintRotationResult{RobotID: id, Rotation: action.Rotation}
+		case actions.PrintDistanceTargetAction:
+			event = fieldevent.PrintDistanceTargetResult{RobotID: id, DistanceTarget: action.DistanceTarget}
 		default:
 			return fieldevent.UpdateState{}, fmt.Errorf("%w: pending action %T", game.ErrNotSupported, c.action)
 		}

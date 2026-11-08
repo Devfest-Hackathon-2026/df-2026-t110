@@ -5,6 +5,8 @@ import {
   defaultExpr,
   id,
   makeStatement,
+  makeCall,
+  PICO_DISTANCE_TARGETS,
   newProgram,
   programFunctions,
 } from '../src/features/picolang/language/picolang.ts'
@@ -95,4 +97,36 @@ test('岩で停止し、ビーム後に前進してゴールへ到達できる',
   assert.equal(world.call('forward', []).value, true)
   assert.equal(world.call('forward', []).value, true)
   assert.equal(world.reachedGoal, true)
+})
+
+test('追加したprimitiveのprintがunitを返し、観測値とリテラルを表示できる', async () => {
+  const source = newProgram()
+  const prints = ['print_unit', 'print_terrain', 'print_rotation', 'print_distance_target'].map((name) =>
+    makeCall(name),
+  )
+  prints[1].args[0] = makeCall('search_front')
+  programFunctions(source).main.body.stmts.unshift(...prints)
+  const stage = normalizeStage({ map: ['SG'] })
+  const before = structuredClone(stage)
+  const world = createTutorialWorld(stage)
+  const messages: string[] = []
+  await executePicolang(
+    source,
+    {
+      async call(name, args) {
+        const result = world.call(name, args)
+        if (result.message) {
+          assert.equal(result.value, null)
+          messages.push(result.message)
+        }
+        return result.value
+      },
+    },
+    new AbortController().signal,
+  )
+  assert.deepEqual(messages, ['()', '{"type":"land","kind":{"type":"goal"}}', 'left', 'goal'])
+  assert.deepEqual(stage, before)
+  for (const target of PICO_DISTANCE_TARGETS)
+    assert.equal(world.call('print_distance_target', [target]).message, target)
+  assert.equal(world.call('print_rotation', ['right']).message, 'right')
 })

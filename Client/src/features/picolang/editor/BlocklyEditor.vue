@@ -72,10 +72,12 @@ const typeOptions: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
+  ['探索対象', 'distance_target'],
   ['整数のスタック', 'stack:integer'],
   ['真理値のスタック', 'stack:bool'],
   ['マスのスタック', 'stack:terrain'],
   ['向きのスタック', 'stack:rotation'],
+  ['探索対象のスタック', 'stack:distance_target'],
 ]
 let workspace: Blockly.WorkspaceSvg | null = null
 let observer: ResizeObserver | null = null

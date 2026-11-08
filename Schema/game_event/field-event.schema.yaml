@@ -73,6 +73,10 @@ $defs:
             - $ref: '#/$defs/ReleaseResult'
             - $ref: '#/$defs/PrintIntegerResult'
             - $ref: '#/$defs/PrintBoolResult'
+            - $ref: '#/$defs/PrintUnitResult'
+            - $ref: '#/$defs/PrintTerrainResult'
+            - $ref: '#/$defs/PrintRotationResult'
+            - $ref: '#/$defs/PrintDistanceTargetResult'
       removedRobotIds:
         description: 盤面から除去した機体の ID
         type: array
@@ -313,3 +317,54 @@ $defs:
         type: integer
         minimum: -9223372036854775808
         maximum: 9223372036854775807
+
+  PrintUnitResult:
+    description: 1ターンを消費して unit を () として吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId]
+    properties:
+      kind:
+        const: print_unit
+      robotId:
+        $ref: '#/$defs/RobotId'
+
+  PrintTerrainResult:
+    description: 1ターンを消費して地形の観測値をJSONとして吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, terrain]
+    properties:
+      kind:
+        const: print_terrain
+      robotId:
+        $ref: '#/$defs/RobotId'
+      terrain:
+        $ref: './picolang/variable-init.schema.yaml#/$defs/Terrain'
+
+  PrintRotationResult:
+    description: 1ターンを消費して回転方向を吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, rotation]
+    properties:
+      kind:
+        const: print_rotation
+      robotId:
+        $ref: '#/$defs/RobotId'
+      rotation:
+        type: string
+        enum: [left, right]
+
+  PrintDistanceTargetResult:
+    description: 1ターンを消費して距離の探索対象を吹き出しに表示する
+    type: object
+    additionalProperties: false
+    required: [kind, robotId, distanceTarget]
+    properties:
+      kind:
+        const: print_distance_target
+      robotId:
+        $ref: '#/$defs/RobotId'
+      distanceTarget:
+        $ref: '../picolang/v0/distance-target.yaml'

@@ -1,3 +1,6 @@
+import { formatPicoValue } from '../picolang/language/formatPicoValue.ts'
+import type { PicoTerrain, PicoDistanceTarget } from '../picolang/language/picolang.ts'
+
 export interface ReplayCell {
   type: 'land' | 'rock' | 'sea'
   kind?: { type: 'plain' | 'goal' | 'checkpoint'; order?: number }
@@ -17,7 +20,19 @@ export interface ReplayRobot {
 
 export interface ReplayAction {
   kind:
-    'forward' | 'back' | 'rotate' | 'wait' | 'drill' | 'pick_up' | 'release' | 'print_integer' | 'print_bool'
+    | 'forward'
+    | 'back'
+    | 'rotate'
+    | 'wait'
+    | 'drill'
+    | 'pick_up'
+    | 'release'
+    | 'print_integer'
+    | 'print_bool'
+    | 'print_unit'
+    | 'print_terrain'
+    | 'print_rotation'
+    | 'print_distance_target'
   robotId: string
   success?: boolean
   to?: { x: number; y: number }
@@ -29,6 +44,8 @@ export interface ReplayAction {
   ticks?: number
   integer?: number
   bool?: boolean
+  terrain?: PicoTerrain
+  distanceTarget?: PicoDistanceTarget
 }
 
 export interface ReplayFrame {
@@ -37,6 +54,23 @@ export interface ReplayFrame {
   robots: ReplayRobot[]
   actions: ReplayAction[]
   removedRobotIds: string[]
+}
+
+export function replayPrintMessage(action: ReplayAction): string | undefined {
+  switch (action.kind) {
+    case 'print_integer':
+      return typeof action.integer === 'number' ? formatPicoValue(action.integer) : undefined
+    case 'print_bool':
+      return typeof action.bool === 'boolean' ? formatPicoValue(action.bool) : undefined
+    case 'print_unit':
+      return formatPicoValue(null)
+    case 'print_terrain':
+      return action.terrain ? formatPicoValue(action.terrain) : undefined
+    case 'print_rotation':
+      return action.rotation ? formatPicoValue(action.rotation) : undefined
+    case 'print_distance_target':
+      return action.distanceTarget ? formatPicoValue(action.distanceTarget) : undefined
+  }
 }
 
 type FieldEvent =
@@ -122,10 +156,8 @@ export function replayFrames(history: unknown[]): ReplayFrame[] {
               next.terrain[action.target.y][action.target.x] = { type: 'land', kind: { type: 'plain' } }
           }
         }
-        if (action.kind === 'print_integer' && typeof action.integer === 'number')
-          robot.speech = String(action.integer)
-        if (action.kind === 'print_bool' && typeof action.bool === 'boolean')
-          robot.speech = action.bool ? 'true' : 'false'
+        const message = replayPrintMessage(action)
+        if (message !== undefined) robot.speech = message
         if (action.kind === 'release' && action.success && action.discarded) robot.carryingLuggage = false
         if ((action.kind === 'pick_up' || action.kind === 'release') && action.success && action.target) {
           const { x, y } = action.target

@@ -38,6 +38,14 @@ func actionFor(name bot.Name, args []memory.Value) actions.Action {
 		return actions.PrintIntegerAction{Integer: args[0].(memory.Integer).Value}
 	case "print_bool":
 		return actions.PrintBoolAction{Bool: args[0].(memory.Bool).Value}
+	case "print_unit":
+		return actions.PrintUnitAction{}
+	case "print_terrain":
+		return actions.PrintTerrainAction{Terrain: args[0].(memory.Terrain).Value}
+	case "print_rotation":
+		return actions.PrintRotationAction{Rotation: args[0].(memory.Rotation).Value}
+	case "print_distance_target":
+		return actions.PrintDistanceTargetAction{DistanceTarget: args[0].(memory.DistanceTarget).Value}
 	default:
 		return nil
 	}
