@@ -70,20 +70,14 @@ resource "google_cloud_run_v2_service" "server" {
         name  = "STATIC_DIR"
         value = "/static"
       }
+      # The server only reads DATABASE_URL. The password stays out of it and comes from PGPASSWORD,
+      # which pgx applies to keyword/value connection strings like libpq does.
       env {
-        name  = "DB_HOST"
-        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+        name  = "DATABASE_URL"
+        value = "host=/cloudsql/${google_sql_database_instance.main.connection_name} dbname=${google_sql_database.app.name} user=${google_sql_user.app.name}"
       }
       env {
-        name  = "DB_NAME"
-        value = google_sql_database.app.name
-      }
-      env {
-        name  = "DB_USER"
-        value = google_sql_user.app.name
-      }
-      env {
-        name = "DB_PASSWORD"
+        name = "PGPASSWORD"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.db_app_password.secret_id
