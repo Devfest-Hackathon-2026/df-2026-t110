@@ -12,7 +12,7 @@
 
 ## 教材詳細
 
-`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
+`/tutorials` は `GET /api/tutorial` の教材一覧を表示します。`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。教材データの取得が完了するまでは盤面とエディタの描画を待ち、APIが使えない場合はエラーを表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
 
 教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex, program }` で、`program` は `Schema/picolang/toplevel.schema.yaml` に沿った Picolang v0 のソースです。続いてクライアント内の実行器が AST を評価し、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。前進・後退・回転・待機・拾う・置く・岩破壊、条件・繰り返し・関数呼び出し、算術・論理・stack演算に対応します。岩や荷物の変化は動作後に盤面へ反映し、ゴールに着くとクリア演出を再生します。「リセット」は実行を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。サーバーのVM・型チェックとはまだ接続していません。ローカル実行器には最大10000ステップ、関数呼び出し深さ64の制限があります。旧記号マップにドリル制限が無い場合は99回とします。
 

@@ -15,10 +15,8 @@ import { createTutorialWorld } from './tutorialWorld.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
-import { LOCAL_LESSONS, lessonField, localLesson } from './tutorialLessons.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
-import type { TutorialRecord } from './tutorialApi.ts'
-import type { Lesson } from './tutorialLessons.ts'
+import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
 
 const BlocklyEditor = defineAsyncComponent({
   loader: () => import('../picolang/editor/BlocklyEditor.vue'),
@@ -36,7 +34,8 @@ const BlocklyEditor = defineAsyncComponent({
 })
 
 const props = defineProps<{ tutorialId: string }>()
-const tutorial = ref<TutorialRecord | Lesson | null>(null)
+const tutorial = ref<TutorialRecord | null>(null)
+const catalog = ref<TutorialSummary[]>([])
 const field = ref<FieldData | null>(null)
 const source = ref('')
 const loadState = ref('loading')
@@ -66,23 +65,21 @@ let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
 
-const stage = computed(() => activeStage.value ?? field.value?.layouts[layoutIndex.value] ?? null)
-const lessonCopy = computed(() => {
-  const local = localLesson(props.tutorialId)
-  return local && (!tutorial.value || tutorial.value.fieldId === local.fieldId) ? local : null
-})
+const stage = computed(() =>
+  loadState.value === 'ready' ? (activeStage.value ?? field.value?.layouts[layoutIndex.value] ?? null) : null,
+)
 const guideLines = computed(() => {
   const guide = tutorial.value?.guide
   return Array.isArray(guide) && guide.every((line) => typeof line === 'string') ? guide : []
 })
-const lessonPosition = computed(() => LOCAL_LESSONS.findIndex((item) => item.id === props.tutorialId))
+const lessonPosition = computed(() => catalog.value.findIndex((item) => item.id === props.tutorialId))
 const previousLesson = computed(() => {
-  if (!lessonCopy.value || lessonPosition.value <= 0) return null
-  return LOCAL_LESSONS[lessonPosition.value - 1] ?? null
+  if (lessonPosition.value <= 0) return null
+  return catalog.value[lessonPosition.value - 1] ?? null
 })
 const nextLesson = computed(() => {
-  if (!lessonCopy.value) return null
-  return LOCAL_LESSONS[lessonPosition.value + 1] ?? null
+  if (lessonPosition.value < 0) return null
+  return catalog.value[lessonPosition.value + 1] ?? null
 })
 const previewDistance = computed(() =>
   Math.min(3.2, 2.75 + Math.max(stage.value?.width ?? 2, stage.value?.height ?? 1) * 0.05),
@@ -94,12 +91,11 @@ async function load(id: string): Promise<void> {
   controller?.abort()
   controller = new AbortController()
   const signal = controller.signal
-  const local = localLesson(id)
-  tutorial.value = local ? { ...local } : null
-  if (local) document.title = `${local.title} | Robot Field`
-  field.value = local ? normalizeField(lessonField(local)) : null
-  source.value = local ? 'サンプル教材' : ''
-  loadState.value = local ? 'ready' : 'loading'
+  tutorial.value = null
+  catalog.value = []
+  field.value = null
+  source.value = ''
+  loadState.value = 'loading'
   loadMessage.value = ''
   sceneError.value = ''
   mode.value = 'preview'
@@ -112,6 +108,7 @@ async function load(id: string): Promise<void> {
   stageHidden.value = false
   activeStage.value = null
   animationEvent.value = null
+  picolangProgram.value = null
   runState.value = 'idle'
   runMessage.value = ''
 
@@ -119,7 +116,7 @@ async function load(id: string): Promise<void> {
     const remote = await getTutorial(id, signal)
     if (signal.aborted) return
     if (!remote) {
-      if (!local) loadState.value = 'not-found'
+      loadState.value = 'not-found'
       return
     }
     if (
@@ -129,22 +126,24 @@ async function load(id: string): Promise<void> {
       (!remote.stage && typeof remote.fieldId !== 'string')
     )
       throw new Error('教材データに id、title、description または stage / fieldId がありません')
-    tutorial.value = remote
-    source.value = 'APIから取得'
     const remoteField = remote.stage ?? (await getTutorialField(remote.fieldId!, signal))
     if (signal.aborted) return
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
       throw new Error('教材のフィールドが見つかりません')
-    field.value = normalizeField(remoteField as Record<string, unknown>)
+    const nextField = normalizeField(remoteField as Record<string, unknown>)
+    tutorial.value = remote
+    field.value = nextField
+    source.value = 'APIから取得'
     layoutIndex.value = 0
     loadState.value = 'ready'
-    document.title = `${tutorial.value.title} | Robot Field`
+    document.title = `${remote.title} | Robot Field`
+    void getTutorials(signal)
+      .then((items) => {
+        if (!signal.aborted) catalog.value = items
+      })
+      .catch(() => {})
   } catch (error) {
     if (signal.aborted) return
-    if (local && source.value === 'サンプル教材') {
-      loadState.value = 'ready'
-      return
-    }
     field.value = null
     loadState.value = 'error'
     loadMessage.value = error instanceof Error ? error.message : String(error)
@@ -364,7 +363,14 @@ onBeforeUnmount(() => {
         <span>Picolang v0</span>
       </div>
       <div class="tutorial-editor-body">
-        <BlocklyEditor :tutorial-id="tutorialId" @update:program="picolangProgram = $event" />
+        <BlocklyEditor
+          v-if="loadState === 'ready'"
+          :tutorial-id="tutorialId"
+          @update:program="picolangProgram = $event"
+        />
+        <p v-else-if="loadState === 'loading'" class="tutorial-editor-loading" role="status">
+          教材を読み込んでいます…
+        </p>
       </div>
     </section>
 
@@ -407,11 +413,11 @@ onBeforeUnmount(() => {
             <h1>教材が見つかりません。</h1>
             <a href="/tutorials">教材一覧を見る</a>
           </div>
-          <template v-else-if="tutorial">
+          <template v-else-if="loadState === 'ready' && tutorial">
             <header class="tutorial-heading">
-              <p v-if="lessonCopy" class="tutorial-count">
-                {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
-                {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
+              <p v-if="lessonPosition >= 0" class="tutorial-count">
+                {{ String(lessonPosition + 1).padStart(2, '0') }} /
+                {{ String(catalog.length).padStart(2, '0') }}
               </p>
               <h1>{{ tutorial.title }}</h1>
               <p>
@@ -445,10 +451,6 @@ onBeforeUnmount(() => {
                 ><button type="button" @click="changeLayout(1)">次の配置</button>
               </div>
               <small>個人の教材では、実行直前に候補から1つ選びます。</small>
-            </div>
-            <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
-              <span>{{ loadMessage }}</span
-              ><button type="button" @click="load(tutorialId)">再読み込み</button>
             </div>
             <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
             <div class="tutorial-bottom-link" aria-label="課題の移動">

@@ -11,6 +11,11 @@ export interface TutorialRecord {
   guide?: string[]
 }
 
+export interface TutorialSummary {
+  id: string
+  title: string
+}
+
 async function getJson(path: string, signal: AbortSignal): Promise<unknown | null> {
   const request = new AbortController()
   const abort = () => request.abort()
@@ -39,6 +44,20 @@ async function getJson(path: string, signal: AbortSignal): Promise<unknown | nul
 
 export async function getTutorial(id: string, signal: AbortSignal): Promise<TutorialRecord | null> {
   return (await getJson(`/tutorial/${encodeURIComponent(id)}`, signal)) as TutorialRecord | null
+}
+
+export async function getTutorials(signal: AbortSignal): Promise<TutorialSummary[]> {
+  const result = await getJson('/tutorial', signal)
+  if (
+    !Array.isArray(result) ||
+    result.some(
+      (item) =>
+        !item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.title !== 'string',
+    )
+  ) {
+    throw new Error('教材一覧の形式が不正です')
+  }
+  return result as TutorialSummary[]
 }
 
 export function getTutorialField(fieldId: string, signal: AbortSignal): Promise<unknown | null> {

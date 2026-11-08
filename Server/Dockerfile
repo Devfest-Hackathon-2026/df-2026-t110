@@ -2,17 +2,17 @@
 
 ARG GO_VERSION=1.27.3
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
-WORKDIR /src
+WORKDIR /src/Server
 ENV GOTOOLCHAIN=local
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,source=go.mod,target=go.mod \
-    --mount=type=bind,source=go.sum,target=go.sum \
+    --mount=type=bind,source=Server/go.mod,target=go.mod \
+    --mount=type=bind,source=Server/go.sum,target=go.sum \
     go mod download
 
 ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,target=. \
+    --mount=type=bind,source=Server,target=. \
     CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/server ./cmd
 
 FROM alpine:latest AS final
@@ -25,4 +25,6 @@ RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
 USER appuser
 
 COPY --from=build /bin/server /bin/
+COPY Textbooks/pages/ /textbooks/
+ENV TEXTBOOK_DIR=/textbooks
 ENTRYPOINT ["/bin/server"]

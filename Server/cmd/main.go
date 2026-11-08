@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/static"
@@ -18,7 +19,13 @@ func main() {
 		e.Use(static.Middleware(dir, "/api"))
 	}
 
-	r := router.NewRouter(router.Config{})
+	textbookDir := os.Getenv("TEXTBOOK_DIR")
+	if textbookDir == "" {
+		textbookDir = "../Textbooks/pages"
+	}
+	r := router.NewRouter(router.Config{
+		Tutorials: repo.NewTextbooks(os.DirFS(textbookDir)),
+	})
 	api.RegisterHandlersWithBaseURL(e, r, "/api")
 
 	if err := e.Start(":8080"); err != nil {
