@@ -13,11 +13,25 @@ import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.t
 import { executePicolang } from '../picolang/language/executePicolang.ts'
 import { createTutorialWorld } from './tutorialWorld.ts'
 import type { TutorialSpeech } from './tutorialSpeech.ts'
+import { replayFrames } from '../match/matchReplay.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
 import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
+import {
+  receiveTutorialResult,
+  saveTutorialProgram,
+  startTutorialRun,
+  TutorialRunApiError,
+} from './tutorialRunApi.ts'
+import {
+  applyTutorialFrame,
+  cloneTutorialLayout,
+  selectedTutorialLayout,
+  tutorialActionAnimation,
+  tutorialActionSpeech,
+} from './tutorialReplay.ts'
 
 const BlocklyEditor = defineAsyncComponent({
   loader: () => import('../picolang/editor/BlocklyEditor.vue'),
@@ -188,8 +202,50 @@ function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> 
   })
 }
 
+async function runLocally(program: PicoProgram, signal: AbortSignal, generation: number): Promise<void> {
+  if (!field.value) return
+  layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
+  activeStage.value = cloneTutorialLayout(field.value.layouts[layoutIndex.value])
+  animationEvent.value = null
+  speech.value = null
+  await nextTick()
+  if (generation !== runGeneration || !activeStage.value) return
+  sceneRef.value?.resetRobot()
+  const world = createTutorialWorld(activeStage.value)
+  runMessage.value = 'サーバー実行を利用できないため、ローカルで再生しています…'
+  await executePicolang(
+    program,
+    {
+      call: async (name, args, actionSignal) => {
+        const result = world.call(name, args)
+        if (result.speech) {
+          speech.value = result.speech
+          await waitForAnimation(1000, actionSignal)
+          speech.value = null
+        }
+        if (result.animation) {
+          animationEvent.value = { id: ++animationId, ...result.animation }
+          const duration =
+            result.animation.type === 'wait' ? Math.max(1, result.animation.ticks ?? 1) * 1000 : 1000
+          await waitForAnimation(duration + 40, actionSignal)
+          if (result.changed) sceneRef.value?.refreshVisuals()
+          sceneRef.value?.setCarrying(Boolean(world.held))
+        }
+        return result.value
+      },
+    },
+    signal,
+  )
+  if (generation !== runGeneration) return
+  if (world.reachedGoal) {
+    animationEvent.value = { id: ++animationId, type: 'clear' }
+    runMessage.value = 'ローカル実行でゴールに到着しました！'
+  } else runMessage.value = 'ローカル実行が終了しました。ゴールへの道を考えてみましょう。'
+  runState.value = 'finished'
+}
+
 async function runProgram(): Promise<void> {
-  if (!field.value || runState.value === 'running') return
+  if (!field.value || !tutorial.value || runState.value === 'running') return
   if (!isPicoProgram(picolangProgram.value)) {
     sceneError.value = 'エディタのエラーを解消してから実行してください。'
     return
@@ -200,59 +256,85 @@ async function runProgram(): Promise<void> {
   const generation = runGeneration
   const controller = new AbortController()
   runController = controller
-  layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
-  activeStage.value = JSON.parse(JSON.stringify(field.value.layouts[layoutIndex.value])) as StageLayout
+  activeStage.value = null
   animationEvent.value = null
   speech.value = null
   runState.value = 'running'
-  runMessage.value = 'プログラムを実行しています'
-  await nextTick()
-  if (generation !== runGeneration || !activeStage.value) return
-  sceneRef.value?.resetRobot()
-  window.dispatchEvent(
-    new CustomEvent('robot-field:tutorial-run', {
-      detail: {
-        tutorialId: props.tutorialId,
-        layout: activeStage.value,
-        candidateIndex: layoutIndex.value,
-        program,
-      },
-    }),
-  )
-  const world = createTutorialWorld(activeStage.value)
+  runMessage.value = 'プログラムを保存しています…'
   try {
-    await executePicolang(
+    const signal = controller.signal
+    const programId = await saveTutorialProgram(
+      props.tutorialId,
+      `教材: ${tutorial.value.title}`,
       program,
-      {
-        call: async (name, args, signal) => {
-          const result = world.call(name, args)
-          if (result.message) runMessage.value = result.message
-          if (result.speech) {
-            speech.value = result.speech
-            await waitForAnimation(1000, signal)
-            speech.value = null
-          }
-          if (result.animation) {
-            animationEvent.value = { id: ++animationId, ...result.animation }
-            const duration =
-              result.animation.type === 'wait' ? Math.max(1, result.animation.ticks ?? 1) * 1000 : 1000
-            await waitForAnimation(duration + 40, signal)
-            if (result.changed) sceneRef.value?.refreshVisuals()
-            sceneRef.value?.setCarrying(Boolean(world.held))
-          }
-          return result.value
-        },
-      },
-      controller.signal,
+      signal,
     )
+    runMessage.value = 'サーバーでプログラムを実行しています…'
+    const { runId, fieldId } = await startTutorialRun(props.tutorialId, programId, signal)
+    if (generation !== runGeneration || !field.value) return
+    const selected = selectedTutorialLayout(field.value.layouts, fieldId)
+    layoutIndex.value = selected.index
+    activeStage.value = selected.stage
+    await nextTick()
     if (generation !== runGeneration) return
-    if (world.reachedGoal) {
+    sceneRef.value?.resetRobot()
+    window.dispatchEvent(
+      new CustomEvent('robot-field:tutorial-run', {
+        detail: {
+          tutorialId: props.tutorialId,
+          layout: selected.stage,
+          candidateIndex: selected.index,
+          program,
+          runId,
+        },
+      }),
+    )
+    runMessage.value = '実行結果を受信しています…'
+    const result = await receiveTutorialResult(runId, signal)
+    const frames = replayFrames(result.history)
+    if (!frames.length) throw new Error('実行履歴に初期盤面がありません')
+    if (applyTutorialFrame(selected.stage, frames[0])) sceneRef.value?.refreshVisuals()
+    runMessage.value = 'ロボットの動きを再生しています…'
+    for (const frame of frames.slice(1)) {
+      if (signal.aborted) return
+      for (const action of frame.actions) {
+        const id = ++animationId
+        const actionSpeech = tutorialActionSpeech(action, id)
+        if (actionSpeech) {
+          speech.value = actionSpeech
+          await waitForAnimation(1000, signal)
+          speech.value = null
+          continue
+        }
+        const animation = tutorialActionAnimation(action, id)
+        if (!animation) continue
+        animationEvent.value = animation
+        await waitForAnimation(
+          animation.type === 'wait' ? Math.max(1, animation.ticks ?? 1) * 1000 + 40 : 1040,
+          signal,
+        )
+      }
+      if (applyTutorialFrame(selected.stage, frame)) sceneRef.value?.refreshVisuals()
+      sceneRef.value?.setCarrying(Boolean(frame.robots[0]?.carryingLuggage))
+    }
+    if (generation !== runGeneration) return
+    if (result.summary.cleared) {
       animationEvent.value = { id: ++animationId, type: 'clear' }
-      runMessage.value = 'ゴールに到着しました！'
+      runMessage.value = '課題をクリアしました！'
     } else runMessage.value = '実行が終了しました。ゴールへの道を考えてみましょう。'
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
+    if (error instanceof TutorialRunApiError && (error.status === 401 || error.status === 501)) {
+      try {
+        await runLocally(program, controller.signal, generation)
+      } catch (localError) {
+        if (generation !== runGeneration || controller.signal.aborted) return
+        runState.value = 'error'
+        runMessage.value = localError instanceof Error ? localError.message : 'ローカル実行に失敗しました'
+      }
+      return
+    }
     runState.value = 'error'
     runMessage.value = error instanceof Error ? error.message : 'プログラムを実行できませんでした'
   } finally {
