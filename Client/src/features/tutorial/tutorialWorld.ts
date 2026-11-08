@@ -1,8 +1,8 @@
 import type { PicoValue } from '../picolang/language/executePicolang.ts'
 import { PICO_DISTANCE_TARGETS, type PicoTerrain } from '../picolang/language/picolang.ts'
-import { formatPicoValue } from '../picolang/language/formatPicoValue.ts'
 import type { StageCell, StageLayout, StageObject } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
+import { speechForValue, type TutorialSpeech } from './tutorialSpeech.ts'
 
 type Direction = StageLayout['robot']['direction']
 export type WorldAnimation = Omit<AnimationEvent, 'id'>
@@ -11,6 +11,7 @@ export interface WorldResult {
   animation?: WorldAnimation
   changed?: boolean
   message?: string
+  speech?: TutorialSpeech
 }
 const directions: Direction[] = ['north', 'east', 'south', 'west']
 const vectors: Record<Direction, { x: number; y: number }> = {
@@ -21,6 +22,7 @@ const vectors: Record<Direction, { x: number; y: number }> = {
 }
 
 export function createTutorialWorld(stage: StageLayout) {
+  let speechId = 0
   const position = { ...stage.robot.position }
   let direction = stage.robot.direction
   let drillRemaining = stage.drillLimit ?? 99
@@ -82,18 +84,20 @@ export function createTutorialWorld(stage: StageLayout) {
               : value.kind?.type === kind,
       }
     }
-    if (name === 'print_integer' || name === 'print_bool') return { value: null, message: String(args[0]) }
-    if (name === 'print_unit' && args[0] === null) return { value: null, message: formatPicoValue(null) }
+    if (name === 'print_integer' || name === 'print_bool')
+      return { value: null, speech: speechForValue(args[0], ++speechId) }
+    if (name === 'print_unit' && args[0] === null)
+      return { value: null, speech: speechForValue(args[0], ++speechId) }
     if (name === 'print_rotation' && (args[0] === 'left' || args[0] === 'right'))
-      return { value: null, message: formatPicoValue(args[0]) }
+      return { value: null, speech: speechForValue(args[0], ++speechId) }
     if (
       name === 'print_distance_target' &&
       typeof args[0] === 'string' &&
       PICO_DISTANCE_TARGETS.some((target) => target === args[0])
     )
-      return { value: null, message: formatPicoValue(args[0]) }
+      return { value: null, speech: speechForValue(args[0], ++speechId) }
     if (name === 'print_terrain' && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0]))
-      return { value: null, message: formatPicoValue(args[0]) }
+      return { value: null, speech: speechForValue(args[0], ++speechId) }
     if (name === 'rotate') {
       face(args[0])
       return { value: null, animation: { type: 'rotate', direction: args[0] as 'left' | 'right' } }

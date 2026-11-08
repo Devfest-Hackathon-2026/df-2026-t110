@@ -12,6 +12,7 @@ import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
 import { executePicolang } from '../picolang/language/executePicolang.ts'
 import { createTutorialWorld } from './tutorialWorld.ts'
+import type { TutorialSpeech } from './tutorialSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
@@ -53,6 +54,7 @@ const sceneRef = ref<{
 } | null>(null)
 const activeStage = ref<StageLayout | null>(null)
 const animationEvent = ref<AnimationEvent | null>(null)
+const speech = ref<TutorialSpeech | null>(null)
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
 let runController: AbortController | null = null
@@ -165,6 +167,7 @@ function stopRun(): void {
   runGeneration++
   runController?.abort()
   runController = null
+  speech.value = null
 }
 
 function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> {
@@ -200,6 +203,7 @@ async function runProgram(): Promise<void> {
   layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
   activeStage.value = JSON.parse(JSON.stringify(field.value.layouts[layoutIndex.value])) as StageLayout
   animationEvent.value = null
+  speech.value = null
   runState.value = 'running'
   runMessage.value = 'プログラムを実行しています'
   await nextTick()
@@ -223,6 +227,11 @@ async function runProgram(): Promise<void> {
         call: async (name, args, signal) => {
           const result = world.call(name, args)
           if (result.message) runMessage.value = result.message
+          if (result.speech) {
+            speech.value = result.speech
+            await waitForAnimation(1000, signal)
+            speech.value = null
+          }
           if (result.animation) {
             animationEvent.value = { id: ++animationId, ...result.animation }
             const duration =
@@ -506,6 +515,7 @@ onBeforeUnmount(() => {
           :stage="stage"
           :mode="mode"
           :animation-event="animationEvent"
+          :speech="speech"
           :preview-distance="previewDistance"
           @error="sceneError = $event"
         />
