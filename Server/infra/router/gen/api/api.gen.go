@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	history "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 	schema "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
@@ -67,7 +67,7 @@ type ApiError struct {
 type Field = schema.FieldDefinition
 
 // GameHistory defines model for GameHistory.
-type GameHistory = []gameevent.GameEvent
+type GameHistory = history.GameHistory
 
 // Match defines model for Match.
 type Match struct {
