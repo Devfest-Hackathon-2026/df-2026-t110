@@ -13,14 +13,19 @@ var _ api.ServerInterface = (*Router)(nil)
 
 // Config holds HTTP-level settings of the handlers.
 type Config struct {
-	Users     UsernameSetter
-	Programs  ProgramCreator
-	Tutorials TutorialService
+	Users        UsernameSetter
+	Programs     ProgramCreator
+	Tutorials    TutorialService
+	TutorialRuns TutorialRunner
 }
 
 type TutorialService interface {
 	List(ctx context.Context) ([]domain.Tutorial, error)
 	Get(ctx context.Context, id string) (domain.Tutorial, error)
+}
+
+type TutorialRunner interface {
+	Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error)
 }
 
 type ProgramCreator interface {
