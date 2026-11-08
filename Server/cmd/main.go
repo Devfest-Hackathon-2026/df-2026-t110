@@ -28,7 +28,11 @@ func main() {
 		e.Use(static.Middleware(dir, "/api"))
 	}
 
-	cfg := router.Config{}
+	textbooks, err := repo.NewTextbooks(context.Background(), textbookPages())
+	if err != nil {
+		log.Fatal(err)
+	}
+	cfg := router.Config{Tutorials: textbooks}
 	var sessions router.SessionUserLookup
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		pool, err := pgxpool.New(context.Background(), databaseURL)

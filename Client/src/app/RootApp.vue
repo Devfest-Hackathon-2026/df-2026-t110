@@ -5,11 +5,11 @@ import infoIcon from '@iconify-icons/lucide/info'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
-import { LOCAL_LESSONS } from '../features/tutorial/tutorialLessons.ts'
 import AppHeader from './AppHeader.vue'
 
 const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
+const TutorialCatalog = defineAsyncComponent(() => import('../features/tutorial/TutorialCatalog.vue'))
 const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
 const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
@@ -108,22 +108,7 @@ document.title = isStage
           <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>最初の一歩から。</span>
         </h1>
         <p class="inner-lead">短い道から始めて、ロボットにできることを少しずつ増やしていきます。</p>
-        <a
-          v-for="(lesson, index) in LOCAL_LESSONS"
-          :key="lesson.id"
-          class="lesson-entry"
-          :href="`/tutorials/${lesson.id}`"
-          ><span>{{ String(index + 1).padStart(2, '0') }}</span
-          ><span
-            ><strong>{{ lesson.title }}</strong
-            ><small>{{ lesson.goal }}</small></span
-          ><span aria-hidden="true">↗</span></a
-        >
-        <p class="page-note">
-          教材とフィールドは現在サンプルデータです。<a href="/tutorials/demo"
-            >ステージ表示の開発用プレビュー</a
-          >も確認できます。
-        </p>
+        <TutorialCatalog />
       </template>
       <template v-else>
         <h1 class="heading-with-icon">

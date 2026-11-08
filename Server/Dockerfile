@@ -2,18 +2,20 @@
 
 ARG GO_VERSION=1.27.3
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS build
-WORKDIR /src
+WORKDIR /src/Server
 ENV GOTOOLCHAIN=local
 
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,source=go.mod,target=go.mod \
-    --mount=type=bind,source=go.sum,target=go.sum \
+    --mount=type=bind,source=Server/go.mod,target=go.mod \
+    --mount=type=bind,source=Server/go.sum,target=go.sum \
     go mod download
+
+COPY Server/ /src/Server/
+COPY Textbooks/pages/ /src/Server/cmd/textbooks/
 
 ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,target=. \
-    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -o /bin/server ./cmd
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -tags textbook_embed -o /bin/server ./cmd
 
 FROM alpine:latest AS final
 RUN --mount=type=cache,target=/var/cache/apk \
