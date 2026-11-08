@@ -9,8 +9,8 @@ import PicoCondition from './PicoCondition.vue'
 import PicoExpression from './PicoExpression.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
 import { dragVariable, endPicoDrag } from './picoDrag.ts'
+import { PICO_BUILTIN_OPTIONS, type PicoVariableOption } from './picoOptions.ts'
 import {
-  PICO_BUILTINS,
   block as makeBlock,
   defaultExpr,
   makeStatement,
@@ -18,8 +18,7 @@ import {
   type PicoFunction,
   type PicoStatement,
   type PicoType,
-  type PicoVariableOption,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 
 defineOptions({ name: 'PicoBlock' })
 const props = defineProps<{
@@ -110,7 +109,7 @@ function drop(event: DragEvent): void {
   if (
     value &&
     (controlChoices.some((item) => item.value === value) ||
-      PICO_BUILTINS.some((item) => item.name === value) ||
+      PICO_BUILTIN_OPTIONS.some((item) => item.name === value) ||
       value in props.functions)
   )
     append(value)
@@ -130,7 +129,7 @@ function dropAt(index: number, event: DragEvent): void {
     !value ||
     !(
       controlChoices.some((item) => item.value === value) ||
-      PICO_BUILTINS.some((item) => item.name === value) ||
+      PICO_BUILTIN_OPTIONS.some((item) => item.name === value) ||
       value in props.functions
     )
   )
@@ -155,7 +154,7 @@ function dropInto(
   if (
     value &&
     (controlChoices.some((item) => item.value === value) ||
-      PICO_BUILTINS.some((item) => item.name === value) ||
+      PICO_BUILTIN_OPTIONS.some((item) => item.name === value) ||
       value in props.functions)
   ) {
     const visible = variablesBefore(index)
@@ -475,7 +474,7 @@ function remove(index: number): void {
       <select v-model="choice" aria-label="追加する命令">
         <optgroup label="動きと操作">
           <option
-            v-for="item in PICO_BUILTINS.filter((item) => ['動き', '操作'].includes(item.category))"
+            v-for="item in PICO_BUILTIN_OPTIONS.filter((item) => ['動き', '操作'].includes(item.category))"
             :key="item.name"
             :value="item.name"
           >
@@ -489,7 +488,7 @@ function remove(index: number): void {
         </optgroup>
         <optgroup label="組み込み関数">
           <option
-            v-for="item in PICO_BUILTINS.filter((item) => !['動き', '操作'].includes(item.category))"
+            v-for="item in PICO_BUILTIN_OPTIONS.filter((item) => !['動き', '操作'].includes(item.category))"
             :key="item.name"
             :value="item.name"
           >

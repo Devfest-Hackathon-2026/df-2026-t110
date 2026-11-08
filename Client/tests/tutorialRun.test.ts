@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { executePicolang } from '../src/features/picolang/executePicolang.ts'
-import { makeStatement, newProgram, programFunctions } from '../src/features/picolang/picolang.ts'
+import { executePicolang } from '../src/features/picolang/language/executePicolang.ts'
+import { makeStatement, newProgram, programFunctions } from '../src/features/picolang/language/picolang.ts'
 import { normalizeStage } from '../src/features/stage/stage.ts'
 import { createTutorialWorld } from '../src/features/tutorial/tutorialWorld.ts'
 

@@ -6,14 +6,14 @@ import {
   readFunction,
   refreshVariableBlocks,
   registerPicoBlocks,
-} from '../src/features/picolang/blocklyPico.ts'
+} from '../src/features/picolang/editor/blocklyPico.ts'
 import {
   ident,
   isPicoProgram,
   makeStatement,
   newProgram,
   programFunctions,
-} from '../src/features/picolang/picolang.ts'
+} from '../src/features/picolang/language/picolang.ts'
 
 test('Blocklyとの往復で制御構文と変数宣言をPicolang ASTに保つ', () => {
   const program = newProgram()

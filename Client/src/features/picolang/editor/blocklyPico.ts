@@ -1,6 +1,6 @@
 import * as Blockly from 'blockly'
+import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
-  PICO_BUILTINS,
   block as picoBlock,
   defaultExpr,
   id,
@@ -10,7 +10,7 @@ import {
   type PicoFunction,
   type PicoStatement,
   type PicoType,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 import { argumentLabel } from './picoGuidance.ts'
 
 type State = Blockly.serialization.blocks.State
@@ -124,7 +124,7 @@ function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
 ): { args: PicoType[]; returns: PicoType; category: string; label: string } {
-  const builtin = PICO_BUILTINS.find((item) => item.name === name)
+  const builtin = PICO_BUILTIN_OPTIONS.find((item) => item.name === name)
   if (builtin)
     return { args: builtin.args, returns: builtin.returns, category: builtin.category, label: builtin.label }
   const fn = functions[name]
@@ -284,7 +284,7 @@ function defineStaticBlocks(): void {
 
 export function registerPicoBlocks(functions: Record<string, PicoFunction>): void {
   defineStaticBlocks()
-  for (const option of PICO_BUILTINS) defineCall(option.name, functions)
+  for (const option of PICO_BUILTIN_OPTIONS) defineCall(option.name, functions)
   for (const name of Object.keys(functions)) if (name !== 'main') defineCall(name, functions)
 }
 function defineCall(name: string, functions: Record<string, PicoFunction>): void {
@@ -654,7 +654,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
           )
       }
     } else {
-      for (const builtin of PICO_BUILTINS.filter((item) => item.category === category))
+      for (const builtin of PICO_BUILTIN_OPTIONS.filter((item) => item.category === category))
         contents.push(
           toolboxBlock(
             callType(builtin.name, ['動き', '操作', '表示'].includes(category)),

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import PicoExpression from './PicoExpression.vue'
-import { ident, makeCall, type PicoExpr, type PicoFunction, type PicoVariableOption } from './picolang.ts'
+import type { PicoVariableOption } from './picoOptions.ts'
+import { ident, makeCall, type PicoExpr, type PicoFunction } from '../language/picolang.ts'
 
 const props = defineProps<{
   node: PicoExpr
