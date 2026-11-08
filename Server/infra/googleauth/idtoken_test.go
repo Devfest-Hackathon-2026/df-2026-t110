@@ -9,6 +9,8 @@ import (
 )
 
 func TestCompleteRejectsInvalidIdentity(t *testing.T) {
+	t.Parallel()
+
 	for name, mutate := range map[string]func(map[string]any){
 		"nonce":                func(c map[string]any) { c["nonce"] = "wrong" },
 		"issuer":               func(c map[string]any) { c["iss"] = "https://attacker.example" },
@@ -20,6 +22,8 @@ func TestCompleteRejectsInvalidIdentity(t *testing.T) {
 		"multiple audiences without authorized party": func(c map[string]any) { c["aud"] = []string{"client-id", "other-client"} },
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			f := newProviderFixture(t)
 			a := f.begin(t)
 			payload := claims(a.Nonce)
@@ -33,6 +37,8 @@ func TestCompleteRejectsInvalidIdentity(t *testing.T) {
 }
 
 func TestCompleteRejectsInvalidSignature(t *testing.T) {
+	t.Parallel()
+
 	f := newProviderFixture(t)
 	a := f.begin(t)
 	otherKey, err := rsa.GenerateKey(rand.Reader, 2048)

@@ -103,7 +103,12 @@ func testLimits() Limits {
 
 func newLimitedVM(t *testing.T, program bot.TypedProgram, seed uint64, limits Limits) *VM {
 	t.Helper()
-	v, err := New(program, seed, limits)
+	return newVMWithLogging(t, program, seed, limits, true)
+}
+
+func newVMWithLogging(t *testing.T, program bot.TypedProgram, seed uint64, limits Limits, logExecution bool) *VM {
+	t.Helper()
+	v, err := New(program, seed, limits, logExecution)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -708,7 +713,7 @@ func TestEntryPointAndZeroValueValidation(t *testing.T) {
 		{}, {Functions: map[bot.Name]bot.Function[bot.VariableIndex, bot.Type]{"main": {ReturnType: bot.BoolType{}}}},
 		{Functions: map[bot.Name]bot.Function[bot.VariableIndex, bot.Type]{"main": {ReturnType: bot.UnitType{}, Params: []bot.Param[bot.VariableIndex]{{Type: bot.IntegerType{}}}}}},
 	} {
-		if v, err := New(program, 0, testLimits()); err == nil || v != nil {
+		if v, err := New(program, 0, testLimits(), true); err == nil || v != nil {
 			t.Errorf("accepted invalid entry point: %#v, %v", v, err)
 		}
 	}

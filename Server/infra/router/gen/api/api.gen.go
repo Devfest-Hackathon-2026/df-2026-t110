@@ -60,6 +60,9 @@ type MatchStatus string
 // PicolangProgram defines model for PicolangProgram.
 type PicolangProgram = schema.PicolangProgram
 
+// PicolangV0Header defines model for PicolangV0Header.
+type PicolangV0Header = schema.PicolangV0Header
+
 // Program プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
 //
 // Examples: {"id":"program-1","isBattle":false,"name":"前進する","source":{"picolang":{"v0":{"program":{"main":{"body":{"hintId":"00000000-0000-4000-8000-000000000002","kind":"block","stmts":[{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000003","kind":"call"},{"args":[],"func":"forward","hintId":"00000000-0000-4000-8000-000000000004","kind":"call"},{"hintId":"00000000-0000-4000-8000-000000000005","kind":"return","value":{"hintId":"00000000-0000-4000-8000-000000000006","kind":"literal","type":"unit","value":null}}]},"hintId":"00000000-0000-4000-8000-000000000001","kind":"function","params":[],"returnType":"unit"}}}},"picolangVersion":0},"tutorialID":"tutorial-1"}
@@ -465,6 +468,9 @@ type ServerInterface interface {
 	// SetMyUsername ユーザー名を一度だけ設定
 	// (POST /me/username)
 	SetMyUsername(ctx *echo.Context) error
+	// ListPicolangV0Builtins picolang v0 の組み込み関数一覧を取得
+	// (GET /picolang/v0/builtins)
+	ListPicolangV0Builtins(ctx *echo.Context) error
 	// CreateProgram プログラムを作成
 	// (POST /program)
 	CreateProgram(ctx *echo.Context) error
@@ -607,6 +613,15 @@ func (w *ServerInterfaceWrapper) SetMyUsername(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SetMyUsername(ctx)
+	return err
+}
+
+// ListPicolangV0Builtins converts echo context to params.
+func (w *ServerInterfaceWrapper) ListPicolangV0Builtins(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListPicolangV0Builtins(ctx)
 	return err
 }
 
@@ -791,5 +806,6 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/tutorial", wrapper.ListTutorials, options.OperationMiddlewares["listTutorials"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId", wrapper.GetTutorial, options.OperationMiddlewares["getTutorial"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId/program", wrapper.ListTutorialPrograms, options.OperationMiddlewares["listTutorialPrograms"]...)
+	router.GET(options.BaseURL+"/picolang/v0/builtins", wrapper.ListPicolangV0Builtins, options.OperationMiddlewares["listPicolangV0Builtins"]...)
 
 }

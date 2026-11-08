@@ -20,7 +20,8 @@ var _ game.Robot = (*PicolangBot)(nil)
 // checks types and constructs a fresh VM. It does not execute the program.
 // On any failure it returns nil and the original error, preserving Diagnostics
 // from indexing and type checking. The source bytes may be reused after return.
-func NewPicolangBot(source []byte, seed uint64, limits interpreter.Limits) (*PicolangBot, error) {
+// logExecution controls whether the VM creates execution events and debug values.
+func NewPicolangBot(source []byte, seed uint64, limits interpreter.Limits, logExecution bool) (*PicolangBot, error) {
 	parsed, err := picolangparse.Parse(source)
 	if err != nil {
 		return nil, err
@@ -33,7 +34,7 @@ func NewPicolangBot(source []byte, seed uint64, limits interpreter.Limits) (*Pic
 	if err != nil {
 		return nil, err
 	}
-	vm, err := interpreter.New(typed, seed, limits)
+	vm, err := interpreter.New(typed, seed, limits, logExecution)
 	if err != nil {
 		return nil, err
 	}

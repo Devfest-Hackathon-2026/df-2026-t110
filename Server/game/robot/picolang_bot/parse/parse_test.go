@@ -302,7 +302,7 @@ func TestJSONToVM(t *testing.T) {
 		t.Errorf("TypeCheck: %v", err)
 		return
 	}
-	vm, err := interpreter.New(typed, 42, interpreter.Limits{MaxSteps: 100, MaxMemoryBytes: 64 << 10, MaxCallDepth: 10})
+	vm, err := interpreter.New(typed, 42, interpreter.Limits{MaxSteps: 100, MaxMemoryBytes: 64 << 10, MaxCallDepth: 10}, true)
 	if err != nil {
 		t.Errorf("New VM: %v", err)
 		return

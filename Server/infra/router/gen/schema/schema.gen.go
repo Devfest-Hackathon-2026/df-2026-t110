@@ -1386,8 +1386,92 @@ func (j *PicolangFunctionDefinition) UnmarshalJSON(value []byte) error {
 // 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
 type PicolangProgram interface{}
 
+// 組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する
+type PicolangV0BuiltinSignature struct {
+	// 呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列
+	Params []PicolangV0SignatureType `json:"params"`
+
+	// 戻り値の型。値を返さない関数は unit
+	ReturnType PicolangV0SignatureType `json:"returnType"`
+
+	// このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない
+	TypeParameters []Name `json:"typeParameters,omitempty,omitzero"`
+}
+
+// MarshalJSON implements json.Marshaler. It writes a required array or object left
+// nil as an empty one, where encoding/json would write null, which the schema
+// rejects.
+func (j PicolangV0BuiltinSignature) MarshalJSON() ([]byte, error) {
+	type Plain PicolangV0BuiltinSignature
+	plain := Plain(j)
+	if plain.Params == nil {
+		plain.Params = []PicolangV0SignatureType{}
+	}
+	return json.Marshal(plain)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangV0BuiltinSignature) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw PicolangV0BuiltinSignature: %w", err)
+	}
+	var numbers map[string]interface{}
+	{
+		dec := json.NewDecoder(bytes.NewReader(value))
+		dec.UseNumber()
+		_ = dec.Decode(&numbers)
+	}
+	if _, ok := raw["params"]; raw != nil && !ok {
+		return fmt.Errorf("field params in PicolangV0BuiltinSignature: required")
+	}
+	if _, ok := raw["returnType"]; raw != nil && !ok {
+		return fmt.Errorf("field returnType in PicolangV0BuiltinSignature: required")
+	}
+	for fieldName, fieldValue := range numbers {
+		if !strings.EqualFold(fieldName, "typeParameters") {
+			continue
+		}
+		if a0, ok := fieldValue.([]interface{}); ok {
+			seen := make(map[string]int, len(a0))
+			for i, item := range a0 {
+				key, ok := uniqueItemKey_Ident(item)
+				if !ok {
+					continue
+				}
+				if first, ok := seen[key]; ok {
+					return fmt.Errorf("field %s: items %d and %d are equal; they must be unique", "typeParameters", first, i)
+				}
+				seen[key] = i
+			}
+		}
+	}
+	type Plain PicolangV0BuiltinSignature
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangV0BuiltinSignature: %w", err)
+	}
+	*j = PicolangV0BuiltinSignature(plain)
+	return nil
+}
+
+// picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
+type PicolangV0Header []struct {
+	// プログラムの call.func に指定する組み込み関数名
+	Name Name `json:"name"`
+
+	// Signature corresponds to the JSON schema field "signature".
+	Signature PicolangV0BuiltinSignature `json:"signature"`
+
+	// UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する
+	Tags []string `json:"tags"`
+}
+
 // 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
 type PicolangV0Program map[string]PicolangFunctionDefinition
+
+// シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照
+type PicolangV0SignatureType interface{}
 
 // フィールド上のマスの座標
 type Position struct {
@@ -1437,6 +1521,44 @@ const PrimitiveTypeInteger PrimitiveType = "integer"
 const PrimitiveTypeRotation PrimitiveType = "rotation"
 const PrimitiveTypeTerrain PrimitiveType = "terrain"
 const PrimitiveTypeUnit PrimitiveType = "unit"
+
+type PrimitiveType_1 string
+
+const PrimitiveType_1_Bool PrimitiveType_1 = "bool"
+const PrimitiveType_1_DistanceTarget PrimitiveType_1 = "distance_target"
+const PrimitiveType_1_Integer PrimitiveType_1 = "integer"
+const PrimitiveType_1_Rotation PrimitiveType_1 = "rotation"
+const PrimitiveType_1_Terrain PrimitiveType_1 = "terrain"
+const PrimitiveType_1_Unit PrimitiveType_1 = "unit"
+
+var enumValues_PrimitiveType_1 = []interface{}{
+	"bool",
+	"integer",
+	"unit",
+	"terrain",
+	"rotation",
+	"distance_target",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PrimitiveType_1) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_PrimitiveType_1 {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_PrimitiveType_1, v)
+	}
+	*j = PrimitiveType_1(v)
+	return nil
+}
 
 var enumValues_PrimitiveType = []interface{}{
 	"bool",
@@ -1773,6 +1895,40 @@ func (j *TutorialDetail) UnmarshalJSON(value []byte) error {
 // picolang の値の型。基本型または複合型
 type Type interface{}
 
+type TypeParameter struct {
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+
+	// 同じシグネチャの typeParameters で宣言した名前。同名の参照は同じ型を表す
+	Name Name `json:"name"`
+}
+
+const TypeParameterKind = "type_parameter"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *TypeParameter) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw TypeParameter: %w", err)
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in TypeParameter: required")
+	}
+	if _, ok := raw["name"]; raw != nil && !ok {
+		return fmt.Errorf("field name in TypeParameter: required")
+	}
+	type Plain TypeParameter
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal TypeParameter: %w", err)
+	}
+	if plain.Kind != "type_parameter" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "type_parameter")
+	}
+	*j = TypeParameter(plain)
+	return nil
+}
+
 // unit 型のリテラル
 type UnitLiteral struct {
 	// HintId corresponds to the JSON schema field "hintId".
@@ -1847,6 +2003,40 @@ type VectorType struct {
 }
 
 const VectorTypeKind = "vector"
+
+type VectorType_1 struct {
+	// ElementType corresponds to the JSON schema field "elementType".
+	ElementType PicolangV0SignatureType `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const VectorType_1Kind = "vector"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *VectorType_1) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw VectorType_1: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in VectorType_1: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in VectorType_1: required")
+	}
+	type Plain VectorType_1
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal VectorType_1: %w", err)
+	}
+	if plain.Kind != "vector" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "vector")
+	}
+	*j = VectorType_1(plain)
+	return nil
+}
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *VectorType) UnmarshalJSON(value []byte) error {

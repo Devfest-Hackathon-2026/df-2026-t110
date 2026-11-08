@@ -57,7 +57,7 @@ func TestResourceLimitsMustBePositive(t *testing.T) {
 		{MaxSteps: 1, MaxCallDepth: 1},
 		{MaxMemoryBytes: 1, MaxCallDepth: 1},
 	} {
-		if vm, err := New(program, 0, limits); err == nil || vm != nil {
+		if vm, err := New(program, 0, limits, true); err == nil || vm != nil {
 			t.Errorf("accepted invalid limits %+v: %v, %v", limits, vm, err)
 		}
 	}

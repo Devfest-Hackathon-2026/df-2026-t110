@@ -101,6 +101,8 @@ func claims(nonce string) map[string]any {
 }
 
 func TestAuthorizationAndIdentity(t *testing.T) {
+	t.Parallel()
+
 	f := newProviderFixture(t)
 	a := f.begin(t)
 	f.idToken = f.sign(t, claims(a.Nonce))
@@ -114,6 +116,8 @@ func TestAuthorizationAndIdentity(t *testing.T) {
 }
 
 func TestRedirectURLValidation(t *testing.T) {
+	t.Parallel()
+
 	for _, tt := range []struct {
 		url   string
 		valid bool

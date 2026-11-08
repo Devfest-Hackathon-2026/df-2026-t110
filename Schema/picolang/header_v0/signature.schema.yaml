@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangV0BuiltinSignature
+description: 組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する
+
+type: object
+additionalProperties: false
+required: [params, returnType]
+properties:
+  typeParameters:
+    description: このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない
+    type: array
+    uniqueItems: true
+    items:
+      $ref: '../v0/name.yaml'
+  params:
+    description: 呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列
+    type: array
+    items:
+      $ref: './signature-type.yaml'
+  returnType:
+    description: 戻り値の型。値を返さない関数は unit
+    $ref: './signature-type.yaml'

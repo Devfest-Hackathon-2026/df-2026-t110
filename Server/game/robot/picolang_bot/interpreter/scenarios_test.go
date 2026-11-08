@@ -135,15 +135,27 @@ func TestVMProgramScenarios(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			v := newVM(t, checked(t, tc.build(&builder{})), 0)
-			base := v.memory.MemoryUsage()
-			output, err := v.Start()
-			for _, expected := range tc.trace {
-				expectOutput(t, output, err, robotmsg.ActionStep{Action: expected.action})
-				output, err = v.Next(expected.reply)
+			program := checked(t, tc.build(&builder{}))
+			for name, logExecution := range map[string]bool{"logged": true, "unlogged": false} {
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
+					v := newVMWithLogging(t, program, 0, testLimits(), logExecution)
+					base := v.memory.MemoryUsage()
+					output, err := v.Start()
+					for _, expected := range tc.trace {
+						expectOutput(t, output, err, robotmsg.ActionStep{Action: expected.action})
+						if !logExecution && output.Events != nil {
+							t.Errorf("unlogged action returned events: %#v", output.Events)
+						}
+						output, err = v.Next(expected.reply)
+					}
+					expectOutput(t, output, err, robotmsg.DoneStep{})
+					if !logExecution && output.Events != nil {
+						t.Errorf("unlogged completion returned events: %#v", output.Events)
+					}
+					assertClean(t, v, base)
+				})
 			}
-			expectOutput(t, output, err, robotmsg.DoneStep{})
-			assertClean(t, v, base)
 		})
 	}
 }
