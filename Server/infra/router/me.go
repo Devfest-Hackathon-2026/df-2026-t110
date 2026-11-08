@@ -6,12 +6,17 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/labstack/echo/v5"
 )
 
 func (r *Router) GetMe(ctx *echo.Context) error {
-	return errNotImplemented()
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	return ctx.JSON(http.StatusOK, api.User{Id: &user.GoogleSubject, Name: user.Name})
 }
 
 func (r *Router) SetMyUsername(ctx *echo.Context) error {

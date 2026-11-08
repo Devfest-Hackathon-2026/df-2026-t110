@@ -42,7 +42,9 @@ func main() {
 		}
 		defer pool.Close()
 		users := usecase.NewUser(repo.NewUsers(pool))
-		sessions = usecase.NewSession(usecase.SessionDeps{Sessions: repo.NewSessions(pool), Users: users})
+		sessionService := usecase.NewSession(usecase.SessionDeps{Sessions: repo.NewSessions(pool), Users: users})
+		sessions = sessionService
+		cfg.Sessions = sessionService
 		cfg.Users = users
 		programs := repo.NewPrograms(pool)
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
@@ -55,6 +57,8 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
+			"getMe":         {authenticate},
+			"logout":        {authenticate},
 			"createProgram": {authenticate, middleware.BodyLimit(1 << 20)},
 			"runTutorial":   {authenticate, middleware.BodyLimit(1 << 20)},
 			"runEvents":     {authenticate},
