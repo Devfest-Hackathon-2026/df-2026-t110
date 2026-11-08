@@ -19,6 +19,7 @@ import shuffleIcon from '@iconify-icons/lucide/shuffle'
 import listIcon from '@iconify-icons/lucide/list'
 import typeIcon from '@iconify-icons/lucide/type'
 import squareFunctionIcon from '@iconify-icons/lucide/square-function'
+import boxIcon from '@iconify-icons/lucide/box'
 import focusIcon from '@iconify-icons/lucide/focus'
 import zoomInIcon from '@iconify-icons/lucide/zoom-in'
 import zoomOutIcon from '@iconify-icons/lucide/zoom-out'
@@ -94,6 +95,7 @@ const categoryIcons = {
   スタック: listIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
+  値: boxIcon,
 }
 
 function decorateToolboxCategories(): void {
