@@ -59,7 +59,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 3
+    - id: if-rock-1
+      width: 3
       height: 1
       terrain:
         - [land, rock, land]
@@ -70,7 +71,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 1
-    - width: 3
+    - id: if-rock-2
+      width: 3
       height: 1
       terrain:
         - [land, land, land]

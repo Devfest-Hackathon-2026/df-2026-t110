@@ -85,7 +85,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 7
+    - id: measure-distance-1
+      width: 7
       height: 1
       terrain:
         - [land, land, land, rock, land, land, land]

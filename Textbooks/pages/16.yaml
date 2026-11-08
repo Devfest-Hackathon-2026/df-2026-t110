@@ -97,7 +97,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 3
+    - id: replace-number-1
+      width: 3
       height: 4
       terrain:
         - [sea, sea, land]

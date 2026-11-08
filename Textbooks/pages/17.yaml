@@ -56,7 +56,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 7
+    - id: call-function-1
+      width: 7
       height: 1
       terrain:
         - [land, land, land, land, land, land, land]

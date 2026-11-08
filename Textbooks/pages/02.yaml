@@ -43,7 +43,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 1
+    - id: turn-1
+      width: 1
       height: 2
       terrain:
         - [land]

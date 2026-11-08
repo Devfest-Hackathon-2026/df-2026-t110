@@ -85,7 +85,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 4
+    - id: look-ahead-1
+      width: 4
       height: 1
       terrain:
         - [land, land, rock, land]

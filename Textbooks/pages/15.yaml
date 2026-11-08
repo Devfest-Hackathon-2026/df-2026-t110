@@ -66,7 +66,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 4
+    - id: remember-number-1
+      width: 4
       height: 1
       terrain:
         - [land, land, land, land]

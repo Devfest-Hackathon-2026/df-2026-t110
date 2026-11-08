@@ -11,7 +11,8 @@ guide:
   - 実行で選ばれた道を確かめよう。思った動きとちがったら、その場所を直そう。
 stage:
   variants:
-    - width: 6
+    - id: solve-new-path-1
+      width: 6
       height: 1
       terrain:
         - [land, rock, land, rock, land, land]
@@ -22,7 +23,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 2
-    - width: 8
+    - id: solve-new-path-2
+      width: 8
       height: 1
       terrain:
         - [land, land, rock, land, land, land, rock, land]
@@ -33,7 +35,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 2
-    - width: 9
+    - id: solve-new-path-3
+      width: 9
       height: 1
       terrain:
         - [land, rock, land, land, rock, land, rock, land, land]
@@ -44,7 +47,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 3
-    - width: 4
+    - id: solve-new-path-4
+      width: 4
       height: 1
       terrain:
         - [land, land, land, land]

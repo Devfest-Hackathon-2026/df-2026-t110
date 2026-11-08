@@ -82,7 +82,8 @@ initialProgram:
                   value: 1
 stage:
   variants:
-    - width: 4
+    - id: function-result-1
+      width: 4
       height: 1
       terrain:
         - [land, land, land, land]

@@ -10,7 +10,8 @@ guide:
   - 下の道を通り、岩の手前でこわそう。最後はゴールを向いて進もう。
 stage:
   variants:
-    - width: 5
+    - id: choose-rock-1
+      width: 5
       height: 2
       terrain:
         - [land, rock, rock, rock, land]

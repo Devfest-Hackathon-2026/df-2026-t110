@@ -39,7 +39,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 3
+    - id: break-rock-1
+      width: 3
       height: 1
       terrain:
         - [land, rock, land]

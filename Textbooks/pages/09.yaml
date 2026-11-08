@@ -51,7 +51,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 6
+    - id: repeat-count-1
+      width: 6
       height: 1
       terrain:
         - [land, land, land, land, land, land]

@@ -11,7 +11,8 @@ guide:
   - 最後に進み、荷物とロボットがゴールのマスにいるか確かめよう。
 stage:
   variants:
-    - width: 5
+    - id: deliver-luggage-1
+      width: 5
       height: 3
       terrain:
         - [sea, sea, sea, land, sea]

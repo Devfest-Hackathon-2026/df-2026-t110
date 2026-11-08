@@ -12,7 +12,8 @@ guide:
   - 実行で選ばれた道でも、覚えた数でゴールに着くか確かめよう。
 stage:
   variants:
-    - width: 5
+    - id: use-distance-1
+      width: 5
       height: 1
       terrain:
         - [land, land, rock, land, land]
@@ -23,7 +24,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 1
-    - width: 7
+    - id: use-distance-2
+      width: 7
       height: 1
       terrain:
         - [land, land, land, rock, land, land, land]
@@ -34,7 +36,8 @@ stage:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 1
-    - width: 9
+    - id: use-distance-3
+      width: 9
       height: 1
       terrain:
         - [land, land, land, land, rock, land, land, land, land]

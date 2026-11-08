@@ -51,7 +51,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 3
+    - id: command-order-1
+      width: 3
       height: 2
       terrain:
         - [sea, land, land]

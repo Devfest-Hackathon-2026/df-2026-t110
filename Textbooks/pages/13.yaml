@@ -60,7 +60,8 @@ initialProgram:
                   value: null
 stage:
   variants:
-    - width: 3
+    - id: pick-and-place-1
+      width: 3
       height: 2
       terrain:
         - [land, land, sea]

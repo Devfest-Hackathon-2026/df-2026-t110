@@ -10,7 +10,8 @@ guide:
   - その動きを2回くり返そう。最後の前進は、くり返しの外に置きます。
 stage:
   variants:
-    - width: 3
+    - id: after-repeat-1
+      width: 3
       height: 3
       terrain:
         - [sea, land, land]

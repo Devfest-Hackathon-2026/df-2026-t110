@@ -12,7 +12,8 @@ guide:
   - 実行で選ばれた道でも、海の手前で止まるか確かめよう。
 stage:
   variants:
-    - width: 8
+    - id: while-land-1
+      width: 8
       height: 2
       terrain:
         - [land, sea, sea, sea, sea, sea, sea, sea]
@@ -24,7 +25,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-2
+      width: 8
       height: 2
       terrain:
         - [sea, land, sea, sea, sea, sea, sea, sea]
@@ -36,7 +38,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-3
+      width: 8
       height: 2
       terrain:
         - [sea, sea, land, sea, sea, sea, sea, sea]
@@ -48,7 +51,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-4
+      width: 8
       height: 2
       terrain:
         - [sea, sea, sea, land, sea, sea, sea, sea]
@@ -60,7 +64,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-5
+      width: 8
       height: 2
       terrain:
         - [sea, sea, sea, sea, land, sea, sea, sea]
@@ -72,7 +77,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-6
+      width: 8
       height: 2
       terrain:
         - [sea, sea, sea, sea, sea, land, sea, sea]
@@ -84,7 +90,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-7
+      width: 8
       height: 2
       terrain:
         - [sea, sea, sea, sea, sea, sea, land, sea]
@@ -96,7 +103,8 @@ stage:
         position: { x: 0, y: 1 }
         direction: east
       drillLimit: 0
-    - width: 8
+    - id: while-land-8
+      width: 8
       height: 2
       terrain:
         - [sea, sea, sea, sea, sea, sea, sea, land]

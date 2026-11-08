@@ -10,7 +10,8 @@ guide:
   - 一組を3回くり返そう。「はじめ」は0、「ここまで」は3です。
 stage:
   variants:
-    - width: 7
+    - id: repeat-group-1
+      width: 7
       height: 1
       terrain:
         - [land, rock, land, rock, land, rock, land]

@@ -10,7 +10,8 @@ guide:
   - 動く先を予想してから、実行して確かめよう。
 stage:
   variants:
-    - width: 2
+    - id: first-step-1
+      width: 2
       height: 1
       terrain:
         - [land, land]
