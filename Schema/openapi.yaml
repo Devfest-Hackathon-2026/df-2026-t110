@@ -141,15 +141,52 @@ components:
           format: uuid
           description: 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
 
+    TutorialRunCreated:
+      type: object
+      required: [runId, fieldId]
+      properties:
+        runId:
+          type: string
+          format: uuid
+          description: 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+        fieldId:
+          type: string
+          description: 実行用にランダムに選ばれた variant のフィールドID
+
     MatchResult:
       type: object
       description: 対戦の再生履歴と結果の要約
       required: [history, summary]
       properties:
         history:
-          $ref: "./game_event/history.schema.yaml"
+          $ref: "#/components/schemas/GameHistory"
         summary:
           $ref: "#/components/schemas/MatchSummary"
+
+    GameHistory:
+      $ref: "./game_event/history.schema.yaml"
+
+    TutorialResult:
+      type: object
+      required: [history, summary]
+      properties:
+        history:
+          $ref: "#/components/schemas/GameHistory"
+        summary:
+          type: object
+          required: [cleared, tick, reason]
+          properties:
+            cleared:
+              type: boolean
+              description: クリア条件を満たしたか
+            tick:
+              type: integer
+              minimum: 0
+              description: 実行終了時のゲーム内時刻
+            reason:
+              type: string
+              enum: [all_stopped, turn_limit, condition_met]
+              description: 全機停止、ターン上限、クリア条件達成のいずれか
 
     MatchSummary:
       type: object

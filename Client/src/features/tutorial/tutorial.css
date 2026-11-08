@@ -92,7 +92,7 @@
 .tutorial-stage .stage-scene:active {
   cursor: grabbing;
 }
-.tutorial-stage .stage-scene canvas {
+.tutorial-stage .stage-scene > canvas {
   position: absolute;
   inset: 0;
   display: block;

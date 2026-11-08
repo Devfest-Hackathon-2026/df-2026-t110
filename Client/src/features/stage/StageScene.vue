@@ -7,6 +7,7 @@ import { loadStageAssets } from './stageAssets.ts'
 import type { StageAssets } from './stageAssets.ts'
 import type { StageAnimationTarget } from './stageVisuals.ts'
 import { createArmPivots } from './armController.ts'
+import { CARRIED_LUGGAGE_HEIGHT, createCarriedLuggage, disposeCarriedLuggage } from './carriedLuggage.ts'
 import { createRobotAnimator } from './robotAnimator.ts'
 import { createRockBreakEffect } from './rockBreakEffect.ts'
 import { MarkerPoseStabilizer } from './markerPoseStabilizer.ts'
@@ -18,15 +19,18 @@ import {
 } from '../rooms/roomMarkerTracking.ts'
 import type { StageCell, StageLayout } from './stage.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
+import type { TutorialSpeech } from '../tutorial/tutorialSpeech.ts'
+import TerrainSpeechModel from '../tutorial/TerrainSpeechModel.vue'
 
 const props = withDefaults(
   defineProps<{
     stage: StageLayout
     mode: 'preview' | 'camera'
     animationEvent?: AnimationEvent | null
+    speech?: TutorialSpeech | null
     previewDistance?: number
   }>(),
-  { animationEvent: null, previewDistance: 4.8 },
+  { animationEvent: null, speech: null, previewDistance: 4.8 },
 )
 const emit = defineEmits<{ error: [message: string] }>()
 const host = ref<HTMLElement | null>(null)
@@ -59,11 +63,15 @@ let lastMarkerPoseTime: number | null = null
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
+let carriedLuggage: THREE.Group | null = null
+let cargoFromAssets = false
+let cargoTransition: { from: THREE.Vector3; to: THREE.Vector3; start: number | null } | null = null
 let rockBreak: ReturnType<typeof createRockBreakEffect> | null = null
 let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
-defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals })
+const speechPosition = ref<{ x: number; y: number } | null>(null)
+defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals, setCarrying })
 let yaw = 0.55
 let pitch = 0.65
 let distance = props.previewDistance
@@ -105,6 +113,7 @@ function replaceStage() {
   const previousBoard = board
   distance = props.previewDistance
   pendingEvent = null
+  setCarrying(false)
   clearRockBreak()
   if (board) {
     robotAnimator?.stop()
@@ -147,6 +156,32 @@ function refreshVisuals(): void {
   if (!retainCameraBoardPose(previousBoard)) setView()
 }
 
+function setCarrying(value: boolean): void {
+  cargoTransition = null
+  robotAnimator?.setCarrying(value)
+  if (!value || !robotRig) {
+    if (carriedLuggage) disposeCarriedLuggage(carriedLuggage)
+    carriedLuggage = null
+    return
+  }
+  if (carriedLuggage && cargoFromAssets === Boolean(stageAssets)) return
+  if (carriedLuggage) disposeCarriedLuggage(carriedLuggage)
+  carriedLuggage = createCarriedLuggage(stageAssets ?? undefined)
+  cargoFromAssets = Boolean(stageAssets)
+  robotRig.add(carriedLuggage)
+}
+
+function cargoPoint(target: { x: number; y: number }): THREE.Vector3 {
+  board.updateMatrixWorld(true)
+  const tile = board.children.find(
+    (child) => child.userData.cellX === target.x && child.userData.cellY === target.y,
+  )
+  const world = tile
+    ? tile.localToWorld(new THREE.Vector3(0, 0.39, 0))
+    : robotRig!.localToWorld(new THREE.Vector3(0, 0.39, -0.9))
+  return robotRig!.worldToLocal(world)
+}
+
 function positionRobot(cell: StageCell | { x: number; y: number } | null | undefined): void {
   if (!robotRig || !cell) return
   robotRig.position.set(cell.x - (props.stage.width - 1) / 2, 0.07, cell.y - (props.stage.height - 1) / 2)
@@ -162,6 +197,7 @@ function resetRobot(): void {
   pendingEvent = null
   clearRockBreak()
   robotAnimator?.stop()
+  setCarrying(false)
   const start = props.stage.cells.find((cell) => cell.start)
   robotCell.value = start ? { x: start.x, y: start.y } : null
   positionRobot(start)
@@ -270,6 +306,34 @@ function playAnimationEvent(event: AnimationEvent | null): void {
     const rock = rockAhead()
     if (rock) rockBreak = createRockBreakEffect(rock)
   }
+  if ((event.type === 'get' || event.type === 'pick_up') && event.success !== false && robotCell.value) {
+    const facing = gridDirection(robotRig.rotation.y)
+    const target = { x: robotCell.value.x + facing.x, y: robotCell.value.y + facing.y }
+    const tile = board.children.find(
+      (child) => child.userData.cellX === target.x && child.userData.cellY === target.y,
+    )
+    const luggage = tile?.getObjectByName('stage-luggage')
+    if (luggage) luggage.visible = false
+    setCarrying(true)
+    robotAnimator.setCarrying(false)
+    if (carriedLuggage) {
+      const from = cargoPoint(target)
+      const to = new THREE.Vector3(0, CARRIED_LUGGAGE_HEIGHT, 0)
+      carriedLuggage.position.copy(from)
+      cargoTransition = { from, to, start: null }
+    }
+  }
+  if ((event.type === 'put' || event.type === 'release') && event.success !== false && carriedLuggage) {
+    const facing = gridDirection(robotRig.rotation.y)
+    const target = robotCell.value
+      ? { x: robotCell.value.x + facing.x, y: robotCell.value.y + facing.y }
+      : null
+    cargoTransition = {
+      from: carriedLuggage.position.clone(),
+      to: target ? cargoPoint(target) : new THREE.Vector3(0, -0.2, -0.6),
+      start: null,
+    }
+  }
   robotAnimator.play(animation, destination, targetYaw)
 }
 
@@ -368,6 +432,12 @@ function animate(time: number): void {
   }
   advanceWater(time)
   robotAnimator?.update(time)
+  if (cargoTransition && carriedLuggage) {
+    cargoTransition.start ??= time
+    const progress = Math.min(1, (time - cargoTransition.start) / 900)
+    const eased = progress * progress * (3 - 2 * progress)
+    carriedLuggage.position.lerpVectors(cargoTransition.from, cargoTransition.to, eased)
+  }
   if (rockBreak) {
     rockBreakStart ??= time
     rockBreak.update(Math.min(1, (time - rockBreakStart) / 1000))
@@ -376,6 +446,24 @@ function animate(time: number): void {
     target.object.rotation.y += target.kind === 'hover' ? 0.006 : 0.004
     if (target.kind === 'hover') target.object.position.y = target.baseY + Math.sin(time * 0.002) * 0.035
   }
+  if (props.speech && robotRig && board?.visible && host.value) {
+    board.updateMatrixWorld(true)
+    camera.updateMatrixWorld()
+    const point = new THREE.Vector3(0, 1.1, 0).applyMatrix4(robotRig.matrixWorld).project(camera)
+    speechPosition.value =
+      point.z >= -1 && point.z <= 1
+        ? {
+            x: Math.max(
+              72,
+              Math.min(host.value.clientWidth - 72, (point.x * 0.5 + 0.5) * host.value.clientWidth),
+            ),
+            y: Math.max(
+              112,
+              Math.min(host.value.clientHeight - 12, (-point.y * 0.5 + 0.5) * host.value.clientHeight),
+            ),
+          }
+        : null
+  } else if (speechPosition.value) speechPosition.value = null
   renderer.render(scene, camera)
 }
 
@@ -497,7 +585,7 @@ onMounted(() => {
       (loaded) => {
         if (!mounted) return
         stageAssets = loaded
-        replaceStage()
+        refreshVisuals()
       },
       (error) =>
         emit(
@@ -534,6 +622,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   stopCamera()
   robotAnimator?.stop()
+  setCarrying(false)
   clearRockBreak()
   if (robotRig && board) board.remove(robotRig)
   robotModel?.traverse((object) => {
@@ -558,6 +647,22 @@ onBeforeUnmount(() => {
     @pointercancel="dragging = false"
     @wheel.prevent="wheel"
   >
+    <div
+      v-if="speech && speechPosition"
+      :key="speech.id"
+      class="stage-robot-speech"
+      :style="{ left: `${speechPosition.x}px`, top: `${speechPosition.y}px` }"
+      :aria-label="speech.label"
+      @pointerdown.stop
+      @pointermove.stop
+      @wheel.stop
+    >
+      <TerrainSpeechModel v-if="speech.terrain" :terrain="speech.terrain" />
+      <div class="stage-robot-speech-items">
+        <span v-for="(item, index) in speech.items" :key="index">{{ item }}</span>
+        <span v-if="speech.items.length === 0">空</span>
+      </div>
+    </div>
     <div v-if="mode === 'camera' && (markerLoading || markerActive)" class="marker-overlay">
       <div class="marker-status" role="status">
         <strong>{{ cameraReady ? `マーカー検出 ${markerCount}/2` : 'カメラ準備中' }}</strong>
@@ -598,7 +703,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
-body.room-marker-tracking {
+/* AR.js keeps a resize listener after the scene is removed and can resize body again. */
+body {
   width: auto !important;
   height: auto !important;
   margin: 0 !important;
@@ -612,6 +718,60 @@ body.room-marker-tracking {
   object-fit: cover;
   z-index: 0 !important;
   pointer-events: none;
+}
+.stage-robot-speech {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  justify-items: center;
+  max-width: min(80%, 400px);
+  padding: 7px 10px;
+  transform: translate(-50%, -100%);
+  border: 2px solid #356b61;
+  border-radius: 14px;
+  background: #fffdf2;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 24%);
+  color: #143e39;
+  pointer-events: auto;
+}
+.stage-robot-speech::after {
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 7px);
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border-right: 2px solid #356b61;
+  border-bottom: 2px solid #356b61;
+  background: #fffdf2;
+  content: '';
+}
+.stage-robot-speech-items {
+  display: flex;
+  max-width: 100%;
+  gap: 6px;
+  overflow-x: auto;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  touch-action: pan-x;
+}
+.stage-robot-speech-items span {
+  flex: none;
+}
+.stage-robot-speech-items span + span::before {
+  margin-right: 6px;
+  color: #6b8d83;
+  content: '·';
+}
+.terrain-speech-model {
+  width: 116px;
+  height: 94px;
+}
+.terrain-speech-model canvas {
+  display: block;
+  width: 116px;
+  height: 94px;
 }
 .stage-scene .marker-overlay {
   position: absolute;

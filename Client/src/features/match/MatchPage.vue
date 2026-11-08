@@ -11,6 +11,7 @@ import type { PicoProgram } from '../picolang/language/picolang.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/BlocklyEditor.vue'))
 const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
+const TutorAvatar = defineAsyncComponent(() => import('../tutorial/TutorAvatar.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()
 const fieldInput = ref('')
@@ -204,7 +205,11 @@ function onEditorToggle(event: Event): void {
         <button type="button" @click="importBoardJson">このイベントを再生</button>
         <p v-if="boardImportError" role="alert">{{ boardImportError }}</p>
       </details>
-      <section class="match-status" aria-live="polite">
+      <section
+        class="match-status"
+        :class="{ 'match-status--result': store.phase === 'finished' && score }"
+        aria-live="polite"
+      >
         <p class="match-eyebrow">{{ store.phase === 'finished' ? 'MATCH COMPLETE' : 'MATCH IN PROGRESS' }}</p>
         <h2>
           {{
@@ -228,13 +233,15 @@ function onEditorToggle(event: Event): void {
           </button>
         </template>
         <div v-if="score" class="match-score">
-          <div>
+          <div class="match-score-side match-score-side--player">
+            <TutorAvatar variant="green" :animated="false" />
             <span>{{ store.user?.name || 'あなた' }}</span
             ><strong>{{ score.player }}</strong>
           </div>
           <span class="match-score-separator">–</span>
-          <div>
+          <div class="match-score-side match-score-side--opponent">
             <span>相手</span><strong>{{ score.opponent }}</strong>
+            <TutorAvatar variant="purple" :animated="false" />
           </div>
         </div>
         <p v-if="store.phase === 'finished'">対戦の計算過程を、3Dまたはカメラに重ねて確認できます。</p>

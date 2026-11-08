@@ -1,0 +1,18 @@
+id: tutorial-test
+title: Move to the goal
+description: A small field for tutorial execution tests.
+stage:
+  variants:
+    - id: field-test
+      width: 2
+      height: 1
+      terrain: [[land, land]]
+      objects:
+        - type: goal
+          position: {x: 1, y: 0}
+      robot:
+        position: {x: 0, y: 0}
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

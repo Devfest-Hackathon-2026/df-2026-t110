@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	history "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 	schema "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
@@ -36,6 +36,27 @@ func (e MatchStatus) Valid() bool {
 	}
 }
 
+// Defines values for TutorialResultSummaryReason.
+const (
+	AllStopped   TutorialResultSummaryReason = "all_stopped"
+	ConditionMet TutorialResultSummaryReason = "condition_met"
+	TurnLimit    TutorialResultSummaryReason = "turn_limit"
+)
+
+// Valid indicates whether the value is a known member of the TutorialResultSummaryReason enum.
+func (e TutorialResultSummaryReason) Valid() bool {
+	switch e {
+	case AllStopped:
+		return true
+	case ConditionMet:
+		return true
+	case TurnLimit:
+		return true
+	default:
+		return false
+	}
+}
+
 // ApiError defines model for ApiError.
 type ApiError struct {
 	Code    string `json:"code"`
@@ -44,6 +65,9 @@ type ApiError struct {
 
 // Field defines model for Field.
 type Field = schema.FieldDefinition
+
+// GameHistory defines model for GameHistory.
+type GameHistory = history.GameHistory
 
 // Match defines model for Match.
 type Match struct {
@@ -64,7 +88,7 @@ type MatchStatus string
 
 // MatchResult 対戦の再生履歴と結果の要約
 type MatchResult struct {
-	History []gameevent.GameEvent `json:"history"`
+	History GameHistory `json:"history"`
 
 	// Summary 対戦を申し込んだプレイヤーから見た対戦結果の要約
 	Summary MatchSummary `json:"summary"`
@@ -140,6 +164,33 @@ type Tutorial struct {
 
 // TutorialDetail defines model for TutorialDetail.
 type TutorialDetail = schema.TutorialDetail
+
+// TutorialResult defines model for TutorialResult.
+type TutorialResult struct {
+	History GameHistory `json:"history"`
+	Summary struct {
+		// Cleared クリア条件を満たしたか
+		Cleared bool `json:"cleared"`
+
+		// Reason 全機停止、ターン上限、クリア条件達成のいずれか
+		Reason TutorialResultSummaryReason `json:"reason"`
+
+		// Tick 実行終了時のゲーム内時刻
+		Tick int `json:"tick"`
+	} `json:"summary"`
+}
+
+// TutorialResultSummaryReason 全機停止、ターン上限、クリア条件達成のいずれか
+type TutorialResultSummaryReason string
+
+// TutorialRunCreated defines model for TutorialRunCreated.
+type TutorialRunCreated struct {
+	// FieldId 実行用にランダムに選ばれた variant のフィールドID
+	FieldId string `json:"fieldId"`
+
+	// RunId 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+	RunId openapi_types.UUID `json:"runId"`
+}
 
 // User defines model for User.
 type User struct {
