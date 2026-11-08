@@ -2,7 +2,7 @@
 
 開発とテストには Node.js 24 以上を使います。依存関係の確認には pnpm 12.17.0 を使用しました。
 
-`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` は対戦準備画面、`/matches/:matchId` は対戦結果の受信・再生画面です。`/account` はログインの準備状況を示すページです。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/rooms` は対戦準備画面、`/matches/:matchId` は対戦結果の受信・再生画面です。`/account` はログインの準備状況を示すページです。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
 
 ## 対戦
 

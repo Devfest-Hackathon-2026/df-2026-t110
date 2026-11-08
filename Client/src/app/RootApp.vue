@@ -7,15 +7,13 @@ import swordsIcon from '@iconify-icons/lucide/swords'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import AppHeader from './AppHeader.vue'
 
-const StageViewer = defineAsyncComponent(() => import('../features/stage/StageViewer.vue'))
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
 const TutorialCatalog = defineAsyncComponent(() => import('../features/tutorial/TutorialCatalog.vue'))
 const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
 const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
-const isStage = path === '/tutorials/demo'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
-const tutorialId = tutorialMatch && !isStage ? decodeURIComponent(tutorialMatch[1]) : null
+const tutorialId = tutorialMatch ? decodeURIComponent(tutorialMatch[1]) : null
 const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
 const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
 const page = computed(() => {
@@ -28,24 +26,20 @@ const page = computed(() => {
   return 'missing'
 })
 
-document.title = isStage
-  ? 'preview'
-  : tutorialId
-    ? '教材 | Robot Field'
-    : matchId
-      ? '対戦結果 | Robot Field'
-      : path === '/rooms'
-        ? '対戦 | Robot Field'
-        : 'Robot Field'
+document.title = tutorialId
+  ? '教材 | Robot Field'
+  : matchId
+    ? '対戦結果 | Robot Field'
+    : path === '/rooms'
+      ? '対戦 | Robot Field'
+      : 'Robot Field'
 </script>
 
 <template>
-  <div :class="isStage ? 'stage-page' : 'site'">
-    <AppHeader :active-page="isStage ? 'tutorials' : page === 'match-detail' ? 'rooms' : page" />
+  <div class="site">
+    <AppHeader :active-page="page === 'match-detail' ? 'rooms' : page" />
 
-    <StageViewer v-if="isStage" />
-
-    <main v-else-if="page === 'home'">
+    <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
         <div class="hero-copy">
           <h1 id="home-title" class="heading-with-icon">
