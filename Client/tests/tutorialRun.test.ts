@@ -12,6 +12,17 @@ import {
 } from '../src/features/picolang/language/picolang.ts'
 import { normalizeStage } from '../src/features/stage/stage.ts'
 import { createTutorialWorld } from '../src/features/tutorial/tutorialWorld.ts'
+import { speechForValue } from '../src/features/tutorial/tutorialSpeech.ts'
+
+test('発話は配列を横並びに分け、観測した地形をモデル用の値として保持する', () => {
+  const values = speechForValue([2, 5, 8], 1)
+  assert.deepEqual(values.items, ['2', '5', '8'])
+  assert.equal(values.label, '[2, 5, 8]')
+  const terrain = { type: 'land' as const, kind: { type: 'goal' as const }, hasLuggage: true }
+  const observed = speechForValue(terrain, 2)
+  assert.equal(observed.terrain, terrain)
+  assert.deepEqual(observed.items, ['ゴール', '荷物あり'])
+})
 
 test('mainの命令を順番に実行し、forの半開区間を守る', async () => {
   const source = newProgram()
@@ -115,18 +126,18 @@ test('追加したprimitiveのprintがunitを返し、観測値とリテラル�
     {
       async call(name, args) {
         const result = world.call(name, args)
-        if (result.message) {
+        if (result.speech) {
           assert.equal(result.value, null)
-          messages.push(result.message)
+          messages.push(result.speech.label)
         }
         return result.value
       },
     },
     new AbortController().signal,
   )
-  assert.deepEqual(messages, ['()', '{"type":"land","kind":{"type":"goal"}}', 'left', 'goal'])
+  assert.deepEqual(messages, ['()', 'ゴール', 'left', 'goal'])
   assert.deepEqual(stage, before)
   for (const target of PICO_DISTANCE_TARGETS)
-    assert.equal(world.call('print_distance_target', [target]).message, target)
-  assert.equal(world.call('print_rotation', ['right']).message, 'right')
+    assert.equal(world.call('print_distance_target', [target]).speech?.label, target)
+  assert.equal(world.call('print_rotation', ['right']).speech?.label, 'right')
 })

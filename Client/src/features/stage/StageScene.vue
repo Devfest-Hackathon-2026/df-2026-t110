@@ -19,15 +19,18 @@ import {
 } from '../rooms/roomMarkerTracking.ts'
 import type { StageCell, StageLayout } from './stage.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
+import type { TutorialSpeech } from '../tutorial/tutorialSpeech.ts'
+import TerrainSpeechModel from '../tutorial/TerrainSpeechModel.vue'
 
 const props = withDefaults(
   defineProps<{
     stage: StageLayout
     mode: 'preview' | 'camera'
     animationEvent?: AnimationEvent | null
+    speech?: TutorialSpeech | null
     previewDistance?: number
   }>(),
-  { animationEvent: null, previewDistance: 4.8 },
+  { animationEvent: null, speech: null, previewDistance: 4.8 },
 )
 const emit = defineEmits<{ error: [message: string] }>()
 const host = ref<HTMLElement | null>(null)
@@ -67,6 +70,7 @@ let rockBreak: ReturnType<typeof createRockBreakEffect> | null = null
 let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
+const speechPosition = ref<{ x: number; y: number } | null>(null)
 defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals, setCarrying })
 let yaw = 0.55
 let pitch = 0.65
@@ -442,6 +446,24 @@ function animate(time: number): void {
     target.object.rotation.y += target.kind === 'hover' ? 0.006 : 0.004
     if (target.kind === 'hover') target.object.position.y = target.baseY + Math.sin(time * 0.002) * 0.035
   }
+  if (props.speech && robotRig && board?.visible && host.value) {
+    board.updateMatrixWorld(true)
+    camera.updateMatrixWorld()
+    const point = new THREE.Vector3(0, 1.1, 0).applyMatrix4(robotRig.matrixWorld).project(camera)
+    speechPosition.value =
+      point.z >= -1 && point.z <= 1
+        ? {
+            x: Math.max(
+              72,
+              Math.min(host.value.clientWidth - 72, (point.x * 0.5 + 0.5) * host.value.clientWidth),
+            ),
+            y: Math.max(
+              112,
+              Math.min(host.value.clientHeight - 12, (-point.y * 0.5 + 0.5) * host.value.clientHeight),
+            ),
+          }
+        : null
+  } else if (speechPosition.value) speechPosition.value = null
   renderer.render(scene, camera)
 }
 
@@ -625,6 +647,22 @@ onBeforeUnmount(() => {
     @pointercancel="dragging = false"
     @wheel.prevent="wheel"
   >
+    <div
+      v-if="speech && speechPosition"
+      :key="speech.id"
+      class="stage-robot-speech"
+      :style="{ left: `${speechPosition.x}px`, top: `${speechPosition.y}px` }"
+      :aria-label="speech.label"
+      @pointerdown.stop
+      @pointermove.stop
+      @wheel.stop
+    >
+      <TerrainSpeechModel v-if="speech.terrain" :terrain="speech.terrain" />
+      <div class="stage-robot-speech-items">
+        <span v-for="(item, index) in speech.items" :key="index">{{ item }}</span>
+        <span v-if="speech.items.length === 0">空</span>
+      </div>
+    </div>
     <div v-if="mode === 'camera' && (markerLoading || markerActive)" class="marker-overlay">
       <div class="marker-status" role="status">
         <strong>{{ cameraReady ? `マーカー検出 ${markerCount}/2` : 'カメラ準備中' }}</strong>
@@ -680,6 +718,60 @@ body {
   object-fit: cover;
   z-index: 0 !important;
   pointer-events: none;
+}
+.stage-robot-speech {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  justify-items: center;
+  max-width: min(80%, 400px);
+  padding: 7px 10px;
+  transform: translate(-50%, -100%);
+  border: 2px solid #356b61;
+  border-radius: 14px;
+  background: #fffdf2;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 24%);
+  color: #143e39;
+  pointer-events: auto;
+}
+.stage-robot-speech::after {
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 7px);
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border-right: 2px solid #356b61;
+  border-bottom: 2px solid #356b61;
+  background: #fffdf2;
+  content: '';
+}
+.stage-robot-speech-items {
+  display: flex;
+  max-width: 100%;
+  gap: 6px;
+  overflow-x: auto;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  touch-action: pan-x;
+}
+.stage-robot-speech-items span {
+  flex: none;
+}
+.stage-robot-speech-items span + span::before {
+  margin-right: 6px;
+  color: #6b8d83;
+  content: '·';
+}
+.terrain-speech-model {
+  width: 116px;
+  height: 94px;
+}
+.terrain-speech-model canvas {
+  display: block;
+  width: 116px;
+  height: 94px;
 }
 .stage-scene .marker-overlay {
   position: absolute;
