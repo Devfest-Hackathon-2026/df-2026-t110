@@ -451,7 +451,9 @@ onBeforeUnmount(() => {
           <Icon :icon="plusIcon" />
         </button>
         <form v-else @submit.prevent="addFunction">
-          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" /><button type="submit">
+          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" data-1p-ignore /><button
+            type="submit"
+          >
             追加
           </button>
         </form>
@@ -486,6 +488,7 @@ onBeforeUnmount(() => {
         <input
           :value="param.ident.name"
           :aria-label="`受け取る値 ${index + 1} の名前`"
+          data-1p-ignore
           @change="renameParam(index, ($event.target as HTMLInputElement).value)"
         />
         <select
@@ -515,6 +518,7 @@ onBeforeUnmount(() => {
         id="blockly-json-input"
         v-model="jsonInput"
         placeholder="Picolang v0のJSONを貼り付け"
+        data-1p-ignore
       ></textarea>
       <button type="button" @click="importJson">読み込む</button>
     </details>

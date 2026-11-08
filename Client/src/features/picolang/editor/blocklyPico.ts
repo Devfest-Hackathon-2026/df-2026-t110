@@ -16,6 +16,22 @@ import { argumentLabel } from './picoGuidance.ts'
 type State = Blockly.serialization.blocks.State
 type Block = Blockly.Block
 
+class EditorTextField extends Blockly.FieldTextInput {
+  protected override widgetCreate_(): HTMLInputElement | HTMLTextAreaElement {
+    const input = super.widgetCreate_()
+    input.setAttribute('data-1p-ignore', '')
+    return input
+  }
+}
+
+class EditorNumberField extends Blockly.FieldNumber {
+  protected override widgetCreate_(): HTMLInputElement {
+    const input = super.widgetCreate_()
+    input.setAttribute('data-1p-ignore', '')
+    return input
+  }
+}
+
 const colours: Record<string, string> = {
   動き: '#347ac4',
   操作: '#248b87',
@@ -122,7 +138,7 @@ function defineStaticBlocks(): void {
   staticRegistered = true
   Blockly.Blocks.pico_number = {
     init() {
-      this.appendDummyInput().appendField(new Blockly.FieldNumber(0, undefined, undefined, 1), 'VALUE')
+      this.appendDummyInput().appendField(new EditorNumberField(0, undefined, undefined, 1), 'VALUE')
       this.setOutput(true, 'integer')
       this.setColour(colours.計算)
     },
@@ -162,7 +178,7 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_ident = {
     init() {
-      this.appendDummyInput().appendField('変数').appendField(new Blockly.FieldTextInput('x'), 'NAME')
+      this.appendDummyInput().appendField('変数').appendField(new EditorTextField('x'), 'NAME')
       this.setOutput(true)
       this.setColour(colours.変数)
     },
@@ -172,7 +188,7 @@ function defineStaticBlocks(): void {
       this.appendDummyInput()
         .appendField(new Blockly.FieldDropdown(typeChoices), 'TYPE')
         .appendField('の変数')
-        .appendField(new Blockly.FieldTextInput('x'), 'NAME')
+        .appendField(new EditorTextField('x'), 'NAME')
         .appendField('を作る')
       this.appendValueInput('VALUE').setCheck('integer').appendField('最初の値')
       this.appendValueInput('TOKEN').appendField('この変数を使う')
@@ -184,7 +200,7 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_assign = {
     init() {
-      this.appendDummyInput().appendField('変数').appendField(new Blockly.FieldTextInput('x'), 'NAME')
+      this.appendDummyInput().appendField('変数').appendField(new EditorTextField('x'), 'NAME')
       this.appendValueInput('VALUE').appendField('をこの値に変える')
       this.setPreviousStatement(true)
       this.setNextStatement(true)
@@ -223,7 +239,7 @@ function defineStaticBlocks(): void {
     init() {
       this.appendDummyInput()
         .appendField('数')
-        .appendField(new Blockly.FieldTextInput('i'), 'NAME')
+        .appendField(new EditorTextField('i'), 'NAME')
         .appendField('を1ずつ増やす')
       this.appendValueInput('START').setCheck('integer').appendField('はじめ')
       this.appendValueInput('END').setCheck('integer').appendField('ここまで（含まない）')

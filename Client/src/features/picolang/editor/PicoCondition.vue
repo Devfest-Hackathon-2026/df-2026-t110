@@ -125,6 +125,7 @@ function restoreNumber(event: FocusEvent): void {
         step="1"
         :value="comparisonNumber"
         aria-label="比べる数"
+        data-1p-ignore
         @input="changeNumber"
         @blur="restoreNumber"
       />

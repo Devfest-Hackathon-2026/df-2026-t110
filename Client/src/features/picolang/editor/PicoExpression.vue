@@ -190,6 +190,7 @@ function dropExpression(event: DragEvent): void {
         step="1"
         :value="node.value ?? 0"
         aria-label="整数"
+        data-1p-ignore
         @change="setLiteral(($event.target as HTMLInputElement).value)"
       />
       <select
