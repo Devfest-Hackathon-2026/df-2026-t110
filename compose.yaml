@@ -1,0 +1,93 @@
+# Local development stack mirroring the GCP deployment in infra/:
+#   Cloud Run "server"   -> server       (serves /api and the built client on one origin)
+#   GCS client bucket    -> client-dist  (volume mounted read-only at /static, like the GCS volume)
+#   Cloud SQL POSTGRES_18 -> postgres    (database/user "app", reached over a Unix socket under /cloudsql)
+#
+# Start with `docker compose watch` so Server/ and Textbooks/pages/ changes rebuild the server image;
+# client-build keeps re-running `vite build` into client-dist.
+#   app:      http://localhost:8080
+#   postgres: postgres://app:app@localhost:5432/app?sslmode=disable
+#             (repo integration tests: TEST_DATABASE_URL with the same URL)
+name: programming-learning-ar
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - cloudsql-socket:/var/run/postgresql
+      - ./Server/infra/repo/sql/schema:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "app", "-d", "app"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  client-build:
+    image: node:24.22.2-slim # keep in sync with mise.toml
+    working_dir: /workspace
+    # Same commands as client-deploy.yml, minus the vue-tsc check that `--watch` cannot repeat.
+    command: >-
+      sh -c "corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
+      && corepack pnpm -C Client exec vite build --watch --outDir /dist --emptyOutDir"
+    environment:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      npm_config_store_dir: /pnpm-store
+    volumes:
+      - .:/workspace
+      # Keep container-built (Linux) dependencies out of the host checkout.
+      - root-node-modules:/workspace/node_modules
+      - client-node-modules:/workspace/Client/node_modules
+      - pnpm-store:/pnpm-store
+      # Outside the bind mount: rolldown fails to write into a volume nested in it.
+      - client-dist:/dist
+
+  server:
+    # Same build as server-deploy.yml, which embeds Textbooks/pages into the binary.
+    build:
+      context: .
+      dockerfile: Server/Dockerfile
+      args:
+        GO_VERSION: "1.27.3" # keep in sync with mise.toml
+    # Mirrors the env of google_cloud_run_v2_service.server; secrets come from Secret Manager there.
+    environment:
+      PORT: "8080"
+      STATIC_DIR: /static
+      # Cloud Run: host=/cloudsql/<connection name>; Docker rejects colons in mount paths.
+      DATABASE_URL: host=/cloudsql dbname=app user=app
+      PGPASSWORD: app
+      # Google sign-in stays disabled (/api/login answers 501) unless all three are set,
+      # e.g. in .env with GOOGLE_REDIRECT_URL=http://localhost:8080/api/login/callback.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - client-dist:/static:ro
+      - cloudsql-socket:/cloudsql
+    cpus: 1
+    mem_limit: 512m
+    depends_on:
+      postgres:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./Server
+        - action: rebuild
+          path: ./Textbooks/pages
+
+volumes:
+  postgres-data:
+  cloudsql-socket:
+  client-dist:
+  root-node-modules:
+  client-node-modules:
+  pnpm-store:
