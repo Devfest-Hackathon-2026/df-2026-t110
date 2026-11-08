@@ -35,6 +35,10 @@ func main() {
 	}
 	cfg := router.Config{Tutorials: textbooks}
 	var sessions router.SessionUserLookup
+	googleLogin := googleLoginConfigFromEnv()
+	if err := googleLogin.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
+		log.Fatal(err)
+	}
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		pool, err := pgxpool.New(context.Background(), databaseURL)
 		if err != nil {
@@ -46,6 +50,14 @@ func main() {
 		sessions = sessionService
 		cfg.Sessions = sessionService
 		cfg.Users = users
+		if googleLogin.enabled() {
+			auth, err := newGoogleAuth(context.Background(), googleLogin, pool, users, sessionService)
+			if err != nil {
+				log.Fatal(err)
+			}
+			cfg.Auth = auth
+			cfg.SecureCookies = googleLogin.secureCookies()
+		}
 		programs := repo.NewPrograms(pool)
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))

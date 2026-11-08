@@ -9,6 +9,18 @@ CREATE TABLE sessions (
     expires_at timestamptz NOT NULL
 );
 
+-- Each row is consumed at most once by the OIDC callback; expired rows are
+-- swept on every save so that abandoned sign-ins do not accumulate.
+CREATE TABLE login_attempts (
+    id text PRIMARY KEY,
+    state text NOT NULL,
+    nonce text NOT NULL,
+    code_verifier text NOT NULL,
+    expires_at timestamptz NOT NULL
+);
+
+CREATE INDEX login_attempts_expires_at_idx ON login_attempts (expires_at);
+
 CREATE TABLE programs (
     id text PRIMARY KEY,
     google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
