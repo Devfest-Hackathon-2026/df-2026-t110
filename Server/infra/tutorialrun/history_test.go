@@ -61,7 +61,7 @@ func TestHistoryMatchesSchema(t *testing.T) {
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableDropEvent{HintID: hint}},
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.ExecutionFinishedEvent{HintID: hint, Reason: robotevent.EndCompleted, Message: "program completed"}},
 	}
-	history := make([]object, 0, len(events))
+	history := make([]any, 0, len(events))
 	for _, event := range events {
 		value, err := historyEvent(event)
 		if err != nil {

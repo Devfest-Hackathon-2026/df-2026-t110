@@ -17,6 +17,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/tutorial"
+	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
@@ -72,7 +73,7 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	if !ok {
 		return nil, fmt.Errorf("unexpected tutorial result %T", report.Result())
 	}
-	history := make([]any, 0, len(recording.Events))
+	history := make(wire.GameHistory, 0, len(recording.Events))
 	for _, event := range recording.Events {
 		entry, err := historyEvent(event)
 		if err != nil {
@@ -80,12 +81,19 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 		}
 		history = append(history, entry)
 	}
-	result, err := json.Marshal(object{
-		"history": history,
-		"summary": object{"cleared": outcome.Cleared(), "tick": outcome.Tick(), "reason": outcome.EndReason()},
-	})
+	var result struct {
+		History wire.GameHistory `json:"history"`
+		Summary struct {
+			Cleared bool               `json:"cleared"`
+			Tick    uint64             `json:"tick"`
+			Reason  boardmsg.EndReason `json:"reason"`
+		} `json:"summary"`
+	}
+	result.History = history
+	result.Summary.Cleared, result.Summary.Tick, result.Summary.Reason = outcome.Cleared(), outcome.Tick(), outcome.EndReason()
+	encoded, err := json.Marshal(result)
 	if err != nil {
 		return nil, fmt.Errorf("encode tutorial result: %w", err)
 	}
-	return result, nil
+	return encoded, nil
 }
