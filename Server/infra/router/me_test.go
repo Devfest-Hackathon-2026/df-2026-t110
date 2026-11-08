@@ -49,9 +49,13 @@ func TestSetMyUsername(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			setter := &usernameSetterStub{err: tt.setErr}
-			r := NewRouter(Config{Sessions: sessionLookupStub{err: tt.sessionErr}, Users: setter})
+			r := NewRouter(Config{Users: setter})
 			e := echo.New()
-			api.RegisterHandlers(e, r)
+			api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
+				OperationMiddlewares: map[string][]echo.MiddlewareFunc{
+					"setMyUsername": {Authentication(sessionLookupStub{err: tt.sessionErr})},
+				},
+			})
 			req := httptest.NewRequest(http.MethodPost, "/me/username", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			if tt.cookie {

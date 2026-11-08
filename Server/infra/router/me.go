@@ -15,19 +15,12 @@ func (r *Router) GetMe(ctx *echo.Context) error {
 }
 
 func (r *Router) SetMyUsername(ctx *echo.Context) error {
-	if r.cfg.Sessions == nil || r.cfg.Users == nil {
+	if r.cfg.Users == nil {
 		return errNotImplemented()
 	}
-	cookie, err := ctx.Request().Cookie("session")
-	if err != nil || cookie.Value == "" {
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
-	}
-	user, err := r.cfg.Sessions.CurrentUser(ctx.Request().Context(), cookie.Value)
-	if errors.Is(err, usecase.ErrUnauthenticated) {
-		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
-	}
-	if err != nil {
-		return err
 	}
 	var request struct {
 		Username string `json:"username"`
@@ -40,7 +33,7 @@ func (r *Router) SetMyUsername(ctx *echo.Context) error {
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 	}
-	_, err = r.cfg.Users.SetUsername(ctx.Request().Context(), user.GoogleSubject, request.Username)
+	_, err := r.cfg.Users.SetUsername(ctx.Request().Context(), user.GoogleSubject, request.Username)
 	switch {
 	case errors.Is(err, usecase.ErrInvalidUsername):
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))

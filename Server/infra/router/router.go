@@ -13,12 +13,12 @@ var _ api.ServerInterface = (*Router)(nil)
 
 // Config holds HTTP-level settings of the handlers.
 type Config struct {
-	Sessions SessionUserLookup
 	Users    UsernameSetter
+	Programs ProgramCreator
 }
 
-type SessionUserLookup interface {
-	CurrentUser(ctx context.Context, sessionID string) (domain.User, error)
+type ProgramCreator interface {
+	Create(ctx context.Context, subject string, draft domain.Program) (domain.Program, error)
 }
 
 type UsernameSetter interface {
