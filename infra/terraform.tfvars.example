@@ -2,3 +2,6 @@ project_id  = "your-project-id"
 iap_members = ["user:you@example.com"]
 # iap_oauth_client_id     = "xxxx.apps.googleusercontent.com"
 # iap_oauth_client_secret = "xxxx"
+# google_login_client_id     = "xxxx.apps.googleusercontent.com"
+# google_login_client_secret = "xxxx"
+# google_login_redirect_url  = "https://<server host>/api/login/callback"
