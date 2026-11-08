@@ -116,10 +116,15 @@ function callName(block: Block): string {
 function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
-): { args: Array<PicoType | undefined>; returns: PicoType | undefined; category: string; label: string } {
+): {
+  args: Array<PicoType | undefined>
+  returns: PicoType | undefined
+  category: string
+  label: string
+  blockMessage?: string
+} {
   const builtin = PICO_BUILTIN_OPTIONS.find((item) => item.name === name)
-  if (builtin)
-    return { args: builtin.args, returns: builtin.returns, category: builtin.category, label: builtin.label }
+  if (builtin) return builtin
   const fn = functions[name]
   return fn
     ? { args: fn.params.map((param) => param.type), returns: fn.returnType, category: '関数', label: name }
@@ -196,13 +201,12 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_declare = {
     init() {
-      this.appendDummyInput()
-        .appendField('変数')
-        .appendField(new EditorTextField('x'), 'NAME')
-        .appendField('を作る')
-        .appendField('未確定', 'INFERRED_TYPE')
-      this.appendValueInput('VALUE').appendField('最初の値')
+      this.appendDummyInput().appendField(new EditorTextField('x'), 'NAME')
+      this.appendValueInput('VALUE').appendField('を')
+      this.appendDummyInput().appendField('で初期化する').appendField('未確定', 'INFERRED_TYPE')
+      this.appendEndRowInput()
       this.appendValueInput('TOKEN').appendField('この変数を使う')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.変数)
@@ -211,8 +215,10 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_assign = {
     init() {
-      this.appendDummyInput().appendField('変数').appendField(new EditorTextField('x'), 'NAME')
-      this.appendValueInput('VALUE').appendField('をこの値に変える')
+      this.appendDummyInput().appendField(new EditorTextField('x'), 'NAME')
+      this.appendValueInput('VALUE').appendField('を')
+      this.appendDummyInput().appendField('に変える')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.変数)
@@ -239,8 +245,11 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_while = {
     init() {
-      this.appendValueInput('CONDITION').setCheck('bool').appendField('この条件の間くり返す')
-      this.appendStatementInput('BODY').appendField('すること')
+      this.appendValueInput('CONDITION').setCheck('bool')
+      this.appendDummyInput().appendField('の間')
+      this.appendStatementInput('BODY')
+      this.appendDummyInput().appendField('を繰り返す')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.制御)
@@ -248,13 +257,13 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_for = {
     init() {
-      this.appendDummyInput()
-        .appendField('数')
-        .appendField(new EditorTextField('i'), 'NAME')
-        .appendField('を1ずつ増やす')
-      this.appendValueInput('START').setCheck('integer').appendField('はじめ')
-      this.appendValueInput('END').setCheck('integer').appendField('ここまで（含まない）')
-      this.appendStatementInput('BODY').appendField('すること')
+      this.appendDummyInput().appendField(new EditorTextField('i'), 'NAME')
+      this.appendValueInput('START').setCheck('integer').appendField('を')
+      this.appendValueInput('END').setCheck('integer').appendField('から')
+      this.appendDummyInput().appendField('-1まで')
+      this.appendStatementInput('BODY')
+      this.appendDummyInput().appendField('を繰り返す')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.制御)
@@ -262,7 +271,9 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_return = {
     init() {
-      this.appendValueInput('VALUE').appendField('この値を返す')
+      this.appendValueInput('VALUE')
+      this.appendDummyInput().appendField('を返す')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setColour(colours.関数)
     },
@@ -306,12 +317,24 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
   for (const statement of [false, true]) {
     Blockly.Blocks[callType(name, statement)] = {
       init() {
-        this.appendDummyInput().appendField(signature.label)
-        signature.args.forEach((type, index) =>
-          this.appendValueInput(`ARG${index}`)
-            .setCheck(userFunction ? null : genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
-            .appendField(argumentLabel(name, index, functions)),
-        )
+        if (signature.blockMessage) {
+          this.jsonInit({
+            message0: signature.blockMessage,
+            args0: signature.args.map((type, index) => ({
+              type: 'input_value',
+              name: `ARG${index}`,
+              check: genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type),
+            })),
+            inputsInline: true,
+          })
+        } else {
+          this.appendDummyInput().appendField(signature.label)
+          signature.args.forEach((type, index) =>
+            this.appendValueInput(`ARG${index}`)
+              .setCheck(userFunction ? null : genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
+              .appendField(argumentLabel(name, index, functions)),
+          )
+        }
         if (statement) {
           this.setPreviousStatement(true)
           this.setNextStatement(true)
