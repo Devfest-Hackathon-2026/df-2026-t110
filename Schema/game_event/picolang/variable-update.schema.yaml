@@ -94,7 +94,7 @@ $defs:
         type: string
         const: terrain
       value:
-        $ref: '#/$defs/Terrain'
+        $ref: './variable-init.schema.yaml#/$defs/Terrain'
 
   RotationUpdate:
     type: object

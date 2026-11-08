@@ -983,7 +983,7 @@ export interface components {
             stage: components["schemas"]["stage.schema"];
         };
         LandKind: {
-            /** @enum {unknown} */
+            /** @enum {string} */
             type: "plain" | "goal" | "checkpoint";
             /** @description チェックポイントの通過順 */
             order?: number;
@@ -1012,7 +1012,7 @@ export interface components {
             carryingLuggage?: boolean;
         };
         MoveResult: {
-            /** @enum {unknown} */
+            /** @enum {string} */
             kind: "forward" | "back";
             robotId: components["schemas"]["RobotId"];
             success: boolean;

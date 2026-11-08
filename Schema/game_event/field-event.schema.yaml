@@ -24,10 +24,12 @@ if:
     state:
       properties:
         kind:
+          type: string
           const: initial
 then:
   properties:
     tick:
+      type: integer
       const: 0
 
 $defs:
@@ -37,6 +39,7 @@ $defs:
     required: [kind, terrain, robots]
     properties:
       kind:
+        type: string
         const: initial
       terrain:
         description: 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する
@@ -60,6 +63,7 @@ $defs:
     required: [kind]
     properties:
       kind:
+        type: string
         const: update
       actions:
         type: array
@@ -102,6 +106,7 @@ $defs:
     if:
       properties:
         type:
+          type: string
           const: land
     then:
       required: [kind]
@@ -114,6 +119,7 @@ $defs:
     required: [type]
     properties:
       type:
+        type: string
         enum: [plain, goal, checkpoint]
       order:
         description: チェックポイントの通過順
@@ -121,6 +127,7 @@ $defs:
     if:
       properties:
         type:
+          type: string
           const: checkpoint
     then:
       required: [order]
@@ -159,6 +166,7 @@ $defs:
     required: [kind, robotId, success]
     properties:
       kind:
+        type: string
         enum: [forward, back]
       robotId:
         $ref: '#/$defs/RobotId'
@@ -170,6 +178,7 @@ $defs:
     if:
       properties:
         success:
+          type: boolean
           const: true
     then:
       required: [to]
@@ -183,6 +192,7 @@ $defs:
     required: [kind, robotId, rotation, direction]
     properties:
       kind:
+        type: string
         const: rotate
       robotId:
         $ref: '#/$defs/RobotId'
@@ -200,6 +210,7 @@ $defs:
     required: [kind, robotId, success, drillDurability]
     properties:
       kind:
+        type: string
         const: drill
       robotId:
         $ref: '#/$defs/RobotId'
@@ -213,6 +224,7 @@ $defs:
     if:
       properties:
         success:
+          type: boolean
           const: true
     then:
       required: [target]
@@ -227,6 +239,7 @@ $defs:
     required: [kind, robotId, success]
     properties:
       kind:
+        type: string
         const: pick_up
       robotId:
         $ref: '#/$defs/RobotId'
@@ -237,6 +250,7 @@ $defs:
     if:
       properties:
         success:
+          type: boolean
           const: true
     then:
       required: [target]
@@ -251,6 +265,7 @@ $defs:
     required: [kind, robotId, success]
     properties:
       kind:
+        type: string
         const: release
       robotId:
         $ref: '#/$defs/RobotId'
@@ -259,10 +274,12 @@ $defs:
       target:
         $ref: '../field/field.schema.yaml#/$defs/Position'
       discarded:
+        type: boolean
         const: true
     if:
       properties:
         success:
+          type: boolean
           const: true
     then:
       oneOf:
@@ -281,6 +298,7 @@ $defs:
     required: [kind, robotId, ticks]
     properties:
       kind:
+        type: string
         const: wait
       robotId:
         $ref: '#/$defs/RobotId'
@@ -297,6 +315,7 @@ $defs:
     required: [kind, robotId, bool]
     properties:
       kind:
+        type: string
         const: print_bool
       robotId:
         $ref: '#/$defs/RobotId'
@@ -310,6 +329,7 @@ $defs:
     required: [kind, robotId, integer]
     properties:
       kind:
+        type: string
         const: print_integer
       robotId:
         $ref: '#/$defs/RobotId'
@@ -325,6 +345,7 @@ $defs:
     required: [kind, robotId]
     properties:
       kind:
+        type: string
         const: print_unit
       robotId:
         $ref: '#/$defs/RobotId'
@@ -336,6 +357,7 @@ $defs:
     required: [kind, robotId, terrain]
     properties:
       kind:
+        type: string
         const: print_terrain
       robotId:
         $ref: '#/$defs/RobotId'
@@ -349,6 +371,7 @@ $defs:
     required: [kind, robotId, rotation]
     properties:
       kind:
+        type: string
         const: print_rotation
       robotId:
         $ref: '#/$defs/RobotId'
@@ -363,6 +386,7 @@ $defs:
     required: [kind, robotId, distanceTarget]
     properties:
       kind:
+        type: string
         const: print_distance_target
       robotId:
         $ref: '#/$defs/RobotId'
