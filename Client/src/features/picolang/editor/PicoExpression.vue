@@ -3,18 +3,17 @@ import { computed, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import infoIcon from '@iconify-icons/lucide/info'
 import { expressionFromDrop, PICO_VARIABLE_MIME } from './picoDrag.ts'
-import { samePicoType } from './picoDrag.ts'
+import { PICO_BUILTIN_OPTIONS, type PicoVariableOption } from './picoOptions.ts'
 import { argumentLabel, resultGuidance, typeLabel } from './picoGuidance.ts'
 import {
-  PICO_BUILTINS,
   defaultExpr,
   ident,
   makeCall,
+  samePicoType,
   type PicoExpr,
   type PicoFunction,
   type PicoType,
-  type PicoVariableOption,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 
 const props = defineProps<{
   node: PicoExpr
@@ -46,7 +45,7 @@ function toggleInfo(): void {
 const mode = computed(() => (props.node.kind === 'literal' ? props.node.type : props.node.kind))
 const identifierName = computed(() => (props.node.kind === 'ident' ? props.node.name : ''))
 const options = computed(() => [
-  ...PICO_BUILTINS,
+  ...PICO_BUILTIN_OPTIONS,
   ...Object.entries(props.functions)
     .filter(([name]) => name !== 'main')
     .map(([name, definition]) => ({
@@ -87,7 +86,7 @@ const standaloneNote = computed(() => {
   const node = props.node
   if (!props.statement || node.kind !== 'call') return ''
   if (resultGuidance[node.func]) return `${resultGuidance[node.func]} この行だけでは返した値を使いません。`
-  const category = PICO_BUILTINS.find((item) => item.name === node.func)?.category
+  const category = PICO_BUILTIN_OPTIONS.find((item) => item.name === node.func)?.category
   return category && !['動き', '操作', '表示'].includes(category)
     ? 'この行だけでは返した値を使いません。変数や条件の入力欄に入れてください。'
     : ''
@@ -191,6 +190,7 @@ function dropExpression(event: DragEvent): void {
         step="1"
         :value="node.value ?? 0"
         aria-label="整数"
+        data-1p-ignore
         @change="setLiteral(($event.target as HTMLInputElement).value)"
       />
       <select

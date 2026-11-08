@@ -42,7 +42,7 @@ import {
   type PicoExpr,
   type PicoProgram,
   type PicoStatement,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 import { typeLabel } from './picoGuidance.ts'
 import './blocklyEditor.css'
 
@@ -72,10 +72,10 @@ const typeOptions: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
-  ['整数の配列', 'vector:integer'],
-  ['真理値の配列', 'vector:bool'],
-  ['マスの配列', 'vector:terrain'],
-  ['向きの配列', 'vector:rotation'],
+  ['整数のスタック', 'stack:integer'],
+  ['真理値のスタック', 'stack:bool'],
+  ['マスのスタック', 'stack:terrain'],
+  ['向きのスタック', 'stack:rotation'],
 ]
 let workspace: Blockly.WorkspaceSvg | null = null
 let observer: ResizeObserver | null = null
@@ -91,7 +91,7 @@ const categoryIcons = {
   計算: calculatorIcon,
   変換: repeatIcon,
   乱数: shuffleIcon,
-  配列: listIcon,
+  スタック: listIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
 }
@@ -451,7 +451,9 @@ onBeforeUnmount(() => {
           <Icon :icon="plusIcon" />
         </button>
         <form v-else @submit.prevent="addFunction">
-          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" /><button type="submit">
+          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" data-1p-ignore /><button
+            type="submit"
+          >
             追加
           </button>
         </form>
@@ -486,6 +488,7 @@ onBeforeUnmount(() => {
         <input
           :value="param.ident.name"
           :aria-label="`受け取る値 ${index + 1} の名前`"
+          data-1p-ignore
           @change="renameParam(index, ($event.target as HTMLInputElement).value)"
         />
         <select
@@ -515,6 +518,7 @@ onBeforeUnmount(() => {
         id="blockly-json-input"
         v-model="jsonInput"
         placeholder="Picolang v0のJSONを貼り付け"
+        data-1p-ignore
       ></textarea>
       <button type="button" @click="importJson">読み込む</button>
     </details>

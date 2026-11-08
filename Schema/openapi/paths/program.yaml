@@ -1,0 +1,92 @@
+/program/{programId}:
+  get:
+    tags:
+      - program
+    summary: プログラムを取得
+    operationId: getProgram
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
+    responses:
+      "200":
+        description: プログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+  put:
+    tags:
+      - program
+    summary: プログラムを更新
+    operationId: updateProgram
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../../openapi.yaml#/components/schemas/Program"
+    responses:
+      "200":
+        description: 更新したプログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+
+/program/create-with-vibe:
+  post:
+    tags:
+      - program
+    summary: 自然言語からプログラムを生成
+    description: |
+      picolang のソースだけを生成し、保存や対戦用の登録は行わない。
+      生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
+    operationId: createProgramWithVibe
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [prompt]
+            properties:
+              prompt:
+                type: string
+              fieldId:
+                type: string
+                description: Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+              isBattle:
+                type: boolean
+                description: 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+    responses:
+      "201":
+        description: 生成した picolang のソース
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/PicolangProgram"
+
+/program:
+  post:
+    tags:
+      - program
+    summary: プログラムを作成
+    operationId: createProgram
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../../openapi.yaml#/components/schemas/Program"
+    responses:
+      "201":
+        description: 作成したプログラム
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/SavedProgram"

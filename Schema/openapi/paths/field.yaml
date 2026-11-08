@@ -1,0 +1,18 @@
+/field/{fieldId}:
+  get:
+    tags:
+      - field
+    summary: フィールドを取得
+    description: 単一のフィールドの盤面情報を返す。
+    operationId: getField
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/FieldId"
+    responses:
+      "200":
+        description: フィールド
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/Field"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"

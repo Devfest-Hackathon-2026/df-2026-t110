@@ -53,7 +53,7 @@ func New(store *memory.Store, seed uint64) (*Evaluator, error) {
 
 // Evaluate borrows args; it never consumes or mutates their values. All argument
 // expressions must already have been evaluated, including both and/or operands.
-// Arity, IDs, and outer kinds are checked here. Vector element-type consistency
+// Arity, IDs, and outer kinds are checked here. Stack element-type consistency
 // is guaranteed by the preceding type-checking stage, as for function.Machine.
 // Language panics, including division by zero and empty-list access, become errors.
 func (e *Evaluator) Evaluate(name bot.Name, args []memory.ID) (result Result, err error) {
@@ -111,7 +111,7 @@ func matches(value memory.Value, typ bot.Type) bool {
 	case bot.TerrainType:
 		_, ok := value.(memory.Terrain)
 		return ok
-	case bot.VectorType:
+	case bot.StackType:
 		switch value.(type) {
 		case memory.ListRoot, memory.ListNode:
 			return true

@@ -24,8 +24,8 @@ import redoIcon from '@iconify-icons/lucide/redo-2'
 import PicoBlock from './PicoBlock.vue'
 import PicoTypeInput from './PicoTypeInput.vue'
 import { beginPicoDrag, dragVariable, endPicoDrag } from './picoDrag.ts'
+import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
-  PICO_BUILTINS,
   block,
   defaultExpr,
   id,
@@ -36,7 +36,7 @@ import {
   programFunctions,
   type PicoProgram,
   type PicoType,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 
 const props = defineProps<{ tutorialId: string }>()
 const emit = defineEmits<{ 'update:program': [program: PicoProgram] }>()
@@ -65,7 +65,7 @@ const categories = [
   '計算',
   '変換',
   '乱数',
-  '配列',
+  'スタック',
   '表示',
   '関数',
 ] as const
@@ -79,7 +79,7 @@ const categoryIcons = {
   計算: calculatorIcon,
   変換: repeatIcon,
   乱数: shuffleIcon,
-  配列: listIcon,
+  スタック: listIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
 }
@@ -93,7 +93,7 @@ const paletteHints: Record<string, string> = {
   計算: '数を計算します。結果を変数やほかの式に渡します。',
   変換: '真偽と整数を変換します。',
   乱数: '実行時に値を決めます。結果を変数や条件に使います。',
-  配列: '複数の値をひとまとめにします。値を足したり除いたりすると、新しい配列を返します。',
+  スタック: '複数の値をひとまとめにします。値を足したり除いたりすると、新しいスタックを返します。',
   表示: '計算結果を実行ログに表示します。',
   関数: '自分で作った処理を呼び出します。使う値を入力欄に入れます。',
 }
@@ -122,7 +122,7 @@ const palette = computed(() =>
       ? Object.keys(functions.value)
           .filter((name) => name !== 'main')
           .map((name) => ({ name, label: name }))
-      : PICO_BUILTINS.filter((item) => item.category === category.value),
+      : PICO_BUILTIN_OPTIONS.filter((item) => item.category === category.value),
 )
 
 watch(
@@ -229,7 +229,7 @@ function dragChoice(event: DragEvent, name: string): void {
 }
 function addFunction(): void {
   const name = newFunctionName.value.trim()
-  if (!name || name in functions.value || PICO_BUILTINS.some((item) => item.name === name)) {
+  if (!name || name in functions.value || PICO_BUILTIN_OPTIONS.some((item) => item.name === name)) {
     message.value = '別の関数名を指定してください。'
     return
   }
@@ -350,6 +350,7 @@ function importJson(): void {
               v-model="newFunctionName"
               aria-label="新しい関数名"
               placeholder="関数名"
+              data-1p-ignore
               @keydown.esc="closeNewFunction"
             />
             <button type="submit" aria-label="関数を作成" title="関数を作成">
@@ -398,7 +399,7 @@ function importJson(): void {
         <div v-if="activeFunctionName !== 'main'" class="pico-params">
           <span>受け取る値</span>
           <div v-for="(param, index) in currentFunction.params" :key="param.hintId">
-            <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" />
+            <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" data-1p-ignore />
             <PicoTypeInput v-model="param.type" />
             <button
               type="button"
@@ -446,6 +447,7 @@ function importJson(): void {
           v-model="jsonInput"
           spellcheck="false"
           placeholder="Picolang v0 のJSONを貼り付け"
+          data-1p-ignore
         ></textarea>
         <button type="button" @click="importJson">
           <Icon :icon="uploadIcon" aria-hidden="true" />読み込む

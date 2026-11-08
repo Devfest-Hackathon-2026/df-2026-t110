@@ -1,5 +1,5 @@
 export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation'
-export type PicoType = PicoPrimitive | { kind: 'vector'; elementType: PicoType }
+export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
 interface NodeBase {
   hintId: string
 }
@@ -41,71 +41,75 @@ export interface PicoProgram {
   picolangVersion: 0
   picolang: { v0: { program: Record<string, PicoFunction> } }
 }
-export interface PicoFunctionOption {
+export interface PicoBuiltin {
   name: string
-  label: string
-  category: string
   args: PicoType[]
   returns: PicoType
 }
-export interface PicoVariableOption {
-  name: string
-  type: PicoType
-}
-const vectorInteger: PicoType = { kind: 'vector', elementType: 'integer' }
-const builtin = (
-  name: string,
-  label: string,
-  category: string,
+const stackInteger: PicoType = { kind: 'stack', elementType: 'integer' }
+const builtin = <Name extends string>(
+  name: Name,
   args: PicoType[],
   returns: PicoType,
-): PicoFunctionOption => ({ name, label, category, args, returns })
-export const PICO_BUILTINS: PicoFunctionOption[] = [
-  builtin('forward', '前進する', '動き', [], 'bool'),
-  builtin('back', '後退する', '動き', [], 'bool'),
-  builtin('rotate', '回転する', '動き', ['rotation'], 'unit'),
-  builtin('wait', '待つ', '動き', ['integer'], 'unit'),
-  builtin('pick_up', '拾う', '操作', [], 'bool'),
-  builtin('release', '置く', '操作', [], 'bool'),
-  builtin('drill', '岩を壊す', '操作', [], 'bool'),
-  builtin('drill_durability', 'ドリルの残りを返す', '調べる', [], 'integer'),
-  builtin('distance', '距離を返す', '調べる', [], 'integer'),
-  builtin('search_front', '前のマスを調べて返す', '調べる', [], 'terrain'),
-  builtin('search_now', '今いるマスを調べて返す', '調べる', [], 'terrain'),
-  builtin('is_land', '陸なら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('is_goal', 'ゴールなら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('is_checkpoint', 'チェックポイントなら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('is_laggage', '荷物なら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('is_sea', '海なら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('is_rock', '岩なら「はい」を返す', '調べる', ['terrain'], 'bool'),
-  builtin('not', '答えを反対にして返す', '論理', ['bool'], 'bool'),
-  builtin('and', '両方「はい」か返す', '論理', ['bool', 'bool'], 'bool'),
-  builtin('or', 'どちらかが「はい」か返す', '論理', ['bool', 'bool'], 'bool'),
-  builtin('bool_eq', '2つの答えが同じか返す', '論理', ['bool', 'bool'], 'bool'),
-  builtin('bool_neq', '2つの答えが違うか返す', '論理', ['bool', 'bool'], 'bool'),
-  builtin('add', '足した数を返す', '計算', ['integer', 'integer'], 'integer'),
-  builtin('minus', '符号を反対にした数を返す', '計算', ['integer'], 'integer'),
-  builtin('sub', '引いた数を返す', '計算', ['integer', 'integer'], 'integer'),
-  builtin('mul', '掛けた数を返す', '計算', ['integer', 'integer'], 'integer'),
-  builtin('div', '割った数を返す', '計算', ['integer', 'integer'], 'integer'),
-  builtin('integer_eq', '2つの数が同じか返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('integer_neq', '2つの数が違うか返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('gt', '左の数が大きいか返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('lt', '左の数が小さいか返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('geq', '左の数が右以上か返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('leq', '左の数が右以下か返す', '計算', ['integer', 'integer'], 'bool'),
-  builtin('bool_to_integer', 'はい・いいえを数にして返す', '変換', ['bool'], 'integer'),
-  builtin('integer_to_bool', '数をはい・いいえにして返す', '変換', ['integer'], 'bool'),
-  builtin('random_bool', 'ランダムなはい・いいえを返す', '乱数', [], 'bool'),
-  builtin('random_integer', 'ランダムな数を返す', '乱数', ['integer', 'integer'], 'integer'),
-  builtin('new', '空の配列を作って返す', '配列', [], vectorInteger),
-  builtin('push_back', '値を足した配列を返す', '配列', [vectorInteger, 'integer'], vectorInteger),
-  builtin('pop_back', '最後を除いた配列を返す', '配列', [vectorInteger], vectorInteger),
-  builtin('get_back', '最後の値を返す', '配列', [vectorInteger], 'integer'),
-  builtin('size', '配列の個数を返す', '配列', [vectorInteger], 'integer'),
-  builtin('print_integer', '整数を表示', '表示', ['integer'], 'unit'),
-  builtin('print_bool', '真理値を表示', '表示', ['bool'], 'unit'),
+): PicoBuiltin & { name: Name } => ({
+  name,
+  args,
+  returns,
+})
+export const PICO_BUILTINS = [
+  builtin('forward', [], 'bool'),
+  builtin('back', [], 'bool'),
+  builtin('rotate', ['rotation'], 'unit'),
+  builtin('wait', ['integer'], 'unit'),
+  builtin('pick_up', [], 'bool'),
+  builtin('release', [], 'bool'),
+  builtin('drill', [], 'bool'),
+  builtin('drill_durability', [], 'integer'),
+  builtin('distance', [], 'integer'),
+  builtin('search_front', [], 'terrain'),
+  builtin('search_now', [], 'terrain'),
+  builtin('is_land', ['terrain'], 'bool'),
+  builtin('is_goal', ['terrain'], 'bool'),
+  builtin('is_checkpoint', ['terrain'], 'bool'),
+  builtin('is_laggage', ['terrain'], 'bool'),
+  builtin('is_sea', ['terrain'], 'bool'),
+  builtin('is_rock', ['terrain'], 'bool'),
+  builtin('not', ['bool'], 'bool'),
+  builtin('and', ['bool', 'bool'], 'bool'),
+  builtin('or', ['bool', 'bool'], 'bool'),
+  builtin('bool_eq', ['bool', 'bool'], 'bool'),
+  builtin('bool_neq', ['bool', 'bool'], 'bool'),
+  builtin('add', ['integer', 'integer'], 'integer'),
+  builtin('minus', ['integer'], 'integer'),
+  builtin('sub', ['integer', 'integer'], 'integer'),
+  builtin('mul', ['integer', 'integer'], 'integer'),
+  builtin('div', ['integer', 'integer'], 'integer'),
+  builtin('integer_eq', ['integer', 'integer'], 'bool'),
+  builtin('integer_neq', ['integer', 'integer'], 'bool'),
+  builtin('gt', ['integer', 'integer'], 'bool'),
+  builtin('lt', ['integer', 'integer'], 'bool'),
+  builtin('geq', ['integer', 'integer'], 'bool'),
+  builtin('leq', ['integer', 'integer'], 'bool'),
+  builtin('bool_to_integer', ['bool'], 'integer'),
+  builtin('integer_to_bool', ['integer'], 'bool'),
+  builtin('random_bool', [], 'bool'),
+  builtin('random_integer', ['integer', 'integer'], 'integer'),
+  builtin('new', [], stackInteger),
+  builtin('push_back', [stackInteger, 'integer'], stackInteger),
+  builtin('pop_back', [stackInteger], stackInteger),
+  builtin('get_back', [stackInteger], 'integer'),
+  builtin('size', [stackInteger], 'integer'),
+  builtin('print_integer', ['integer'], 'unit'),
+  builtin('print_bool', ['bool'], 'unit'),
 ]
+export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
+
+export function samePicoType(left: PicoType | undefined, right: PicoType): boolean {
+  if (!left) return true
+  if (typeof left === 'string' || typeof right === 'string') return left === right
+  return samePicoType(left.elementType, right.elementType)
+}
+
 export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
@@ -193,7 +197,7 @@ function type(value: unknown): boolean {
     ? primitiveTypes.includes(value as PicoPrimitive)
     : object(value) &&
         exact(value, ['kind', 'elementType']) &&
-        value.kind === 'vector' &&
+        value.kind === 'stack' &&
         type(value.elementType)
 }
 function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>): boolean {

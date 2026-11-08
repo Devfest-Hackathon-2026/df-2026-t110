@@ -98,15 +98,15 @@ func TestVMProgramScenarios(t *testing.T) {
 			},
 		},
 		{
-			name: "vector_argument_value_semantics",
+			name: "stack_argument_value_semantics",
 			build: func(b *builder) map[bot.Name]fn {
-				// Drain a function-local vector copy to sum [1,2,3,4]; the caller keeps all four elements.
-				vector := bot.VectorType{ElementType: bot.IntegerType{}}
-				drain := b.function([]param{b.param("items", vector)}, bot.IntegerType{}, b.declare("total", bot.IntegerType{}, b.integer(0)),
+				// Drain a function-local stack copy to sum [1,2,3,4]; the caller keeps all four elements.
+				stack := bot.StackType{ElementType: bot.IntegerType{}}
+				drain := b.function([]param{b.param("items", stack)}, bot.IntegerType{}, b.declare("total", bot.IntegerType{}, b.integer(0)),
 					b.whileLoop(b.call("gt", b.call("size", b.ref("items")), b.integer(0)),
 						b.assign("total", b.call("add", b.ref("total"), b.call("get_back", b.ref("items")))),
 						b.assign("items", b.call("pop_back", b.ref("items")))), b.ret(b.ref("total")))
-				main := b.function(nil, bot.UnitType{}, b.declare("items", vector, b.call("new")),
+				main := b.function(nil, bot.UnitType{}, b.declare("items", stack, b.call("new")),
 					b.forRange("i", b.integer(1), b.integer(5), b.assign("items", b.call("push_back", b.ref("items"), b.ref("i")))),
 					b.call("print_integer", b.call("drain_sum", b.ref("items"))),
 					b.call("print_integer", b.call("size", b.ref("items"))), b.ret(b.unit()))
@@ -135,15 +135,27 @@ func TestVMProgramScenarios(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			v := newVM(t, checked(t, tc.build(&builder{})), 0)
-			base := v.memory.MemoryUsage()
-			output, err := v.Start()
-			for _, expected := range tc.trace {
-				expectOutput(t, output, err, robotmsg.ActionStep{Action: expected.action})
-				output, err = v.Next(expected.reply)
+			program := checked(t, tc.build(&builder{}))
+			for name, logExecution := range map[string]bool{"logged": true, "unlogged": false} {
+				t.Run(name, func(t *testing.T) {
+					t.Parallel()
+					v := newVMWithLogging(t, program, 0, testLimits(), logExecution)
+					base := v.memory.MemoryUsage()
+					output, err := v.Start()
+					for _, expected := range tc.trace {
+						expectOutput(t, output, err, robotmsg.ActionStep{Action: expected.action})
+						if !logExecution && output.Events != nil {
+							t.Errorf("unlogged action returned events: %#v", output.Events)
+						}
+						output, err = v.Next(expected.reply)
+					}
+					expectOutput(t, output, err, robotmsg.DoneStep{})
+					if !logExecution && output.Events != nil {
+						t.Errorf("unlogged completion returned events: %#v", output.Events)
+					}
+					assertClean(t, v, base)
+				})
 			}
-			expectOutput(t, output, err, robotmsg.DoneStep{})
-			assertClean(t, v, base)
 		})
 	}
 }

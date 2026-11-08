@@ -42,7 +42,7 @@ type Signature struct {
 	Result Type
 }
 
-// typeParameter denotes the vector builtin's T, freshly instantiated per call.
+// typeParameter denotes the stack builtin's T, freshly instantiated per call.
 type typeParameter struct{}
 
 func (typeParameter) annotation()   {}
@@ -52,7 +52,7 @@ func (typeParameter) languageType() {}
 func BuiltinSignatures() map[Name]Signature {
 	b, i, u, t, r := BoolType{}, IntegerType{}, UnitType{}, TerrainType{}, RotationType{}
 	x := typeParameter{}
-	v := VectorType{ElementType: x}
+	v := StackType{ElementType: x}
 	return map[Name]Signature{
 		"not":                {[]Type{b}, b},
 		"and":                {[]Type{b, b}, b},

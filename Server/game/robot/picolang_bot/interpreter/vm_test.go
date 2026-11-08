@@ -103,7 +103,12 @@ func testLimits() Limits {
 
 func newLimitedVM(t *testing.T, program bot.TypedProgram, seed uint64, limits Limits) *VM {
 	t.Helper()
-	v, err := New(program, seed, limits)
+	return newVMWithLogging(t, program, seed, limits, true)
+}
+
+func newVMWithLogging(t *testing.T, program bot.TypedProgram, seed uint64, limits Limits, logExecution bool) *VM {
+	t.Helper()
+	v, err := New(program, seed, limits, logExecution)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -234,14 +239,14 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 	}
 }
 
-func TestVectorsReturnedThroughCallsRemainIndependent(t *testing.T) {
+func TestStacksReturnedThroughCallsRemainIndependent(t *testing.T) {
 	t.Parallel()
 	b := &builder{}
-	vector := bot.VectorType{ElementType: bot.IntegerType{}}
-	identity := b.function([]param{b.param("input", vector)}, vector, b.ret(b.ref("input")))
-	saved := b.declare("saved", vector, b.call("identity", b.ref("v")))
+	stack := bot.StackType{ElementType: bot.IntegerType{}}
+	identity := b.function([]param{b.param("input", stack)}, stack, b.ret(b.ref("input")))
+	saved := b.declare("saved", stack, b.call("identity", b.ref("v")))
 	main := b.function(nil, bot.UnitType{},
-		b.declare("v", vector, b.call("new")),
+		b.declare("v", stack, b.call("new")),
 		b.assign("v", b.call("push_back", b.ref("v"), b.integer(1))), saved,
 		b.assign("v", b.call("push_back", b.ref("v"), b.integer(2))),
 		b.call("print_integer", b.call("size", b.ref("saved"))),
@@ -261,7 +266,7 @@ func TestVectorsReturnedThroughCallsRemainIndependent(t *testing.T) {
 	output, err = v.Next(values.UnitValue{})
 	expectOutput(t, output, err, robotmsg.DoneStep{})
 	assertClean(t, v, base)
-	want := values.VectorRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}}}
+	want := values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}}}
 	if !reflect.DeepEqual(snapshot, want) {
 		t.Errorf("saved snapshot = %#v, want %#v", snapshot, want)
 	}
@@ -291,21 +296,21 @@ func TestDeepMutualRecursionUsesExplicitStack(t *testing.T) {
 
 func TestRuntimeFailureClosesAllFramesAndDeliversEvents(t *testing.T) {
 	t.Parallel()
-	for _, kind := range []string{"division", "empty vector"} {
+	for _, kind := range []string{"division", "empty stack"} {
 		t.Run(kind, func(t *testing.T) {
 			t.Parallel()
 			b := &builder{}
-			vector := bot.VectorType{ElementType: bot.IntegerType{}}
-			p := b.param("input", vector)
+			stack := bot.StackType{ElementType: bot.IntegerType{}}
+			p := b.param("input", stack)
 			local := b.declare("local", bot.IntegerType{}, b.integer(3))
 			divide := b.call("div", b.integer(1), b.integer(0))
 			reason, detail := robotevent.EndDivisionByZero, "division by zero"
-			if kind == "empty vector" {
+			if kind == "empty stack" {
 				divide = b.call("get_back", b.call("pop_back", b.ref("input")))
-				reason, detail = robotevent.EndRuntimeError, "nonempty vector"
+				reason, detail = robotevent.EndRuntimeError, "nonempty stack"
 			}
 			bad := b.function([]param{p}, bot.IntegerType{}, local, b.ret(divide))
-			caller := b.declare("v", vector, b.call("new"))
+			caller := b.declare("v", stack, b.call("new"))
 			main := b.function(nil, bot.UnitType{}, caller, b.assign("v", b.call("push_back", b.ref("v"), b.integer(1))), b.call("bad", b.ref("v")), b.ret(b.unit()))
 			v := newVM(t, checked(t, map[bot.Name]fn{"main": main, "bad": bad}), 0)
 			base := snapshot(v).MemoryBytes
@@ -412,7 +417,7 @@ func TestActionResultKindsReachExpressions(t *testing.T) {
 	assertClean(t, v, base)
 }
 
-func TestAllDistanceTargetsFlowThroughCallsVectorsAndEvents(t *testing.T) {
+func TestAllDistanceTargetsFlowThroughCallsStacksAndEvents(t *testing.T) {
 	t.Parallel()
 	for _, target := range []values.DistanceTarget{
 		values.DistanceRobot, values.DistanceAlly, values.DistanceEnemy, values.DistanceRock,
@@ -422,14 +427,14 @@ func TestAllDistanceTargetsFlowThroughCallsVectorsAndEvents(t *testing.T) {
 			t.Parallel()
 			b := &builder{}
 			targetType := bot.DistanceTargetType{}
-			vector := bot.VectorType{ElementType: targetType}
-			nestedType := bot.VectorType{ElementType: vector}
+			stack := bot.StackType{ElementType: targetType}
+			nestedType := bot.StackType{ElementType: stack}
 			echo := b.function([]param{b.param("candidate", targetType)}, targetType, b.ret(b.ref("candidate")))
 			selected := b.declare("selected", targetType, b.target(values.DistanceRobot))
 			nested := b.declare("nested", nestedType, b.call("new"))
 			main := b.function(nil, bot.UnitType{}, selected,
 				b.assign("selected", b.call("echo_target", b.target(target))),
-				b.declare("items", vector, b.call("new")),
+				b.declare("items", stack, b.call("new")),
 				b.assign("items", b.call("push_back", b.ref("items"), b.ref("selected"))), nested,
 				b.assign("nested", b.call("push_back", b.ref("nested"), b.ref("items"))),
 				b.declare("extracted", targetType, b.call("echo_target", b.call("get_back", b.call("get_back", b.ref("nested"))))),
@@ -460,8 +465,8 @@ func TestAllDistanceTargetsFlowThroughCallsVectorsAndEvents(t *testing.T) {
 					}
 					if e.HintID == nested.Ident.HintID {
 						nestedUpdated = true
-						want := []robotevent.ValueUpdate{robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: []values.RecordValue{
-							values.VectorRecordValue{Elements: []values.RecordValue{target}},
+						want := []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{Value: []values.RecordValue{
+							values.StackRecordValue{Elements: []values.RecordValue{target}},
 						}}}}
 						if !reflect.DeepEqual(e.Diff, want) {
 							t.Errorf("nested distance target snapshot = %#v, want %#v", e.Diff, want)
@@ -484,9 +489,9 @@ func TestAllDistanceTargetsFlowThroughCallsVectorsAndEvents(t *testing.T) {
 func TestTerrainAttributesSurviveActionResumptionAndReassignment(t *testing.T) {
 	t.Parallel()
 	b := &builder{}
-	vector := bot.VectorType{ElementType: bot.TerrainType{}}
+	stack := bot.StackType{ElementType: bot.TerrainType{}}
 	observed := b.declare("observed", bot.TerrainType{}, b.call("search_front"))
-	saved := b.declare("saved", vector, b.call("new"))
+	saved := b.declare("saved", stack, b.call("new"))
 	main := b.function(nil, bot.UnitType{}, observed, saved,
 		b.assign("saved", b.call("push_back", b.ref("saved"), b.ref("observed"))),
 		b.assign("observed", b.call("search_now")),
@@ -531,7 +536,7 @@ func TestTerrainAttributesSurviveActionResumptionAndReassignment(t *testing.T) {
 			}
 			if e.HintID == saved.Ident.HintID {
 				savedUpdated = true
-				want := []robotevent.ValueUpdate{robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: []values.RecordValue{own}}}}
+				want := []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{Value: []values.RecordValue{own}}}}
 				if !reflect.DeepEqual(e.Diff, want) {
 					t.Errorf("saved terrain snapshot changed after reassignment: %#v", e.Diff)
 				}
@@ -708,7 +713,7 @@ func TestEntryPointAndZeroValueValidation(t *testing.T) {
 		{}, {Functions: map[bot.Name]bot.Function[bot.VariableIndex, bot.Type]{"main": {ReturnType: bot.BoolType{}}}},
 		{Functions: map[bot.Name]bot.Function[bot.VariableIndex, bot.Type]{"main": {ReturnType: bot.UnitType{}, Params: []bot.Param[bot.VariableIndex]{{Type: bot.IntegerType{}}}}}},
 	} {
-		if v, err := New(program, 0, testLimits()); err == nil || v != nil {
+		if v, err := New(program, 0, testLimits(), true); err == nil || v != nil {
 			t.Errorf("accepted invalid entry point: %#v, %v", v, err)
 		}
 	}

@@ -1,12 +1,13 @@
+import type { PicoVariableOption } from './picoOptions.ts'
 import {
   PICO_BUILTINS,
   ident,
   makeCall,
+  samePicoType,
   type PicoExpr,
   type PicoFunction,
   type PicoType,
-  type PicoVariableOption,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 
 export const PICO_VARIABLE_MIME = 'application/x-picolang-variable'
 
@@ -23,12 +24,6 @@ export function dragVariable(event: DragEvent, name: string): void {
   beginPicoDrag()
   event.dataTransfer.setData(PICO_VARIABLE_MIME, name)
   event.dataTransfer.effectAllowed = 'copy'
-}
-
-export function samePicoType(left: PicoType | undefined, right: PicoType): boolean {
-  if (!left) return true
-  if (typeof left === 'string' || typeof right === 'string') return left === right
-  return samePicoType(left.elementType, right.elementType)
 }
 
 export function expressionFromDrop(

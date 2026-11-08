@@ -46,7 +46,7 @@ var (
 	_ = bot.TypedProgram{Functions: map[bot.Name]bot.Function[bot.VariableIndex, bot.Type]{
 		"main": function[bot.VariableIndex, bot.Type](0, bot.BoolType{}),
 	}}
-	_ bot.CompoundType = bot.VectorType{ElementType: bot.VectorType{ElementType: bot.IntegerType{}}}
+	_ bot.CompoundType = bot.StackType{ElementType: bot.StackType{ElementType: bot.IntegerType{}}}
 	_                  = []bot.PrimitiveType{bot.BoolType{}, bot.IntegerType{}, bot.UnitType{}, bot.TerrainType{}, bot.RotationType{}}
 	_                  = []bot.Literal{bot.BoolLiteral{}, bot.IntegerLiteral{}, bot.UnitLiteral{}, bot.RotationLiteral{Value: values.Left}}
 )

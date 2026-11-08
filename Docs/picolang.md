@@ -3,7 +3,7 @@
 ## 仕様
 ### 型
 
-bool、integer、unit、terrain、rotation、distance_target は primitive type、vector は compound type とする。
+bool、integer、unit、terrain、rotation、distance_target は primitive type、stack は compound type とする。
 
 - bool
     - true/false
@@ -17,9 +17,9 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - left/right
 - distance_target
     - `robot`、`ally`、`enemy`、`rock`、`luggage`、`sea`, `goal`、`territory`
-- vector\<T>
+- stack\<T>
     - 型Tの要素を持つ連結リスト
-    - 同じvectorの要素はすべて同じ型
+    - 同じstackの要素はすべて同じ型
     - 内部的にはノードに参照カウンタのついた根付き木として表現し、コピーのコストはO(1)とする。
 
 ### 組み込み関数
@@ -55,17 +55,17 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - random_integer: (integer, integer) -> integer
         - 閉区間[fst, snd]上の一様分布
         - snd < fstの場合はパニック
-- vector
-    - new: () -> vector\<T>
-    - push_back: (vector\<T>, T) -> vector\<T>
-        - 末尾に要素の値を追加した新しいvectorを返す
-    - pop_back: vector\<T> -> vector\<T>
-        - 末尾の要素を取り除いた新しいvectorを返す
+- stack
+    - new: () -> stack\<T>
+    - push_back: (stack\<T>, T) -> stack\<T>
+        - 末尾に要素の値を追加した新しいstackを返す
+    - pop_back: stack\<T> -> stack\<T>
+        - 末尾の要素を取り除いた新しいstackを返す
         - 要素数が0の場合はパニック
-    - get_back: vector\<T> -> T
-        - 末尾の要素を独立した値として返す。元のvectorの要素数は変わらない
+    - get_back: stack\<T> -> T
+        - 末尾の要素を独立した値として返す。元のstackの要素数は変わらない
         - 要素数が0の場合はパニック
-    - size: vector\<T> -> integer
+    - size: stack\<T> -> integer
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool
@@ -143,8 +143,8 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
 - 関数以外の値のスコープは関数全体かブロック全体のスコープを持つ。
 - shadowing, 型エラーは実行前に弾く。
 - 関数の引数は先頭から評価される。
-- primitive type、compound typeを問わず、変数定義・代入、引数・戻り値、vectorの要素の受け渡しはすべて値渡しとし、値全体を複製したものとして扱う。
-- vectorの値は、入れ子のvectorを含めてそれぞれ独立している。一方の値への更新は、別の変数や取得済みの値に伝播しない。
+- primitive type、compound typeを問わず、変数定義・代入、引数・戻り値、stackの要素の受け渡しはすべて値渡しとし、値全体を複製したものとして扱う。
+- stackの値は、入れ子のstackを含めてそれぞれ独立している。一方の値への更新は、別の変数や取得済みの値に伝播しない。
 - 関数内での引数への再代入は、その関数のローカルな値にだけ反映される。
 - push_back、pop_backの結果を元の変数に反映するには、`v = push_back(v, x)`のように戻り値を代入する。
 
@@ -204,7 +204,7 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
 - 変数定義
 - 値の生成・複製
 
-メモリコストは内部表現の共有方法に依存しない、論理的な値のサイズに応じた推定値を使う。vectorのサイズはコンテナと入れ子を含む全要素のサイズを再帰的に合計し、論理的に複製された値もそれぞれ別々に計上する。スコープ終了、再代入、式評価の完了などで不要になった値をdropし、その値が保持していたメモリコストを減算する。GCによる実際の解放時期は考慮しない。
+メモリコストは内部表現の共有方法に依存しない、論理的な値のサイズに応じた推定値を使う。stackのサイズはコンテナと入れ子を含む全要素のサイズを再帰的に合計し、論理的に複製された値もそれぞれ別々に計上する。スコープ終了、再代入、式評価の完了などで不要になった値をdropし、その値が保持していたメモリコストを減算する。GCによる実際の解放時期は考慮しない。
 
 保持中の値の合計が上限を超える場合はVMを停止する。中断・再開時もコストを引き継ぐ。
 
@@ -216,4 +216,4 @@ VMの停止は以下の条件で行う
     - この場合、該当の組み込み関数の返り値とともに実行を再開させることができる。
 
 ### Debug情報の出力
-JSON形式の段階で、各ノードに対してヒントとしてuuidを付与する。hint idはプログラム全体で一意であることを検査する。ASTの各表現に対して、対応するhint idを付与する。VMの実行時に、各処理のログをhint idとともに記録し、VMの停止・中断時に出力する。
+JSON形式の段階で、各ノードに対してヒントとしてuuidを付与する。hint idはプログラム全体で一意であることを検査する。ASTの各表現に対して、対応するhint idを付与する。VMのコンストラクタの末尾に渡すbool値`logExecution`が`true`の場合、各処理のログをhint idとともに記録し、VMの停止・中断時に出力する。`false`の場合、終了・エラーを含む実行ログを出力せず、ログ用の値のスナップショットや代入の差分も生成しない。

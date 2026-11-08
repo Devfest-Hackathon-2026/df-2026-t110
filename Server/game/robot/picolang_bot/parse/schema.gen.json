@@ -1,6 +1,182 @@
 {
   "$comment": "Generated from Schema/picolang by go generate; DO NOT EDIT.",
   "$defs": {
+    "header_v0/header.schema.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない",
+      "examples": [
+        [
+          {
+            "name": "forward",
+            "signature": {
+              "params": [],
+              "returnType": "bool"
+            },
+            "tags": [
+              "movement"
+            ]
+          },
+          {
+            "name": "distance",
+            "signature": {
+              "params": [
+                "distance_target"
+              ],
+              "returnType": "integer"
+            },
+            "tags": [
+              "sensing"
+            ]
+          },
+          {
+            "name": "push_back",
+            "signature": {
+              "params": [
+                {
+                  "elementType": {
+                    "kind": "type_parameter",
+                    "name": "T"
+                  },
+                  "kind": "stack"
+                },
+                {
+                  "kind": "type_parameter",
+                  "name": "T"
+                }
+              ],
+              "returnType": {
+                "elementType": {
+                  "kind": "type_parameter",
+                  "name": "T"
+                },
+                "kind": "stack"
+              },
+              "typeParameters": [
+                "T"
+              ]
+            },
+            "tags": [
+              "stack"
+            ]
+          }
+        ]
+      ],
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/v0~1name.yaml",
+            "description": "プログラムの call.func に指定する組み込み関数名"
+          },
+          "signature": {
+            "$ref": "#/$defs/header_v0~1signature.schema.yaml"
+          },
+          "tags": {
+            "description": "UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する",
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "name",
+          "signature",
+          "tags"
+        ],
+        "type": "object"
+      },
+      "title": "PicolangV0Header",
+      "type": "array"
+    },
+    "header_v0/signature-type.yaml": {
+      "$defs": {
+        "StackType": {
+          "additionalProperties": false,
+          "properties": {
+            "elementType": {
+              "$ref": "#/$defs/header_v0~1signature-type.yaml"
+            },
+            "kind": {
+              "const": "stack",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "elementType"
+          ],
+          "type": "object"
+        },
+        "TypeParameter": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "type_parameter",
+              "type": "string"
+            },
+            "name": {
+              "$ref": "#/$defs/v0~1name.yaml",
+              "description": "同じシグネチャの typeParameters で宣言した名前。同名の参照は同じ型を表す"
+            }
+          },
+          "required": [
+            "kind",
+            "name"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "description": "シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1primitive-type.yaml"
+        },
+        {
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/StackType"
+        },
+        {
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/TypeParameter"
+        }
+      ],
+      "title": "PicolangV0SignatureType"
+    },
+    "header_v0/signature.schema.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する",
+      "properties": {
+        "params": {
+          "description": "呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列",
+          "items": {
+            "$ref": "#/$defs/header_v0~1signature-type.yaml"
+          },
+          "type": "array"
+        },
+        "returnType": {
+          "$ref": "#/$defs/header_v0~1signature-type.yaml",
+          "description": "戻り値の型。値を返さない関数は unit"
+        },
+        "typeParameters": {
+          "description": "このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない",
+          "items": {
+            "$ref": "#/$defs/v0~1name.yaml"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "params",
+        "returnType"
+      ],
+      "title": "PicolangV0BuiltinSignature",
+      "type": "object"
+    },
     "toplevel.schema.yaml": {
       "$defs": {
         "Version0": {
@@ -139,7 +315,7 @@
       "type": "object"
     },
     "v0/compound-type.yaml": {
-      "$ref": "#/$defs/v0~1vector-type.yaml",
+      "$ref": "#/$defs/v0~1stack-type.yaml",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "他の型を組み合わせて構成する picolang の複合型",
       "title": "CompoundType"
@@ -416,6 +592,27 @@
         "value"
       ],
       "title": "RotationLiteral",
+      "type": "object"
+    },
+    "v0/stack-type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "同じ型の要素を持つ連結リストで表現するスタックの型",
+      "properties": {
+        "elementType": {
+          "$ref": "#/$defs/v0~1type.yaml",
+          "description": "要素の型。基本型と複合型のどちらも指定できる"
+        },
+        "kind": {
+          "const": "stack",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "elementType"
+      ],
+      "title": "StackType",
       "type": "object"
     },
     "v0/stmt.yaml": {
@@ -697,27 +894,6 @@
         "value"
       ],
       "title": "UnitLiteral",
-      "type": "object"
-    },
-    "v0/vector-type.yaml": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "description": "同じ型の要素を持つ可変長配列の型",
-      "properties": {
-        "elementType": {
-          "$ref": "#/$defs/v0~1type.yaml",
-          "description": "要素の型。基本型と複合型のどちらも指定できる"
-        },
-        "kind": {
-          "const": "vector",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "elementType"
-      ],
-      "title": "VectorType",
       "type": "object"
     }
   },

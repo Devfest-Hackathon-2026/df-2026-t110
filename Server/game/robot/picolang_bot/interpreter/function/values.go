@@ -34,7 +34,7 @@ func matches(store *memory.Store, id memory.ID, t bot.Type) bool {
 	case bot.DistanceTargetType:
 		_, ok := value.(memory.DistanceTarget)
 		return ok
-	case bot.VectorType:
+	case bot.StackType:
 		switch value.(type) {
 		case memory.ListRoot, memory.ListNode:
 			return true
@@ -48,21 +48,25 @@ func (m *Machine) define(ident bot.Ident[bot.VariableIndex], id memory.ID) {
 		panic(fmt.Errorf("invalid declaration slot %d", ident.Variable))
 	}
 	m.resources.Time.Increment()
-	m.resources.Events.Add(robotevent.VariableInitEvent{HintID: ident.HintID, Value: m.record(id)})
-	m.variables = append(m.variables, binding{value: id, hint: ident.HintID, announced: true})
+	if m.resources.Events != nil {
+		m.resources.Events.Add(robotevent.VariableInitEvent{HintID: ident.HintID, Value: m.record(id)})
+	}
+	m.variables = append(m.variables, binding{value: id, hint: ident.HintID, announced: m.resources.Events != nil})
 }
 
 func (m *Machine) assign(index bot.VariableIndex, id memory.ID) {
 	variable := &m.variables[index]
-	diff := m.replacement(id)
 	m.resources.Time.Increment()
-	m.resources.Events.Add(robotevent.VariableUpdateEvent{HintID: variable.hint, Diff: []robotevent.ValueUpdate{diff}})
+	if m.resources.Events != nil {
+		diff := m.replacement(id)
+		m.resources.Events.Add(robotevent.VariableUpdateEvent{HintID: variable.hint, Diff: []robotevent.ValueUpdate{diff}})
+	}
 	previous := variable.value
 	variable.value = id
 	m.drop(previous)
 }
 
-// Snapshots own their vector slices. Subsequent assignments or memory releases
+// Snapshots own their stack slices. Subsequent assignments or memory releases
 // cannot change values already emitted to the event collector.
 func (m *Machine) record(id memory.ID) values.RecordValue {
 	switch v := m.value(id).(type) {
@@ -79,7 +83,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 	case memory.DistanceTarget:
 		return v.Value
 	case memory.ListRoot:
-		return values.VectorRecordValue{}
+		return values.StackRecordValue{}
 	case memory.ListNode:
 		var elements []values.RecordValue
 		for {
@@ -87,7 +91,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 			switch prev := m.value(v.Prev).(type) {
 			case memory.ListRoot:
 				slices.Reverse(elements)
-				return values.VectorRecordValue{Elements: elements}
+				return values.StackRecordValue{Elements: elements}
 			case memory.ListNode:
 				v = prev
 			default:
@@ -100,7 +104,7 @@ func (m *Machine) record(id memory.ID) values.RecordValue {
 }
 
 // Full replacements also cover assignments from another variable or from
-// get_back; choosing a smaller vector diff can be added without changing values.
+// get_back; choosing a smaller stack diff can be added without changing values.
 func (m *Machine) replacement(id memory.ID) robotevent.ValueUpdate {
 	switch v := m.record(id).(type) {
 	case values.BoolValue:
@@ -115,8 +119,8 @@ func (m *Machine) replacement(id memory.ID) robotevent.ValueUpdate {
 		return robotevent.RotationUpdate{Value: v.Rotation}
 	case values.DistanceTarget:
 		return robotevent.DistanceTargetUpdate{Value: v}
-	case values.VectorRecordValue:
-		return robotevent.VectorUpdate{Update: robotevent.VectorReplace{Value: v.Elements}}
+	case values.StackRecordValue:
+		return robotevent.StackUpdate{Update: robotevent.StackReplace{Value: v.Elements}}
 	default:
 		panic(fmt.Errorf("cannot replace recorded value %T", v))
 	}

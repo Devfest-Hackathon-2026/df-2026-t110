@@ -2,8 +2,8 @@ $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangVariableInitEvent
 description: |
   変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-  変数の型との一致および vector の要素の型の統一は生成側で保証する。
-  入れ子の vector を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+  変数の型との一致および stack の要素の型の統一は生成側で保証する。
+  入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
 
 type: object
 additionalProperties: false

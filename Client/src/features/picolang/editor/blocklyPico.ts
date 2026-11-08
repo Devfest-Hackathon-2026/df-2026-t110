@@ -1,6 +1,6 @@
 import * as Blockly from 'blockly'
+import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
-  PICO_BUILTINS,
   block as picoBlock,
   defaultExpr,
   id,
@@ -10,11 +10,27 @@ import {
   type PicoFunction,
   type PicoStatement,
   type PicoType,
-} from './picolang.ts'
+} from '../language/picolang.ts'
 import { argumentLabel } from './picoGuidance.ts'
 
 type State = Blockly.serialization.blocks.State
 type Block = Blockly.Block
+
+class EditorTextField extends Blockly.FieldTextInput {
+  protected override widgetCreate_(): HTMLInputElement | HTMLTextAreaElement {
+    const input = super.widgetCreate_()
+    input.setAttribute('data-1p-ignore', '')
+    return input
+  }
+}
+
+class EditorNumberField extends Blockly.FieldNumber {
+  protected override widgetCreate_(): HTMLInputElement {
+    const input = super.widgetCreate_()
+    input.setAttribute('data-1p-ignore', '')
+    return input
+  }
+}
 
 const colours: Record<string, string> = {
   動き: '#347ac4',
@@ -26,7 +42,7 @@ const colours: Record<string, string> = {
   計算: '#549641',
   変換: '#a97737',
   乱数: '#6476ad',
-  配列: '#8a67ab',
+  スタック: '#8a67ab',
   表示: '#60866a',
   関数: '#875c98',
 }
@@ -36,27 +52,27 @@ const typeChoices: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
-  ['整数の配列', 'vector:integer'],
-  ['真理値の配列', 'vector:bool'],
-  ['マスの配列', 'vector:terrain'],
-  ['向きの配列', 'vector:rotation'],
+  ['整数のスタック', 'stack:integer'],
+  ['真理値のスタック', 'stack:bool'],
+  ['マスのスタック', 'stack:terrain'],
+  ['向きのスタック', 'stack:rotation'],
 ]
 const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
 
 export function typeKey(type: PicoType): string {
-  return typeof type === 'string' ? type : `vector:${typeKey(type.elementType)}`
+  return typeof type === 'string' ? type : `stack:${typeKey(type.elementType)}`
 }
 export function keyType(key: string): PicoType {
-  return key.startsWith('vector:')
-    ? { kind: 'vector', elementType: keyType(key.slice(7)) }
+  return key.startsWith('stack:')
+    ? { kind: 'stack', elementType: keyType(key.slice(6)) }
     : ['bool', 'integer', 'unit', 'terrain', 'rotation'].includes(key)
       ? (key as PicoType)
       : 'integer'
 }
 function typeCheck(type: PicoType): string[] {
   const key = typeKey(type)
-  return typeof type === 'string' ? [key] : [key, 'vector']
+  return typeof type === 'string' ? [key] : [key, 'stack']
 }
 function nodeData(hintId: string, extra: Record<string, string> = {}): string {
   return JSON.stringify({ hintId, ...extra })
@@ -108,7 +124,7 @@ function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
 ): { args: PicoType[]; returns: PicoType; category: string; label: string } {
-  const builtin = PICO_BUILTINS.find((item) => item.name === name)
+  const builtin = PICO_BUILTIN_OPTIONS.find((item) => item.name === name)
   if (builtin)
     return { args: builtin.args, returns: builtin.returns, category: builtin.category, label: builtin.label }
   const fn = functions[name]
@@ -122,7 +138,7 @@ function defineStaticBlocks(): void {
   staticRegistered = true
   Blockly.Blocks.pico_number = {
     init() {
-      this.appendDummyInput().appendField(new Blockly.FieldNumber(0, undefined, undefined, 1), 'VALUE')
+      this.appendDummyInput().appendField(new EditorNumberField(0, undefined, undefined, 1), 'VALUE')
       this.setOutput(true, 'integer')
       this.setColour(colours.計算)
     },
@@ -162,7 +178,7 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_ident = {
     init() {
-      this.appendDummyInput().appendField('変数').appendField(new Blockly.FieldTextInput('x'), 'NAME')
+      this.appendDummyInput().appendField('変数').appendField(new EditorTextField('x'), 'NAME')
       this.setOutput(true)
       this.setColour(colours.変数)
     },
@@ -172,7 +188,7 @@ function defineStaticBlocks(): void {
       this.appendDummyInput()
         .appendField(new Blockly.FieldDropdown(typeChoices), 'TYPE')
         .appendField('の変数')
-        .appendField(new Blockly.FieldTextInput('x'), 'NAME')
+        .appendField(new EditorTextField('x'), 'NAME')
         .appendField('を作る')
       this.appendValueInput('VALUE').setCheck('integer').appendField('最初の値')
       this.appendValueInput('TOKEN').appendField('この変数を使う')
@@ -184,7 +200,7 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_assign = {
     init() {
-      this.appendDummyInput().appendField('変数').appendField(new Blockly.FieldTextInput('x'), 'NAME')
+      this.appendDummyInput().appendField('変数').appendField(new EditorTextField('x'), 'NAME')
       this.appendValueInput('VALUE').appendField('をこの値に変える')
       this.setPreviousStatement(true)
       this.setNextStatement(true)
@@ -223,7 +239,7 @@ function defineStaticBlocks(): void {
     init() {
       this.appendDummyInput()
         .appendField('数')
-        .appendField(new Blockly.FieldTextInput('i'), 'NAME')
+        .appendField(new EditorTextField('i'), 'NAME')
         .appendField('を1ずつ増やす')
       this.appendValueInput('START').setCheck('integer').appendField('はじめ')
       this.appendValueInput('END').setCheck('integer').appendField('ここまで（含まない）')
@@ -268,7 +284,7 @@ function defineStaticBlocks(): void {
 
 export function registerPicoBlocks(functions: Record<string, PicoFunction>): void {
   defineStaticBlocks()
-  for (const option of PICO_BUILTINS) defineCall(option.name, functions)
+  for (const option of PICO_BUILTIN_OPTIONS) defineCall(option.name, functions)
   for (const name of Object.keys(functions)) if (name !== 'main') defineCall(name, functions)
 }
 function defineCall(name: string, functions: Record<string, PicoFunction>): void {
@@ -608,7 +624,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
     '計算',
     '変換',
     '乱数',
-    '配列',
+    'スタック',
     '表示',
     '関数',
   ]) {
@@ -638,7 +654,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
           )
       }
     } else {
-      for (const builtin of PICO_BUILTINS.filter((item) => item.category === category))
+      for (const builtin of PICO_BUILTIN_OPTIONS.filter((item) => item.category === category))
         contents.push(
           toolboxBlock(
             callType(builtin.name, ['動き', '操作', '表示'].includes(category)),

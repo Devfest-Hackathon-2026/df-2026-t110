@@ -48,13 +48,13 @@ func (m *Machine) Source() bot.Source { return m.source }
 
 // New retains args; the caller keeps its original references. fn must come from
 // successful type checking. Argument and resumed result values must match their
-// checked types, including vector element types. Only outer kinds are checked
-// here so retaining shared vectors remains O(1).
+// checked types, including stack element types. Only outer kinds are checked
+// here so retaining shared stacks remains O(1).
 // Call requests charge time at their call site; entry into this machine does not
 // charge the function call again. Parameters charge variable-definition time.
 func New(fn bot.Function[bot.VariableIndex, bot.Type], args []memory.ID, resources Resources) (*Machine, error) {
-	if resources.Memory == nil || resources.Time == nil || resources.Events == nil {
-		return nil, errors.New("memory, time counter, and event collector are required")
+	if resources.Memory == nil || resources.Time == nil {
+		return nil, errors.New("memory and time counter are required")
 	}
 	if len(args) != len(fn.Params) {
 		return nil, fmt.Errorf("function requires %d arguments, got %d", len(fn.Params), len(args))
@@ -169,7 +169,9 @@ func (m *Machine) push(t task) { m.tasks = append(m.tasks, t) }
 
 func (m *Machine) current(source bot.Source) {
 	m.source = source
-	m.resources.Events.Add(robotevent.CurrentNodeEvent{HintID: source.HintID})
+	if m.resources.Events != nil {
+		m.resources.Events.Add(robotevent.CurrentNodeEvent{HintID: source.HintID})
+	}
 }
 
 func must(err error) {

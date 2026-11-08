@@ -1,4 +1,4 @@
-import type { PicoProgram } from '../picolang/picolang.ts'
+import type { PicoProgram } from '../picolang/language/picolang.ts'
 
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 const authAppOrigin = (

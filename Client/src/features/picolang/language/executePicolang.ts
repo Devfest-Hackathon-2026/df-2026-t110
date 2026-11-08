@@ -22,8 +22,8 @@ const bool = (value: PicoValue): boolean => {
   if (typeof value !== 'boolean') throw new Error('真理値が必要です')
   return value
 }
-const vector = (value: PicoValue): PicoValue[] => {
-  if (!Array.isArray(value)) throw new Error('vector が必要です')
+const stack = (value: PicoValue): PicoValue[] => {
+  if (!Array.isArray(value)) throw new Error('stack が必要です')
   return value
 }
 const clone = (value: PicoValue): PicoValue =>
@@ -93,18 +93,18 @@ export async function executePicolang(
       return start + Math.floor(Math.random() * (end - start + 1))
     }
     if (name === 'new') return []
-    if (name === 'push_back') return [...vector(args[0]).map(clone), clone(args[1])]
+    if (name === 'push_back') return [...stack(args[0]).map(clone), clone(args[1])]
     if (name === 'pop_back') {
-      const items = vector(args[0])
-      if (!items.length) throw new Error('空のvectorから取り出せません')
+      const items = stack(args[0])
+      if (!items.length) throw new Error('空のstackから取り出せません')
       return items.slice(0, -1).map(clone)
     }
     if (name === 'get_back') {
-      const items = vector(args[0])
-      if (!items.length) throw new Error('空のvectorから取り出せません')
+      const items = stack(args[0])
+      if (!items.length) throw new Error('空のstackから取り出せません')
       return clone(items.at(-1)!)
     }
-    if (name === 'size') return vector(args[0]).length
+    if (name === 'size') return stack(args[0]).length
     return host.call(name, args, signal)
   }
 

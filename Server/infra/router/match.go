@@ -1,14 +1,17 @@
 package router
 
 import (
-	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/labstack/echo/v5"
 )
 
-func (r *Router) CreateMatch(ctx *echo.Context, fieldID api.FieldId) error {
+func (r *Router) CreateMatch(ctx *echo.Context) error {
 	return errNotImplemented()
 }
 
-func (r *Router) MatchEvents(ctx *echo.Context, matchID api.MatchId) error {
+func (r *Router) GetBattlePrograms(ctx *echo.Context) error {
+	return errNotImplemented()
+}
+
+func (r *Router) SetBattlePrograms(ctx *echo.Context) error {
 	return errNotImplemented()
 }

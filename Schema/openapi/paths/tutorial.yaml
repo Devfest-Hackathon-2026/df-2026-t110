@@ -1,0 +1,100 @@
+/tutorial:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアル一覧を取得
+    operationId: listTutorials
+    responses:
+      "200":
+        description: チュートリアル一覧
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "../../openapi.yaml#/components/schemas/Tutorial"
+
+/tutorial/{tutorialId}:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアルのタイトル、説明、ステージを取得
+    operationId: getTutorial
+    parameters:
+      - name: tutorialId
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: チュートリアルのタイトル、説明、ステージ
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/TutorialDetail"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+
+/tutorial/{tutorialId}/program:
+  get:
+    tags:
+      - tutorial
+    summary: チュートリアルでユーザーが作ったプログラム一覧を取得
+    operationId: listTutorialPrograms
+    security:
+      - sessionCookie: []
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/TutorialId"
+    responses:
+      "200":
+        description: プログラム一覧
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "401":
+        description: 認証されていない
+
+/tutorial/{tutorialId}/run:
+  post:
+    tags:
+      - tutorial
+    summary: チュートリアルでプログラムを実行
+    description: |
+      チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+      結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
+    operationId: runTutorial
+    security:
+      - sessionCookie: []
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/TutorialId"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [programId]
+            properties:
+              programId:
+                type: string
+                description: このチュートリアル用に保存したプログラムのID
+    responses:
+      "201":
+        description: 実行を開始した
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/RunCreated"
+      "400":
+        $ref: "../../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        description: 認証されていない
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
