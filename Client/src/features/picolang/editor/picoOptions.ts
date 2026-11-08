@@ -44,8 +44,6 @@ const builtinLabels = {
   lt: { label: '左の数が小さいか返す', category: '計算' },
   geq: { label: '左の数が右以上か返す', category: '計算' },
   leq: { label: '左の数が右以下か返す', category: '計算' },
-  bool_to_integer: { label: 'はい・いいえを数にして返す', category: '変換' },
-  integer_to_bool: { label: '数をはい・いいえにして返す', category: '変換' },
   random_bool: { label: 'ランダムなはい・いいえを返す', category: '乱数' },
   random_integer: { label: 'ランダムな数を返す', category: '乱数' },
   new: { label: '空のスタックを作って返す', category: 'スタック' },

@@ -90,8 +90,6 @@ export const PICO_BUILTINS = [
   builtin('lt', ['integer', 'integer'], 'bool'),
   builtin('geq', ['integer', 'integer'], 'bool'),
   builtin('leq', ['integer', 'integer'], 'bool'),
-  builtin('bool_to_integer', ['bool'], 'integer'),
-  builtin('integer_to_bool', ['integer'], 'bool'),
   builtin('random_bool', [], 'bool'),
   builtin('random_integer', ['integer', 'integer'], 'integer'),
   builtin('new', [], stackInteger),

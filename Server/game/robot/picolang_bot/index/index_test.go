@@ -81,6 +81,8 @@ func TestIndexNameErrors(t *testing.T) {
 		{"undefined function", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "absent")), bot.CodeUndefinedFunction, "call"},
 		{"removed get", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "get")), bot.CodeUndefinedFunction, "call"},
 		{"removed set", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "set")), bot.CodeUndefinedFunction, "call"},
+		{"removed bool cast", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "bool_to_integer", testutil.Literal[bot.Name]("arg", bot.BoolLiteral{Value: true}))), bot.CodeUndefinedFunction, "call"},
+		{"removed integer cast", testutil.MainProgram[bot.Name](testutil.Call[bot.Name]("call", "integer_to_bool", one)), bot.CodeUndefinedFunction, "call"},
 		{"nil statement", testutil.MainProgram[bot.Name](nil), bot.CodeInvalidAST, "body"},
 		{"nil pointer statement", testutil.MainProgram[bot.Name]((*bot.Return[bot.Name, bot.Untyped])(nil)), bot.CodeInvalidAST, "body"},
 		{"nil expression", testutil.MainProgram[bot.Name](bot.Return[bot.Name, bot.Untyped]{Source: testutil.Source("return")}), bot.CodeInvalidAST, "return"},
@@ -154,9 +156,9 @@ func TestIndexParametersAndGlobalNames(t *testing.T) {
 	testutil.RequireDiagnostic(t, ds, bot.CodeDuplicateVariable, "helper", "shadow-param")
 }
 
-func TestRemovedStackBuiltinNamesAreAvailable(t *testing.T) {
+func TestRemovedBuiltinNamesAreAvailable(t *testing.T) {
 	t.Parallel()
-	for _, name := range []bot.Name{"get", "set"} {
+	for _, name := range []bot.Name{"get", "set", "bool_to_integer", "integer_to_bool"} {
 		t.Run(string(name)+"/function", func(t *testing.T) {
 			t.Parallel()
 			program := testutil.MainProgram[bot.Name](

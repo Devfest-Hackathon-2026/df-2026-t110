@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { executePicolang } from '../src/features/picolang/language/executePicolang.ts'
-import { makeStatement, newProgram, programFunctions } from '../src/features/picolang/language/picolang.ts'
+import {
+  defaultExpr,
+  id,
+  makeStatement,
+  newProgram,
+  programFunctions,
+} from '../src/features/picolang/language/picolang.ts'
 import { normalizeStage } from '../src/features/stage/stage.ts'
 import { createTutorialWorld } from '../src/features/tutorial/tutorialWorld.ts'
 
@@ -49,6 +55,34 @@ test('実行を中断すると後続の命令を呼ばない', async () => {
     { name: 'AbortError' },
   )
   assert.deepEqual(calls, ['forward'])
+})
+
+test('削除したboolとintegerの変換関数を組み込み関数として実行できない', async () => {
+  for (const [name, type] of [
+    ['bool_to_integer', 'bool'],
+    ['integer_to_bool', 'integer'],
+  ] as const) {
+    const source = newProgram()
+    programFunctions(source).main.body.stmts.unshift({
+      kind: 'call',
+      hintId: id(),
+      func: name,
+      args: [defaultExpr(type)],
+    })
+    const world = createTutorialWorld(normalizeStage({ map: ['SG'] }))
+    await assert.rejects(
+      executePicolang(
+        source,
+        {
+          async call(func, args) {
+            return world.call(func, args).value
+          },
+        },
+        new AbortController().signal,
+      ),
+      { message: `未対応の関数: ${name}` },
+    )
+  }
 })
 
 test('岩で停止し、ビーム後に前進してゴールへ到達できる', () => {
