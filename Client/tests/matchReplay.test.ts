@@ -8,10 +8,12 @@ import {
 } from '../src/features/match/matchReplay.ts'
 import {
   getMe,
-  parseIapIdentity,
+  loginUrl,
+  logout,
   parseMatch,
   parseMatchResult,
   parseMatchUser,
+  setMyUsername,
 } from '../src/features/match/matchApi.ts'
 
 test('追加したprimitiveのprintを観測時の値でリプレイする', () => {
@@ -202,46 +204,29 @@ test('account response accepts an authenticated user without a registered name',
   assert.throws(() => parseMatchUser({ name: 12 }))
 })
 
-test('IAP identity maps the Google account email and subject to the account display', () => {
-  assert.deepEqual(
-    parseIapIdentity({
-      email: 'accounts.google.com:ada@example.com',
-      sub: 'accounts.google.com:google-subject',
-    }),
-    { id: 'google-subject', name: 'ada@example.com' },
-  )
-  assert.throws(() => parseIapIdentity({ email: 'ada@example.com', sub: 'google-subject' }))
-})
-
-test('deployed account falls back to IAP identity while /api/me is unavailable', async () => {
+test('account uses session API for user, username and logout', async () => {
   const originalFetch = globalThis.fetch
-  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window')
-  const calls: string[] = []
-  Object.defineProperty(globalThis, 'window', {
-    configurable: true,
-    value: { location: { origin: 'https://server-639320660675.asia-northeast1.run.app' } },
-  })
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    calls.push(String(input))
-    if (calls.length === 1) return new Response('{}', { status: 501 })
-    return new Response(
-      JSON.stringify({
-        email: 'accounts.google.com:ada@example.com',
-        sub: 'accounts.google.com:google-subject',
-      }),
-      { headers: { 'content-type': 'application/json' } },
-    )
+  const calls: Array<{ url: string; method: string; body: string | undefined }> = []
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), method: init?.method ?? 'GET', body: init?.body?.toString() })
+    return calls.length === 1
+      ? new Response(JSON.stringify({ id: 'google-subject', name: 'Ada' }), {
+          headers: { 'content-type': 'application/json' },
+        })
+      : new Response(null, { status: 204 })
   }) as typeof fetch
   try {
-    assert.deepEqual(await getMe(), { id: 'google-subject', name: 'ada@example.com' })
+    assert.equal(loginUrl, '/api/login')
+    assert.deepEqual(await getMe(), { id: 'google-subject', name: 'Ada' })
+    await setMyUsername('Ada')
+    await logout()
     assert.deepEqual(calls, [
-      '/api/me',
-      'https://server-639320660675.asia-northeast1.run.app/account?gcp-iap-mode=IDENTITY',
+      { url: '/api/me', method: 'GET', body: undefined },
+      { url: '/api/me/username', method: 'POST', body: '{"username":"Ada"}' },
+      { url: '/api/logout', method: 'POST', body: undefined },
     ])
   } finally {
     globalThis.fetch = originalFetch
-    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow)
-    else Reflect.deleteProperty(globalThis, 'window')
   }
 })
 
