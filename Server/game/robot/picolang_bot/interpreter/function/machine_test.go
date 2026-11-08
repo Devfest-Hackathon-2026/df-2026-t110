@@ -1,7 +1,6 @@
 package function_test
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
 	"reflect"
@@ -620,7 +619,7 @@ func TestDistanceTargetArgumentsAndCallResults(t *testing.T) {
 	assertUsage(t, env, base)
 }
 
-func TestPrimitiveAssignmentsProduceRecordableEvents(t *testing.T) {
+func TestPrimitiveAssignmentsProduceTypedEvents(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name          string
@@ -659,8 +658,8 @@ func TestPrimitiveAssignmentsProduceRecordableEvents(t *testing.T) {
 				if _, current := e.(robotevent.CurrentNodeEvent); current {
 					continue
 				}
-				if _, err := json.Marshal(e); err != nil {
-					t.Errorf("event cannot be recorded: %T: %v", e, err)
+				if !robotevent.ValidPicolangEvent(e) {
+					t.Errorf("invalid event type: %T", e)
 				}
 				if update, ok := e.(robotevent.VariableUpdateEvent); ok {
 					updates++

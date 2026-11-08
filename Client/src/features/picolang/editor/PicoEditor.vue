@@ -21,7 +21,8 @@ import xIcon from '@iconify-icons/lucide/x'
 import undoIcon from '@iconify-icons/lucide/undo-2'
 import redoIcon from '@iconify-icons/lucide/redo-2'
 import PicoBlock from './PicoBlock.vue'
-import PicoTypeInput from './PicoTypeInput.vue'
+import { inferPicolang } from '../language/analyzePicolang.ts'
+import { typeLabel } from './picoGuidance.ts'
 import { beginPicoDrag, dragVariable, endPicoDrag } from './picoDrag.ts'
 import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
@@ -29,17 +30,17 @@ import {
   defaultExpr,
   id,
   ident,
-  isPicoProgram,
+  isPicoDraft,
+  picoDraft,
   makeStatement,
   newProgram,
   programFunctions,
   type PicoProgram,
-  type PicoType,
 } from '../language/picolang.ts'
 
 const props = defineProps<{ tutorialId: string }>()
-const emit = defineEmits<{ 'update:program': [program: PicoProgram] }>()
-const program = ref<PicoProgram>(newProgram())
+const emit = defineEmits<{ 'update:program': [program: PicoProgram | null] }>()
+const program = ref<PicoProgram>(picoDraft(newProgram()))
 const activeFunctionName = ref('main')
 const category = ref('動き')
 const newFunctionName = ref('')
@@ -53,6 +54,10 @@ const historyIndex = ref(0)
 const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 const functions = computed(() => programFunctions(program.value))
+const analysis = computed(() => inferPicolang(program.value))
+const executionJson = computed(() =>
+  analysis.value.program ? JSON.stringify(analysis.value.program, null, 2) : null,
+)
 const currentFunction = computed(() => functions.value[activeFunctionName.value] ?? functions.value.main)
 const categories = [
   '動き',
@@ -127,9 +132,9 @@ watch(
     try {
       const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
       const parsed: unknown = saved ? JSON.parse(saved) : null
-      program.value = isPicoProgram(parsed) ? parsed : newProgram()
+      program.value = isPicoDraft(parsed) ? picoDraft(parsed) : picoDraft(newProgram())
     } catch {
-      program.value = newProgram()
+      program.value = picoDraft(newProgram())
     }
     activeFunctionName.value = 'main'
     history.value = [JSON.stringify(program.value)]
@@ -148,7 +153,7 @@ watch(
       if (history.value.length > 101) history.value.shift()
       historyIndex.value = history.value.length - 1
     }
-    emit('update:program', value)
+    emit('update:program', analysis.value.program)
     try {
       localStorage.setItem(`picolang:draft:${props.tutorialId}`, snapshot)
     } catch {
@@ -195,16 +200,22 @@ function addChoice(name: string): void {
   const statement = makeStatement(name, functions.value)
   if (statement.kind === 'assign') {
     const variable = [
-      ...currentFunction.value.params.map((param) => ({ name: param.ident.name, type: param.type })),
+      ...currentFunction.value.params.map((param, index) => ({
+        name: param.ident.name,
+        type: analysis.value.signatures[activeFunctionName.value]?.params[index],
+      })),
       ...stmts
         .slice(0, index)
-        .flatMap((stmt) => (stmt.kind === 'declare' ? [{ name: stmt.ident.name, type: stmt.type }] : [])),
+        .flatMap((stmt) =>
+          stmt.kind === 'declare'
+            ? [{ name: stmt.ident.name, type: analysis.value.types[stmt.ident.hintId] }]
+            : [],
+        ),
     ][0]
     if (!variable) return
     statement.ident.name = variable.name
     statement.value = defaultExpr(variable.type)
   }
-  if (statement.kind === 'return') statement.value = defaultExpr(currentFunction.value.returnType)
   if (statement.kind === 'declare' || statement.kind === 'for') {
     const base = statement.kind === 'for' ? 'i' : 'x'
     const used = new Set([
@@ -233,7 +244,6 @@ function addFunction(): void {
     kind: 'function',
     hintId: id(),
     params: [],
-    returnType: 'unit',
     body: block([makeStatement('return', functions.value)]),
   }
   activeFunctionName.value = name
@@ -258,17 +268,15 @@ function addParam(): void {
     kind: 'param',
     hintId: id(),
     ident: ident(`arg${currentFunction.value.params.length + 1}`),
-    type: 'integer',
   })
-}
-function setReturnType(type: PicoType): void {
-  currentFunction.value.returnType = type
-  const last = currentFunction.value.body.stmts.at(-1)
-  if (last?.kind === 'return') last.value = defaultExpr(type)
 }
 async function copyJson(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(JSON.stringify(program.value, null, 2))
+    if (!executionJson.value) {
+      message.value = 'エラーを解消するとJSONを出力できます。'
+      return
+    }
+    await navigator.clipboard.writeText(executionJson.value)
     message.value = 'JSONをコピーしました。'
   } catch {
     message.value = 'コピーできませんでした。JSON欄から選択してください。'
@@ -277,8 +285,8 @@ async function copyJson(): Promise<void> {
 function importJson(): void {
   try {
     const parsed: unknown = JSON.parse(jsonInput.value)
-    if (!isPicoProgram(parsed)) throw new Error('Picolang v0 の main 関数が必要です。')
-    program.value = parsed
+    if (!isPicoDraft(parsed)) throw new Error('Picolang v0 の main 関数が必要です。')
+    program.value = picoDraft(parsed)
     activeFunctionName.value = 'main'
     message.value = 'JSONを読み込みました。'
   } catch (error) {
@@ -382,12 +390,7 @@ function importJson(): void {
         <div class="pico-function-header">
           <strong>関数 {{ activeFunctionName }}</strong>
           <span>→</span>
-          <PicoTypeInput
-            v-if="activeFunctionName !== 'main'"
-            :model-value="currentFunction.returnType"
-            @update:model-value="setReturnType"
-          />
-          <span v-else>unit</span>
+          <span>{{ typeLabel(analysis.signatures[activeFunctionName]?.returns) }}</span>
           <button v-if="activeFunctionName !== 'main'" type="button" @click="removeFunction">
             <Icon :icon="trashIcon" aria-hidden="true" />関数を削除
           </button>
@@ -396,7 +399,7 @@ function importJson(): void {
           <span>受け取る値</span>
           <div v-for="(param, index) in currentFunction.params" :key="param.hintId">
             <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" data-1p-ignore />
-            <PicoTypeInput v-model="param.type" />
+            <span>{{ typeLabel(analysis.signatures[activeFunctionName]?.params[index]) }}</span>
             <button
               type="button"
               class="pico-variable-token"
@@ -420,10 +423,16 @@ function importJson(): void {
           </button>
         </div>
         <PicoBlock
+          :inferred-types="analysis.types"
           :block="currentFunction.body"
           :functions="functions"
-          :variables="currentFunction.params.map((param) => ({ name: param.ident.name, type: param.type }))"
-          :return-type="currentFunction.returnType"
+          :variables="
+            currentFunction.params.map((param, index) => ({
+              name: param.ident.name,
+              type: analysis.signatures[activeFunctionName]?.params[index],
+            }))
+          "
+          :return-type="analysis.signatures[activeFunctionName]?.returns"
           terminal-return
         />
       </div>
@@ -433,10 +442,10 @@ function importJson(): void {
         @toggle="showJson = ($event.target as HTMLDetailsElement).open"
       >
         <summary><Icon :icon="fileJsonIcon" aria-hidden="true" />Schema形式のJSON</summary>
-        <button type="button" @click="copyJson">
+        <button type="button" :disabled="!executionJson" @click="copyJson">
           <Icon :icon="copyIcon" aria-hidden="true" />JSONをコピー
         </button>
-        <pre>{{ JSON.stringify(program, null, 2) }}</pre>
+        <pre>{{ executionJson ?? 'エラーを解消すると推論した型付きのJSONを表示します。' }}</pre>
         <label for="pico-json-input">JSONを読み込む</label>
         <textarea
           id="pico-json-input"

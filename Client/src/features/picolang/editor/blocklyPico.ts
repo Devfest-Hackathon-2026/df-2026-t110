@@ -7,12 +7,14 @@ import {
   ident,
   PICO_DISTANCE_TARGETS,
   type PicoBlock,
+  type PicoCall,
   type PicoExpr,
   type PicoFunction,
   type PicoStatement,
   type PicoType,
 } from '../language/picolang.ts'
-import { argumentLabel } from './picoGuidance.ts'
+import { argumentLabel, typeLabel } from './picoGuidance.ts'
+import type { PicoDiagnostic } from '../language/analyzePicolang.ts'
 
 type State = Blockly.serialization.blocks.State
 type Block = Blockly.Block
@@ -47,19 +49,6 @@ const colours: Record<string, string> = {
   関数: '#875c98',
   値: '#65758b',
 }
-const typeChoices: [string, string][] = [
-  ['整数', 'integer'],
-  ['真理値', 'bool'],
-  ['値なし', 'unit'],
-  ['マスの種類', 'terrain'],
-  ['向き', 'rotation'],
-  ['探索対象', 'distance_target'],
-  ['整数のスタック', 'stack:integer'],
-  ['真理値のスタック', 'stack:bool'],
-  ['マスのスタック', 'stack:terrain'],
-  ['向きのスタック', 'stack:rotation'],
-  ['探索対象のスタック', 'stack:distance_target'],
-]
 const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
 
@@ -73,7 +62,8 @@ export function keyType(key: string): PicoType {
       ? (key as PicoType)
       : 'integer'
 }
-function typeCheck(type: PicoType): string[] {
+function typeCheck(type: PicoType | undefined): string[] | null {
+  if (type === undefined) return null
   const key = typeKey(type)
   return typeof type === 'string' ? [key] : [key, 'stack']
 }
@@ -107,7 +97,7 @@ function field(block: Block, name: string, fallback = ''): string {
 function value(
   block: Block,
   input: string,
-  fallback: PicoType,
+  fallback: PicoType | undefined,
   functions: Record<string, PicoFunction>,
 ): PicoExpr {
   const child = block.getInputTargetBlock(input)
@@ -126,7 +116,7 @@ function callName(block: Block): string {
 function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
-): { args: PicoType[]; returns: PicoType; category: string; label: string } {
+): { args: Array<PicoType | undefined>; returns: PicoType | undefined; category: string; label: string } {
   const builtin = PICO_BUILTIN_OPTIONS.find((item) => item.name === name)
   if (builtin)
     return { args: builtin.args, returns: builtin.returns, category: builtin.category, label: builtin.label }
@@ -207,19 +197,11 @@ function defineStaticBlocks(): void {
   Blockly.Blocks.pico_declare = {
     init() {
       this.appendDummyInput()
-        .appendField(
-          new Blockly.FieldDropdown(typeChoices, function (this: Blockly.FieldDropdown, key) {
-            this.getSourceBlock()
-              ?.getInput('VALUE')
-              ?.connection?.setCheck(typeCheck(keyType(key)))
-            return key
-          }),
-          'TYPE',
-        )
-        .appendField('の変数')
+        .appendField('変数')
         .appendField(new EditorTextField('x'), 'NAME')
         .appendField('を作る')
-      this.appendValueInput('VALUE').setCheck('integer').appendField('最初の値')
+        .appendField('未確定', 'INFERRED_TYPE')
+      this.appendValueInput('VALUE').appendField('最初の値')
       this.appendValueInput('TOKEN').appendField('この変数を使う')
       this.setPreviousStatement(true)
       this.setNextStatement(true)
@@ -318,19 +300,32 @@ export function registerPicoBlocks(functions: Record<string, PicoFunction>): voi
 }
 function defineCall(name: string, functions: Record<string, PicoFunction>): void {
   const signature = callSignature(name, functions)
+  const userFunction = Object.hasOwn(functions, name)
+  const genericStack = ['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)
+  const missing = !PICO_BUILTIN_OPTIONS.some((item) => item.name === name) && !Object.hasOwn(functions, name)
   for (const statement of [false, true]) {
     Blockly.Blocks[callType(name, statement)] = {
       init() {
         this.appendDummyInput().appendField(signature.label)
         signature.args.forEach((type, index) =>
           this.appendValueInput(`ARG${index}`)
-            .setCheck(typeCheck(type))
+            .setCheck(userFunction ? null : genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
             .appendField(argumentLabel(name, index, functions)),
         )
         if (statement) {
           this.setPreviousStatement(true)
           this.setNextStatement(true)
-        } else this.setOutput(true, typeCheck(signature.returns))
+        } else
+          this.setOutput(
+            true,
+            genericStack && name !== 'size'
+              ? name === 'get_back'
+                ? null
+                : 'stack'
+              : missing || userFunction
+                ? null
+                : typeCheck(signature.returns),
+          )
         this.setColour(colours[signature.category] ?? colours.関数)
         this.setTooltip(
           statement && !['動き', '操作', '表示'].includes(signature.category)
@@ -338,7 +333,41 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
             : '',
         )
       },
+      // Keep unresolved calls editable so imported programs can display their
+      // diagnostics, including references inside the unknown call's arguments.
+      loadExtraState(state: { argumentCount: number }) {
+        if (!missing) return
+        for (let index = 0; index < state.argumentCount; index++)
+          this.appendValueInput(`ARG${index}`).appendField(`引数 ${index + 1}`)
+      },
+      saveExtraState() {
+        return missing
+          ? {
+              argumentCount: this.inputList.filter((input: Blockly.Input) => /^ARG\d+$/.test(input.name))
+                .length,
+            }
+          : null
+      },
     }
+  }
+}
+
+function callState(expr: PicoCall, statement: boolean, functions: Record<string, PicoFunction>): State {
+  const missing =
+    !PICO_BUILTIN_OPTIONS.some((item) => item.name === expr.func) && !Object.hasOwn(functions, expr.func)
+  defineCall(expr.func, functions)
+  return {
+    type: callType(expr.func, statement),
+    data: nodeData(expr.hintId),
+    ...(missing ? { extraState: { argumentCount: expr.args.length } } : {}),
+    inputs: Object.fromEntries(
+      expr.args.map((arg, i) => [
+        `ARG${i}`,
+        {
+          block: exprState(arg, functions),
+        },
+      ]),
+    ),
   }
 }
 
@@ -359,34 +388,10 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
       fields: expr.type === 'unit' ? {} : { VALUE: expr.type === 'bool' ? String(expr.value) : expr.value },
     }
   }
-  return {
-    type: callType(expr.func, false),
-    data: nodeData(expr.hintId),
-    inputs: Object.fromEntries(
-      expr.args.map((arg, i) => [
-        `ARG${i}`,
-        {
-          block: exprState(arg, functions),
-        },
-      ]),
-    ),
-  }
+  return callState(expr, false, functions)
 }
 function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>): State {
-  if (stmt.kind === 'call') {
-    return {
-      type: callType(stmt.func, true),
-      data: nodeData(stmt.hintId),
-      inputs: Object.fromEntries(
-        stmt.args.map((arg, i) => [
-          `ARG${i}`,
-          {
-            block: exprState(arg, functions),
-          },
-        ]),
-      ),
-    }
-  }
+  if (stmt.kind === 'call') return callState(stmt, true, functions)
   if (stmt.kind === 'literal' || stmt.kind === 'ident')
     return {
       type: 'pico_expr_statement',
@@ -397,7 +402,7 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
     return {
       type: 'pico_declare',
       data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
-      fields: { TYPE: typeKey(stmt.type), NAME: stmt.ident.name },
+      fields: { NAME: stmt.ident.name },
       inputs: {
         VALUE: {
           block: exprState(stmt.value, functions),
@@ -512,25 +517,21 @@ function readExpr(block: Block, functions: Record<string, PicoFunction>): PicoEx
     kind: 'call',
     hintId: metaId(block),
     func: name,
-    args: signature.args.map((type, index) => value(block, `ARG${index}`, type, functions)),
+    args: block.inputList
+      .filter((input) => /^ARG\d+$/.test(input.name))
+      .map((input, index) => value(block, input.name, signature.args[index] ?? 'integer', functions)),
   }
 }
-function readStack(
-  first: Block | null,
-  functions: Record<string, PicoFunction>,
-  returnType: PicoType,
-): PicoStatement[] {
+function readStack(first: Block | null, functions: Record<string, PicoFunction>): PicoStatement[] {
   const statements: PicoStatement[] = []
   for (let current = first; current; current = current.getNextBlock()) {
     const hintId = metaId(current)
     if (current.type === 'pico_declare') {
-      const type = keyType(field(current, 'TYPE', 'integer'))
       statements.push({
         kind: 'declare',
         hintId,
-        type,
         ident: { kind: 'ident', hintId: metaId(current, 'identId'), name: field(current, 'NAME', 'x') },
-        value: value(current, 'VALUE', type, functions),
+        value: value(current, 'VALUE', 'integer', functions),
       })
     } else if (current.type === 'pico_assign') {
       statements.push({
@@ -540,11 +541,11 @@ function readStack(
         value: value(current, 'VALUE', 'integer', functions),
       })
     } else if (current.type === 'pico_if' || current.type === 'pico_if_else') {
-      const then = picoBlock(readStack(current.getInputTargetBlock('THEN'), functions, returnType))
+      const then = picoBlock(readStack(current.getInputTargetBlock('THEN'), functions))
       then.hintId = metaId(current, 'thenId')
       let otherwise: PicoBlock | undefined
       if (current.type === 'pico_if_else') {
-        otherwise = picoBlock(readStack(current.getInputTargetBlock('ELSE'), functions, returnType))
+        otherwise = picoBlock(readStack(current.getInputTargetBlock('ELSE'), functions))
         otherwise.hintId = metaId(current, 'elseId')
       }
       statements.push({
@@ -555,7 +556,7 @@ function readStack(
         ...(otherwise ? { else: otherwise } : {}),
       })
     } else if (current.type === 'pico_while' || current.type === 'pico_for') {
-      const body = picoBlock(readStack(current.getInputTargetBlock('BODY'), functions, returnType))
+      const body = picoBlock(readStack(current.getInputTargetBlock('BODY'), functions))
       body.hintId = metaId(current, 'bodyId')
       if (current.type === 'pico_while')
         statements.push({
@@ -574,7 +575,7 @@ function readStack(
           body,
         })
     } else if (current.type === 'pico_return')
-      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', returnType, functions) })
+      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', 'unit', functions) })
     else if (current.type === 'pico_break' || current.type === 'pico_continue')
       statements.push({ kind: current.type === 'pico_break' ? 'break' : 'continue', hintId })
     else if (current.type === 'pico_expr_statement')
@@ -593,14 +594,14 @@ export function readFunction(
   functions: Record<string, PicoFunction>,
 ): PicoFunction {
   const tops = workspace.getTopBlocks(true).filter((item) => !!item.previousConnection && !item.isShadow())
-  const statements = tops.flatMap((top) => readStack(top, functions, original.returnType))
+  const statements = tops.flatMap((top) => readStack(top, functions))
   const returns = statements.filter((item) => item.kind === 'return')
   const originalReturn = original.body.stmts.find((item) => item.kind === 'return')
   const lastReturn = returns.at(-1) ??
     originalReturn ?? {
       kind: 'return' as const,
       hintId: id(),
-      value: defaultExpr(original.returnType),
+      value: defaultExpr('unit'),
     }
   const body = picoBlock([...statements.filter((item) => item !== lastReturn), lastReturn])
   body.hintId = original.body.hintId
@@ -609,7 +610,7 @@ export function readFunction(
 
 function toolboxBlock(
   type: string,
-  args: PicoType[] = [],
+  args: Array<PicoType | undefined> = [],
   functions: Record<string, PicoFunction> = {},
 ): Blockly.utils.toolbox.BlockInfo {
   const defaults: Record<string, PicoType> = {
@@ -676,14 +677,13 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
             functions,
           ),
         )
-        if (functions[name]!.returnType !== 'unit')
-          contents.push(
-            toolboxBlock(
-              callType(name, false),
-              functions[name]!.params.map((param) => param.type),
-              functions,
-            ),
-          )
+        contents.push(
+          toolboxBlock(
+            callType(name, false),
+            functions[name]!.params.map((param) => param.type),
+            functions,
+          ),
+        )
       }
     } else {
       for (const builtin of PICO_BUILTIN_OPTIONS.filter((item) => item.category === category))
@@ -705,14 +705,11 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
   return { kind: 'categoryToolbox', contents: categories }
 }
 
-export function refreshVariableBlocks(workspace: Blockly.Workspace, params: PicoFunction['params']): void {
-  const variables = new Map(params.map((param) => [param.ident.name, param.type]))
+export function refreshVariableBlocks(workspace: Blockly.Workspace): void {
   for (const block of workspace.getAllBlocks(false)) {
     if (block.type === 'pico_declare') {
       const name = field(block, 'NAME', 'x')
-      const type = keyType(field(block, 'TYPE', 'integer'))
-      variables.set(name, type)
-      block.getInput('VALUE')?.connection?.setCheck(typeCheck(type))
+      block.getInput('VALUE')?.connection?.setCheck(null)
       const input = block.getInput('TOKEN')?.connection
       const token = block.getInputTargetBlock('TOKEN')
       if (token?.isShadow() && field(token, 'NAME') !== name) token.setFieldValue(name, 'NAME')
@@ -728,15 +725,36 @@ export function refreshVariableBlocks(workspace: Blockly.Workspace, params: Pico
     }
   }
   for (const block of workspace.getAllBlocks(false)) {
-    if (block.type === 'pico_ident')
-      block.outputConnection?.setCheck(
-        variables.has(field(block, 'NAME')) ? typeCheck(variables.get(field(block, 'NAME'))!) : null,
-      )
-    if (block.type === 'pico_assign')
-      block
-        .getInput('VALUE')
-        ?.connection?.setCheck(
-          variables.has(field(block, 'NAME')) ? typeCheck(variables.get(field(block, 'NAME'))!) : null,
-        )
+    // Analysis checks scopes and types without disconnecting references because
+    // an unrelated declaration elsewhere in the workspace has the same name.
+    if (block.type === 'pico_ident') block.outputConnection?.setCheck(null)
+    if (block.type === 'pico_assign') block.getInput('VALUE')?.connection?.setCheck(null)
+  }
+}
+
+export function diagnosticBlock(workspace: Blockly.Workspace, hintId: string): Block | undefined {
+  return workspace.getAllBlocks(false).find((block) => Object.values(meta(block)).includes(hintId))
+}
+
+export function updatePicoDiagnostics(
+  workspace: Blockly.Workspace,
+  diagnostics: PicoDiagnostic[],
+  types: Record<string, PicoType | undefined> = {},
+): void {
+  const blocks = workspace.getAllBlocks(false)
+  const byHint = new Map<string, Block>()
+  for (const block of blocks) for (const hint of Object.values(meta(block))) byHint.set(hint, block)
+  const messages = new Map<Block, string[]>()
+  for (const diagnostic of diagnostics) {
+    const block = byHint.get(diagnostic.hintId)
+    if (!block) continue
+    const items = messages.get(block) ?? []
+    items.push(`${diagnostic.severity === 'error' ? 'エラー' : '警告'}：${diagnostic.message}`)
+    messages.set(block, items)
+  }
+  for (const block of blocks) {
+    block.setWarningText(messages.get(block)?.join('\n') ?? null, 'pico-analysis')
+    if (block.type === 'pico_declare')
+      block.setFieldValue(typeLabel(types[metaId(block, 'identId')]), 'INFERRED_TYPE')
   }
 }

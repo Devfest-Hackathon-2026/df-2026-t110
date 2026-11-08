@@ -7,7 +7,7 @@ import trashIcon from '@iconify-icons/lucide/trash-2'
 import plusIcon from '@iconify-icons/lucide/plus'
 import PicoCondition from './PicoCondition.vue'
 import PicoExpression from './PicoExpression.vue'
-import PicoTypeInput from './PicoTypeInput.vue'
+import { typeLabel } from './picoGuidance.ts'
 import { dragVariable, endPicoDrag } from './picoDrag.ts'
 import { PICO_BUILTIN_OPTIONS, type PicoVariableOption } from './picoOptions.ts'
 import {
@@ -25,6 +25,7 @@ const props = defineProps<{
   block: PicoBlock
   functions: Record<string, PicoFunction>
   variables?: PicoVariableOption[]
+  inferredTypes?: Record<string, PicoType | undefined>
   returnType?: PicoType
   loopDepth?: number
   terminalReturn?: boolean
@@ -78,7 +79,10 @@ function variablesBefore(index: number): PicoVariableOption[] {
   for (const variable of props.variables ?? []) if (variable.name.trim()) visible.set(variable.name, variable)
   for (const statement of statements.value.slice(0, index)) {
     if (statement.kind === 'declare' && statement.ident.name.trim())
-      visible.set(statement.ident.name, { name: statement.ident.name, type: statement.type })
+      visible.set(statement.ident.name, {
+        name: statement.ident.name,
+        type: props.inferredTypes?.[statement.ident.hintId],
+      })
   }
   return [...visible.values()]
 }
@@ -162,10 +166,6 @@ function dropInto(
     const statement = createStatement(value, index, visible, (props.loopDepth ?? 0) + (insideLoop ? 1 : 0))
     if (statement) target.stmts.push(statement)
   }
-}
-function changeDeclarationType(stmt: Extract<PicoStatement, { kind: 'declare' }>, type: PicoType): void {
-  stmt.type = type
-  stmt.value = defaultExpr(type)
 }
 function changeAssignmentTarget(
   stmt: Extract<PicoStatement, { kind: 'assign' }>,
@@ -263,6 +263,7 @@ function remove(index: number): void {
           >
             <span class="pico-scope-label">条件が真のとき</span>
             <PicoBlock
+              :inferred-types="inferredTypes"
               :block="stmt.then"
               :functions="functions"
               :variables="variablesBefore(index)"
@@ -284,6 +285,7 @@ function remove(index: number): void {
             >
               <span class="pico-scope-label">条件が偽のとき</span>
               <PicoBlock
+                :inferred-types="inferredTypes"
                 :block="stmt.else"
                 :functions="functions"
                 :variables="variablesBefore(index)"
@@ -321,6 +323,7 @@ function remove(index: number): void {
           >
             <span class="pico-scope-label">くり返す処理</span>
             <PicoBlock
+              :inferred-types="inferredTypes"
               :block="stmt.body"
               :functions="functions"
               :variables="variablesBefore(index)"
@@ -387,6 +390,7 @@ function remove(index: number): void {
           >
             <span class="pico-scope-label">くり返す処理</span>
             <PicoBlock
+              :inferred-types="inferredTypes"
               :block="stmt.body"
               :functions="functions"
               :variables="[...variablesBefore(index), { name: stmt.ident.name, type: 'integer' }]"
@@ -406,14 +410,13 @@ function remove(index: number): void {
         />
         <template v-else-if="stmt.kind === 'declare'">
           <span>変数を作る</span>
-          <PicoTypeInput :model-value="stmt.type" @update:model-value="changeDeclarationType(stmt, $event)" />
+          <span>{{ typeLabel(inferredTypes?.[stmt.ident.hintId]) }}</span>
           <input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" data-1p-ignore />
           <span>に入れる値</span>
           <PicoExpression
             :node="stmt.value"
             :functions="functions"
             :variables="variablesBefore(index)"
-            :expected-type="stmt.type"
             @replace="stmt.value = $event"
           />
           <small class="pico-variable-tip">

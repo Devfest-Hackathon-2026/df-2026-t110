@@ -279,6 +279,12 @@
     padding: 4px 8px;
   }
   .blockly-params > div {
-    width: 100%;
+    max-width: 100%;
+  }
+  .blockly-params input {
+    width: 90px;
+  }
+  .blockly-params select {
+    max-width: 130px;
   }
 }
