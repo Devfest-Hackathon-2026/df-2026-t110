@@ -1,0 +1,74 @@
+{
+  "picolangVersion": 0,
+  "picolang": {
+    "v0": {
+      "program": {
+        "main": {
+          "kind": "function",
+          "hintId": "00000000-0000-4000-8000-000000000010",
+          "params": [],
+          "returnType": "unit",
+          "body": {
+            "kind": "block",
+            "hintId": "00000000-0000-4000-8000-000000000009",
+            "stmts": [
+              {
+                "kind": "declare",
+                "hintId": "00000000-0000-4000-8000-000000000003",
+                "type": "integer",
+                "ident": {
+                  "kind": "ident",
+                  "hintId": "00000000-0000-4000-8000-000000000001",
+                  "name": "n"
+                },
+                "value": {
+                  "kind": "literal",
+                  "hintId": "00000000-0000-4000-8000-000000000002",
+                  "type": "integer",
+                  "value": 9223372036854775807
+                }
+              },
+              {
+                "kind": "call",
+                "hintId": "00000000-0000-4000-8000-000000000005",
+                "func": "print_integer",
+                "args": [
+                  {
+                    "kind": "ident",
+                    "hintId": "00000000-0000-4000-8000-000000000004",
+                    "name": "n"
+                  }
+                ]
+              },
+              {
+                "kind": "while",
+                "hintId": "00000000-0000-4000-8000-000000000006",
+                "condition": {
+                  "kind": "literal",
+                  "hintId": "00000000-0000-4000-8000-000000000090",
+                  "type": "bool",
+                  "value": true
+                },
+                "body": {
+                  "kind": "block",
+                  "hintId": "00000000-0000-4000-8000-000000000091",
+                  "stmts": []
+                }
+              },
+              {
+                "kind": "return",
+                "hintId": "00000000-0000-4000-8000-000000000008",
+                "value": {
+                  "kind": "literal",
+                  "hintId": "00000000-0000-4000-8000-000000000007",
+                  "type": "unit",
+                  "value": null
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

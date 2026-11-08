@@ -36,3 +36,22 @@ func (q *Queries) CreateProgram(ctx context.Context, arg CreateProgramParams) er
 	)
 	return err
 }
+
+const getProgram = `-- name: GetProgram :one
+SELECT id, google_subject, name, source, is_battle, tutorial_id
+FROM programs WHERE id = $1
+`
+
+func (q *Queries) GetProgram(ctx context.Context, id string) (Program, error) {
+	row := q.db.QueryRow(ctx, getProgram, id)
+	var i Program
+	err := row.Scan(
+		&i.ID,
+		&i.GoogleSubject,
+		&i.Name,
+		&i.Source,
+		&i.IsBattle,
+		&i.TutorialID,
+	)
+	return i, err
+}

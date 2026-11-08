@@ -10,6 +10,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/static"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/tutorialrun"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -43,7 +44,11 @@ func main() {
 		users := usecase.NewUser(repo.NewUsers(pool))
 		sessions = usecase.NewSession(usecase.SessionDeps{Sessions: repo.NewSessions(pool), Users: users})
 		cfg.Users = users
-		cfg.Programs = usecase.NewPrograms(repo.NewPrograms(pool), router.ProgramSourceValidator{})
+		programs := repo.NewPrograms(pool)
+		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
+		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
+		cfg.TutorialRuns = runs
+		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
 	}
 	r := router.NewRouter(cfg)
 	authenticate := router.Authentication(sessions)
@@ -51,6 +56,8 @@ func main() {
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
 			"createProgram": {authenticate, middleware.BodyLimit(1 << 20)},
+			"runTutorial":   {authenticate, middleware.BodyLimit(1 << 20)},
+			"runEvents":     {authenticate},
 			"setMyUsername": {authenticate},
 		},
 	})
