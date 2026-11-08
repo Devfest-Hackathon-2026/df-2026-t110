@@ -5,7 +5,7 @@ import {
   makeStatement,
   newProgram,
   programFunctions,
-} from '../src/features/picolang/picolang.ts'
+} from '../src/features/picolang/language/picolang.ts'
 
 test('生成したmainはPicolang v0のASTとして検証できる', () => {
   const source = newProgram()

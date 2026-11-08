@@ -7,9 +7,9 @@ import saveIcon from '@iconify-icons/lucide/save'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
-import type { PicoProgram } from '../picolang/picolang.ts'
+import type { PicoProgram } from '../picolang/language/picolang.ts'
 
-const BlocklyEditor = defineAsyncComponent(() => import('../picolang/BlocklyEditor.vue'))
+const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/BlocklyEditor.vue'))
 const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()

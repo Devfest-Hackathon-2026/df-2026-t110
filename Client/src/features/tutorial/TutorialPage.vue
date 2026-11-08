@@ -9,8 +9,8 @@ import playIcon from '@iconify-icons/lucide/play'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
-import { isPicoProgram, type PicoProgram } from '../picolang/picolang.ts'
-import { executePicolang } from '../picolang/executePicolang.ts'
+import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
+import { executePicolang } from '../picolang/language/executePicolang.ts'
 import { createTutorialWorld } from './tutorialWorld.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
@@ -21,7 +21,7 @@ import type { TutorialRecord } from './tutorialApi.ts'
 import type { Lesson } from './tutorialLessons.ts'
 
 const BlocklyEditor = defineAsyncComponent({
-  loader: () => import('../picolang/BlocklyEditor.vue'),
+  loader: () => import('../picolang/editor/BlocklyEditor.vue'),
   loadingComponent: {
     render: () => h('p', { class: 'tutorial-editor-loading', role: 'status' }, 'エディタを読み込んでいます…'),
   },
