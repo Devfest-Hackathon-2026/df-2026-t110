@@ -13,6 +13,7 @@ import {
 import {
   ident,
   defaultExpr,
+  PICO_DISTANCE_TARGETS,
   isPicoProgram,
   makeStatement,
   newProgram,
@@ -40,6 +41,7 @@ test('値カテゴリから各型のブロックを作成し、値をASTと往�
     { blockType: 'pico_bool', type: 'bool', field: 'true', value: true },
     { blockType: 'pico_rotation', type: 'rotation', field: 'right', value: 'right' },
     { blockType: 'pico_unit', type: 'unit', field: undefined, value: null },
+    { blockType: 'pico_distance_target', type: 'distance_target', field: 'enemy', value: 'enemy' },
   ]
   for (const { blockType, type, field, value } of cases) {
     const workspace = new Blockly.Workspace()
@@ -193,6 +195,37 @@ test('Blocklyとの往復で制御構文と変数宣言をPicolang ASTに保つ'
         result.body.stmts[1].then.stmts[0].func,
       'forward',
     )
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('全探索対象をprint_distance_targetのBlockly入力とASTで保持する', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const prints = PICO_DISTANCE_TARGETS.map((target) => {
+    const statement = makeStatement('print_distance_target', functions)
+    assert.equal(statement.kind, 'call')
+    const arg = statement.args[0]
+    assert.equal(arg.kind, 'literal')
+    arg.value = target
+    return statement
+  })
+  functions.main.body.stmts.unshift(...prints)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    const result = readFunction(workspace, functions.main, functions)
+    assert.deepEqual(result, functions.main)
+    functions.main = result
+    assert.equal(isPicoProgram(program), true)
+    const first = result.body.stmts[0]
+    assert.equal(first.kind, 'call')
+    const arg = first.args[0]
+    assert.equal(arg.kind, 'literal')
+    arg.value = 'invalid' as typeof arg.value
+    assert.equal(isPicoProgram(program), false)
   } finally {
     workspace.dispose()
   }

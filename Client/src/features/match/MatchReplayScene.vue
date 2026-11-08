@@ -12,7 +12,13 @@ import {
   disposeStageVisuals,
   type StageAnimationTarget,
 } from '../stage/stageVisuals.ts'
-import { replayFrameToStage, type ReplayAction, type ReplayFrame, type ReplayRobot } from './matchReplay.ts'
+import {
+  replayFrameToStage,
+  replayPrintMessage,
+  type ReplayAction,
+  type ReplayFrame,
+  type ReplayRobot,
+} from './matchReplay.ts'
 
 const props = defineProps<{ frames: ReplayFrame[] }>()
 const host = ref<HTMLElement | null>(null)
@@ -25,6 +31,11 @@ const error = ref('')
 const bubbles = ref<Array<{ id: string; text: string; x: number; y: number }>>([])
 const current = computed(() => props.frames[index.value])
 const actions = computed(() => current.value?.actions ?? [])
+const printActions = computed(() =>
+  actions.value
+    .map((action) => ({ ...action, message: replayPrintMessage(action) }))
+    .filter((action) => action.message !== undefined),
+)
 const actionLabel: Record<ReplayAction['kind'], string> = {
   forward: '前進',
   back: '後退',
@@ -35,6 +46,10 @@ const actionLabel: Record<ReplayAction['kind'], string> = {
   release: '荷物を置く',
   print_integer: '整数を表示',
   print_bool: '真理値を表示',
+  print_unit: '値なしを表示',
+  print_terrain: 'マスの種類を表示',
+  print_rotation: '向きを表示',
+  print_distance_target: '探索対象を表示',
 }
 
 type Rig = { group: THREE.Group; model: THREE.Object3D; animator: ReturnType<typeof createRobotAnimator> }
@@ -214,7 +229,15 @@ function animate(time: number): void {
 function animateAction(action: ReplayAction): void {
   const rig = rigs.get(action.robotId)
   if (!rig || !board || !current.value) return
-  if (action.kind === 'print_integer' || action.kind === 'print_bool') return
+  if (
+    action.kind === 'print_integer' ||
+    action.kind === 'print_bool' ||
+    action.kind === 'print_unit' ||
+    action.kind === 'print_terrain' ||
+    action.kind === 'print_rotation' ||
+    action.kind === 'print_distance_target'
+  )
+    return
   const event: AnimationEvent = {
     id: ++eventId,
     type: action.kind,
@@ -447,18 +470,10 @@ onBeforeUnmount(() => {
     </div>
     <p v-if="error" class="match-error" role="alert">{{ error }}</p>
     <p class="match-replay-action" aria-live="polite">{{ current ? heading(current) : '' }}</p>
-    <div
-      v-if="actions.some((action) => action.kind === 'print_integer' || action.kind === 'print_bool')"
-      class="match-replay-speech"
-    >
-      <span
-        v-for="(action, actionIndex) in actions.filter(
-          (item) => item.kind === 'print_integer' || item.kind === 'print_bool',
-        )"
-        :key="actionIndex"
-      >
+    <div v-if="printActions.length" class="match-replay-speech">
+      <span v-for="(action, actionIndex) in printActions" :key="actionIndex">
         {{ action.robotId }}:
-        {{ action.kind === 'print_integer' ? action.integer : action.bool ? 'true' : 'false' }}
+        {{ action.message }}
       </span>
     </div>
     <input

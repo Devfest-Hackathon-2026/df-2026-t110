@@ -90,6 +90,14 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - search_now: () -> terrain
     - print_integer: integer -> ()
     - print_bool: bool -> ()
+    - print_unit: unit -> ()
+        - `()` と表示する
+    - print_terrain: terrain -> ()
+        - 観測時点の地形をJSONで表示する。陸の種類・チェックポイントの順序・荷物・相対的な領地情報を保持する
+    - print_rotation: rotation -> ()
+        - `left` または `right` と表示する
+    - print_distance_target: distance_target -> ()
+        - 探索対象の名前を表示する
 
 ### 制御構文
 - if <expr> <block>

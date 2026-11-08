@@ -263,6 +263,10 @@ func TestActionRequestsAndResults(t *testing.T) {
 		{"search_now", nil, actions.SearchNowAction{}, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}},
 		{"print_integer", []memory.Value{memory.Integer{Value: -42}}, actions.PrintIntegerAction{Integer: -42}, values.UnitValue{}, memory.Unit{}},
 		{"print_bool", []memory.Value{memory.Bool{Value: true}}, actions.PrintBoolAction{Bool: true}, values.UnitValue{}, memory.Unit{}},
+		{"print_unit", []memory.Value{memory.Unit{}}, actions.PrintUnitAction{}, values.UnitValue{}, memory.Unit{}},
+		{"print_terrain", []memory.Value{memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}}, actions.PrintTerrainAction{Terrain: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}, values.UnitValue{}, memory.Unit{}},
+		{"print_rotation", []memory.Value{memory.Rotation{Value: values.Right}}, actions.PrintRotationAction{Rotation: values.Right}, values.UnitValue{}, memory.Unit{}},
+		{"print_distance_target", []memory.Value{memory.DistanceTarget{Value: values.DistanceEnemy}}, actions.PrintDistanceTargetAction{DistanceTarget: values.DistanceEnemy}, values.UnitValue{}, memory.Unit{}},
 	} {
 		t.Run(string(tc.name), func(t *testing.T) {
 			t.Parallel()
@@ -318,6 +322,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 					value = memory.Bool{Value: true}
 				case bot.IntegerType:
 					value = memory.Integer{Value: 1}
+				case bot.UnitType:
+					value = memory.Unit{}
 				case bot.RotationType:
 					value = memory.Rotation{Value: values.Left}
 				case bot.DistanceTargetType:

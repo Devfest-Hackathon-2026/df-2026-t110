@@ -1,4 +1,21 @@
-export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation'
+export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation' | 'distance_target'
+export const PICO_DISTANCE_TARGETS = [
+  'robot',
+  'ally',
+  'enemy',
+  'rock',
+  'luggage',
+  'sea',
+  'goal',
+  'territory',
+] as const
+export type PicoDistanceTarget = (typeof PICO_DISTANCE_TARGETS)[number]
+export interface PicoTerrain {
+  type: 'land' | 'rock' | 'sea'
+  kind?: { type: 'plain' | 'goal' | 'checkpoint'; order?: number }
+  hasLuggage?: boolean
+  territory?: 'own' | 'enemy'
+}
 export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
 interface NodeBase {
   hintId: string
@@ -9,8 +26,8 @@ export interface PicoIdent extends NodeBase {
 }
 export interface PicoLiteral extends NodeBase {
   kind: 'literal'
-  type: 'bool' | 'integer' | 'unit' | 'rotation'
-  value: boolean | number | null | 'left' | 'right'
+  type: 'bool' | 'integer' | 'unit' | 'rotation' | 'distance_target'
+  value: boolean | number | null | 'left' | 'right' | PicoDistanceTarget
 }
 export interface PicoCall extends NodeBase {
   kind: 'call'
@@ -99,6 +116,10 @@ export const PICO_BUILTINS = [
   builtin('size', [stackInteger], 'integer'),
   builtin('print_integer', ['integer'], 'unit'),
   builtin('print_bool', ['bool'], 'unit'),
+  builtin('print_unit', ['unit'], 'unit'),
+  builtin('print_terrain', ['terrain'], 'unit'),
+  builtin('print_rotation', ['rotation'], 'unit'),
+  builtin('print_distance_target', ['distance_target'], 'unit'),
 ]
 export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
 
@@ -116,6 +137,7 @@ export function defaultExpr(type: PicoType = 'integer'): PicoExpr {
   if (type === 'bool') return { kind: 'literal', hintId: id(), type, value: false }
   if (type === 'unit') return { kind: 'literal', hintId: id(), type, value: null }
   if (type === 'rotation') return { kind: 'literal', hintId: id(), type, value: 'left' }
+  if (type === 'distance_target') return { kind: 'literal', hintId: id(), type, value: 'goal' }
   if (type === 'terrain') return makeCall('search_front')
   return { kind: 'literal', hintId: id(), type: 'integer', value: 0 }
 }
@@ -184,7 +206,7 @@ export function programFunctions(program: PicoProgram): Record<string, PicoFunct
 }
 type JsonObject = Record<string, unknown>
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const primitiveTypes: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation']
+const primitiveTypes: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation', 'distance_target']
 const object = (value: unknown): value is JsonObject =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 const exact = (value: JsonObject, keys: string[]): boolean =>
@@ -228,6 +250,8 @@ function validExpr(value: unknown, seen: Set<string>): boolean {
       return value.value === null
     case 'rotation':
       return value.value === 'left' || value.value === 'right'
+    case 'distance_target':
+      return PICO_DISTANCE_TARGETS.includes(value.value as PicoDistanceTarget)
     default:
       return false
   }

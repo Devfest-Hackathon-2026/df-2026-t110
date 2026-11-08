@@ -32,6 +32,10 @@ const builtinArguments: Record<string, string[]> = {
   size: ['個数を数えるスタック'],
   print_integer: ['表示する数'],
   print_bool: ['表示する答え'],
+  print_unit: ['表示する値なし'],
+  print_terrain: ['表示するマス'],
+  print_rotation: ['表示する向き'],
+  print_distance_target: ['表示する探索対象'],
 }
 
 export function argumentLabel(name: string, index: number, functions: Record<string, PicoFunction>): string {
@@ -40,7 +44,14 @@ export function argumentLabel(name: string, index: number, functions: Record<str
 
 export function typeLabel(type: PicoType): string {
   if (typeof type !== 'string') return `${typeLabel(type.elementType)}のスタック`
-  return { bool: '真理値', integer: '整数', unit: '値なし', terrain: 'マスの種類', rotation: '向き' }[type]
+  return {
+    bool: '真理値',
+    integer: '整数',
+    unit: '値なし',
+    terrain: 'マスの種類',
+    rotation: '向き',
+    distance_target: '探索対象',
+  }[type]
 }
 
 export const resultGuidance: Record<string, string> = {

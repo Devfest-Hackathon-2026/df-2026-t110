@@ -1077,44 +1077,11 @@ export interface components {
             robotId: components["schemas"]["RobotId"];
             bool: boolean;
         };
-        InitialState: {
+        /** @description 1ターンを消費して unit を () として吹き出しに表示する */
+        PrintUnitResult: {
             /** @constant */
-            kind: "initial";
-            /** @description 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する */
-            terrain: components["schemas"]["Cell"][][];
-            robots: components["schemas"]["RobotState"][];
-        };
-        /** @description 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する */
-        UpdateState: {
-            /** @constant */
-            kind: "update";
-            actions?: (components["schemas"]["MoveResult"] | components["schemas"]["RotateResult"] | components["schemas"]["WaitResult"] | components["schemas"]["DrillResult"] | components["schemas"]["PickUpResult"] | components["schemas"]["ReleaseResult"] | components["schemas"]["PrintIntegerResult"] | components["schemas"]["PrintBoolResult"])[];
-            /** @description 盤面から除去した機体の ID */
-            removedRobotIds?: components["schemas"]["RobotId"][];
-        };
-        /**
-         * FieldEvent
-         * @description フィールドの初期状態または確定した状態の変化を表すイベント
-         */
-        "field-event.schema": {
-            /**
-             * @description フィールドのイベントを表す種別
-             * @constant
-             */
-            type: "field";
-            /** @description このイベントが発生したゲーム内の論理時刻。初期状態は 0 */
-            tick: number;
-            state: components["schemas"]["InitialState"] | components["schemas"]["UpdateState"];
-        };
-        /**
-         * PicolangCurrentNodeEvent
-         * @description 現在処理中の構文ノードを報告する
-         */
-        "current-node.schema": {
-            /** @constant */
-            kind: "current_node";
-            /** @description 現在処理中の構文ノードの hintId */
-            hintId: components["schemas"]["hint-id"];
+            kind: "print_unit";
+            robotId: components["schemas"]["RobotId"];
         };
         /** @description 通常の陸 */
         PlainLand: {
@@ -1155,6 +1122,67 @@ export interface components {
         };
         /** @description 観測時点の地形種別 */
         "$defs-Terrain": components["schemas"]["Land"] | components["schemas"]["Rock"] | components["schemas"]["Sea"];
+        /** @description 1ターンを消費して地形の観測値をJSONとして吹き出しに表示する */
+        PrintTerrainResult: {
+            /** @constant */
+            kind: "print_terrain";
+            robotId: components["schemas"]["RobotId"];
+            terrain: components["schemas"]["$defs-Terrain"];
+        };
+        /** @description 1ターンを消費して回転方向を吹き出しに表示する */
+        PrintRotationResult: {
+            /** @constant */
+            kind: "print_rotation";
+            robotId: components["schemas"]["RobotId"];
+            /** @enum {string} */
+            rotation: "left" | "right";
+        };
+        /** @description 1ターンを消費して距離の探索対象を吹き出しに表示する */
+        PrintDistanceTargetResult: {
+            /** @constant */
+            kind: "print_distance_target";
+            robotId: components["schemas"]["RobotId"];
+            distanceTarget: components["schemas"]["distance-target"];
+        };
+        InitialState: {
+            /** @constant */
+            kind: "initial";
+            /** @description 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する */
+            terrain: components["schemas"]["Cell"][][];
+            robots: components["schemas"]["RobotState"][];
+        };
+        /** @description 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する */
+        UpdateState: {
+            /** @constant */
+            kind: "update";
+            actions?: (components["schemas"]["MoveResult"] | components["schemas"]["RotateResult"] | components["schemas"]["WaitResult"] | components["schemas"]["DrillResult"] | components["schemas"]["PickUpResult"] | components["schemas"]["ReleaseResult"] | components["schemas"]["PrintIntegerResult"] | components["schemas"]["PrintBoolResult"] | components["schemas"]["PrintUnitResult"] | components["schemas"]["PrintTerrainResult"] | components["schemas"]["PrintRotationResult"] | components["schemas"]["PrintDistanceTargetResult"])[];
+            /** @description 盤面から除去した機体の ID */
+            removedRobotIds?: components["schemas"]["RobotId"][];
+        };
+        /**
+         * FieldEvent
+         * @description フィールドの初期状態または確定した状態の変化を表すイベント
+         */
+        "field-event.schema": {
+            /**
+             * @description フィールドのイベントを表す種別
+             * @constant
+             */
+            type: "field";
+            /** @description このイベントが発生したゲーム内の論理時刻。初期状態は 0 */
+            tick: number;
+            state: components["schemas"]["InitialState"] | components["schemas"]["UpdateState"];
+        };
+        /**
+         * PicolangCurrentNodeEvent
+         * @description 現在処理中の構文ノードを報告する
+         */
+        "current-node.schema": {
+            /** @constant */
+            kind: "current_node";
+            /** @description 現在処理中の構文ノードの hintId */
+            hintId: components["schemas"]["hint-id"];
+        };
         /** @description 初期値全体 */
         Value: RecursiveSchema0;
         /**

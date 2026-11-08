@@ -5,6 +5,7 @@ import {
   defaultExpr,
   id,
   ident,
+  PICO_DISTANCE_TARGETS,
   type PicoBlock,
   type PicoExpr,
   type PicoFunction,
@@ -52,10 +53,12 @@ const typeChoices: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
+  ['探索対象', 'distance_target'],
   ['整数のスタック', 'stack:integer'],
   ['真理値のスタック', 'stack:bool'],
   ['マスのスタック', 'stack:terrain'],
   ['向きのスタック', 'stack:rotation'],
+  ['探索対象のスタック', 'stack:distance_target'],
 ]
 const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
@@ -66,7 +69,7 @@ export function typeKey(type: PicoType): string {
 export function keyType(key: string): PicoType {
   return key.startsWith('stack:')
     ? { kind: 'stack', elementType: keyType(key.slice(6)) }
-    : ['bool', 'integer', 'unit', 'terrain', 'rotation'].includes(key)
+    : ['bool', 'integer', 'unit', 'terrain', 'rotation', 'distance_target'].includes(key)
       ? (key as PicoType)
       : 'integer'
 }
@@ -179,6 +182,18 @@ function defineStaticBlocks(): void {
     init() {
       this.appendDummyInput().appendField('値なし')
       this.setOutput(true, 'unit')
+      this.setColour(colours.値)
+    },
+  }
+  Blockly.Blocks.pico_distance_target = {
+    init() {
+      this.appendDummyInput()
+        .appendField('探索対象')
+        .appendField(
+          new Blockly.FieldDropdown(PICO_DISTANCE_TARGETS.map((target) => [target, target])),
+          'VALUE',
+        )
+      this.setOutput(true, 'distance_target')
       this.setColour(colours.値)
     },
   }
@@ -331,9 +346,13 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
   if (expr.kind === 'ident')
     return { type: 'pico_ident', data: nodeData(expr.hintId), fields: { NAME: expr.name } }
   if (expr.kind === 'literal') {
-    const type = { integer: 'pico_number', bool: 'pico_bool', rotation: 'pico_rotation', unit: 'pico_unit' }[
-      expr.type
-    ]
+    const type = {
+      integer: 'pico_number',
+      bool: 'pico_bool',
+      rotation: 'pico_rotation',
+      unit: 'pico_unit',
+      distance_target: 'pico_distance_target',
+    }[expr.type]
     return {
       type,
       data: nodeData(expr.hintId),
@@ -480,6 +499,13 @@ function readExpr(block: Block, functions: Record<string, PicoFunction>): PicoEx
       value: field(block, 'VALUE') === 'right' ? 'right' : 'left',
     }
   if (block.type === 'pico_unit') return { kind: 'literal', hintId: metaId(block), type: 'unit', value: null }
+  if (block.type === 'pico_distance_target')
+    return {
+      kind: 'literal',
+      hintId: metaId(block),
+      type: 'distance_target',
+      value: field(block, 'VALUE') as (typeof PICO_DISTANCE_TARGETS)[number],
+    }
   const name = callName(block)
   const signature = callSignature(name, functions)
   return {
@@ -639,7 +665,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
     else if (category === '変数')
       for (const type of ['pico_declare', 'pico_assign', 'pico_ident']) contents.push(toolboxBlock(type))
     else if (category === '値')
-      for (const type of ['pico_number', 'pico_bool', 'pico_rotation', 'pico_unit'])
+      for (const type of ['pico_number', 'pico_bool', 'pico_rotation', 'pico_unit', 'pico_distance_target'])
         contents.push(toolboxBlock(type))
     else if (category === '関数') {
       for (const name of Object.keys(functions).filter((item) => item !== 'main')) {

@@ -43,6 +43,30 @@ func TestPrintCommitsWithOtherRobots(t *testing.T) {
 			encoded: fmt.Sprintf(`{"kind":"print_bool","robotId":"a","bool":%t}`, value),
 		})
 	}
+	tests = append(tests, testCase{
+		name: "unit", action: actions.PrintUnitAction{}, result: fieldevent.PrintUnitResult{RobotID: "a"}, encoded: `{"kind":"print_unit","robotId":"a"}`,
+	})
+	for _, rotation := range []values.Rotation{values.Left, values.Right} {
+		tests = append(tests, testCase{name: string(rotation), action: actions.PrintRotationAction{Rotation: rotation}, result: fieldevent.PrintRotationResult{RobotID: "a", Rotation: rotation}, encoded: fmt.Sprintf(`{"kind":"print_rotation","robotId":"a","rotation":%q}`, rotation)})
+	}
+	for _, target := range []values.DistanceTarget{values.DistanceRobot, values.DistanceAlly, values.DistanceEnemy, values.DistanceRock, values.DistanceLuggage, values.DistanceSea, values.DistanceGoal, values.DistanceTerritory} {
+		tests = append(tests, testCase{name: "target-" + string(target), action: actions.PrintDistanceTargetAction{DistanceTarget: target}, result: fieldevent.PrintDistanceTargetResult{RobotID: "a", DistanceTarget: target}, encoded: fmt.Sprintf(`{"kind":"print_distance_target","robotId":"a","distanceTarget":%q}`, target)})
+	}
+	for _, terrain := range []struct {
+		name    string
+		value   values.TerrainValue
+		encoded string
+	}{
+		{"plain", values.LandTerrain{Kind: values.PlainLand{}}, `{"type":"land","kind":{"type":"plain"}}`},
+		{"goal", values.LandTerrain{Kind: values.GoalLand{}}, `{"type":"land","kind":{"type":"goal"}}`},
+		{"checkpoint", values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}, `{"type":"land","kind":{"type":"checkpoint","order":2}}`},
+		{"luggage", values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, `{"type":"land","kind":{"type":"plain"},"hasLuggage":true,"territory":"own"}`},
+		{"enemy", values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}, `{"type":"land","kind":{"type":"plain"},"territory":"enemy"}`},
+		{"rock", values.RockTerrain{}, `{"type":"rock"}`},
+		{"sea", values.SeaTerrain{}, `{"type":"sea"}`},
+	} {
+		tests = append(tests, testCase{name: "terrain-" + terrain.name, action: actions.PrintTerrainAction{Terrain: terrain.value}, result: fieldevent.PrintTerrainResult{RobotID: "a", Terrain: terrain.value}, encoded: `{"kind":"print_terrain","robotId":"a","terrain":` + terrain.encoded + `}`})
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

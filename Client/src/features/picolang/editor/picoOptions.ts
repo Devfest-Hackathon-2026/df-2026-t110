@@ -53,6 +53,10 @@ const builtinLabels = {
   size: { label: 'スタックの個数を返す', category: 'スタック' },
   print_integer: { label: '整数を表示', category: '表示' },
   print_bool: { label: '真理値を表示', category: '表示' },
+  print_unit: { label: '値なしを表示', category: '表示' },
+  print_terrain: { label: 'マスの種類を表示', category: '表示' },
+  print_rotation: { label: '向きを表示', category: '表示' },
+  print_distance_target: { label: '探索対象を表示', category: '表示' },
 } satisfies Record<PicoBuiltinName, { label: string; category: string }>
 
 export const PICO_BUILTIN_OPTIONS: PicoFunctionOption[] = PICO_BUILTINS.map((builtin) => ({

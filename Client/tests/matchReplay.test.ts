@@ -14,6 +14,43 @@ import {
   parseMatchUser,
 } from '../src/features/match/matchApi.ts'
 
+test('追加したprimitiveのprintを観測時の値でリプレイする', () => {
+  const history = parseBoardEventHistory(
+    JSON.stringify([
+      {
+        type: 'field',
+        tick: 0,
+        state: {
+          kind: 'initial',
+          terrain: [[{ type: 'land', kind: { type: 'plain' } }]],
+          robots: [{ id: 'a', position: { x: 0, y: 0 }, direction: 'east' }],
+        },
+      },
+      ...[
+        { kind: 'print_unit' },
+        {
+          kind: 'print_terrain',
+          terrain: { type: 'land', kind: { type: 'checkpoint', order: 2 }, hasLuggage: true },
+        },
+        { kind: 'print_rotation', rotation: 'right' },
+        { kind: 'print_distance_target', distanceTarget: 'enemy' },
+      ].map((action, index) => ({
+        type: 'field',
+        tick: index + 1,
+        state: { kind: 'update', actions: [{ ...action, robotId: 'a' }] },
+      })),
+    ]),
+  )
+  const frames = replayFrames(history)
+  assert.deepEqual(
+    frames.slice(1).map((frame) => frame.robots[0].speech),
+    ['()', '{"type":"land","kind":{"type":"checkpoint","order":2},"hasLuggage":true}', 'right', 'enemy'],
+  )
+  assert.equal(frames[0].robots[0].speech, undefined)
+  assert.deepEqual(frames[4].robots[0].position, { x: 0, y: 0 })
+  assert.equal(frames[4].robots[0].direction, 'east')
+})
+
 test('Go BoardOutput events can be imported for replay', () => {
   const initial = {
     type: 'field',

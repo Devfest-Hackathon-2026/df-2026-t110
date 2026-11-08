@@ -1,4 +1,6 @@
 import type { PicoValue } from '../picolang/language/executePicolang.ts'
+import { PICO_DISTANCE_TARGETS, type PicoTerrain } from '../picolang/language/picolang.ts'
+import { formatPicoValue } from '../picolang/language/formatPicoValue.ts'
 import type { StageCell, StageLayout, StageObject } from '../stage/stage.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
 
@@ -27,10 +29,21 @@ export function createTutorialWorld(stage: StageLayout) {
     stage.cells.find((cell) => cell.x === x && cell.y === y)
   const front = (): StageCell | undefined =>
     cellAt(position.x + vectors[direction].x, position.y + vectors[direction].y)
-  const terrain = (cell?: StageCell): PicoValue => ({
-    type: cell?.terrain ?? 'sea',
-    kind: cell?.objects.find((object) => ['goal', 'checkpoint', 'luggage'].includes(object.type))?.type,
-  })
+  const terrain = (cell?: StageCell): PicoTerrain => {
+    const type = cell?.terrain ?? 'sea'
+    if (type !== 'land') return { type }
+    const goal = cell?.objects.find((object) => object.type === 'goal')
+    const checkpoint = cell?.objects.find((object) => object.type === 'checkpoint')
+    return {
+      type,
+      kind: goal
+        ? { type: 'goal' }
+        : checkpoint
+          ? { type: 'checkpoint', order: checkpoint.order ?? 0 }
+          : { type: 'plain' },
+      ...(cell?.objects.some((object) => object.type === 'luggage') ? { hasLuggage: true } : {}),
+    }
+  }
   const updateRow = (cell: StageCell): void => {
     const row = [...stage.rows[cell.y]]
     row[cell.x] = cell.symbol
@@ -64,10 +77,23 @@ export function createTutorialWorld(stage: StageLayout) {
         value:
           kind === 'land' || kind === 'sea' || kind === 'rock'
             ? value.type === kind
-            : value.kind === (kind === 'laggage' ? 'luggage' : kind),
+            : kind === 'laggage' || kind === 'luggage'
+              ? Boolean(value.hasLuggage)
+              : value.kind?.type === kind,
       }
     }
     if (name === 'print_integer' || name === 'print_bool') return { value: null, message: String(args[0]) }
+    if (name === 'print_unit' && args[0] === null) return { value: null, message: formatPicoValue(null) }
+    if (name === 'print_rotation' && (args[0] === 'left' || args[0] === 'right'))
+      return { value: null, message: formatPicoValue(args[0]) }
+    if (
+      name === 'print_distance_target' &&
+      typeof args[0] === 'string' &&
+      PICO_DISTANCE_TARGETS.some((target) => target === args[0])
+    )
+      return { value: null, message: formatPicoValue(args[0]) }
+    if (name === 'print_terrain' && args[0] && typeof args[0] === 'object' && !Array.isArray(args[0]))
+      return { value: null, message: formatPicoValue(args[0]) }
     if (name === 'rotate') {
       face(args[0])
       return { value: null, animation: { type: 'rotate', direction: args[0] as 'left' | 'right' } }
