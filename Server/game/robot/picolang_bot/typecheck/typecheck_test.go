@@ -21,7 +21,7 @@ type builtinCase struct {
 
 func builtinCases() []builtinCase {
 	b, i, u, terrain, rotation := bot.BoolType{}, bot.IntegerType{}, bot.UnitType{}, bot.TerrainType{}, bot.RotationType{}
-	vector := bot.VectorType{ElementType: i}
+	stack := bot.StackType{ElementType: i}
 	return []builtinCase{
 		{"not", []bot.Type{b}, b}, {"and", []bot.Type{b, b}, b}, {"or", []bot.Type{b, b}, b},
 		{"bool_eq", []bot.Type{b, b}, b}, {"bool_neq", []bot.Type{b, b}, b},
@@ -31,8 +31,8 @@ func builtinCases() []builtinCase {
 		{"gt", []bot.Type{i, i}, b}, {"lt", []bot.Type{i, i}, b}, {"geq", []bot.Type{i, i}, b}, {"leq", []bot.Type{i, i}, b},
 		{"bool_to_integer", []bot.Type{b}, i}, {"integer_to_bool", []bot.Type{i}, b},
 		{"random_bool", nil, b}, {"random_integer", []bot.Type{i, i}, i},
-		{"new", nil, vector}, {"push_back", []bot.Type{vector, i}, vector}, {"pop_back", []bot.Type{vector}, vector},
-		{"get_back", []bot.Type{vector}, i}, {"size", []bot.Type{vector}, i},
+		{"new", nil, stack}, {"push_back", []bot.Type{stack, i}, stack}, {"pop_back", []bot.Type{stack}, stack},
+		{"get_back", []bot.Type{stack}, i}, {"size", []bot.Type{stack}, i},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
 		{"is_own_territory", []bot.Type{terrain}, b}, {"is_enemy_territory", []bot.Type{terrain}, b},
 		{"is_luggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
@@ -116,7 +116,7 @@ func TestTypeCheckBuiltinArgumentErrors(t *testing.T) {
 	}
 }
 
-func TestTypeCheckRemovedVectorBuiltins(t *testing.T) {
+func TestTypeCheckRemovedStackBuiltins(t *testing.T) {
 	t.Parallel()
 	for _, name := range []bot.Name{"get", "set"} {
 		t.Run(string(name), func(t *testing.T) {
@@ -141,10 +141,10 @@ func TestTypeCheckRemovedVectorBuiltins(t *testing.T) {
 	}
 }
 
-func TestTypeCheckVectorResultErrors(t *testing.T) {
+func TestTypeCheckStackResultErrors(t *testing.T) {
 	t.Parallel()
 	i := bot.IntegerType{}
-	v := bot.VectorType{ElementType: i}
+	v := bot.StackType{ElementType: i}
 	for _, tc := range []builtinCase{
 		{"push_back", []bot.Type{v, i}, bot.UnitType{}},
 		{"pop_back", []bot.Type{v}, bot.UnitType{}},

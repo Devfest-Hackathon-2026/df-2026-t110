@@ -28,7 +28,7 @@ type TerrainType struct{}
 type RotationType struct{}
 type DistanceTargetType struct{}
 
-type VectorType struct {
+type StackType struct {
 	ElementType Type
 }
 
@@ -38,7 +38,7 @@ func (UnitType) annotation()           {}
 func (TerrainType) annotation()        {}
 func (RotationType) annotation()       {}
 func (DistanceTargetType) annotation() {}
-func (VectorType) annotation()         {}
+func (StackType) annotation()          {}
 
 func (BoolType) languageType()           {}
 func (IntegerType) languageType()        {}
@@ -46,7 +46,7 @@ func (UnitType) languageType()           {}
 func (TerrainType) languageType()        {}
 func (RotationType) languageType()       {}
 func (DistanceTargetType) languageType() {}
-func (VectorType) languageType()         {}
+func (StackType) languageType()          {}
 
 func (BoolType) primitiveType()           {}
 func (IntegerType) primitiveType()        {}
@@ -54,9 +54,9 @@ func (UnitType) primitiveType()           {}
 func (TerrainType) primitiveType()        {}
 func (RotationType) primitiveType()       {}
 func (DistanceTargetType) primitiveType() {}
-func (VectorType) compoundType()          {}
+func (StackType) compoundType()           {}
 
-// Literal contains only source literals. Terrain and vector values are
+// Literal contains only source literals. Terrain and stack values are
 // produced by builtins, so they have no literal representation.
 type Literal interface{ literal() }
 

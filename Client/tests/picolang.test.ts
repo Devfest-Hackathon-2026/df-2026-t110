@@ -5,6 +5,7 @@ import {
   makeStatement,
   newProgram,
   programFunctions,
+  type PicoType,
 } from '../src/features/picolang/language/picolang.ts'
 
 test('生成したmainはPicolang v0のASTとして検証できる', () => {
@@ -12,6 +13,24 @@ test('生成したmainはPicolang v0のASTとして検証できる', () => {
   assert.equal(isPicoProgram(source), true)
   assert.equal(programFunctions(source).main.body.stmts.at(-1)?.kind, 'return')
   assert.equal(source.picolangVersion, 0)
+})
+
+test('入れ子のstack型を受け入れ、旧vector型を拒否する', () => {
+  const source = newProgram()
+  const functions = programFunctions(source)
+  const definition = programFunctions(newProgram()).main
+  functions.makeStack = definition
+  definition.returnType = { kind: 'stack', elementType: { kind: 'stack', elementType: 'bool' } }
+  assert.equal(isPicoProgram(source), true)
+
+  definition.returnType = {
+    kind: 'stack',
+    elementType: { kind: 'vector', elementType: 'bool' },
+  } as unknown as PicoType
+  assert.equal(isPicoProgram(source), false)
+
+  definition.returnType = { kind: 'vector', elementType: 'bool' } as unknown as PicoType
+  assert.equal(isPicoProgram(source), false)
 })
 
 test('入れ子の制御構文と組み込み関数は異なるhintIdを持つ', () => {

@@ -92,8 +92,8 @@ func TestMinimalProgram(t *testing.T) {
 func TestAllSyntaxVariants(t *testing.T) {
 	t.Parallel()
 	f := &fixture{}
-	vector := map[string]any{"kind": "vector", "elementType": "integer"}
-	nested := map[string]any{"kind": "vector", "elementType": vector}
+	stack := map[string]any{"kind": "stack", "elementType": "integer"}
+	nested := map[string]any{"kind": "stack", "elementType": stack}
 	declaration := f.node("declare", "type", nested, "ident", f.ident("matrix"), "value", f.call("new"))
 	assignment := f.node("assign", "ident", f.ident("matrix"), "value", f.call("new"))
 	conditional := f.node("if", "condition", f.literal("bool", true), "then", f.block(f.node("break")), "else", f.block(f.node("continue")))
@@ -109,7 +109,7 @@ func TestAllSyntaxVariants(t *testing.T) {
 	}
 	stmts = append(stmts, f.literal("rotation", "right"), ret)
 	params := []any{}
-	wantTypes := []bot.Type{bot.BoolType{}, bot.IntegerType{}, bot.UnitType{}, bot.TerrainType{}, bot.RotationType{}, bot.DistanceTargetType{}, bot.VectorType{ElementType: bot.VectorType{ElementType: bot.IntegerType{}}}}
+	wantTypes := []bot.Type{bot.BoolType{}, bot.IntegerType{}, bot.UnitType{}, bot.TerrainType{}, bot.RotationType{}, bot.DistanceTargetType{}, bot.StackType{ElementType: bot.StackType{ElementType: bot.IntegerType{}}}}
 	for i, typ := range []any{"bool", "integer", "unit", "terrain", "rotation", "distance_target", nested} {
 		params = append(params, f.node("param", "ident", f.ident(fmt.Sprintf("p%d", i)), "type", typ))
 	}
@@ -140,7 +140,7 @@ func TestAllSyntaxVariants(t *testing.T) {
 		}
 	}
 	if node, ok := got.Body.Stmts[0].(bot.Declaration[bot.Name, bot.Untyped]); !ok || !reflect.DeepEqual(node.Type, wantTypes[6]) || node.Ident.Source != hint(declaration["ident"].(map[string]any)) {
-		t.Errorf("nested vector declaration = %#v", got.Body.Stmts[0])
+		t.Errorf("nested stack declaration = %#v", got.Body.Stmts[0])
 	}
 	if node, ok := got.Body.Stmts[2].(bot.If[bot.Name, bot.Untyped]); !ok || node.Else == nil || len(node.Then.Stmts) != 1 || len(node.Else.Stmts) != 1 {
 		t.Errorf("if/else = %#v", got.Body.Stmts[2])
@@ -183,7 +183,8 @@ func TestInvalidJSONAndSyntax(t *testing.T) {
 		"invalid rotation":           replace(`"type":"unit","value":null`, `"type":"rotation","value":"up"`),
 		"invalid distance target":    replace(`"type":"unit","value":null`, `"type":"distance_target","value":"robots"`),
 		"unknown return type":        replace(`"returnType":"unit"`, `"returnType":"float"`),
-		"missing vector element":     replace(`"returnType":"unit"`, `"returnType":{"kind":"vector"}`),
+		"missing stack element":      replace(`"returnType":"unit"`, `"returnType":{"kind":"stack"}`),
+		"old vector type":            replace(`"returnType":"unit"`, `"returnType":{"kind":"vector","elementType":"integer"}`),
 		"unknown statement":          replace(`"kind":"return"`, `"kind":"unknown"`),
 		"expression as block":        replace(`"kind":"block"`, `"kind":"call"`),
 		"invalid hint":               replace(`00000000-0000-4000-8000-000000000001`, `not-a-uuid`),

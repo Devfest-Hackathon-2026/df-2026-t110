@@ -90,21 +90,21 @@
       "hintId": "00000000-0000-4000-8000-000000000002",
       "diff": [
         {
-          "type": "vector",
+          "type": "stack",
           "update": {
             "op": "push_back",
             "value": 2
           }
         },
         {
-          "type": "vector",
+          "type": "stack",
           "update": {
             "op": "push_back",
             "value": 3
           }
         },
         {
-          "type": "vector",
+          "type": "stack",
           "update": {
             "op": "pop_back"
           }

@@ -11,7 +11,7 @@ import (
 
 func TestTypeCheckMalformedAST(t *testing.T) {
 	t.Parallel()
-	cycle := &bot.VectorType{}
+	cycle := &bot.StackType{}
 	cycle.ElementType = cycle
 	for _, tc := range []struct {
 		name string
@@ -29,8 +29,8 @@ func TestTypeCheckMalformedAST(t *testing.T) {
 		{"invalid distance target", testutil.Literal[bot.VariableIndex]("literal", bot.DistanceTargetLiteral{Value: "other"}), bot.CodeInvalidAST, "literal"},
 		{"nil type", declaration("decl", 0, nil, testutil.Literal[bot.VariableIndex]("unit", bot.UnitLiteral{})), bot.CodeInvalidType, "decl"},
 		{"nil pointer type", declaration("decl", 0, (*bot.BoolType)(nil), testutil.Literal[bot.VariableIndex]("bool", bot.BoolLiteral{})), bot.CodeInvalidType, "decl"},
-		{"missing vector element", declaration("decl", 0, bot.VectorType{}, testutil.Call[bot.VariableIndex]("new", "new")), bot.CodeInvalidType, "decl"},
-		{"cyclic vector type", declaration("decl", 0, cycle, testutil.Literal[bot.VariableIndex]("unit", bot.UnitLiteral{})), bot.CodeInvalidType, "decl"},
+		{"missing stack element", declaration("decl", 0, bot.StackType{}, testutil.Call[bot.VariableIndex]("new", "new")), bot.CodeInvalidType, "decl"},
+		{"cyclic stack type", declaration("decl", 0, cycle, testutil.Literal[bot.VariableIndex]("unit", bot.UnitLiteral{})), bot.CodeInvalidType, "decl"},
 		{"unknown function", testutil.Call[bot.VariableIndex]("unknown-call", "absent"), bot.CodeUndefinedFunction, "unknown-call"},
 		{"undeclared slot", testutil.Reference("invalid-slot", bot.VariableIndex(^uint(0))), bot.CodeInvalidVariableIndex, "invalid-slot"},
 		{"assignment slot", bot.Assignment[bot.VariableIndex, bot.Untyped]{Ident: testutil.Ident("target", bot.VariableIndex(0)), Value: testutil.Literal[bot.VariableIndex]("unit", bot.UnitLiteral{})}, bot.CodeInvalidVariableIndex, "target"},
@@ -93,11 +93,11 @@ func TestDiagnosticsAreStableAndIncludeAllFunctions(t *testing.T) {
 func TestTypeCheckDoesNotMutateDeclaredPointerTypes(t *testing.T) {
 	t.Parallel()
 	element := &bot.IntegerType{}
-	vector := &bot.VectorType{ElementType: element}
-	program := testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vector, testutil.Call[bot.VariableIndex]("new", "new")), testutil.UnitReturn[bot.VariableIndex]())
+	stack := &bot.StackType{ElementType: element}
+	program := testutil.MainProgram[bot.VariableIndex](declaration("v", 0, stack, testutil.Call[bot.VariableIndex]("new", "new")), testutil.UnitReturn[bot.VariableIndex]())
 	result := testutil.Typed(t, program)
-	testutil.AssertType(t, annotations(t, result)["new"], bot.VectorType{ElementType: bot.IntegerType{}})
-	if vector.ElementType != element || !reflect.DeepEqual(program.Functions["main"].Body.Stmts[0].(bot.Declaration[bot.VariableIndex, bot.Untyped]).Type, vector) {
+	testutil.AssertType(t, annotations(t, result)["new"], bot.StackType{ElementType: bot.IntegerType{}})
+	if stack.ElementType != element || !reflect.DeepEqual(program.Functions["main"].Body.Stmts[0].(bot.Declaration[bot.VariableIndex, bot.Untyped]).Type, stack) {
 		t.Error("type checking modified the input type")
 	}
 }

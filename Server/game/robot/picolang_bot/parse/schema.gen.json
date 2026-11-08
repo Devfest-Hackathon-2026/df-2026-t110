@@ -37,7 +37,7 @@
                     "kind": "type_parameter",
                     "name": "T"
                   },
-                  "kind": "vector"
+                  "kind": "stack"
                 },
                 {
                   "kind": "type_parameter",
@@ -49,14 +49,14 @@
                   "kind": "type_parameter",
                   "name": "T"
                 },
-                "kind": "vector"
+                "kind": "stack"
               },
               "typeParameters": [
                 "T"
               ]
             },
             "tags": [
-              "vector"
+              "stack"
             ]
           }
         ]
@@ -94,6 +94,23 @@
     },
     "header_v0/signature-type.yaml": {
       "$defs": {
+        "StackType": {
+          "additionalProperties": false,
+          "properties": {
+            "elementType": {
+              "$ref": "#/$defs/header_v0~1signature-type.yaml"
+            },
+            "kind": {
+              "const": "stack",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "elementType"
+          ],
+          "type": "object"
+        },
         "TypeParameter": {
           "additionalProperties": false,
           "properties": {
@@ -111,33 +128,16 @@
             "name"
           ],
           "type": "object"
-        },
-        "VectorType": {
-          "additionalProperties": false,
-          "properties": {
-            "elementType": {
-              "$ref": "#/$defs/header_v0~1signature-type.yaml"
-            },
-            "kind": {
-              "const": "vector",
-              "type": "string"
-            }
-          },
-          "required": [
-            "kind",
-            "elementType"
-          ],
-          "type": "object"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "description": "シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照",
+      "description": "シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照",
       "oneOf": [
         {
           "$ref": "#/$defs/v0~1primitive-type.yaml"
         },
         {
-          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/VectorType"
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/StackType"
         },
         {
           "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/TypeParameter"
@@ -315,7 +315,7 @@
       "type": "object"
     },
     "v0/compound-type.yaml": {
-      "$ref": "#/$defs/v0~1vector-type.yaml",
+      "$ref": "#/$defs/v0~1stack-type.yaml",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "他の型を組み合わせて構成する picolang の複合型",
       "title": "CompoundType"
@@ -592,6 +592,27 @@
         "value"
       ],
       "title": "RotationLiteral",
+      "type": "object"
+    },
+    "v0/stack-type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "同じ型の要素を持つ連結リストで表現するスタックの型",
+      "properties": {
+        "elementType": {
+          "$ref": "#/$defs/v0~1type.yaml",
+          "description": "要素の型。基本型と複合型のどちらも指定できる"
+        },
+        "kind": {
+          "const": "stack",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "elementType"
+      ],
+      "title": "StackType",
       "type": "object"
     },
     "v0/stmt.yaml": {
@@ -873,27 +894,6 @@
         "value"
       ],
       "title": "UnitLiteral",
-      "type": "object"
-    },
-    "v0/vector-type.yaml": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "additionalProperties": false,
-      "description": "同じ型の要素を持つ可変長配列の型",
-      "properties": {
-        "elementType": {
-          "$ref": "#/$defs/v0~1type.yaml",
-          "description": "要素の型。基本型と複合型のどちらも指定できる"
-        },
-        "kind": {
-          "const": "vector",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "elementType"
-      ],
-      "title": "VectorType",
       "type": "object"
     }
   },

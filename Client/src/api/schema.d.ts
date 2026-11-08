@@ -493,18 +493,18 @@ export interface components {
         name: string;
         /**
          * PicolangV0SignatureType
-         * @description シグネチャ内の型。既存の基本型、再帰的な vector、または型パラメータの参照
+         * @description シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
          */
-        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["VectorType"] | components["schemas"]["TypeParameter"]);
+        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["StackType"] | components["schemas"]["TypeParameter"]);
         /**
          * PrimitiveType
          * @description picolang の基本型。unit は () を表す
          * @enum {string}
          */
         "primitive-type": "bool" | "integer" | "unit" | "terrain" | "rotation" | "distance_target";
-        VectorType: {
+        StackType: {
             /** @constant */
-            kind: "vector";
+            kind: "stack";
             elementType: components["schemas"]["signature-type"];
         };
         TypeParameter: {
@@ -559,7 +559,7 @@ export interface components {
          *           ],
          *           "params": [
          *             {
-         *               "kind": "vector",
+         *               "kind": "stack",
          *               "elementType": {
          *                 "kind": "type_parameter",
          *                 "name": "T"
@@ -571,7 +571,7 @@ export interface components {
          *             }
          *           ],
          *           "returnType": {
-         *             "kind": "vector",
+         *             "kind": "stack",
          *             "elementType": {
          *               "kind": "type_parameter",
          *               "name": "T"
@@ -579,7 +579,7 @@ export interface components {
          *           }
          *         },
          *         "tags": [
-         *           "vector"
+         *           "stack"
          *         ]
          *       }
          *     ]
@@ -689,14 +689,14 @@ export interface components {
          * Type
          * @description picolang の値の型。基本型または複合型
          */
-        type: components["schemas"]["primitive-type"] | components["schemas"]["vector-type"];
+        type: components["schemas"]["primitive-type"] | components["schemas"]["stack-type"];
         /**
-         * VectorType
-         * @description 同じ型の要素を持つ可変長配列の型
+         * StackType
+         * @description 同じ型の要素を持つ連結リストで表現するスタックの型
          */
-        "vector-type": {
+        "stack-type": {
             /** @constant */
-            kind: "vector";
+            kind: "stack";
             /** @description 要素の型。基本型と複合型のどちらも指定できる */
             elementType: components["schemas"]["type"];
         };
@@ -1160,8 +1160,8 @@ export interface components {
         /**
          * PicolangVariableInitEvent
          * @description 変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-         *     変数の型との一致および vector の要素の型の統一は生成側で保証する。
-         *     入れ子の vector を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+         *     変数の型との一致および stack の要素の型の統一は生成側で保証する。
+         *     入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
          */
         "variable-init.schema": {
             /** @constant */
@@ -1205,44 +1205,44 @@ export interface components {
         };
         /** @description 基本型の値全体の更新 */
         PrimitiveUpdate: components["schemas"]["BoolUpdate"] | components["schemas"]["IntegerUpdate"] | components["schemas"]["UnitUpdate"] | components["schemas"]["TerrainUpdate"] | components["schemas"]["RotationUpdate"] | components["schemas"]["DistanceTargetUpdate"];
-        /** @description 代入先の値全体を独立した vector の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う */
-        VectorReplace: {
+        /** @description 代入先の値全体を独立した stack の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う */
+        StackReplace: {
             /** @constant */
             op: "replace";
-            /** @description 再代入する vector の値全体 */
+            /** @description 再代入する stack の値全体 */
             value: components["schemas"]["Value"][];
         };
-        /** @description 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の vector の末尾に要素を一つ追加する */
+        /** @description 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の stack の末尾に要素を一つ追加する */
         PushBack: {
             /** @constant */
             op: "push_back";
             /** @description 末尾に追加する要素の値 */
             value: components["schemas"]["Value"];
         };
-        /** @description 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の vector の末尾の要素を一つ取り除く。変数自体の drop は variable_drop イベントで表す */
+        /** @description 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の stack の末尾の要素を一つ取り除く。変数自体の drop は variable_drop イベントで表す */
         PopBack: {
             /** @constant */
             op: "pop_back";
         };
-        /** @description 代入先の vector の現在値に対する更新。操作内容は update の内側に格納する */
-        VectorUpdate: {
+        /** @description 代入先の stack の現在値に対する更新。操作内容は update の内側に格納する */
+        StackUpdate: {
             /** @constant */
-            type: "vector";
-            update: components["schemas"]["VectorReplace"] | components["schemas"]["PushBack"] | components["schemas"]["PopBack"];
+            type: "stack";
+            update: components["schemas"]["StackReplace"] | components["schemas"]["PushBack"] | components["schemas"]["PopBack"];
         };
         /** @description primitive または compound の更新 */
-        Update: components["schemas"]["PrimitiveUpdate"] | components["schemas"]["VectorUpdate"];
+        Update: components["schemas"]["PrimitiveUpdate"] | components["schemas"]["StackUpdate"];
         /**
          * PicolangVariableUpdateEvent
          * @description 初期化時に紐づけた hintId をキーに変数の値の差分を報告する。
-         *     差分は picolang の型と同様に primitive と compound に分け、compound の内側に vector の更新を置く。
+         *     差分は picolang の型と同様に primitive と compound に分け、compound の内側に stack の更新を置く。
          *     diff の更新を先頭から順に、直前の更新を反映した値に適用する。
-         *     primitive は型ごとの値全体で更新し、vector は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
-         *     差分は hintId が示す変数の現在値そのものに適用する。入れ子の vector を直接変更する操作は持たない。
-         *     push_back と pop_back は独立した vector を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
+         *     primitive は型ごとの値全体で更新し、stack は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
+         *     差分は hintId が示す変数の現在値そのものに適用する。入れ子の stack を直接変更する操作は持たない。
+         *     push_back と pop_back は独立した stack を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
          *     更新結果を変数へ代入したときに、その代入先の更新を報告する。get_back や size の戻り値を代入する場合も同様とする。
          *     生成側は差分を代入先の現在値に適用すると代入後の値を再現できることを保証する。別の値からの再代入など、末尾の操作で表さない更新は replace で値全体を記録する。
-         *     new で生成した vector は初期値または全体置換の値として記録する。
+         *     new で生成した stack は初期値または全体置換の値として記録する。
          *     更新が変数の型に対応すること、pop_back の対象が空でないこと、要素の型との一致は生成側で保証する。
          *     記録時点の値を保持する。後の実行で過去の記録内容は変わらない。
          */

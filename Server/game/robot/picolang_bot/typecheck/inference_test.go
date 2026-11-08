@@ -21,7 +21,7 @@ func annotations(t *testing.T, program bot.TypedProgram) map[bot.HintID]bot.Type
 	checkType = func(typ bot.Type) {
 		switch typ := typ.(type) {
 		case bot.BoolType, bot.IntegerType, bot.UnitType, bot.TerrainType, bot.RotationType:
-		case bot.VectorType:
+		case bot.StackType:
 			checkType(typ.ElementType)
 		default:
 			t.Errorf("non-concrete type escaped checking: %T", typ)
@@ -83,14 +83,14 @@ func annotations(t *testing.T, program bot.TypedProgram) map[bot.HintID]bot.Type
 	return result
 }
 
-func TestVectorTypeInference(t *testing.T) {
+func TestStackTypeInference(t *testing.T) {
 	t.Parallel()
-	vi := bot.VectorType{ElementType: bot.IntegerType{}}
-	vb := bot.VectorType{ElementType: bot.BoolType{}}
-	vvi, vvb := bot.VectorType{ElementType: vi}, bot.VectorType{ElementType: vb}
+	vi := bot.StackType{ElementType: bot.IntegerType{}}
+	vb := bot.StackType{ElementType: bot.BoolType{}}
+	vvi, vvb := bot.StackType{ElementType: vi}, bot.StackType{ElementType: vb}
 	returning := func(result bot.Type, value bot.Expr[bot.VariableIndex, bot.Untyped]) bot.IndexedProgram {
 		program := testutil.MainProgram[bot.VariableIndex](testutil.UnitReturn[bot.VariableIndex]())
-		program.Functions["make_vector"] = bot.Function[bot.VariableIndex, bot.Untyped]{ReturnType: result, Body: bot.Block[bot.VariableIndex, bot.Untyped]{Stmts: []bot.Stmt[bot.VariableIndex, bot.Untyped]{
+		program.Functions["make_stack"] = bot.Function[bot.VariableIndex, bot.Untyped]{ReturnType: result, Body: bot.Block[bot.VariableIndex, bot.Untyped]{Stmts: []bot.Stmt[bot.VariableIndex, bot.Untyped]{
 			bot.Return[bot.VariableIndex, bot.Untyped]{Value: value},
 		}}}
 		return program
@@ -109,7 +109,7 @@ func TestVectorTypeInference(t *testing.T) {
 		{"user argument", argumentContext, map[bot.HintID]bot.Type{"argument-new": vi}},
 		{"later argument", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.IntegerLiteral{Value: 1})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vi, "push": vi}},
 		{"bool element", testutil.MainProgram[bot.VariableIndex](testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Call[bot.VariableIndex]("new", "new"), testutil.Literal[bot.VariableIndex]("value", bot.BoolLiteral{})), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"new": vb, "push": vb}},
-		{"nested vectors", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vvb, testutil.Call[bot.VariableIndex]("outer", "new")), testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Call[bot.VariableIndex]("inner", "new")), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"outer": vvb, "inner": vb, "push": vvb}},
+		{"nested stacks", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vvb, testutil.Call[bot.VariableIndex]("outer", "new")), testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Call[bot.VariableIndex]("inner", "new")), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"outer": vvb, "inner": vb, "push": vvb}},
 		{"outer result", testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("get-back", "get_back", testutil.Call[bot.VariableIndex]("new", "new"))), testutil.UnitReturn[bot.VariableIndex]()), map[bot.HintID]bot.Type{"get-back": vi, "new": vvi}},
 		{
 			"push assignment",
@@ -172,7 +172,7 @@ func TestVectorTypeInference(t *testing.T) {
 	}
 }
 
-func TestVectorInferenceFailures(t *testing.T) {
+func TestStackInferenceFailures(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name string
@@ -199,9 +199,9 @@ func TestVectorInferenceFailures(t *testing.T) {
 	}
 }
 
-func TestVectorElementTypeMismatch(t *testing.T) {
+func TestStackElementTypeMismatch(t *testing.T) {
 	t.Parallel()
-	vi := bot.VectorType{ElementType: bot.IntegerType{}}
+	vi := bot.StackType{ElementType: bot.IntegerType{}}
 	program := testutil.MainProgram[bot.VariableIndex](declaration("v", 0, vi, testutil.Call[bot.VariableIndex]("new", "new")),
 		testutil.Call[bot.VariableIndex]("push", "push_back", testutil.Reference("v", bot.VariableIndex(0)), testutil.Literal[bot.VariableIndex]("wrong-element", bot.BoolLiteral{})), testutil.UnitReturn[bot.VariableIndex]())
 	_, err := typecheck.TypeCheck(program)

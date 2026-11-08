@@ -154,7 +154,7 @@ func TestIndexParametersAndGlobalNames(t *testing.T) {
 	testutil.RequireDiagnostic(t, ds, bot.CodeDuplicateVariable, "helper", "shadow-param")
 }
 
-func TestRemovedVectorBuiltinNamesAreAvailable(t *testing.T) {
+func TestRemovedStackBuiltinNamesAreAvailable(t *testing.T) {
 	t.Parallel()
 	for _, name := range []bot.Name{"get", "set"} {
 		t.Run(string(name)+"/function", func(t *testing.T) {

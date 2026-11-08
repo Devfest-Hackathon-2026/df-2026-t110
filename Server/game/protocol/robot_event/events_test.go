@@ -50,10 +50,10 @@ func TestInitialValueEncoding(t *testing.T) {
 		{"luggage", values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, `{"type":"land","kind":{"type":"plain"},"hasLuggage":true,"territory":"own"}`},
 		{"rock", values.RockTerrain{}, `{"type":"rock"}`},
 		{"sea", values.SeaTerrain{}, `{"type":"sea"}`},
-		{"empty vector", values.VectorRecordValue{}, "[]"},
-		{"nested vector", values.VectorRecordValue{Elements: []values.RecordValue{
-			values.VectorRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 3}}},
-			values.VectorRecordValue{},
+		{"empty stack", values.StackRecordValue{}, "[]"},
+		{"nested stack", values.StackRecordValue{Elements: []values.RecordValue{
+			values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 3}}},
+			values.StackRecordValue{},
 		}}, "[[3],[]]"},
 	}
 	for _, tt := range tests {
@@ -81,14 +81,14 @@ func TestUpdateEncoding(t *testing.T) {
 		{"terrain", []robotevent.ValueUpdate{robotevent.TerrainUpdate{Value: values.LandTerrain{Kind: values.GoalLand{}}}}, `[{"type":"terrain","value":{"type":"land","kind":{"type":"goal"}}}]`},
 		{"distance target", []robotevent.ValueUpdate{robotevent.DistanceTargetUpdate{Value: values.DistanceSea}}, `[{"type":"distance_target","value":"sea"}]`},
 		{"rotation", []robotevent.ValueUpdate{robotevent.RotationUpdate{Value: values.Right}}, `[{"type":"rotation","value":"right"}]`},
-		{"vector operations", []robotevent.ValueUpdate{
-			robotevent.VectorUpdate{Update: robotevent.PushBack{Value: values.IntegerValue{Integer: 2}}},
-			robotevent.VectorUpdate{Update: robotevent.PopBack{}},
-			robotevent.VectorUpdate{Update: robotevent.VectorReplace{}},
-		}, `[{"type":"vector","update":{"op":"push_back","value":2}},{"type":"vector","update":{"op":"pop_back"}},{"type":"vector","update":{"op":"replace","value":[]}}]`},
-		{"nested vector operand", []robotevent.ValueUpdate{
-			robotevent.VectorUpdate{Update: robotevent.PushBack{Value: values.VectorRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 3}}}}},
-		}, `[{"type":"vector","update":{"op":"push_back","value":[3]}}]`},
+		{"stack operations", []robotevent.ValueUpdate{
+			robotevent.StackUpdate{Update: robotevent.PushBack{Value: values.IntegerValue{Integer: 2}}},
+			robotevent.StackUpdate{Update: robotevent.PopBack{}},
+			robotevent.StackUpdate{Update: robotevent.StackReplace{}},
+		}, `[{"type":"stack","update":{"op":"push_back","value":2}},{"type":"stack","update":{"op":"pop_back"}},{"type":"stack","update":{"op":"replace","value":[]}}]`},
+		{"nested stack operand", []robotevent.ValueUpdate{
+			robotevent.StackUpdate{Update: robotevent.PushBack{Value: values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 3}}}}},
+		}, `[{"type":"stack","update":{"op":"push_back","value":[3]}}]`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -120,11 +120,11 @@ func TestInvalidRecordPayloads(t *testing.T) {
 		})
 	}
 	for name, update := range map[string]robotevent.ValueUpdate{
-		"pointer":                  &robotevent.IntegerUpdate{Value: 1},
-		"nil terrain":              robotevent.TerrainUpdate{},
-		"rotation":                 robotevent.RotationUpdate{Value: "sideways"},
-		"pointer vector operation": robotevent.VectorUpdate{Update: &robotevent.PopBack{}},
-		"missing push value":       robotevent.VectorUpdate{Update: robotevent.PushBack{}},
+		"pointer":                 &robotevent.IntegerUpdate{Value: 1},
+		"nil terrain":             robotevent.TerrainUpdate{},
+		"rotation":                robotevent.RotationUpdate{Value: "sideways"},
+		"pointer stack operation": robotevent.StackUpdate{Update: &robotevent.PopBack{}},
+		"missing push value":      robotevent.StackUpdate{Update: robotevent.PushBack{}},
 	} {
 		t.Run("update/"+name, func(t *testing.T) {
 			t.Parallel()

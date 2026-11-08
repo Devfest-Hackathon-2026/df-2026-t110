@@ -83,7 +83,7 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 	case "pop_back", "get_back":
 		node, ok := args[0].(memory.ListNode)
 		if !ok {
-			return 0, fmt.Errorf("%s requires a nonempty vector", name)
+			return 0, fmt.Errorf("%s requires a nonempty stack", name)
 		}
 		id := node.Prev
 		if name == "get_back" {

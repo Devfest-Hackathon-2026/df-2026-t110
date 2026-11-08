@@ -23,7 +23,7 @@ type UnitUpdate struct{}
 type TerrainUpdate struct{ Value values.TerrainValue }
 type DistanceTargetUpdate struct{ Value values.DistanceTarget }
 type RotationUpdate struct{ Value values.Rotation }
-type VectorUpdate struct{ Update VectorOperation }
+type StackUpdate struct{ Update StackOperation }
 
 func (BoolUpdate) valueUpdate()           {}
 func (IntegerUpdate) valueUpdate()        {}
@@ -31,7 +31,7 @@ func (UnitUpdate) valueUpdate()           {}
 func (TerrainUpdate) valueUpdate()        {}
 func (DistanceTargetUpdate) valueUpdate() {}
 func (RotationUpdate) valueUpdate()       {}
-func (VectorUpdate) valueUpdate()         {}
+func (StackUpdate) valueUpdate()          {}
 
 func (BoolUpdate) primitiveUpdate()           {}
 func (IntegerUpdate) primitiveUpdate()        {}
@@ -39,15 +39,15 @@ func (UnitUpdate) primitiveUpdate()           {}
 func (TerrainUpdate) primitiveUpdate()        {}
 func (DistanceTargetUpdate) primitiveUpdate() {}
 func (RotationUpdate) primitiveUpdate()       {}
-func (VectorUpdate) compoundUpdate()          {}
+func (StackUpdate) compoundUpdate()           {}
 
-// VectorOperation only permits operations supported by picolang vectors.
-type VectorOperation interface{ vectorOperation() }
+// StackOperation only permits operations supported by picolang stacks.
+type StackOperation interface{ stackOperation() }
 
-type VectorReplace struct{ Value []values.RecordValue }
+type StackReplace struct{ Value []values.RecordValue }
 type PushBack struct{ Value values.RecordValue }
 type PopBack struct{}
 
-func (VectorReplace) vectorOperation() {}
-func (PushBack) vectorOperation()      {}
-func (PopBack) vectorOperation()       {}
+func (StackReplace) stackOperation() {}
+func (PushBack) stackOperation()     {}
+func (PopBack) stackOperation()      {}

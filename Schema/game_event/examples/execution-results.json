@@ -34,7 +34,7 @@
   },
   {
     "type": "picolang", "interpreterId": "robot-3",
-    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000003", "reason": "runtime_error", "message": "builtin get_back requires a nonempty vector" }
+    "event": { "kind": "execution_finished", "hintId": "00000000-0000-4000-8000-000000000003", "reason": "runtime_error", "message": "builtin get_back requires a nonempty stack" }
   },
   {
     "type": "picolang", "interpreterId": "robot-4",

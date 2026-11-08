@@ -166,7 +166,7 @@ func TestTerrainPredicates(t *testing.T) {
 	}
 }
 
-func TestVectorValuesShareStorageAndRemainIndependent(t *testing.T) {
+func TestStackValuesShareStorageAndRemainIndependent(t *testing.T) {
 	t.Parallel()
 	store, e := setup(t, 0)
 	base := store.MemoryUsage()
@@ -180,7 +180,7 @@ func TestVectorValuesShareStorageAndRemainIndependent(t *testing.T) {
 	popped := immediate(t, e, "pop_back", second)
 	last := immediate(t, e, "get_back", second)
 	if popped != first || last != two || inner != first {
-		t.Error("vector copies did not share immutable storage")
+		t.Error("stack copies did not share immutable storage")
 	}
 	for id, want := range map[memory.ID]int64{root: 0, first: 1, second: 2, outer: 1, modified: 2} {
 		size := immediate(t, e, "size", id)
@@ -314,8 +314,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 			store, e := setup(t, 0)
 			base := store.MemoryUsage()
 			one := add(t, store, memory.Integer{Value: 1})
-			vector := add(t, store, memory.ListNode{Prev: memory.RootID, Value: one})
-			owned := []memory.ID{one, vector}
+			stack := add(t, store, memory.ListNode{Prev: memory.RootID, Value: one})
+			owned := []memory.ID{one, stack}
 			args := make([]memory.ID, len(signature.Params))
 			for i, typ := range signature.Params {
 				var value memory.Value
@@ -330,8 +330,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 					value = memory.DistanceTarget{Value: values.DistanceTerritory}
 				case bot.TerrainType:
 					value = memory.Terrain{Value: values.SeaTerrain{}}
-				case bot.VectorType:
-					args[i] = vector
+				case bot.StackType:
+					args[i] = stack
 					continue
 				default:
 					args[i] = one

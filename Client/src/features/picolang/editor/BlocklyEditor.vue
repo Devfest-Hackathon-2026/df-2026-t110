@@ -72,10 +72,10 @@ const typeOptions: [string, string][] = [
   ['値なし', 'unit'],
   ['マスの種類', 'terrain'],
   ['向き', 'rotation'],
-  ['整数の配列', 'vector:integer'],
-  ['真理値の配列', 'vector:bool'],
-  ['マスの配列', 'vector:terrain'],
-  ['向きの配列', 'vector:rotation'],
+  ['整数のスタック', 'stack:integer'],
+  ['真理値のスタック', 'stack:bool'],
+  ['マスのスタック', 'stack:terrain'],
+  ['向きのスタック', 'stack:rotation'],
 ]
 let workspace: Blockly.WorkspaceSvg | null = null
 let observer: ResizeObserver | null = null
@@ -91,7 +91,7 @@ const categoryIcons = {
   計算: calculatorIcon,
   変換: repeatIcon,
   乱数: shuffleIcon,
-  配列: listIcon,
+  スタック: listIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
 }
