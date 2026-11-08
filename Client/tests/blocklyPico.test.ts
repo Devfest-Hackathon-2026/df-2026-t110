@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as Blockly from 'blockly'
 import {
+  diagnosticBlock,
   keyType,
   loadFunction,
   picoToolbox,
@@ -9,8 +10,11 @@ import {
   refreshVariableBlocks,
   registerPicoBlocks,
   typeKey,
+  updatePicoDiagnostics,
 } from '../src/features/picolang/editor/blocklyPico.ts'
 import {
+  block,
+  id,
   ident,
   defaultExpr,
   PICO_DISTANCE_TARGETS,
@@ -20,6 +24,7 @@ import {
   programFunctions,
   type PicoType,
 } from '../src/features/picolang/language/picolang.ts'
+import { analyzePicolang } from '../src/features/picolang/language/analyzePicolang.ts'
 
 test('入れ子のstack型をBlocklyの型キーと相互変換できる', () => {
   const type: PicoType = { kind: 'stack', elementType: { kind: 'stack', elementType: 'bool' } }
@@ -149,7 +154,7 @@ test('Blocklyのstack型の変数と組み込み関数をASTに変換できる',
   try {
     const declaration = workspace.newBlock('pico_declare')
     declaration.setFieldValue('stack:integer', 'TYPE')
-    refreshVariableBlocks(workspace, [])
+    refreshVariableBlocks(workspace)
     const empty = workspace.newBlock('pico_expr_new')
     declaration.getInput('VALUE')!.connection!.connect(empty.outputConnection!)
     const result = readFunction(workspace, functions.main, functions)
@@ -179,7 +184,7 @@ test('Blocklyとの往復で制御構文と変数宣言をPicolang ASTに保つ'
   const workspace = new Blockly.Workspace()
   try {
     loadFunction(workspace, functions.main, functions)
-    refreshVariableBlocks(workspace, [])
+    refreshVariableBlocks(workspace)
     const declarationBlock = workspace.getAllBlocks(false).find((item) => item.type === 'pico_declare')
     assert.equal(declarationBlock?.getInputTargetBlock('TOKEN')?.isShadow(), true)
     const result = readFunction(workspace, functions.main, functions)
@@ -226,6 +231,130 @@ test('全探索対象をprint_distance_targetのBlockly入力とASTで保持す�
     assert.equal(arg.kind, 'literal')
     arg.value = 'invalid' as typeof arg.value
     assert.equal(isPicoProgram(program), false)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('Boolean stack elements remain connected and type-check after a Blockly round trip', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const declaration = makeStatement('declare', functions)
+  assert.equal(declaration.kind, 'declare')
+  declaration.type = { kind: 'stack', elementType: 'bool' }
+  declaration.value = {
+    kind: 'call',
+    hintId: id(),
+    func: 'push_back',
+    args: [{ kind: 'call', hintId: id(), func: 'new', args: [] }, defaultExpr('bool')],
+  }
+  functions.main.body.stmts.unshift(declaration)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    refreshVariableBlocks(workspace)
+    functions.main = readFunction(workspace, functions.main, functions)
+    assert.equal(workspace.getTopBlocks(false).length, 1)
+    assert.deepEqual(functions.main.body.stmts[0], declaration)
+    assert.equal(
+      analyzePicolang(program).some((d) => d.severity === 'error'),
+      false,
+    )
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('same names in sibling scopes do not disconnect or change variable references', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  for (const type of ['bool', 'integer'] as const) {
+    const declaration = makeStatement('declare', functions)
+    assert.equal(declaration.kind, 'declare')
+    declaration.type = type
+    declaration.value = defaultExpr(type)
+    const conditional = makeStatement('if', functions)
+    assert.equal(conditional.kind, 'if')
+    conditional.then = block([
+      declaration,
+      { kind: 'call', hintId: id(), func: `print_${type}`, args: [ident('x')] },
+    ])
+    functions.main.body.stmts.unshift(conditional)
+  }
+  const before = structuredClone(functions.main)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    refreshVariableBlocks(workspace)
+    functions.main = readFunction(workspace, functions.main, functions)
+    assert.deepEqual(functions.main, before)
+    assert.deepEqual(analyzePicolang(program), [])
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('diagnostics locate declaration and assignment identifier hints and clear stale warnings', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const declaration = makeStatement('declare', functions)
+  assert.equal(declaration.kind, 'declare')
+  const assignment = makeStatement('assign', functions)
+  assert.equal(assignment.kind, 'assign')
+  assignment.ident = ident('missing')
+  functions.main.body.stmts.unshift(declaration, assignment)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    const messages = new Map<string, string | null>()
+    for (const item of workspace.getAllBlocks(false))
+      item.setWarningText = (text) => {
+        messages.set(item.id, text)
+      }
+    const diagnostics = analyzePicolang(program)
+    updatePicoDiagnostics(workspace, diagnostics)
+    const declared = diagnosticBlock(workspace, declaration.ident.hintId)!
+    const assigned = diagnosticBlock(workspace, assignment.ident.hintId)!
+    assert.equal(declared.type, 'pico_declare')
+    assert.equal(assigned.type, 'pico_assign')
+    assert.match(messages.get(declared.id)!, /警告/)
+    assert.match(messages.get(assigned.id)!, /エラー/)
+    updatePicoDiagnostics(workspace, [])
+    assert.equal(messages.get(declared.id), null)
+    assert.equal(messages.get(assigned.id), null)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('undefined function blocks retain arguments of different arities for diagnostics', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  functions.main.body.stmts.unshift(
+    { kind: 'call', hintId: id(), func: 'unknown', args: [] },
+    { kind: 'call', hintId: id(), func: 'unknown', args: [ident('missing')] },
+    {
+      kind: 'call',
+      hintId: id(),
+      func: 'print_integer',
+      args: [
+        { kind: 'call', hintId: id(), func: 'unknown', args: [defaultExpr('bool'), defaultExpr('rotation')] },
+      ],
+    },
+  )
+  const before = structuredClone(functions.main)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    functions.main = readFunction(workspace, functions.main, functions)
+    assert.deepEqual(functions.main, before)
+    const diagnostics = analyzePicolang(program)
+    assert.equal(diagnostics.filter((d) => d.code === 'undefined_function').length, 3)
+    assert.equal(diagnostics.filter((d) => d.code === 'undefined_variable').length, 1)
   } finally {
     workspace.dispose()
   }

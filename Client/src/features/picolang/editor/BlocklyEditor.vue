@@ -23,6 +23,7 @@ import focusIcon from '@iconify-icons/lucide/focus'
 import zoomInIcon from '@iconify-icons/lucide/zoom-in'
 import zoomOutIcon from '@iconify-icons/lucide/zoom-out'
 import {
+  diagnosticBlock,
   keyType,
   loadFunction,
   picoToolbox,
@@ -30,7 +31,10 @@ import {
   refreshVariableBlocks,
   registerPicoBlocks,
   typeKey,
+  updatePicoDiagnostics,
 } from './blocklyPico.ts'
+import PicoDiagnostics from './PicoDiagnostics.vue'
+import { analyzePicolang, type PicoDiagnostic } from '../language/analyzePicolang.ts'
 import {
   block,
   defaultExpr,
@@ -61,6 +65,7 @@ const historyIndex = ref(0)
 const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 const functions = computed(() => programFunctions(program.value))
+const diagnostics = computed(() => analyzePicolang(program.value))
 const activeFunction = computed(() => functions.value[activeName.value] ?? functions.value.main)
 const signature = computed(
   () =>
@@ -167,7 +172,7 @@ function readWorkspace(): void {
   if (!workspace || loading) return
   loading = true
   try {
-    refreshVariableBlocks(workspace, activeFunction.value.params)
+    refreshVariableBlocks(workspace)
     functions.value[activeName.value] = readFunction(workspace, activeFunction.value, functions.value)
     save()
   } finally {
@@ -190,7 +195,11 @@ function loadActive(): void {
     workspace.updateToolbox(picoToolbox(functions.value))
     decorateToolboxCategories()
     loadFunction(workspace, activeFunction.value, functions.value)
-    refreshVariableBlocks(workspace, activeFunction.value.params)
+    refreshVariableBlocks(workspace)
+    updatePicoDiagnostics(
+      workspace,
+      diagnostics.value.filter((item) => item.functionName === activeName.value),
+    )
     Blockly.svgResize(workspace)
     decorateWorkspaceControls()
   } finally {
@@ -201,6 +210,15 @@ function selectFunction(name: string): void {
   readWorkspace()
   activeName.value = name
   loadActive()
+}
+function selectDiagnostic(diagnostic: PicoDiagnostic): void {
+  if (activeName.value !== diagnostic.functionName) selectFunction(diagnostic.functionName)
+  if (!workspace) return
+  const target = diagnosticBlock(workspace, diagnostic.hintId)
+  if (target instanceof Blockly.BlockSvg) {
+    workspace.centerOnBlock(target.id)
+    target.select()
+  }
 }
 function restore(index: number): void {
   const snapshot = history.value[index]
@@ -380,6 +398,14 @@ function importJson(): void {
   }
 }
 
+watch(diagnostics, (items) => {
+  if (!workspace) return
+  updatePicoDiagnostics(
+    workspace,
+    items.filter((item) => item.functionName === activeName.value),
+  )
+})
+
 watch(
   () => props.tutorialId,
   (tutorialId) => {
@@ -507,6 +533,7 @@ onBeforeUnmount(() => {
       <button type="button" @click="addParam"><Icon :icon="plusIcon" />受け取る値を追加</button>
     </div>
     <div ref="host" class="blockly-canvas" aria-label="Picolangのブロックエディタ"></div>
+    <PicoDiagnostics :diagnostics="diagnostics" @select="selectDiagnostic" />
     <details
       class="blockly-json"
       :open="showJson"
