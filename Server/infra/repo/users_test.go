@@ -85,6 +85,11 @@ func TestUsersSetNameIfAbsent(t *testing.T) {
 			users:   []domain.User{{GoogleSubject: "sub"}, {GoogleSubject: "other", Name: ptr("alice")}},
 			wantErr: usecase.ErrUsernameTaken,
 		},
+		{
+			name:    "rejects a case variant of another user's name",
+			users:   []domain.User{{GoogleSubject: "sub"}, {GoogleSubject: "other", Name: ptr("ALICE")}},
+			wantErr: usecase.ErrUsernameTaken,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -13,7 +13,6 @@ const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/Bloc
 const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()
-const onAuthApp = window.location.origin === new URL(loginUrl).origin
 const fieldInput = ref('')
 const programName = ref('')
 const draft = ref<PicoProgram | null>(null)
@@ -97,7 +96,7 @@ function onEditorToggle(event: Event): void {
         </p>
         <template v-else>
           <p>Google認証を以下のリンクから行ってください</p>
-          <a v-if="!onAuthApp" class="match-login" :href="loginUrl">Google認証して公開版を開く</a>
+          <a class="match-login" :href="loginUrl">Googleでログイン</a>
         </template>
       </section>
 
