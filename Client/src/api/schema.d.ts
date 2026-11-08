@@ -1524,7 +1524,7 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
-            /** @description 必須項目、プログラムの用途、またはソースの文法が不正 */
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1538,7 +1538,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description リクエスト本文が1 MiBを超過 */
+            /** @description Content-Lengthが1 MiBを超過 */
             413: {
                 headers: {
                     [name: string]: unknown;

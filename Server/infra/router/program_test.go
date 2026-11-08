@@ -57,7 +57,7 @@ func TestCreateProgram(t *testing.T) {
 		{name: "duplicate key", body: strings.Replace(valid, `"isBattle":true`, `"isBattle":false,"isBattle":true`, 1), cookie: true, want: 400},
 		{name: "multiple bodies", body: valid + `{}`, cookie: true, want: 400},
 		{name: "oversized", body: strings.Repeat(" ", 1<<20) + valid, cookie: true, want: 413},
-		{name: "oversized without content length", body: strings.Repeat(" ", 1<<20) + valid, cookie: true, unknownLength: true, want: 413},
+		{name: "oversized without content length", body: strings.Repeat(" ", 1<<20) + valid, cookie: true, unknownLength: true, want: 400},
 		{name: "exactly at body limit", body: strings.Repeat(" ", (1<<20)-len(valid)) + valid, cookie: true, want: 201},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -26,9 +26,6 @@ func (r *Router) CreateProgram(ctx *echo.Context) error {
 	// values, and pointers distinguish missing required fields.
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
-		if errors.Is(err, echo.ErrStatusRequestEntityTooLarge) {
-			return fmt.Errorf("read program request: %w", err)
-		}
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("read program request: %w", err))
 	}
 	var request struct {

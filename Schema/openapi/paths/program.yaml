@@ -94,8 +94,8 @@
             schema:
               $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
       "400":
-        description: 必須項目、プログラムの用途、またはソースの文法が不正
+        description: 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正
       "401":
         description: 有効なセッションが必要
       "413":
-        description: リクエスト本文が1 MiBを超過
+        description: Content-Lengthが1 MiBを超過
