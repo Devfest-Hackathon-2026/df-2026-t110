@@ -329,6 +329,8 @@ export interface paths {
         /**
          * チュートリアルでプログラムを実行
          * @description チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+         *     選ばれたフィールドのIDを fieldId として返す。
+         *     実行と結果の保存が完了してからレスポンスを返す。
          *     結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
          */
         post: operations["runTutorial"];
@@ -373,10 +375,34 @@ export interface components {
              */
             runId: string;
         };
+        TutorialRunCreated: {
+            /**
+             * Format: uuid
+             * @description 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
+            /** @description 実行用にランダムに選ばれた variant のフィールドID */
+            fieldId: string;
+        };
         /** @description 対戦の再生履歴と結果の要約 */
         MatchResult: {
             history: components["schemas"]["history.schema"];
             summary: components["schemas"]["MatchSummary"];
+        };
+        GameHistory: components["schemas"]["history.schema"];
+        TutorialResult: {
+            history: components["schemas"]["history.schema"];
+            summary: {
+                /** @description クリア条件を満たしたか */
+                cleared: boolean;
+                /** @description 実行終了時のゲーム内時刻 */
+                tick: number;
+                /**
+                 * @description 全機停止、ターン上限、クリア条件達成のいずれか
+                 * @enum {string}
+                 */
+                reason: "all_stopped" | "turn_limit" | "condition_met";
+            };
         };
         /** @description 対戦を申し込んだプレイヤーから見た対戦結果の要約 */
         MatchSummary: {
@@ -1907,13 +1933,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 実行を開始した */
+            /** @description 実行を完了し、結果を保存した */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunCreated"];
+                    "application/json": components["schemas"]["TutorialRunCreated"];
                 };
             };
             400: components["responses"]["BadRequest"];

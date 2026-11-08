@@ -4,11 +4,11 @@ info:
   version: 1.0.0
 actions:
   # oapi-codegen cannot resolve the history schema's $defs. Reuse the recorded events.
-  - target: $.components.schemas.MatchResult.properties.history
+  - target: $.components.schemas.GameHistory
     remove: true
-  - target: $.components.schemas.MatchResult.properties
+  - target: $.components.schemas
     update:
-      history:
+      GameHistory:
         type: array
         items:
           type: object
