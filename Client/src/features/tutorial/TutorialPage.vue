@@ -71,6 +71,7 @@ const animationEvent = ref<AnimationEvent | null>(null)
 const speech = ref<TutorialSpeech | null>(null)
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
+const loginRequired = ref(false)
 let runController: AbortController | null = null
 let runGeneration = 0
 let animationId = 0
@@ -132,6 +133,7 @@ async function load(id: string): Promise<void> {
   picolangProgram.value = null
   runState.value = 'idle'
   runMessage.value = ''
+  loginRequired.value = false
 
   try {
     const remote = await getTutorial(id, signal)
@@ -260,6 +262,7 @@ async function runProgram(): Promise<void> {
   animationEvent.value = null
   speech.value = null
   runState.value = 'running'
+  loginRequired.value = false
   runMessage.value = 'プログラムを保存しています…'
   try {
     const signal = controller.signal
@@ -325,7 +328,7 @@ async function runProgram(): Promise<void> {
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
-    if (error instanceof TutorialRunApiError && (error.status === 401 || error.status === 501)) {
+    if (error instanceof TutorialRunApiError && error.status === 501) {
       try {
         await runLocally(program, controller.signal, generation)
       } catch (localError) {
@@ -336,6 +339,7 @@ async function runProgram(): Promise<void> {
       return
     }
     runState.value = 'error'
+    loginRequired.value = error instanceof TutorialRunApiError && error.status === 401
     runMessage.value = error instanceof Error ? error.message : 'プログラムを実行できませんでした'
   } finally {
     if (generation === runGeneration) runController = null
@@ -348,6 +352,7 @@ function resetProgram(): void {
   activeStage.value = null
   runState.value = 'idle'
   runMessage.value = ''
+  loginRequired.value = false
   void nextTick(() => sceneRef.value?.reset())
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-reset', {
@@ -628,7 +633,10 @@ onBeforeUnmount(() => {
           </button>
           <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
         </div>
-        <p v-if="runMessage" class="tutorial-run-feedback" role="status">{{ runMessage }}</p>
+        <p v-if="runMessage" class="tutorial-run-feedback" role="status">
+          {{ runMessage }}
+          <a v-if="loginRequired" href="/account">Googleでログイン</a>
+        </p>
         <div v-if="stage" class="tutorial-stage-toolbar">
           <span v-if="field && field.layouts.length > 1"
             >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span

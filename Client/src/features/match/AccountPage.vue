@@ -67,7 +67,7 @@ async function signOut(): Promise<void> {
       <button type="button" :disabled="busy" @click="signOut">ログアウト</button>
     </template>
     <template v-else-if="store.authStatus === 'guest'">
-      <p class="inner-lead">対戦にはGoogleアカウントでログインしてください。</p>
+      <p class="inner-lead">教材のプログラム保存・実行や対戦にはGoogleアカウントでログインしてください。</p>
       <a class="action-primary" :href="loginUrl">Googleでログイン</a>
     </template>
   </main>

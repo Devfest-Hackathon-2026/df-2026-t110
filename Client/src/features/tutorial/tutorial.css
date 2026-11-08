@@ -148,6 +148,14 @@
   font-size: var(--type-small);
   line-height: 1.4;
 }
+.tutorial-run-feedback a {
+  display: block;
+  width: fit-content;
+  margin-top: 6px;
+  color: #d4f4e8;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .tutorial-stage-toolbar {
   position: absolute;
   z-index: 2;
