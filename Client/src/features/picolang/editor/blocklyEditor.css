@@ -166,6 +166,9 @@
 .blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
   --category-color: #875c98;
 }
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(13) {
+  --category-color: #65758b;
+}
 .blockly-canvas .blocklyToolboxCategory {
   display: flex;
   align-items: center;
@@ -194,8 +197,8 @@
 .blockly-canvas .blocklyToolboxCategoryLabel {
   font: 10px/1.2 var(--font-body);
 }
-.blockly-canvas .blocklyToolboxSelected .blocklyToolboxCategory {
-  background: #dae9e2;
+.blockly-canvas .blocklyToolboxCategory.blocklyToolboxSelected {
+  background: #dae9e2 !important;
   font-weight: 700;
 }
 .blockly-canvas .blocklyMainBackground {

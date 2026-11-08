@@ -45,6 +45,7 @@ const colours: Record<string, string> = {
   スタック: '#8a67ab',
   表示: '#60866a',
   関数: '#875c98',
+  値: '#65758b',
 }
 const typeChoices: [string, string][] = [
   ['整数', 'integer'],
@@ -138,42 +139,48 @@ function defineStaticBlocks(): void {
   staticRegistered = true
   Blockly.Blocks.pico_number = {
     init() {
-      this.appendDummyInput().appendField(new EditorNumberField(0, undefined, undefined, 1), 'VALUE')
+      this.appendDummyInput()
+        .appendField('整数')
+        .appendField(new EditorNumberField(0, undefined, undefined, 1), 'VALUE')
       this.setOutput(true, 'integer')
-      this.setColour(colours.計算)
+      this.setColour(colours.値)
     },
   }
   Blockly.Blocks.pico_bool = {
     init() {
-      this.appendDummyInput().appendField(
-        new Blockly.FieldDropdown([
-          ['はい', 'true'],
-          ['いいえ', 'false'],
-        ]),
-        'VALUE',
-      )
+      this.appendDummyInput()
+        .appendField('真理値')
+        .appendField(
+          new Blockly.FieldDropdown([
+            ['はい', 'true'],
+            ['いいえ', 'false'],
+          ]),
+          'VALUE',
+        )
       this.setOutput(true, 'bool')
-      this.setColour(colours.論理)
+      this.setColour(colours.値)
     },
   }
   Blockly.Blocks.pico_rotation = {
     init() {
-      this.appendDummyInput().appendField(
-        new Blockly.FieldDropdown([
-          ['左', 'left'],
-          ['右', 'right'],
-        ]),
-        'VALUE',
-      )
+      this.appendDummyInput()
+        .appendField('向き')
+        .appendField(
+          new Blockly.FieldDropdown([
+            ['左', 'left'],
+            ['右', 'right'],
+          ]),
+          'VALUE',
+        )
       this.setOutput(true, 'rotation')
-      this.setColour(colours.動き)
+      this.setColour(colours.値)
     },
   }
   Blockly.Blocks.pico_unit = {
     init() {
       this.appendDummyInput().appendField('値なし')
       this.setOutput(true, 'unit')
-      this.setColour(colours.関数)
+      this.setColour(colours.値)
     },
   }
   Blockly.Blocks.pico_ident = {
@@ -186,7 +193,15 @@ function defineStaticBlocks(): void {
   Blockly.Blocks.pico_declare = {
     init() {
       this.appendDummyInput()
-        .appendField(new Blockly.FieldDropdown(typeChoices), 'TYPE')
+        .appendField(
+          new Blockly.FieldDropdown(typeChoices, function (this: Blockly.FieldDropdown, key) {
+            this.getSourceBlock()
+              ?.getInput('VALUE')
+              ?.connection?.setCheck(typeCheck(keyType(key)))
+            return key
+          }),
+          'TYPE',
+        )
         .appendField('の変数')
         .appendField(new EditorTextField('x'), 'NAME')
         .appendField('を作る')
@@ -326,7 +341,6 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
       fields: expr.type === 'unit' ? {} : { VALUE: expr.type === 'bool' ? String(expr.value) : expr.value },
     }
   }
-  const signature = callSignature(expr.func, functions)
   return {
     type: callType(expr.func, false),
     data: nodeData(expr.hintId),
@@ -335,7 +349,6 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
         `ARG${i}`,
         {
           block: exprState(arg, functions),
-          shadow: exprState(defaultExpr(signature.args[i] ?? 'integer'), functions),
         },
       ]),
     ),
@@ -343,7 +356,6 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
 }
 function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>): State {
   if (stmt.kind === 'call') {
-    const signature = callSignature(stmt.func, functions)
     return {
       type: callType(stmt.func, true),
       data: nodeData(stmt.hintId),
@@ -352,7 +364,6 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
           `ARG${i}`,
           {
             block: exprState(arg, functions),
-            shadow: exprState(defaultExpr(signature.args[i] ?? 'integer'), functions),
           },
         ]),
       ),
@@ -372,7 +383,6 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
       inputs: {
         VALUE: {
           block: exprState(stmt.value, functions),
-          shadow: exprState(defaultExpr(stmt.type), functions),
         },
         TOKEN: { shadow: exprState(ident(stmt.ident.name), functions) },
       },
@@ -394,7 +404,6 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
       inputs: {
         CONDITION: {
           block: exprState(stmt.condition, functions),
-          shadow: exprState(defaultExpr('bool'), functions),
         },
         ...(stmt.then.stmts.length ? { THEN: { block: chainState(stmt.then.stmts, functions)! } } : {}),
         ...(stmt.else?.stmts.length ? { ELSE: { block: chainState(stmt.else.stmts, functions)! } } : {}),
@@ -405,16 +414,13 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
     if (stmt.kind === 'while')
       inputs.CONDITION = {
         block: exprState(stmt.condition, functions),
-        shadow: exprState(defaultExpr('bool'), functions),
       }
     else {
       inputs.START = {
         block: exprState(stmt.start, functions),
-        shadow: exprState(defaultExpr('integer'), functions),
       }
       inputs.END = {
         block: exprState(stmt.end, functions),
-        shadow: exprState(defaultExpr('integer'), functions),
       }
     }
     if (stmt.body.stmts.length) inputs.BODY = { block: chainState(stmt.body.stmts, functions)! }
@@ -599,12 +605,11 @@ function toolboxBlock(
     pico_for: 'START',
     pico_return: 'VALUE',
   }
-  const inputs = Object.fromEntries(
-    args.map((arg, i) => [`ARG${i}`, { shadow: exprState(defaultExpr(arg), functions) }]),
+  const inputs: Record<string, Blockly.serialization.blocks.ConnectionState> = Object.fromEntries(
+    args.map((arg, i) => [`ARG${i}`, { block: exprState(defaultExpr(arg), functions) }]),
   )
-  if (defaults[type])
-    inputs[inputNames[type]!] = { shadow: exprState(defaultExpr(defaults[type]), functions) }
-  if (type === 'pico_for') inputs.END = { shadow: exprState(defaultExpr('integer'), functions) }
+  if (defaults[type]) inputs[inputNames[type]!] = { block: exprState(defaultExpr(defaults[type]), functions) }
+  if (type === 'pico_for') inputs.END = { block: exprState(defaultExpr('integer'), functions) }
   if (type === 'pico_declare') inputs.TOKEN = { shadow: exprState(ident('x'), functions) }
   return {
     kind: 'block',
@@ -627,6 +632,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
     'スタック',
     '表示',
     '関数',
+    '値',
   ]) {
     const contents: Blockly.utils.toolbox.ToolboxItemInfo[] = []
     if (category === '制御')
@@ -634,8 +640,10 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
         contents.push(toolboxBlock(type))
     else if (category === '変数')
       for (const type of ['pico_declare', 'pico_assign', 'pico_ident']) contents.push(toolboxBlock(type))
+    else if (category === '値')
+      for (const type of ['pico_number', 'pico_bool', 'pico_rotation', 'pico_unit'])
+        contents.push(toolboxBlock(type))
     else if (category === '関数') {
-      contents.push(toolboxBlock('pico_unit'))
       for (const name of Object.keys(functions).filter((item) => item !== 'main')) {
         contents.push(
           toolboxBlock(
@@ -662,9 +670,6 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
             functions,
           ),
         )
-      if (category === '計算') contents.unshift(toolboxBlock('pico_number'))
-      if (category === '論理') contents.unshift(toolboxBlock('pico_bool'))
-      if (category === '動き') contents.push(toolboxBlock('pico_rotation'))
     }
     categories.push({
       kind: 'category',

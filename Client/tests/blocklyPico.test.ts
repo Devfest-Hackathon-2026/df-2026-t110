@@ -4,6 +4,7 @@ import * as Blockly from 'blockly'
 import {
   keyType,
   loadFunction,
+  picoToolbox,
   readFunction,
   refreshVariableBlocks,
   registerPicoBlocks,
@@ -11,6 +12,7 @@ import {
 } from '../src/features/picolang/editor/blocklyPico.ts'
 import {
   ident,
+  defaultExpr,
   isPicoProgram,
   makeStatement,
   newProgram,
@@ -22,6 +24,119 @@ test('入れ子のstack型をBlocklyの型キーと相互変換できる', () =>
   const type: PicoType = { kind: 'stack', elementType: { kind: 'stack', elementType: 'bool' } }
   assert.equal(typeKey(type), 'stack:stack:bool')
   assert.deepEqual(keyType('stack:stack:bool'), type)
+})
+
+test('値カテゴリから各型のブロックを作成し、値をASTと往復できる', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  registerPicoBlocks(functions)
+  const toolbox = picoToolbox(functions)
+  const category = toolbox.contents.find(
+    (item) => item.kind === 'category' && 'name' in item && item.name === '値',
+  ) as Blockly.utils.toolbox.StaticCategoryInfo
+  assert.ok(category)
+  const cases = [
+    { blockType: 'pico_number', type: 'integer', field: -42, value: -42 },
+    { blockType: 'pico_bool', type: 'bool', field: 'true', value: true },
+    { blockType: 'pico_rotation', type: 'rotation', field: 'right', value: 'right' },
+    { blockType: 'pico_unit', type: 'unit', field: undefined, value: null },
+  ]
+  for (const { blockType, type, field, value } of cases) {
+    const workspace = new Blockly.Workspace()
+    try {
+      const entry = category.contents.find(
+        (item) => item.kind === 'block' && 'type' in item && item.type === blockType,
+      ) as Blockly.utils.toolbox.BlockInfo
+      assert.ok(entry)
+      const literal = Blockly.serialization.blocks.append({ ...entry, type: blockType }, workspace)
+      assert.equal(literal.isShadow(), false)
+      assert.deepEqual(literal.outputConnection?.getCheck(), [type])
+      if (field !== undefined) literal.setFieldValue(field, 'VALUE')
+      const statement = workspace.newBlock('pico_expr_statement')
+      statement.getInput('VALUE')!.connection!.connect(literal.outputConnection!)
+      const result = readFunction(workspace, functions.main, functions)
+      const expression = result.body.stmts[0]
+      assert.equal(expression.kind, 'literal')
+      assert.equal(expression.type, type)
+      assert.equal(expression.value, value)
+      loadFunction(workspace, result, functions)
+      assert.deepEqual(readFunction(workspace, result, functions), result)
+    } finally {
+      workspace.dispose()
+    }
+  }
+})
+
+test('ツールボックスの初期リテラルを取り外し、別の入力へ接続し直せる', () => {
+  const functions = programFunctions(newProgram())
+  registerPicoBlocks(functions)
+  const toolbox = picoToolbox(functions)
+  for (const [categoryName, blockType, input] of [
+    ['動き', 'pico_stmt_wait', 'ARG0'],
+    ['動き', 'pico_stmt_rotate', 'ARG0'],
+    ['制御', 'pico_if', 'CONDITION'],
+    ['制御', 'pico_return', 'VALUE'],
+    ['制御', 'pico_for', 'END'],
+    ['変数', 'pico_declare', 'VALUE'],
+  ]) {
+    const workspace = new Blockly.Workspace()
+    try {
+      const category = toolbox.contents.find(
+        (item) => item.kind === 'category' && 'name' in item && item.name === categoryName,
+      ) as Blockly.utils.toolbox.StaticCategoryInfo
+      const entry = category.contents.find(
+        (item) => item.kind === 'block' && 'type' in item && item.type === blockType,
+      ) as Blockly.utils.toolbox.BlockInfo
+      const original = Blockly.serialization.blocks.append({ ...entry, type: blockType }, workspace)
+      const literal = original.getInputTargetBlock(input)!
+      assert.ok(literal)
+      assert.equal(literal.isShadow(), false)
+      literal.unplug()
+      assert.equal(original.getInputTargetBlock(input), null)
+      assert.equal(original.getInput(input)!.connection!.getShadowState(), null)
+      const target = workspace.newBlock(blockType)
+      target.getInput(input)!.connection!.connect(literal.outputConnection!)
+      assert.equal(target.getInputTargetBlock(input), literal)
+    } finally {
+      workspace.dispose()
+    }
+  }
+})
+
+test('読み込んだプログラムのリテラルもshadowを伴わない独立したブロックになる', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const declaration = makeStatement('declare', functions)
+  assert.equal(declaration.kind, 'declare')
+  declaration.type = 'bool'
+  declaration.value = defaultExpr('bool')
+  functions.main.body.stmts.unshift(
+    declaration,
+    makeStatement('if', functions),
+    makeStatement('for', functions),
+    makeStatement('rotate', functions),
+    makeStatement('wait', functions),
+  )
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), functions.main)
+    const literals = workspace
+      .getAllBlocks(false)
+      .filter((item) => ['pico_number', 'pico_bool', 'pico_rotation', 'pico_unit'].includes(item.type))
+    assert.equal(literals.length, 7)
+    for (const literal of literals) {
+      assert.equal(literal.isShadow(), false)
+      const parent = literal.getParent()!
+      const input = parent.inputList.find((item) => item.connection?.targetBlock() === literal)!
+      assert.equal(input.connection!.getShadowState(), null)
+      literal.unplug()
+      assert.equal(input.connection!.targetBlock(), null)
+    }
+  } finally {
+    workspace.dispose()
+  }
 })
 
 test('Blocklyのstack型の変数と組み込み関数をASTに変換できる', () => {
