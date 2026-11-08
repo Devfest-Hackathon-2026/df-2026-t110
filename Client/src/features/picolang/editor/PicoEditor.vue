@@ -206,7 +206,11 @@ function addChoice(name: string): void {
       })),
       ...stmts
         .slice(0, index)
-        .flatMap((stmt) => (stmt.kind === 'declare' ? [{ name: stmt.ident.name, type: stmt.type }] : [])),
+        .flatMap((stmt) =>
+          stmt.kind === 'declare'
+            ? [{ name: stmt.ident.name, type: analysis.value.types[stmt.ident.hintId] }]
+            : [],
+        ),
     ][0]
     if (!variable) return
     statement.ident.name = variable.name
@@ -419,6 +423,7 @@ function importJson(): void {
           </button>
         </div>
         <PicoBlock
+          :inferred-types="analysis.types"
           :block="currentFunction.body"
           :functions="functions"
           :variables="

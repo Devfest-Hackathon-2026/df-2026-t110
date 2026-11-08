@@ -1,6 +1,7 @@
 import {
   PICO_BUILTINS,
   programFunctions,
+  walkPicoStatements,
   type PicoBlock,
   type PicoExpr,
   type PicoIdent,
@@ -126,6 +127,7 @@ export interface PicoInferredSignature {
 export interface PicoAnalysis {
   diagnostics: PicoDiagnostic[]
   signatures: Record<string, PicoInferredSignature>
+  types: Record<string, PicoType | undefined>
   program: PicoTypedProgram | null
 }
 function resolvedType(type: Term): PicoType | undefined {
@@ -141,6 +143,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
   const diagnostics: PicoDiagnostic[] = []
   const functions = programFunctions(program)
   const builtins = new Map(PICO_BUILTINS.map((builtin) => [builtin.name as string, builtin]))
+  const bindingTypes = new Map<string, Term>()
   const signatures = new Map<string, { params: Term[]; result: Term }>()
   const variables: Array<{ variable: TypeVariable; hintId: string; functionName: string }> = []
   function fresh(functionName: string, hintId: string): TypeVariable {
@@ -185,6 +188,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
     function declare(ident: PicoIdent, type: Term, scope: Scope): Binding | undefined {
       const binding: Binding = { ident, type, scope, order: order++, used: false }
       bindings.push(binding)
+      bindingTypes.set(ident.hintId, type)
       const previous = active.get(ident.name)
       if (!ident.name.trim()) report('invalid_name', 'error', ident.hintId, '変数の名前を入力してください。')
       else if (previous) {
@@ -297,8 +301,9 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
           break
         case 'declare': {
           const actual = expression(stmt.value, scope)
-          expect(stmt.value.hintId, term(stmt.type), actual)
-          const binding = declare(stmt.ident, term(stmt.type), scope)
+          const inferred = fresh(functionName, stmt.ident.hintId)
+          expect(stmt.value.hintId, inferred, actual)
+          const binding = declare(stmt.ident, inferred, scope)
           if (binding) locals.push(binding)
           break
         }
@@ -408,6 +413,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       },
     ]),
   )
+  const types = Object.fromEntries([...bindingTypes].map(([hintId, type]) => [hintId, resolvedType(type)]))
   let compiled: PicoTypedProgram | null = null
   if (!diagnostics.some((item) => item.severity === 'error')) {
     compiled = JSON.parse(JSON.stringify(program)) as PicoTypedProgram
@@ -416,9 +422,12 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       fn.params.forEach((param, index) => {
         param.type = inferred[name].params[index]!
       })
+      walkPicoStatements(fn.body, (stmt) => {
+        if (stmt.kind === 'declare') stmt.type = types[stmt.ident.hintId]!
+      })
     }
   }
-  return { diagnostics, signatures: inferred, program: compiled }
+  return { diagnostics, signatures: inferred, types, program: compiled }
 }
 
 /** Analyze without mutating the authoring AST. */

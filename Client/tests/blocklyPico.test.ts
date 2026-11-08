@@ -19,12 +19,13 @@ import {
   defaultExpr,
   PICO_DISTANCE_TARGETS,
   isPicoProgram,
+  isPicoDraft,
   makeStatement,
   newProgram,
   programFunctions,
   type PicoType,
 } from '../src/features/picolang/language/picolang.ts'
-import { analyzePicolang } from '../src/features/picolang/language/analyzePicolang.ts'
+import { analyzePicolang, inferPicolang } from '../src/features/picolang/language/analyzePicolang.ts'
 
 test('入れ子のstack型をBlocklyの型キーと相互変換できる', () => {
   const type: PicoType = { kind: 'stack', elementType: { kind: 'stack', elementType: 'bool' } }
@@ -115,7 +116,6 @@ test('読み込んだプログラムのリテラルもshadowを伴わない独�
   const functions = programFunctions(program)
   const declaration = makeStatement('declare', functions)
   assert.equal(declaration.kind, 'declare')
-  declaration.type = 'bool'
   declaration.value = defaultExpr('bool')
   functions.main.body.stmts.unshift(
     declaration,
@@ -153,18 +153,25 @@ test('Blocklyのstack型の変数と組み込み関数をASTに変換できる',
   const workspace = new Blockly.Workspace()
   try {
     const declaration = workspace.newBlock('pico_declare')
-    declaration.setFieldValue('stack:integer', 'TYPE')
+    assert.equal(declaration.getField('TYPE'), null)
     refreshVariableBlocks(workspace)
     const empty = workspace.newBlock('pico_expr_new')
-    declaration.getInput('VALUE')!.connection!.connect(empty.outputConnection!)
+    const push = workspace.newBlock('pico_expr_push_back')
+    const number = workspace.newBlock('pico_number')
+    push.getInput('ARG0')!.connection!.connect(empty.outputConnection!)
+    push.getInput('ARG1')!.connection!.connect(number.outputConnection!)
+    declaration.getInput('VALUE')!.connection!.connect(push.outputConnection!)
     const result = readFunction(workspace, functions.main, functions)
     const statement = result.body.stmts[0]
     assert.equal(statement.kind, 'declare')
-    assert.deepEqual(statement.type, { kind: 'stack', elementType: 'integer' })
+    assert.equal('type' in statement, false)
     assert.equal(statement.value.kind, 'call')
-    assert.equal(statement.value.func, 'new')
+    assert.equal(statement.value.func, 'push_back')
+    const analysis = inferPicolang({ ...program, picolang: { v0: { program: { main: result } } } })
+    assert.deepEqual(analysis.types[statement.ident.hintId], { kind: 'stack', elementType: 'integer' })
     functions.main = result
-    assert.equal(isPicoProgram(program), true)
+    assert.equal(isPicoDraft(program), true)
+    assert.equal(isPicoProgram(inferPicolang(program).program), true)
   } finally {
     workspace.dispose()
   }
@@ -189,7 +196,8 @@ test('Blocklyとの往復で制御構文と変数宣言をPicolang ASTに保つ'
     assert.equal(declarationBlock?.getInputTargetBlock('TOKEN')?.isShadow(), true)
     const result = readFunction(workspace, functions.main, functions)
     functions.main = result
-    assert.equal(isPicoProgram(program), true)
+    assert.equal(isPicoDraft(program), true)
+    assert.equal(isPicoProgram(inferPicolang(program).program), true)
     assert.deepEqual(
       result.body.stmts.map((item) => item.kind),
       ['declare', 'if', 'return'],
@@ -224,7 +232,8 @@ test('全探索対象をprint_distance_targetのBlockly入力とASTで保持す�
     const result = readFunction(workspace, functions.main, functions)
     assert.deepEqual(result, functions.main)
     functions.main = result
-    assert.equal(isPicoProgram(program), true)
+    assert.equal(isPicoDraft(program), true)
+    assert.equal(isPicoProgram(inferPicolang(program).program), true)
     const first = result.body.stmts[0]
     assert.equal(first.kind, 'call')
     const arg = first.args[0]
@@ -241,7 +250,6 @@ test('Boolean stack elements remain connected and type-check after a Blockly rou
   const functions = programFunctions(program)
   const declaration = makeStatement('declare', functions)
   assert.equal(declaration.kind, 'declare')
-  declaration.type = { kind: 'stack', elementType: 'bool' }
   declaration.value = {
     kind: 'call',
     hintId: id(),
@@ -272,7 +280,6 @@ test('same names in sibling scopes do not disconnect or change variable referenc
   for (const type of ['bool', 'integer'] as const) {
     const declaration = makeStatement('declare', functions)
     assert.equal(declaration.kind, 'declare')
-    declaration.type = type
     declaration.value = defaultExpr(type)
     const conditional = makeStatement('if', functions)
     assert.equal(conditional.kind, 'if')
@@ -397,6 +404,46 @@ test('annotation-free user functions retain arguments and return expressions thr
     loadFunction(workspace, functions.identity, functions)
     assert.deepEqual(readFunction(workspace, functions.identity, functions), functions.identity)
     assert.deepEqual(analyzePicolang(program), [])
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('declaration blocks display inferred stack types without a type selector or changing connections', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const declaration = makeStatement('declare', functions)
+  assert.equal(declaration.kind, 'declare')
+  declaration.value = { kind: 'call', hintId: id(), func: 'new', args: [] }
+  functions.main.body.stmts.unshift(declaration, {
+    kind: 'call',
+    hintId: id(),
+    func: 'print_bool',
+    args: [
+      {
+        kind: 'call',
+        hintId: id(),
+        func: 'get_back',
+        args: [ident(declaration.ident.name)],
+      },
+    ],
+  })
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    refreshVariableBlocks(workspace)
+    const block = workspace.getAllBlocks(false).find((item) => item.type === 'pico_declare')!
+    assert.equal(block.getField('TYPE'), null)
+    const initializer = block.getInputTargetBlock('VALUE')
+    const analysis = inferPicolang(program)
+    updatePicoDiagnostics(workspace, analysis.diagnostics, analysis.types)
+    assert.equal(block.getFieldValue('INFERRED_TYPE'), '真理値のスタック')
+    assert.equal(block.getInputTargetBlock('VALUE'), initializer)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), functions.main)
+    assert.equal('type' in declaration, false)
+    updatePicoDiagnostics(workspace, [])
+    assert.equal(block.getFieldValue('INFERRED_TYPE'), '未確定')
   } finally {
     workspace.dispose()
   }

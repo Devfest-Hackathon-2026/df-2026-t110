@@ -189,6 +189,7 @@ function loadActive(): void {
     updatePicoDiagnostics(
       workspace,
       diagnostics.value.filter((item) => item.functionName === activeName.value),
+      analysis.value.types,
     )
     Blockly.svgResize(workspace)
     decorateWorkspaceControls()
@@ -368,11 +369,12 @@ function importJson(): void {
   }
 }
 
-watch(diagnostics, (items) => {
+watch(analysis, (result) => {
   if (!workspace) return
   updatePicoDiagnostics(
     workspace,
-    items.filter((item) => item.functionName === activeName.value),
+    result.diagnostics.filter((item) => item.functionName === activeName.value),
+    result.types,
   )
 })
 

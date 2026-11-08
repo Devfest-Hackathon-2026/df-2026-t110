@@ -13,7 +13,7 @@ import {
   type PicoStatement,
   type PicoType,
 } from '../language/picolang.ts'
-import { argumentLabel } from './picoGuidance.ts'
+import { argumentLabel, typeLabel } from './picoGuidance.ts'
 import type { PicoDiagnostic } from '../language/analyzePicolang.ts'
 
 type State = Blockly.serialization.blocks.State
@@ -49,19 +49,6 @@ const colours: Record<string, string> = {
   関数: '#875c98',
   値: '#65758b',
 }
-const typeChoices: [string, string][] = [
-  ['整数', 'integer'],
-  ['真理値', 'bool'],
-  ['値なし', 'unit'],
-  ['マスの種類', 'terrain'],
-  ['向き', 'rotation'],
-  ['探索対象', 'distance_target'],
-  ['整数のスタック', 'stack:integer'],
-  ['真理値のスタック', 'stack:bool'],
-  ['マスのスタック', 'stack:terrain'],
-  ['向きのスタック', 'stack:rotation'],
-  ['探索対象のスタック', 'stack:distance_target'],
-]
 const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
 
@@ -210,19 +197,11 @@ function defineStaticBlocks(): void {
   Blockly.Blocks.pico_declare = {
     init() {
       this.appendDummyInput()
-        .appendField(
-          new Blockly.FieldDropdown(typeChoices, function (this: Blockly.FieldDropdown, key) {
-            this.getSourceBlock()
-              ?.getInput('VALUE')
-              ?.connection?.setCheck(typeCheck(keyType(key)))
-            return key
-          }),
-          'TYPE',
-        )
-        .appendField('の変数')
+        .appendField('変数')
         .appendField(new EditorTextField('x'), 'NAME')
         .appendField('を作る')
-      this.appendValueInput('VALUE').setCheck('integer').appendField('最初の値')
+        .appendField('未確定', 'INFERRED_TYPE')
+      this.appendValueInput('VALUE').appendField('最初の値')
       this.appendValueInput('TOKEN').appendField('この変数を使う')
       this.setPreviousStatement(true)
       this.setNextStatement(true)
@@ -423,7 +402,7 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
     return {
       type: 'pico_declare',
       data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
-      fields: { TYPE: typeKey(stmt.type), NAME: stmt.ident.name },
+      fields: { NAME: stmt.ident.name },
       inputs: {
         VALUE: {
           block: exprState(stmt.value, functions),
@@ -548,13 +527,11 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
   for (let current = first; current; current = current.getNextBlock()) {
     const hintId = metaId(current)
     if (current.type === 'pico_declare') {
-      const type = keyType(field(current, 'TYPE', 'integer'))
       statements.push({
         kind: 'declare',
         hintId,
-        type,
         ident: { kind: 'ident', hintId: metaId(current, 'identId'), name: field(current, 'NAME', 'x') },
-        value: value(current, 'VALUE', type, functions),
+        value: value(current, 'VALUE', 'integer', functions),
       })
     } else if (current.type === 'pico_assign') {
       statements.push({
@@ -732,8 +709,7 @@ export function refreshVariableBlocks(workspace: Blockly.Workspace): void {
   for (const block of workspace.getAllBlocks(false)) {
     if (block.type === 'pico_declare') {
       const name = field(block, 'NAME', 'x')
-      const type = keyType(field(block, 'TYPE', 'integer'))
-      block.getInput('VALUE')?.connection?.setCheck(typeCheck(type))
+      block.getInput('VALUE')?.connection?.setCheck(null)
       const input = block.getInput('TOKEN')?.connection
       const token = block.getInputTargetBlock('TOKEN')
       if (token?.isShadow() && field(token, 'NAME') !== name) token.setFieldValue(name, 'NAME')
@@ -760,7 +736,11 @@ export function diagnosticBlock(workspace: Blockly.Workspace, hintId: string): B
   return workspace.getAllBlocks(false).find((block) => Object.values(meta(block)).includes(hintId))
 }
 
-export function updatePicoDiagnostics(workspace: Blockly.Workspace, diagnostics: PicoDiagnostic[]): void {
+export function updatePicoDiagnostics(
+  workspace: Blockly.Workspace,
+  diagnostics: PicoDiagnostic[],
+  types: Record<string, PicoType | undefined> = {},
+): void {
   const blocks = workspace.getAllBlocks(false)
   const byHint = new Map<string, Block>()
   for (const block of blocks) for (const hint of Object.values(meta(block))) byHint.set(hint, block)
@@ -772,5 +752,9 @@ export function updatePicoDiagnostics(workspace: Blockly.Workspace, diagnostics:
     items.push(`${diagnostic.severity === 'error' ? 'エラー' : '警告'}：${diagnostic.message}`)
     messages.set(block, items)
   }
-  for (const block of blocks) block.setWarningText(messages.get(block)?.join('\n') ?? null, 'pico-analysis')
+  for (const block of blocks) {
+    block.setWarningText(messages.get(block)?.join('\n') ?? null, 'pico-analysis')
+    if (block.type === 'pico_declare')
+      block.setFieldValue(typeLabel(types[metaId(block, 'identId')]), 'INFERRED_TYPE')
+  }
 }

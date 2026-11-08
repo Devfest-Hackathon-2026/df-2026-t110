@@ -214,7 +214,7 @@ test('recursive and forward function calls resolve, undefined calls still analyz
 
 test('initializers, assignments, conditions, loop bounds, arguments, and returns are checked', () => {
   const program = source(
-    declare('x', 'integer', defaultExpr('bool')),
+    declare('x', 'integer', call('add', defaultExpr('bool'), defaultExpr())),
     { kind: 'assign', hintId: id(), ident: ident('x'), value: defaultExpr('rotation') },
     { kind: 'if', hintId: id(), condition: defaultExpr(), then: block() },
     { kind: 'while', hintId: id(), condition: defaultExpr(), body: block() },
@@ -236,6 +236,7 @@ test('user function argument counts and compound return types are checked', () =
   const program = source(
     call('other'),
     declare('result', stack('bool'), call('other', defaultExpr())),
+    call('print_bool', call('get_back', ident('result'))),
     call('other', defaultExpr('bool')),
     call('other', defaultExpr(), defaultExpr()),
   )
@@ -266,6 +267,8 @@ test('surrounding types constrain nested stack calls after arguments have been v
   const program = source(
     declare('nested', stack(stack('rotation')), call('push_back', call('new'), call('new'))),
     declare('rotation', 'rotation', call('get_back', call('new'))),
+    call('print_rotation', call('get_back', call('get_back', ident('nested')))),
+    call('print_rotation', ident('rotation')),
   )
   assert.equal(
     analyzePicolang(program).some((d) => d.severity === 'error'),
@@ -276,6 +279,7 @@ test('surrounding types constrain nested stack calls after arguments have been v
 test('incompatible nested stack elements are rejected', () => {
   const program = source(
     declare('items', stack(stack('bool')), call('new')),
+    call('print_bool', call('get_back', call('get_back', ident('items')))),
     call('push_back', ident('items'), call('push_back', call('new'), defaultExpr())),
   )
   assert.equal(analyzePicolang(program).filter((d) => d.code === 'type_mismatch').length, 1)
@@ -389,7 +393,10 @@ test('recursive calls share parameter and result constraints with their function
 })
 
 test('nested stack results are resolved after constraints from later functions', () => {
-  const program = source(declare('items', stack(stack('rotation')), call('make_nested')))
+  const program = source(
+    declare('items', stack(stack('rotation')), call('make_nested')),
+    call('print_rotation', call('get_back', call('get_back', ident('items')))),
+  )
   const functions = programFunctions(program)
   functions.make_nested = inferredFunction([], ret(call('wrap', call('new'))))
   functions.wrap = inferredFunction(['x'], ret(call('push_back', call('new'), ident('x'))))
@@ -497,4 +504,155 @@ test('assignment to a parameter constrains its type and the return type', () => 
   const analysis = inferPicolang(program)
   assert.deepEqual(analysis.diagnostics, [])
   assert.deepEqual(analysis.signatures.set_flag, { params: ['bool'], returns: 'bool' })
+})
+
+const local = (name: string, value: PicoExpr): Extract<PicoStatement, { kind: 'declare' }> => ({
+  kind: 'declare',
+  hintId: id(),
+  ident: ident(name),
+  value,
+})
+
+test('local declarations infer every primitive from the initializer and export concrete types', () => {
+  for (const type of ['integer', 'bool', 'unit', 'terrain', 'rotation', 'distance_target'] as const) {
+    const declaration = local('x', defaultExpr(type))
+    const program = source(declaration, call(`print_${type}`, ident('x')))
+    const before = structuredClone(program)
+    const analysis = inferPicolang(program)
+    assert.deepEqual(analysis.diagnostics, [], type)
+    assert.equal(analysis.types[declaration.ident.hintId], type)
+    assert.equal(isPicoProgram(analysis.program), true)
+    const compiled = programFunctions(analysis.program!).main.body.stmts[0]
+    assert.equal(compiled.kind, 'declare')
+    assert.equal(compiled.type, type)
+    assert.deepEqual(program, before)
+    assert.equal('type' in declaration, false)
+  }
+})
+
+test('an empty stack gets its element type from a later assignment', () => {
+  const declaration = local('items', call('new'))
+  const program = source(
+    declaration,
+    {
+      kind: 'assign',
+      hintId: id(),
+      ident: ident('items'),
+      value: call('push_back', ident('items'), defaultExpr('bool')),
+    },
+    call('print_bool', call('get_back', ident('items'))),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.types[declaration.ident.hintId], stack('bool'))
+  assert.equal(isPicoProgram(analysis.program), true)
+})
+
+test('a local variable carries constraints between an initializer, function calls, and a return', () => {
+  const program = source(call('print_rotation', call('wrap_local', call('new'))))
+  const declaration = local('item', call('get_back', ident('items')))
+  programFunctions(program).wrap_local = inferredFunction(['items'], declaration, ret(ident('item')))
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.signatures.wrap_local, { params: [stack('rotation')], returns: 'rotation' })
+  assert.equal(analysis.types[declaration.ident.hintId], 'rotation')
+})
+
+test('later references infer nested stack elements without declaration annotations', () => {
+  const declaration = local('items', call('push_back', call('new'), call('new')))
+  const program = source(
+    declaration,
+    call('print_distance_target', call('get_back', call('get_back', ident('items')))),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.types[declaration.ident.hintId], stack(stack('distance_target')))
+})
+
+test('different lexical bindings with the same name have independent inferred types', () => {
+  const integer = local('x', defaultExpr())
+  const bool = local('x', defaultExpr('bool'))
+  const program = source(
+    conditional([integer, call('print_integer', ident('x'))], [bool, call('print_bool', ident('x'))]),
+  )
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.equal(analysis.types[integer.ident.hintId], 'integer')
+  assert.equal(analysis.types[bool.ident.hintId], 'bool')
+})
+
+test('inconsistent assignments, incompatible uses, and infinite local types prevent export', () => {
+  for (const program of [
+    source(local('x', defaultExpr()), {
+      kind: 'assign',
+      hintId: id(),
+      ident: ident('x'),
+      value: defaultExpr('bool'),
+    }),
+    source(local('x', defaultExpr('bool')), call('print_integer', ident('x'))),
+    source(local('x', call('new')), {
+      kind: 'assign',
+      hintId: id(),
+      ident: ident('x'),
+      value: call('push_back', ident('x'), ident('x')),
+    }),
+  ]) {
+    const analysis = inferPicolang(program)
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+    assert.equal(analysis.program, null)
+  }
+})
+
+test('an unused or size-only empty stack is not assigned a guessed element type', () => {
+  for (const program of [
+    source(local('items', call('new'))),
+    source(local('items', call('new')), call('size', ident('items'))),
+  ]) {
+    const analysis = inferPicolang(program)
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'cannot_infer_type'))
+    assert.equal(analysis.program, null)
+  }
+})
+
+test('old annotations are stripped and inferred types are filled in every nested lexical block', () => {
+  const declarations = ['a', 'b', 'c', 'd'].map((name) => declare(name, 'integer', defaultExpr('bool')))
+  const use = (index: number) => [
+    declarations[index],
+    call('print_bool', ident(declarations[index].ident.name)),
+  ]
+  const program = source(
+    conditional(use(0), use(1)),
+    { kind: 'while', hintId: id(), condition: defaultExpr('bool'), body: block(use(2)) },
+    {
+      kind: 'for',
+      hintId: id(),
+      ident: ident('i'),
+      start: defaultExpr(),
+      end: defaultExpr(),
+      body: block(use(3)),
+    },
+  )
+  const draft = picoDraft(program)
+  assert.equal(isPicoDraft(draft), true)
+  assert.equal(isPicoProgram(draft), false)
+  const analysis = inferPicolang(draft)
+  assert.equal(
+    analysis.diagnostics.some((d) => d.severity === 'error'),
+    false,
+  )
+  assert.equal(isPicoProgram(analysis.program), true)
+  assert.deepEqual(
+    declarations.map((d) => analysis.types[d.ident.hintId]),
+    ['bool', 'bool', 'bool', 'bool'],
+  )
+  assert.deepEqual(picoDraft(analysis.program!), draft)
+  assert.deepEqual(inferPicolang(picoDraft(analysis.program!)).program, analysis.program)
+  const compiled = analysis.program!
+  const first = programFunctions(compiled).main.body.stmts[0]
+  assert.equal(first.kind, 'if')
+  const missingType = first.then.stmts[0]
+  assert.equal(missingType.kind, 'declare')
+  delete missingType.type
+  assert.equal(isPicoProgram(compiled), false)
+  assert.equal(isPicoDraft(compiled), true)
 })
