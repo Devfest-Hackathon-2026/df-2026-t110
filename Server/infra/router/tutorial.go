@@ -16,3 +16,7 @@ func (r *Router) GetTutorial(ctx *echo.Context, tutorialID string) error {
 func (r *Router) ListTutorialPrograms(ctx *echo.Context, tutorialID api.TutorialId) error {
 	return errNotImplemented()
 }
+
+func (r *Router) RunTutorial(ctx *echo.Context, tutorialID api.TutorialId) error {
+	return errNotImplemented()
+}

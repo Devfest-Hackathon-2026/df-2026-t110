@@ -38,51 +38,14 @@
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
 
-/program/{programId}/run:
-  post:
-    tags:
-      - program
-    summary: プログラムを実行
-    description: 指定されたプログラムを実行し、その実行結果をSSEで配信する。
-    operationId: runProgram
-    parameters:
-      - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            oneOf:
-              - type: object
-                additionalProperties: false
-                required: [tutorialId]
-                properties:
-                  tutorialId:
-                    type: string
-                    description: チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる
-              - type: object
-                additionalProperties: false
-                required: [matchId]
-                properties:
-                  matchId:
-                    type: string
-                    description: 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。
-    responses:
-      "200":
-        description: SSEストリーム。result イベントの data は MatchResult 形式の JSON。
-        content:
-          text/event-stream:
-            schema:
-              type: string
-            example: |+
-              event: result
-              data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
-
 /program/create-with-vibe:
   post:
     tags:
       - program
     summary: 自然言語からプログラムを生成
+    description: |
+      picolang のソースだけを生成し、保存や対戦用の登録は行わない。
+      生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
     operationId: createProgramWithVibe
     requestBody:
       required: true
@@ -102,11 +65,11 @@
                 description: 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
     responses:
       "201":
-        description: 生成したプログラム
+        description: 生成した picolang のソース
         content:
           application/json:
             schema:
-              $ref: "../../openapi.yaml#/components/schemas/Program"
+              $ref: "../../openapi.yaml#/components/schemas/PicolangProgram"
 
 /program:
   post:

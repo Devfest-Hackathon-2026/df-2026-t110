@@ -27,14 +27,14 @@ paths:
     $ref: "./openapi/paths/field.yaml#/~1field~1%7BfieldId%7D"
   /program/{programId}:
     $ref: "./openapi/paths/program.yaml#/~1program~1%7BprogramId%7D"
-  /program/{programId}/run:
-    $ref: "./openapi/paths/program.yaml#/~1program~1%7BprogramId%7D~1run"
   /program/create-with-vibe:
     $ref: "./openapi/paths/program.yaml#/~1program~1create-with-vibe"
   /program:
     $ref: "./openapi/paths/program.yaml#/~1program"
   /match:
     $ref: "./openapi/paths/battle.yaml#/~1match"
+  /run/{runId}/events:
+    $ref: "./openapi/paths/run.yaml#/~1run~1%7BrunId%7D~1events"
   /login:
     $ref: "./openapi/paths/auth.yaml#/~1login"
   /login/callback:
@@ -53,6 +53,8 @@ paths:
     $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D"
   /tutorial/{tutorialId}/program:
     $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D~1program"
+  /tutorial/{tutorialId}/run:
+    $ref: "./openapi/paths/tutorial.yaml#/~1tutorial~1%7BtutorialId%7D~1run"
   /battle/program:
     $ref: "./openapi/paths/battle.yaml#/~1battle~1program"
 
@@ -70,12 +72,14 @@ components:
       required: true
       schema:
         type: string
-    MatchId:
-      name: matchId
+    RunId:
+      name: runId
       in: path
       required: true
       schema:
         type: string
+        format: uuid
+        description: 実行作成時に発行される UUIDv7
     TutorialId:
       name: tutorialId
       in: path
@@ -128,6 +132,15 @@ components:
             $ref: "#/components/schemas/ApiError"
 
   schemas:
+    RunCreated:
+      type: object
+      required: [runId]
+      properties:
+        runId:
+          type: string
+          format: uuid
+          description: 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+
     MatchResult:
       type: object
       description: 対戦の再生履歴と結果の要約
@@ -240,7 +253,7 @@ components:
 
     Match:
       type: object
-      required: [id, fieldId, selectedLayoutId, enemyName]
+      required: [id, fieldId, selectedLayoutId, opponentName, runId]
       properties:
         id:
           type: string
@@ -252,8 +265,12 @@ components:
         status:
           type: string
           enum: [ready, running, finished]
-        enemyName:
+        opponentName:
           type: string
+        runId:
+          type: string
+          format: uuid
+          description: この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
 
     User:
       type: object

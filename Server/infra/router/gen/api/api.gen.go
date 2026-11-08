@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/http"
 
+	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
 	schema "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // Defines values for MatchStatus.
@@ -45,9 +47,12 @@ type Field = schema.FieldDefinition
 
 // Match defines model for Match.
 type Match struct {
-	EnemyName string `json:"enemyName"`
-	FieldId   string `json:"fieldId"`
-	Id        string `json:"id"`
+	FieldId      string `json:"fieldId"`
+	Id           string `json:"id"`
+	OpponentName string `json:"opponentName"`
+
+	// RunId この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+	RunId openapi_types.UUID `json:"runId"`
 
 	// SelectedLayoutId 対戦作成時にサーバーが選んだ配置候補のID。
 	SelectedLayoutId string       `json:"selectedLayoutId"`
@@ -56,6 +61,26 @@ type Match struct {
 
 // MatchStatus defines model for Match.Status.
 type MatchStatus string
+
+// MatchResult 対戦の再生履歴と結果の要約
+type MatchResult struct {
+	History []gameevent.GameEvent `json:"history"`
+
+	// Summary 対戦を申し込んだプレイヤーから見た対戦結果の要約
+	Summary MatchSummary `json:"summary"`
+}
+
+// MatchSummary 対戦を申し込んだプレイヤーから見た対戦結果の要約
+type MatchSummary struct {
+	// Score 両プレイヤーの最終得点。同点の場合は引き分け
+	Score struct {
+		// Opponent 対戦相手の最終得点
+		Opponent float32 `json:"opponent"`
+
+		// Player 対戦を申し込んだプレイヤーの最終得点
+		Player float32 `json:"player"`
+	} `json:"score"`
+}
 
 // PicolangProgram defines model for PicolangProgram.
 type PicolangProgram = schema.PicolangProgram
@@ -79,6 +104,12 @@ type Program struct {
 
 	// TutorialID チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。
 	TutorialID *string `json:"tutorialID,omitempty"`
+}
+
+// RunCreated defines model for RunCreated.
+type RunCreated struct {
+	// RunId 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+	RunId openapi_types.UUID `json:"runId"`
 }
 
 // SavedProgram 保存済みのプログラム
@@ -122,6 +153,9 @@ type FieldId = string
 
 // ProgramId defines model for ProgramId.
 type ProgramId = string
+
+// RunId 実行作成時に発行される UUIDv7
+type RunId = openapi_types.UUID
 
 // TutorialId defines model for TutorialId.
 type TutorialId = string
@@ -173,21 +207,10 @@ type CreateProgramWithVibeJSONBody struct {
 	Prompt   string `json:"prompt"`
 }
 
-// RunProgramJSONBody defines parameters for RunProgram.
-type RunProgramJSONBody struct {
-	union json.RawMessage
-}
-
-// RunProgramJSONBody0 defines parameters for RunProgram.
-type RunProgramJSONBody0 struct {
-	// TutorialId チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる
-	TutorialId string `json:"tutorialId"`
-}
-
-// RunProgramJSONBody1 defines parameters for RunProgram.
-type RunProgramJSONBody1 struct {
-	// MatchId 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。
-	MatchId string `json:"matchId"`
+// RunTutorialJSONBody defines parameters for RunTutorial.
+type RunTutorialJSONBody struct {
+	// ProgramId このチュートリアル用に保存したプログラムのID
+	ProgramId string `json:"programId"`
 }
 
 // SetBattleProgramsJSONRequestBody defines body for SetBattlePrograms for application/json ContentType.
@@ -208,8 +231,8 @@ type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
 type UpdateProgramJSONRequestBody = Program
 
-// RunProgramJSONRequestBody defines body for RunProgram for application/json ContentType.
-type RunProgramJSONRequestBody RunProgramJSONBody
+// RunTutorialJSONRequestBody defines body for RunTutorial for application/json ContentType.
+type RunTutorialJSONRequestBody RunTutorialJSONBody
 
 // Getter for additional properties for Tutorial. Returns the specified
 // element and whether it was found
@@ -377,68 +400,6 @@ func (a User) MarshalJSON() ([]byte, error) {
 	return json.Marshal(object)
 }
 
-// AsRunProgramJSONBody0 returns the union data inside the RunProgramJSONBody as a RunProgramJSONBody0
-func (t RunProgramJSONBody) AsRunProgramJSONBody0() (RunProgramJSONBody0, error) {
-	var body RunProgramJSONBody0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromRunProgramJSONBody0 overwrites any union data inside the RunProgramJSONBody as the provided RunProgramJSONBody0
-func (t *RunProgramJSONBody) FromRunProgramJSONBody0(v RunProgramJSONBody0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeRunProgramJSONBody0 performs a merge with any union data inside the RunProgramJSONBody, using the provided RunProgramJSONBody0
-func (t *RunProgramJSONBody) MergeRunProgramJSONBody0(v RunProgramJSONBody0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsRunProgramJSONBody1 returns the union data inside the RunProgramJSONBody as a RunProgramJSONBody1
-func (t RunProgramJSONBody) AsRunProgramJSONBody1() (RunProgramJSONBody1, error) {
-	var body RunProgramJSONBody1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromRunProgramJSONBody1 overwrites any union data inside the RunProgramJSONBody as the provided RunProgramJSONBody1
-func (t *RunProgramJSONBody) FromRunProgramJSONBody1(v RunProgramJSONBody1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeRunProgramJSONBody1 performs a merge with any union data inside the RunProgramJSONBody, using the provided RunProgramJSONBody1
-func (t *RunProgramJSONBody) MergeRunProgramJSONBody1(v RunProgramJSONBody1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t RunProgramJSONBody) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *RunProgramJSONBody) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetBattlePrograms 対戦用のプログラム設定を取得
@@ -483,12 +444,12 @@ type ServerInterface interface {
 	// UpdateProgram プログラムを更新
 	// (PUT /program/{programId})
 	UpdateProgram(ctx *echo.Context, programId ProgramId) error
-	// RunProgram プログラムを実行
-	// (POST /program/{programId}/run)
-	RunProgram(ctx *echo.Context, programId ProgramId) error
 	// GetRanking ランキングを取得
 	// (GET /ranking)
 	GetRanking(ctx *echo.Context) error
+	// RunEvents 実行結果を購読
+	// (GET /run/{runId}/events)
+	RunEvents(ctx *echo.Context, runId RunId) error
 	// ListTutorials チュートリアル一覧を取得
 	// (GET /tutorial)
 	ListTutorials(ctx *echo.Context) error
@@ -498,6 +459,9 @@ type ServerInterface interface {
 	// ListTutorialPrograms チュートリアルでユーザーが作ったプログラム一覧を取得
 	// (GET /tutorial/{tutorialId}/program)
 	ListTutorialPrograms(ctx *echo.Context, tutorialId TutorialId) error
+	// RunTutorial チュートリアルでプログラムを実行
+	// (POST /tutorial/{tutorialId}/run)
+	RunTutorial(ctx *echo.Context, tutorialId TutorialId) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -675,28 +639,28 @@ func (w *ServerInterfaceWrapper) UpdateProgram(ctx *echo.Context) error {
 	return err
 }
 
-// RunProgram converts echo context to params.
-func (w *ServerInterfaceWrapper) RunProgram(ctx *echo.Context) error {
-	var err error
-	// ------------- Path parameter "programId" -------------
-	var programId ProgramId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "programId", ctx.Param("programId"), &programId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter programId: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.RunProgram(ctx, programId)
-	return err
-}
-
 // GetRanking converts echo context to params.
 func (w *ServerInterfaceWrapper) GetRanking(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetRanking(ctx)
+	return err
+}
+
+// RunEvents converts echo context to params.
+func (w *ServerInterfaceWrapper) RunEvents(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "runId" -------------
+	var runId RunId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "runId", ctx.Param("runId"), &runId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter runId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RunEvents(ctx, runId)
 	return err
 }
 
@@ -738,6 +702,22 @@ func (w *ServerInterfaceWrapper) ListTutorialPrograms(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ListTutorialPrograms(ctx, tutorialId)
+	return err
+}
+
+// RunTutorial converts echo context to params.
+func (w *ServerInterfaceWrapper) RunTutorial(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "tutorialId" -------------
+	var tutorialId TutorialId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tutorialId", ctx.Param("tutorialId"), &tutorialId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tutorialId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RunTutorial(ctx, tutorialId)
 	return err
 }
 
@@ -801,11 +781,12 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/program/create-with-vibe", wrapper.CreateProgramWithVibe, options.OperationMiddlewares["createProgramWithVibe"]...)
 	router.GET(options.BaseURL+"/program/:programId", wrapper.GetProgram, options.OperationMiddlewares["getProgram"]...)
 	router.PUT(options.BaseURL+"/program/:programId", wrapper.UpdateProgram, options.OperationMiddlewares["updateProgram"]...)
-	router.POST(options.BaseURL+"/program/:programId/run", wrapper.RunProgram, options.OperationMiddlewares["runProgram"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)
+	router.GET(options.BaseURL+"/run/:runId/events", wrapper.RunEvents, options.OperationMiddlewares["runEvents"]...)
 	router.GET(options.BaseURL+"/tutorial", wrapper.ListTutorials, options.OperationMiddlewares["listTutorials"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId", wrapper.GetTutorial, options.OperationMiddlewares["getTutorial"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId/program", wrapper.ListTutorialPrograms, options.OperationMiddlewares["listTutorialPrograms"]...)
+	router.POST(options.BaseURL+"/tutorial/:tutorialId/run", wrapper.RunTutorial, options.OperationMiddlewares["runTutorial"]...)
 	router.GET(options.BaseURL+"/picolang/v0/builtins", wrapper.ListPicolangV0Builtins, options.OperationMiddlewares["listPicolangV0Builtins"]...)
 
 }

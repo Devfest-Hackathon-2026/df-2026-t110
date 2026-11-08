@@ -1,0 +1,36 @@
+/run/{runId}/events:
+  get:
+    tags:
+      - run
+    summary: 実行結果を購読
+    description: |
+      Server-Sent Events。
+      シミュレーション完了時に result イベントを1回送り、ストリームを閉じる。
+      接続時点で完了済みなら、接続直後に result イベントを送る。
+      副作用を持たないため、切断後に再接続して結果を取り直せる。
+      チュートリアルでは run の作成者、対戦では match の参加者だけが購読できる。
+      チュートリアルの結果にはデバッグ情報を含み、対戦の結果には含まない。
+    operationId: runEvents
+    security:
+      - sessionCookie: []
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/RunId"
+    responses:
+      "200":
+        description: SSEストリーム。result イベントの data は MatchResult 形式の JSON。
+        content:
+          text/event-stream:
+            schema:
+              type: string
+            example: |+
+              event: result
+              data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
+
+      "400":
+        $ref: "../../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        description: 認証されていない
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"

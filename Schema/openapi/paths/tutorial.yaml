@@ -57,3 +57,44 @@
                 $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
       "401":
         description: 認証されていない
+
+/tutorial/{tutorialId}/run:
+  post:
+    tags:
+      - tutorial
+    summary: チュートリアルでプログラムを実行
+    description: |
+      チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+      結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
+    operationId: runTutorial
+    security:
+      - sessionCookie: []
+    parameters:
+      - $ref: "../../openapi.yaml#/components/parameters/TutorialId"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [programId]
+            properties:
+              programId:
+                type: string
+                description: このチュートリアル用に保存したプログラムのID
+    responses:
+      "201":
+        description: 実行を開始した
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/RunCreated"
+      "400":
+        $ref: "../../openapi.yaml#/components/responses/BadRequest"
+      "401":
+        description: 認証されていない
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"

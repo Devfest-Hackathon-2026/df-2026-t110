@@ -62,26 +62,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/program/{programId}/run": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * プログラムを実行
-         * @description 指定されたプログラムを実行し、その実行結果をSSEで配信する。
-         */
-        post: operations["runProgram"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/program/create-with-vibe": {
         parameters: {
             query?: never;
@@ -91,7 +71,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 自然言語からプログラムを生成 */
+        /**
+         * 自然言語からプログラムを生成
+         * @description picolang のソースだけを生成し、保存や対戦用の登録は行わない。
+         *     生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
+         */
         post: operations["createProgramWithVibe"];
         delete?: never;
         options?: never;
@@ -130,11 +114,36 @@ export interface paths {
          * @description 自分のプログラムで対戦を申し込む。ロボットが複数あるので、それぞれに対戦用のプログラムのidを指定する。
          *     サーバーは候補配置を1つ選び、自分以外のユーザーからランダムに相手を1人選んで、
          *     そのユーザーが登録している対戦用プログラムと対戦させる。
-         *     シミュレーションはサーバーで実行し、結果は runProgram で受け取る。
+         *     シミュレーションはサーバーで実行し、結果はレスポンスの runId を使って runEvents で受け取る。
          *     抽選結果を取得・変更する独立したAPIは設けない。
          *     レートは対戦を申し込んだ側だけ変動する。
          */
         post: operations["createMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/run/{runId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 実行結果を購読
+         * @description Server-Sent Events。
+         *     シミュレーション完了時に result イベントを1回送り、ストリームを閉じる。
+         *     接続時点で完了済みなら、接続直後に result イベントを送る。
+         *     副作用を持たないため、切断後に再接続して結果を取り直せる。
+         *     チュートリアルでは run の作成者、対戦では match の参加者だけが購読できる。
+         *     チュートリアルの結果にはデバッグ情報を含み、対戦の結果には含まない。
+         */
+        get: operations["runEvents"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -305,6 +314,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tutorial/{tutorialId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * チュートリアルでプログラムを実行
+         * @description チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+         *     結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
+         */
+        post: operations["runTutorial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/battle/program": {
         parameters: {
             query?: never;
@@ -333,6 +363,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        RunCreated: {
+            /**
+             * Format: uuid
+             * @description 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
+        };
         /** @description 対戦の再生履歴と結果の要約 */
         MatchResult: {
             history: components["schemas"]["history.schema"];
@@ -425,7 +462,12 @@ export interface components {
             selectedLayoutId: string;
             /** @enum {string} */
             status?: "ready" | "running" | "finished";
-            enemyName: string;
+            opponentName: string;
+            /**
+             * Format: uuid
+             * @description この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
         };
         User: {
             id?: string;
@@ -1320,7 +1362,7 @@ export interface components {
     parameters: {
         FieldId: string;
         ProgramId: string;
-        MatchId: string;
+        RunId: string;
         TutorialId: string;
     };
     requestBodies: never;
@@ -1427,42 +1469,6 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    runProgram: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                programId: components["parameters"]["ProgramId"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description チュートリアルのidを指定した場合には、チュートリアルのステージのvariantのうち1つでランダムに選ばれる */
-                    tutorialId: string;
-                } | {
-                    /** @description 対戦のidを指定した場合には、その対戦のフィールドとプログラムを使用する。デバッグ情報を出力しない。 */
-                    matchId: string;
-                };
-            };
-        };
-        responses: {
-            /** @description SSEストリーム。result イベントの data は MatchResult 形式の JSON。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example event: result
-                     *     data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
-                     */
-                    "text/event-stream": string;
-                };
-            };
-        };
-    };
     createProgramWithVibe: {
         parameters: {
             query?: never;
@@ -1482,13 +1488,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 生成したプログラム */
+            /** @description 生成した picolang のソース */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Program"];
+                    "application/json": components["schemas"]["toplevel.schema"];
                 };
             };
         };
@@ -1553,6 +1559,42 @@ export interface operations {
             404: components["responses"]["NotFound"];
             /** @description このフィールドに対戦相手の候補がいない */
             409: components["responses"]["Conflict"];
+        };
+    };
+    runEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: components["parameters"]["RunId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSEストリーム。result イベントの data は MatchResult 形式の JSON。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example event: result
+                     *     data: {"history":[{"type":"field","tick":0,"state":{"kind":"initial","terrain":[[{"type":"land","kind":{"type":"plain"}},{"type":"land","kind":{"type":"plain"}}]],"robots":[{"id":"robot-1","position":{"x":0,"y":0},"direction":"east","drillDurability":3,"teamId":1},{"id":"robot-2","position":{"x":1,"y":0},"direction":"west","drillDurability":2,"teamId":2}]}}],"summary":{"score":{"player":2,"opponent":1}}}
+                     */
+                    "text/event-stream": string;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     login: {
@@ -1793,6 +1835,45 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    runTutorial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tutorialId: components["parameters"]["TutorialId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description このチュートリアル用に保存したプログラムのID */
+                    programId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 実行を開始した */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunCreated"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getBattlePrograms: {

@@ -3,13 +3,19 @@ info:
   title: Use generated JSON Schema models
   version: 1.0.0
 actions:
-  # These components are not used by any generated operation.
-  - target: $.components.parameters.MatchId
+  # oapi-codegen cannot resolve the history schema's $defs. Reuse the recorded events.
+  - target: $.components.schemas.MatchResult.properties.history
     remove: true
-  - target: $.components.schemas.MatchResult
-    remove: true
-  - target: $.components.schemas.MatchSummary
-    remove: true
+  - target: $.components.schemas.MatchResult.properties
+    update:
+      history:
+        type: array
+        items:
+          type: object
+        x-go-type: "[]gameevent.GameEvent"
+        x-go-type-import:
+          name: gameevent
+          path: github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event
   - target: $.components.schemas.Field
     remove: true
   - target: $.components.schemas.Stage

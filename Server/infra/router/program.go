@@ -20,7 +20,3 @@ func (r *Router) GetProgram(ctx *echo.Context, programID api.ProgramId) error {
 func (r *Router) UpdateProgram(ctx *echo.Context, programID api.ProgramId) error {
 	return errNotImplemented()
 }
-
-func (r *Router) RunProgram(ctx *echo.Context, programID api.ProgramId) error {
-	return errNotImplemented()
-}
