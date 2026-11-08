@@ -344,6 +344,7 @@ function remove(index: number): void {
                 v-model="stmt.ident.name"
                 class="pico-name-input"
                 placeholder="i"
+                data-1p-ignore
               />
               <button
                 type="button"
@@ -407,7 +408,7 @@ function remove(index: number): void {
         <template v-else-if="stmt.kind === 'declare'">
           <span>変数を作る</span>
           <PicoTypeInput :model-value="stmt.type" @update:model-value="changeDeclarationType(stmt, $event)" />
-          <input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" />
+          <input v-model="stmt.ident.name" class="pico-name-input" aria-label="変数名" data-1p-ignore />
           <span>に入れる値</span>
           <PicoExpression
             :node="stmt.value"

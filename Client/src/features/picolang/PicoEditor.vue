@@ -350,6 +350,7 @@ function importJson(): void {
               v-model="newFunctionName"
               aria-label="新しい関数名"
               placeholder="関数名"
+              data-1p-ignore
               @keydown.esc="closeNewFunction"
             />
             <button type="submit" aria-label="関数を作成" title="関数を作成">
@@ -398,7 +399,7 @@ function importJson(): void {
         <div v-if="activeFunctionName !== 'main'" class="pico-params">
           <span>受け取る値</span>
           <div v-for="(param, index) in currentFunction.params" :key="param.hintId">
-            <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" />
+            <input v-model="param.ident.name" aria-label="引数名" class="pico-name-input" data-1p-ignore />
             <PicoTypeInput v-model="param.type" />
             <button
               type="button"
@@ -446,6 +447,7 @@ function importJson(): void {
           v-model="jsonInput"
           spellcheck="false"
           placeholder="Picolang v0 のJSONを貼り付け"
+          data-1p-ignore
         ></textarea>
         <button type="button" @click="importJson">
           <Icon :icon="uploadIcon" aria-hidden="true" />読み込む
