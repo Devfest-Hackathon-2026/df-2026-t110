@@ -16,6 +16,7 @@ import (
 )
 
 var _ usecase.RunRepository = (*Runs)(nil)
+var _ usecase.RunResultRepository = (*Runs)(nil)
 
 type Runs struct{ queries *db.Queries }
 
