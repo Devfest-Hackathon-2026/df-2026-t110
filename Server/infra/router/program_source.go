@@ -27,7 +27,7 @@ func (ProgramSourceValidator) ValidateSource(ctx context.Context, source []byte)
 
 // ValidateExecutableSource uses the same static analysis pipeline as execution.
 func (ProgramSourceValidator) ValidateExecutableSource(ctx context.Context, source []byte) error {
-	err := (GeneratedProgramValidator{}).ValidateGeneratedProgram(ctx, jsontext.Value(source))
+	_, err := (GeneratedProgramValidator{}).ValidateGeneratedProgram(ctx, jsontext.Value(source))
 	if errors.Is(err, usecase.ErrInvalidGeneratedProgram) {
 		return fmt.Errorf("%w: %w", domain.ErrInvalidProgram, err)
 	}
