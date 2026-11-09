@@ -2,6 +2,8 @@ name: CI (codegen)
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'lang/**'
       - 'Schema/**'
@@ -53,12 +55,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   codegen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: go node go:github.com/plheide/go-jsonschema oapi-codegen sqlc
       - name: Install client dependencies
         run: corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
       - name: Check generated code
