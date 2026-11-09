@@ -785,15 +785,23 @@ export function updatePicoDiagnostics(
   const byHint = new Map<string, Block>()
   for (const block of blocks) for (const hint of Object.values(meta(block))) byHint.set(hint, block)
   const messages = new Map<Block, string[]>()
+  const severities = new Map<Block, PicoDiagnostic['severity']>()
   for (const diagnostic of diagnostics) {
     const block = byHint.get(diagnostic.hintId)
     if (!block) continue
     const items = messages.get(block) ?? []
     items.push(`${diagnostic.severity === 'error' ? 'エラー' : '警告'}：${diagnostic.message}`)
     messages.set(block, items)
+    if (severities.get(block) !== 'error') severities.set(block, diagnostic.severity)
   }
   for (const block of blocks) {
     block.setWarningText(messages.get(block)?.join('\n') ?? null, 'pico-analysis')
+    if (block instanceof Blockly.BlockSvg) {
+      const root = block.getSvgRoot()
+      const severity = severities.get(block)
+      if (severity) root.dataset.picoDiagnostic = severity
+      else delete root.dataset.picoDiagnostic
+    }
     if (block.type === 'pico_declare')
       block.setFieldValue(typeLabel(types[metaId(block, 'identId')]), 'INFERRED_TYPE')
   }

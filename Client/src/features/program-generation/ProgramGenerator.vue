@@ -89,7 +89,7 @@ onBeforeUnmount(() => controller?.abort())
   opacity: 0.55;
 }
 .program-generator [role='alert'] {
-  color: #a74432;
+  color: var(--color-error);
 }
 .program-generator pre {
   overflow: auto;

@@ -228,6 +228,21 @@
 .blockly-canvas .blocklyText {
   font-family: var(--font-body);
 }
+.blockly-canvas [data-pico-diagnostic] > .blocklyWarningIcon {
+  opacity: 1;
+}
+.blockly-canvas [data-pico-diagnostic='error'] > .blocklyWarningIcon .blocklyIconShape {
+  fill: var(--color-error);
+}
+.blockly-canvas [data-pico-diagnostic='error'] > .blocklyWarningIcon .blocklyIconSymbol {
+  fill: #fff;
+}
+.blockly-canvas [data-pico-diagnostic='warning'] > .blocklyWarningIcon .blocklyIconShape {
+  fill: var(--color-warning);
+}
+.blockly-canvas [data-pico-diagnostic='warning'] > .blocklyWarningIcon .blocklyIconSymbol {
+  fill: var(--color-warning-ink);
+}
 .blockly-json {
   max-height: 32%;
   overflow: auto;
@@ -260,8 +275,12 @@
 .blockly-message {
   margin: 0;
   padding: 5px 12px;
-  color: #8b4b2d;
-  background: #fff1dc;
+  color: var(--color-success);
+  background: #f0fdf4;
+}
+.blockly-message[data-severity='error'] {
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 .blockly-editor :is(button, input, select, summary, textarea):focus-visible {
   outline: 2px solid #126d88;

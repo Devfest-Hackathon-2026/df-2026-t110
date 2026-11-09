@@ -214,7 +214,7 @@ watch(
   font-weight: 600;
 }
 .pico-trace-error {
-  color: #9c3525;
+  color: var(--color-error);
 }
 .pico-trace summary {
   cursor: pointer;

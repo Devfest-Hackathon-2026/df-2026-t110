@@ -192,6 +192,11 @@
 .ranking-message p + p {
   margin-top: 8px;
 }
+.ranking-message[role='alert'] {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
 
 .ranking-message button,
 .ranking-message a {
