@@ -48,6 +48,7 @@ type MatchResult struct {
 // the challenger's rating current at saving time, so concurrent matches of one
 // challenger never lose an update.
 type MatchRecord struct {
+	Programs         [2][]Program
 	GoogleSubject    string
 	OpponentSubject  string
 	OpponentName     string

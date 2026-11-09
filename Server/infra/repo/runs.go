@@ -30,7 +30,8 @@ func (r *Runs) Create(ctx context.Context, run domain.Run) (string, error) {
 	if err := r.queries.CreateRun(ctx, db.CreateRunParams{
 		ID: pgtype.UUID{Bytes: id, Valid: true}, GoogleSubject: run.GoogleSubject,
 		TutorialID: pgtype.Text{String: run.TutorialID, Valid: true}, FieldID: run.FieldID,
-		ProgramID: pgtype.Text{String: run.ProgramID, Valid: true},
+		ProgramRevision: run.ProgramRevision,
+		ProgramID:       pgtype.Text{String: run.ProgramID, Valid: true},
 	}); err != nil {
 		return "", fmt.Errorf("insert run: %w", err)
 	}
@@ -65,7 +66,7 @@ func (r *Runs) Get(ctx context.Context, id string) (domain.Run, error) {
 		return domain.Run{}, fmt.Errorf("get run: %w", err)
 	}
 	return domain.Run{
-		ID: id, GoogleSubject: row.GoogleSubject, OpponentSubject: row.OpponentGoogleSubject.String,
+		ID: id, ProgramRevision: row.ProgramRevision.Int32, GoogleSubject: row.GoogleSubject, OpponentSubject: row.OpponentGoogleSubject.String,
 		TutorialID: row.TutorialID.String, FieldID: row.FieldID, ProgramID: row.ProgramID.String, Result: row.Result,
 	}, nil
 }

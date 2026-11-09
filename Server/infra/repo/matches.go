@@ -57,7 +57,7 @@ func (r *Matches) SelectOpponent(ctx context.Context, challenger string, choose 
 		}
 		for _, row := range programs {
 			team.Programs = append(team.Programs, domain.Program{
-				ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
+				ID: row.ID, Revision: row.Revision, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
 			})
 		}
 		return nil
@@ -95,6 +95,15 @@ func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain
 			FieldID: record.FieldID, Result: record.Result,
 		}); err != nil {
 			return fmt.Errorf("insert match run: %w", err)
+		}
+		for side, programs := range record.Programs {
+			for index, program := range programs {
+				if err := queries.CreateRunProgram(ctx, db.CreateRunProgramParams{
+					RunID: pgtype.UUID{Bytes: runID, Valid: true}, Side: int16(side), RobotIndex: int16(index), ProgramID: program.ID, Revision: program.Revision,
+				}); err != nil {
+					return fmt.Errorf("insert match program revision: %w", err)
+				}
+			}
 		}
 		after, err := queries.AddUserRating(ctx, db.AddUserRatingParams{
 			GoogleSubject: record.GoogleSubject, Delta: int64(record.RatingDelta),

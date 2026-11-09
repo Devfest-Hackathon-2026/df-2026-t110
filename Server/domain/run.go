@@ -10,6 +10,7 @@ type TutorialRun struct {
 
 // Run stores the selected field and the completed result. A nil result is pending.
 type Run struct {
+	ProgramRevision int32
 	ID              string
 	GoogleSubject   string
 	OpponentSubject string

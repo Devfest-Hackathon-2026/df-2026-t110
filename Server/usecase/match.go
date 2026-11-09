@@ -118,6 +118,7 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 	}
 	outcome := domain.OutcomeFromScores(result.ChallengerScore, result.OpponentScore)
 	match, err := m.deps.Matches.Create(ctx, domain.MatchRecord{
+		Programs:      [2][]domain.Program{programs, opponent.Programs},
 		GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject,
 		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, Result: result.Replay,
 		Outcome: outcome, ChallengerRating: rating, OpponentRating: opponent.Rating,

@@ -12,16 +12,17 @@ import (
 )
 
 const createRun = `-- name: CreateRun :exec
-INSERT INTO runs (id, google_subject, tutorial_id, field_id, program_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO runs (id, google_subject, tutorial_id, field_id, program_id, program_revision)
+VALUES ($1, $2, $3, $4, $5, NULLIF($6::integer, 0))
 `
 
 type CreateRunParams struct {
-	ID            pgtype.UUID
-	GoogleSubject string
-	TutorialID    pgtype.Text
-	FieldID       string
-	ProgramID     pgtype.Text
+	ID              pgtype.UUID
+	GoogleSubject   string
+	TutorialID      pgtype.Text
+	FieldID         string
+	ProgramID       pgtype.Text
+	ProgramRevision int32
 }
 
 func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {
@@ -31,12 +32,37 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {
 		arg.TutorialID,
 		arg.FieldID,
 		arg.ProgramID,
+		arg.ProgramRevision,
+	)
+	return err
+}
+
+const createRunProgram = `-- name: CreateRunProgram :exec
+INSERT INTO run_programs(run_id, side, robot_index, program_id, revision)
+VALUES ($1,$2,$3,$4,$5)
+`
+
+type CreateRunProgramParams struct {
+	RunID      pgtype.UUID
+	Side       int16
+	RobotIndex int16
+	ProgramID  string
+	Revision   int32
+}
+
+func (q *Queries) CreateRunProgram(ctx context.Context, arg CreateRunProgramParams) error {
+	_, err := q.db.Exec(ctx, createRunProgram,
+		arg.RunID,
+		arg.Side,
+		arg.RobotIndex,
+		arg.ProgramID,
+		arg.Revision,
 	)
 	return err
 }
 
 const getRun = `-- name: GetRun :one
-SELECT runs.id, runs.google_subject, runs.tutorial_id, runs.field_id, runs.program_id, runs.result,
+SELECT runs.id, runs.google_subject, runs.tutorial_id, runs.field_id, runs.program_id, runs.program_revision, runs.result,
        matches.opponent_google_subject
 FROM runs LEFT JOIN matches ON matches.run_id = runs.id
 WHERE runs.id = $1
@@ -48,6 +74,7 @@ type GetRunRow struct {
 	TutorialID            pgtype.Text
 	FieldID               string
 	ProgramID             pgtype.Text
+	ProgramRevision       pgtype.Int4
 	Result                []byte
 	OpponentGoogleSubject pgtype.Text
 }
@@ -61,6 +88,7 @@ func (q *Queries) GetRun(ctx context.Context, id pgtype.UUID) (GetRunRow, error)
 		&i.TutorialID,
 		&i.FieldID,
 		&i.ProgramID,
+		&i.ProgramRevision,
 		&i.Result,
 		&i.OpponentGoogleSubject,
 	)

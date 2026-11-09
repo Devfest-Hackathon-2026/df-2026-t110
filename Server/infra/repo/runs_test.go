@@ -86,7 +86,7 @@ func TestTutorialRunPersistsResult(t *testing.T) {
 				t.Errorf("read run: %v", err)
 				return
 			}
-			if stored.GoogleSubject != "owner" || stored.TutorialID != "tutorial-test" || stored.ProgramID != "p" || stored.FieldID != run.FieldId {
+			if stored.ProgramRevision != 1 || stored.GoogleSubject != "owner" || stored.TutorialID != "tutorial-test" || stored.ProgramID != "p" || stored.FieldID != run.FieldId {
 				t.Errorf("run metadata = %+v", stored)
 			}
 			var result struct {

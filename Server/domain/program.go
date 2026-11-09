@@ -11,6 +11,7 @@ var ErrInvalidProgram = errors.New("invalid program")
 // Program is a saved draft owned by a verified user. Source retains exact JSON
 // numbers, including integers that cannot be represented as float64.
 type Program struct {
+	Revision      int32
 	ID            string
 	GoogleSubject string
 	Name          string

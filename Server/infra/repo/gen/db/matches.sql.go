@@ -248,3 +248,69 @@ func (q *Queries) ListRanking(ctx context.Context) ([]ListRankingRow, error) {
 	}
 	return items, nil
 }
+
+const selectBattleOpponent = `-- name: SelectBattleOpponent :many
+WITH candidate AS (
+    SELECT users.google_subject, users.name, users.rating
+    FROM users
+    JOIN battle_programs ON battle_programs.google_subject = users.google_subject
+    JOIN programs ON programs.id = battle_programs.program_id
+    WHERE users.google_subject <> $1
+      AND users.name IS NOT NULL AND btrim(users.name) <> ''
+    GROUP BY users.google_subject
+    HAVING count(*) = $2::integer
+       AND min(battle_programs.robot_index) = 0
+       AND max(battle_programs.robot_index) = $2::integer - 1
+       AND bool_and(programs.is_battle AND programs.google_subject = users.google_subject)
+    ORDER BY random()
+    LIMIT 1
+)
+SELECT candidate.google_subject, candidate.name, candidate.rating, programs.id, programs.name AS program_name, programs.source, programs.revision
+FROM candidate
+JOIN battle_programs ON battle_programs.google_subject = candidate.google_subject
+JOIN programs ON programs.id = battle_programs.program_id
+ORDER BY battle_programs.robot_index
+`
+
+type SelectBattleOpponentParams struct {
+	Challenger string
+	RobotCount int32
+}
+
+type SelectBattleOpponentRow struct {
+	GoogleSubject string
+	Name          pgtype.Text
+	Rating        int32
+	ID            string
+	ProgramName   string
+	Source        []byte
+	Revision      int32
+}
+
+func (q *Queries) SelectBattleOpponent(ctx context.Context, arg SelectBattleOpponentParams) ([]SelectBattleOpponentRow, error) {
+	rows, err := q.db.Query(ctx, selectBattleOpponent, arg.Challenger, arg.RobotCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectBattleOpponentRow
+	for rows.Next() {
+		var i SelectBattleOpponentRow
+		if err := rows.Scan(
+			&i.GoogleSubject,
+			&i.Name,
+			&i.Rating,
+			&i.ID,
+			&i.ProgramName,
+			&i.Source,
+			&i.Revision,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -40,7 +40,7 @@ func (r *Programs) Get(ctx context.Context, id string) (domain.Program, error) {
 	if err != nil {
 		return domain.Program{}, fmt.Errorf("get program: %w", err)
 	}
-	program := domain.Program{ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
+	program := domain.Program{ID: row.ID, Revision: row.Revision, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
 	if row.TutorialID.Valid {
 		program.TutorialID = &row.TutorialID.String
 	}
@@ -58,7 +58,7 @@ func (r *Programs) GetByTutorialID(ctx context.Context, subject, tutorialID stri
 
 	programs := make([]domain.Program, 0, len(rows))
 	for _, row := range rows {
-		program := domain.Program{ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
+		program := domain.Program{ID: row.ID, Revision: row.Revision, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
 		if row.TutorialID.Valid {
 			program.TutorialID = &row.TutorialID.String
 		}
