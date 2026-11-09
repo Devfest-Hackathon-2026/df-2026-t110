@@ -55,7 +55,7 @@ var _ game.Robot = (*VM)(nil)
 // the AST it contains remains borrowed and must not be modified. The seed creates
 // one random stream shared across every call and action suspension in this run.
 // Resource limits must be positive and apply across the entire run.
-// When logExecution is false, no events or debug value snapshots are created.
+// When logExecution is false, no events are created.
 func New(program bot.TypedProgram, seed uint64, limits Limits, logExecution bool) (*VM, error) {
 	if limits.MaxSteps == 0 || limits.MaxMemoryBytes == 0 || limits.MaxCallDepth == 0 {
 		return nil, errors.New("VM resource limits must be positive")
@@ -68,6 +68,7 @@ func New(program bot.TypedProgram, seed uint64, limits Limits, logExecution bool
 	v := &VM{program: bot.TypedProgram{Functions: maps.Clone(program.Functions)}, limits: limits, source: main.Source, initialized: true}
 	if logExecution {
 		v.events = &event.Collector{}
+		v.memory = *memory.New(v.events)
 	}
 	evaluator, err := builtin.New(&v.memory, seed)
 	if err != nil {

@@ -1150,14 +1150,17 @@ export interface components {
             /** @constant */
             type: "sea";
         };
-        /** @description 観測時点の地形種別 */
-        "$defs-Terrain": components["schemas"]["Land"] | components["schemas"]["Rock"] | components["schemas"]["Sea"];
+        /**
+         * PicolangTerrain
+         * @description 観測時点の地形種別と属性
+         */
+        "terrain.schema": {} & (components["schemas"]["Land"] | components["schemas"]["Rock"] | components["schemas"]["Sea"]);
         /** @description 1ターンを消費して地形の観測値をJSONとして吹き出しに表示する */
         PrintTerrainResult: {
             /** @constant */
             kind: "print_terrain";
             robotId: components["schemas"]["RobotId"];
-            terrain: components["schemas"]["$defs-Terrain"];
+            terrain: components["schemas"]["terrain.schema"];
         };
         /** @description 1ターンを消費して回転方向を吹き出しに表示する */
         PrintRotationResult: {
@@ -1213,119 +1216,145 @@ export interface components {
             /** @description 現在処理中の構文ノードの hintId */
             hintId: components["schemas"]["hint-id"];
         };
-        /** @description 初期値全体 */
-        Value: RecursiveSchema0;
         /**
-         * PicolangVariableInitEvent
-         * @description 変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-         *     変数の型との一致および stack の要素の型の統一は生成側で保証する。
-         *     入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+         * PicolangMemoryId
+         * @description 一つの interpreter の仮想メモリ内で値を識別する uint64 の ID。
+         *     JavaScript の整数精度に依存せず保持できるよう、先頭の 0 のない十進文字列で表す。
+         *     "0" は共通の空リスト root を表す。新しく確保する値には正の ID を使い、解放後も再利用しない。
+         *     18446744073709551615 以下であることは生成側で保証する。
          */
-        "variable-init.schema": {
-            /** @constant */
-            kind: "variable_init";
-            /** @description 初期化した変数に紐づける hintId。以後の更新・drop でこの値をキーとして使う */
-            hintId: components["schemas"]["hint-id"];
-            /** @description 初期化された変数の値 */
-            value: components["schemas"]["Value"];
-        };
-        BoolUpdate: {
+        "memory-id.schema": string;
+        BoolValue: {
             /** @constant */
             type: "bool";
             value: boolean;
         };
-        IntegerUpdate: {
+        IntegerValue: {
             /** @constant */
             type: "integer";
             /** @description i64 の範囲外の値の扱いは picolang の仕様に従い未定義 */
             value: number;
         };
-        UnitUpdate: {
+        UnitValue: {
             /** @constant */
             type: "unit";
             value: null;
         };
-        TerrainUpdate: {
+        TerrainValue: {
             /** @constant */
             type: "terrain";
-            value: components["schemas"]["$defs-Terrain"];
+            value: components["schemas"]["terrain.schema"];
         };
-        RotationUpdate: {
+        RotationValue: {
             /** @constant */
             type: "rotation";
             /** @enum {string} */
             value: "left" | "right";
         };
-        DistanceTargetUpdate: {
+        DistanceTargetValue: {
             /** @constant */
             type: "distance_target";
             value: components["schemas"]["distance-target"];
         };
-        /** @description 基本型の値全体の更新 */
-        PrimitiveUpdate: components["schemas"]["BoolUpdate"] | components["schemas"]["IntegerUpdate"] | components["schemas"]["UnitUpdate"] | components["schemas"]["TerrainUpdate"] | components["schemas"]["RotationUpdate"] | components["schemas"]["DistanceTargetUpdate"];
-        /** @description 代入先の値全体を独立した stack の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う */
-        StackReplace: {
+        ListNode: {
             /** @constant */
-            op: "replace";
-            /** @description 再代入する stack の値全体 */
-            value: components["schemas"]["Value"][];
+            type: "list_node";
+            /** @description 末尾の要素を除いた stack を表す、既存の空リスト root または list node の ID */
+            prev: components["schemas"]["memory-id.schema"];
+            /** @description 末尾の要素を表す既存の値の ID。入れ子の stack も指定できる */
+            value: components["schemas"]["memory-id.schema"];
         };
-        /** @description 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の stack の末尾に要素を一つ追加する */
-        PushBack: {
+        /**
+         * PicolangMemoryValue
+         * @description 仮想メモリに確保する不変の値。primitive は型と値を、list node は既存の値への ID を保持する。
+         *     stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot は保持しない。
+         *     list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
+         *     同じ stack の要素の型が統一されることは生成側で保証する。
+         */
+        "memory-value.schema": {} & (components["schemas"]["BoolValue"] | components["schemas"]["IntegerValue"] | components["schemas"]["UnitValue"] | components["schemas"]["TerrainValue"] | components["schemas"]["RotationValue"] | components["schemas"]["DistanceTargetValue"] | components["schemas"]["ListNode"]);
+        /**
+         * PicolangMemoryAllocateEvent
+         * @description 指定した未使用の ID に不変の値を確保し、呼び出し元が所有する参照を一つ作る。
+         *     list node の確保では prev と value が指す値の参照数をそれぞれ一つ増やす。同じ ID なら二つ増やす。
+         *     参照先はこのイベントより前に存在し、prev は空リスト root または list node を指す。
+         *     空リストの取得は ID "0" の memory_retain で報告するため、root の確保イベントは出力しない。
+         */
+        "memory-allocate.schema": {
             /** @constant */
-            op: "push_back";
-            /** @description 末尾に追加する要素の値 */
-            value: components["schemas"]["Value"];
+            kind: "memory_allocate";
+            /** @description 新しく確保する値の ID。"0" は指定できない */
+            id: components["schemas"]["memory-id.schema"];
+            value: components["schemas"]["memory-value.schema"];
         };
-        /** @description 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の stack の末尾の要素を一つ取り除く。変数自体の drop は variable_drop イベントで表す */
-        PopBack: {
+        /**
+         * PicolangMemoryRetainEvent
+         * @description 既存の値の参照数を一つ増やす。
+         *     空リストの取得、変数の読み取り、引数・戻り値の受け渡し、pop_back や get_back による既存値の取得などで使う。
+         *     list node の辺の参照取得は memory_allocate の適用時に行うため、別の retain イベントにしない。
+         */
+        "memory-retain.schema": {
             /** @constant */
-            op: "pop_back";
+            kind: "memory_retain";
+            /** @description 参照を取得する、同じ interpreter の仮想メモリ内の有効な ID */
+            id: components["schemas"]["memory-id.schema"];
         };
-        /** @description 代入先の stack の現在値に対する更新。操作内容は update の内側に格納する */
-        StackUpdate: {
+        /**
+         * PicolangMemoryReleaseEvent
+         * @description 既存の値の所有参照を一つ解放する。
+         *     参照数が 0 になった値を削除し、list node なら prev と value の参照もそれぞれ一つ再帰的に解放する。
+         *     再帰的な解放はこのイベントの適用に含め、削除された値ごとの release イベントは出力しない。
+         *     ID "0" のメモリ自身が保持する最後の一参照は解放できない。
+         */
+        "memory-release.schema": {
             /** @constant */
-            type: "stack";
-            update: components["schemas"]["StackReplace"] | components["schemas"]["PushBack"] | components["schemas"]["PopBack"];
+            kind: "memory_release";
+            /** @description 所有参照を解放する、同じ interpreter の仮想メモリ内の有効な ID */
+            id: components["schemas"]["memory-id.schema"];
         };
-        /** @description primitive または compound の更新 */
-        Update: components["schemas"]["PrimitiveUpdate"] | components["schemas"]["StackUpdate"];
+        /**
+         * PicolangVariableInitEvent
+         * @description 変数の定義の hintId に、既存の値 ID の紐づけを積む。
+         *     再帰呼び出しでは同じ hintId に複数の紐づけを持ち、最上位を現在の変数とする。
+         *     値全体は保持せず、仮想メモリから解決する。参照カウントは変更しない。
+         */
+        "variable-init.schema": {
+            /** @constant */
+            kind: "variable_init";
+            /** @description 対象の変数の定義の hintId。処理中のノードの hintId とは区別する */
+            hintId: components["schemas"]["hint-id"];
+            /** @description 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID */
+            valueId: components["schemas"]["memory-id.schema"];
+        };
         /**
          * PicolangVariableUpdateEvent
-         * @description 初期化時に紐づけた hintId をキーに変数の値の差分を報告する。
-         *     差分は picolang の型と同様に primitive と compound に分け、compound の内側に stack の更新を置く。
-         *     diff の更新を先頭から順に、直前の更新を反映した値に適用する。
-         *     primitive は型ごとの値全体で更新し、stack は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
-         *     差分は hintId が示す変数の現在値そのものに適用する。入れ子の stack を直接変更する操作は持たない。
-         *     push_back と pop_back は独立した stack を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
-         *     更新結果を変数へ代入したときに、その代入先の更新を報告する。get_back や size の戻り値を代入する場合も同様とする。
-         *     生成側は差分を代入先の現在値に適用すると代入後の値を再現できることを保証する。別の値からの再代入など、末尾の操作で表さない更新は replace で値全体を記録する。
-         *     new で生成した stack は初期値または全体置換の値として記録する。
-         *     更新が変数の型に対応すること、pop_back の対象が空でないこと、要素の型との一致は生成側で保証する。
-         *     記録時点の値を保持する。後の実行で過去の記録内容は変わらない。
+         * @description 定義の hintId に対応する最上位の変数の紐づけを、既存の値 ID に更新する。
+         *     値全体や差分は保持せず、代入先の値は仮想メモリから解決する。
+         *     参照カウントは変更しない。古い値の参照解放は後続の memory_release で報告する。
          */
         "variable-update.schema": {
             /** @constant */
             kind: "variable_update";
-            /** @description 更新する変数に初期化時に紐づけた hintId。代入などの処理中のノードの hintId とは区別する */
+            /** @description 対象の変数の定義の hintId。処理中のノードの hintId とは区別する */
             hintId: components["schemas"]["hint-id"];
-            /** @description 変数の値に順に適用する、型ごとの更新 */
-            diff: components["schemas"]["Update"][];
+            /** @description 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID */
+            valueId: components["schemas"]["memory-id.schema"];
         };
         /**
          * PicolangVariableDropEvent
-         * @description 初期化時に紐づけた hintId をキーに変数の drop を報告する
+         * @description 定義の hintId に対応する最上位の変数の紐づけを取り除く。
+         *     呼び出し元に同じ hintId の変数があれば、その紐づけが再び最上位になる。
+         *     参照カウントは変更しない。値の参照解放は後続の memory_release で報告する。
          */
         "variable-drop.schema": {
             /** @constant */
             kind: "variable_drop";
-            /** @description drop する変数に初期化時に紐づけた hintId */
+            /** @description drop する変数の定義の hintId */
             hintId: components["schemas"]["hint-id"];
         };
         /**
          * PicolangExecutionFinishedEvent
          * @description VMの実行が終了したことと、その理由を報告する。
-         *     変数のdropなどの後処理イベントの後に一度だけ出力する。
+         *     変数の drop と仮想メモリの参照解放などの後処理イベントの後に一度だけ出力する。
          *     mainの正常終了、実行時エラー、リソース制限超過、開始済みVMのCloseによる打ち切りを対象とする。
          *     actionによる一時中断、開始前のClose、再試行できる不正な再開入力では出力しない。
          */
@@ -1345,11 +1374,20 @@ export interface components {
         /**
          * PicolangDebugEvent
          * @description 1台の picolang interpreter が出力するデバッグイベント一件。
-         *     処理中のノード、変数の初期化、変数の値の更新、変数の drop、VMの実行終了のいずれかを報告する。
-         *     変数は初期化時に紐づけた hintId をキーとし、更新・drop でも同じ hintId を使う。
-         *     初期化・更新・drop の対応は生成側で保証する。
+         *     処理中のノード、仮想メモリの操作、変数と値 ID の紐づけ、VMの実行終了を報告する。
+         *     再生側は interpreter ごとに独立した仮想メモリを持ち、履歴の順にイベントを適用する。
+         *     仮想メモリは不変の値と参照カウントを保持する。値全体の snapshot や stack の差分は記録しない。
+         *     初期状態では ID "0" の共通の空リスト root だけが存在し、メモリ自身が参照を一つ保持する。
+         *     memory_allocate は新しい値を作り、memory_retain は参照を一つ取得し、memory_release は参照を一つ解放する。
+         *     list node の辺による参照取得と、参照数が 0 になった値の再帰的な解放は再生側が行い、重複するイベントは出力しない。
+         *     一時値や関数の引数・戻り値も含め、成功したメモリ操作だけを記録する。Get などの読み取りはイベントにしない。
+         *     変数イベントは表示用の紐づけのみを変更し、メモリの参照カウントを変更しない。
+         *     値を確保・参照取得してから変数に紐づけ、紐づけを更新・drop してから古い参照を解放する。
+         *     変数は定義の hintId ごとに紐づけのスタックを持つ。variable_init は積み、variable_update は最上位を更新し、variable_drop は最上位を取り除く。
+         *     これにより再帰呼び出しで同じ hintId が同時に使われても、呼び出し元の紐づけを保持する。
+         *     ID の有効性、参照カウント、変数の初期化・更新・drop の対応と型の一致は生成側で保証する。
          */
-        "event.schema": components["schemas"]["current-node.schema"] | components["schemas"]["variable-init.schema"] | components["schemas"]["variable-update.schema"] | components["schemas"]["variable-drop.schema"] | components["schemas"]["execution-finished.schema"];
+        "event.schema": components["schemas"]["current-node.schema"] | components["schemas"]["memory-allocate.schema"] | components["schemas"]["memory-retain.schema"] | components["schemas"]["memory-release.schema"] | components["schemas"]["variable-init.schema"] | components["schemas"]["variable-update.schema"] | components["schemas"]["variable-drop.schema"] | components["schemas"]["execution-finished.schema"];
         /**
          * PicolangEvent
          * @description 複数台の実行を扱う history 上の picolang イベント。イベント種別と出力元の interpreter を指定し、1台分のデバッグ情報を event に格納する
@@ -1362,7 +1400,7 @@ export interface components {
             type: "picolang";
             /** @description この実行内で interpreter を一意に識別する ID。異なる interpreter が同じプログラムを実行する場合も別の ID を使う */
             interpreterId: string;
-            /** @description 指定した interpreter が出力したデバッグ情報。hintId は interpreterId が示すプログラム内のノードを指す */
+            /** @description 指定した interpreter が出力したデバッグ情報。hintId はそのプログラム内のノード、メモリ ID はその interpreter 専用の仮想メモリ内の値を指す */
             event: components["schemas"]["event.schema"];
         };
         /**
@@ -2062,4 +2100,3 @@ export interface operations {
         };
     };
 }
-type RecursiveSchema0 = boolean | number | null | ("left" | "right") | components["schemas"]["distance-target"] | components["schemas"]["$defs-Terrain"] | RecursiveSchema0[];

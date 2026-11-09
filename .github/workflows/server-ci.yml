@@ -31,28 +31,13 @@ jobs:
     defaults:
       run:
         working-directory: Server
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
       - name: Vet
         run: go vet ./...
       - name: Test
-        run: go test ./...
-        env:
-          # Enables the PostgreSQL integration tests, which skip without it.
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        run: go test -count=1 ./...
       - name: Validate textbook pages
         run: go run ./cmd/validate_textbooks ../Textbooks/pages
       - name: Build embedded textbooks

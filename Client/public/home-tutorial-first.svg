@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="緑のロボットが隣のゴールへ進む場面">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#102f32"/><stop offset="1" stop-color="#1d5954"/></linearGradient>
+    <linearGradient id="tile" x2="0" y2="1"><stop stop-color="#508d7d"/><stop offset="1" stop-color="#1d514d"/></linearGradient>
+    <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff1ac"/><stop offset=".4" stop-color="#bb8736"/><stop offset=".75" stop-color="#f6d87b"/><stop offset="1" stop-color="#815d29"/></linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <circle cx="1000" cy="102" r="240" fill="#68bea6" opacity=".08"/>
+  <circle cx="160" cy="558" r="230" fill="#68bea6" opacity=".08"/>
+  <path d="M151 415 601 257 1052 404 608 568Z" fill="#09272b" opacity=".6"/>
+  <path d="M156 406 384 326 605 405 379 487Z" fill="url(#tile)" stroke="#85d8b8" stroke-width="5"/>
+  <path d="M389 324 609 246 1043 402 827 482Z" fill="url(#tile)" stroke="#85d8b8" stroke-width="5"/>
+  <path d="M156 406v44l223 79v-42ZM379 487v42l226-81v-43ZM389 324v43l438 157v-42ZM827 482v42l216-78v-44Z" fill="#12383a"/>
+  <path d="M186 410 380 342M428 326 614 262M637 278 1014 412" stroke="#9df5cb" stroke-width="6" opacity=".8"/>
+  <ellipse cx="393" cy="414" rx="85" ry="25" fill="#082e29" opacity=".55"/>
+  <path d="m304 302 81-29 97 29-81 30Z" fill="#7dff51"/>
+  <path d="m304 302 97 30v91l-97-31Z" fill="#24cb13"/>
+  <path d="m401 332 81-30v91l-81 30Z" fill="#13990b"/>
+  <ellipse cx="432" cy="353" rx="8" ry="12" fill="#092a21"/><ellipse cx="461" cy="341" rx="8" ry="12" fill="#092a21"/>
+  <path d="m311 378-61 49 11 13 77-39M468 393l67 41 11-13-67-60" fill="#31dd23" stroke="#1f9f18" stroke-width="3"/>
+  <path d="m749 409 99-35 103 36-99 36Z" fill="#d8b45b"/>
+  <path d="m749 409 103 37v39l-103-39ZM852 446l99-36v39l-99 36Z" fill="#95712f"/>
+  <ellipse cx="849" cy="351" rx="73" ry="96" transform="rotate(-13 849 351)" fill="none" stroke="#684e27" stroke-width="26"/>
+  <ellipse cx="849" cy="351" rx="73" ry="96" transform="rotate(-13 849 351)" fill="none" stroke="url(#gold)" stroke-width="19"/>
+  <path d="M557 374h156" stroke="#c7ffdf" stroke-width="9" stroke-linecap="round" stroke-dasharray="16 18"/>
+  <path d="m692 359 25 15-25 15" fill="none" stroke="#c7ffdf" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M57 559h1086" stroke="#7db9a9" stroke-opacity=".45" stroke-width="2"/>
+</svg>

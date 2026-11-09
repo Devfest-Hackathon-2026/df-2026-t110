@@ -2,12 +2,24 @@ $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangDebugEvent
 description: |
   1台の picolang interpreter が出力するデバッグイベント一件。
-  処理中のノード、変数の初期化、変数の値の更新、変数の drop、VMの実行終了のいずれかを報告する。
-  変数は初期化時に紐づけた hintId をキーとし、更新・drop でも同じ hintId を使う。
-  初期化・更新・drop の対応は生成側で保証する。
+  処理中のノード、仮想メモリの操作、変数と値 ID の紐づけ、VMの実行終了を報告する。
+  再生側は interpreter ごとに独立した仮想メモリを持ち、履歴の順にイベントを適用する。
+  仮想メモリは不変の値と参照カウントを保持する。値全体の snapshot や stack の差分は記録しない。
+  初期状態では ID "0" の共通の空リスト root だけが存在し、メモリ自身が参照を一つ保持する。
+  memory_allocate は新しい値を作り、memory_retain は参照を一つ取得し、memory_release は参照を一つ解放する。
+  list node の辺による参照取得と、参照数が 0 になった値の再帰的な解放は再生側が行い、重複するイベントは出力しない。
+  一時値や関数の引数・戻り値も含め、成功したメモリ操作だけを記録する。Get などの読み取りはイベントにしない。
+  変数イベントは表示用の紐づけのみを変更し、メモリの参照カウントを変更しない。
+  値を確保・参照取得してから変数に紐づけ、紐づけを更新・drop してから古い参照を解放する。
+  変数は定義の hintId ごとに紐づけのスタックを持つ。variable_init は積み、variable_update は最上位を更新し、variable_drop は最上位を取り除く。
+  これにより再帰呼び出しで同じ hintId が同時に使われても、呼び出し元の紐づけを保持する。
+  ID の有効性、参照カウント、変数の初期化・更新・drop の対応と型の一致は生成側で保証する。
 
 oneOf:
   - $ref: './current-node.schema.yaml'
+  - $ref: './memory-allocate.schema.yaml'
+  - $ref: './memory-retain.schema.yaml'
+  - $ref: './memory-release.schema.yaml'
   - $ref: './variable-init.schema.yaml'
   - $ref: './variable-update.schema.yaml'
   - $ref: './variable-drop.schema.yaml'

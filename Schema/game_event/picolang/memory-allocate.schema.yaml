@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangMemoryAllocateEvent
+description: |
+  指定した未使用の ID に不変の値を確保し、呼び出し元が所有する参照を一つ作る。
+  list node の確保では prev と value が指す値の参照数をそれぞれ一つ増やす。同じ ID なら二つ増やす。
+  参照先はこのイベントより前に存在し、prev は空リスト root または list node を指す。
+  空リストの取得は ID "0" の memory_retain で報告するため、root の確保イベントは出力しない。
+
+type: object
+additionalProperties: false
+required: [kind, id, value]
+properties:
+  kind:
+    type: string
+    const: memory_allocate
+  id:
+    description: 新しく確保する値の ID。"0" は指定できない
+    $ref: './memory-id.schema.yaml'
+    pattern: '^[1-9][0-9]*$'
+  value:
+    $ref: './memory-value.schema.yaml'

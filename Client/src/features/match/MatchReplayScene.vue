@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Icon } from '@iconify/vue'
+import circlePlayIcon from '@iconify-icons/lucide/circle-play'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createArmPivots } from '../stage/armController.ts'
@@ -516,7 +518,7 @@ onBeforeUnmount(() => {
     <div class="match-replay-heading">
       <div>
         <p class="match-eyebrow">REPLAY</p>
-        <h2 id="match-replay-title">対戦を再生</h2>
+        <h2 id="match-replay-title"><Icon :icon="circlePlayIcon" aria-hidden="true" />対戦を再生</h2>
       </div>
       <span>ターン {{ current?.tick ?? 0 }} · {{ index + 1 }} / {{ frames.length }}</span>
     </div>

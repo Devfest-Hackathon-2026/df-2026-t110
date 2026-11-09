@@ -2,12 +2,12 @@ package robot_event
 
 import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+	memory "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/memory"
 )
 
+// VariableInitEvent pushes a binding for this definition without changing reference counts.
 type VariableInitEvent struct {
-	HintID protocol.HintID
-	Value  values.RecordValue
+	HintID  protocol.HintID
+	ValueID memory.ID
+	PicolangEvent
 }
-
-func (VariableInitEvent) picolangEvent() {}

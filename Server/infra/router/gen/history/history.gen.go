@@ -12,7 +12,7 @@ import "strconv"
 import "strings"
 import "unicode/utf8"
 
-type BoolUpdate struct {
+type BoolValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
@@ -20,29 +20,29 @@ type BoolUpdate struct {
 	Value bool `json:"value"`
 }
 
-const BoolUpdateType = "bool"
+const BoolValueType = "bool"
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *BoolUpdate) UnmarshalJSON(value []byte) error {
+func (j *BoolValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw BoolUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw BoolValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in BoolUpdate: required")
+		return fmt.Errorf("field type in BoolValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in BoolUpdate: required")
+		return fmt.Errorf("field value in BoolValue: required")
 	}
-	type Plain BoolUpdate
+	type Plain BoolValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal BoolUpdate: %w", err)
+		return fmt.Errorf("unmarshal BoolValue: %w", err)
 	}
 	if plain.Type != "bool" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "bool")
 	}
-	*j = BoolUpdate(plain)
+	*j = BoolValue(plain)
 	return nil
 }
 
@@ -250,79 +250,37 @@ const DistanceTargetRock DistanceTarget = "rock"
 const DistanceTargetSea DistanceTarget = "sea"
 const DistanceTargetTerritory DistanceTarget = "territory"
 
-type DistanceTargetUpdate struct {
+type DistanceTargetValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
 	// Value corresponds to the JSON schema field "value".
-	Value DistanceTarget_1 `json:"value"`
+	Value DistanceTarget `json:"value"`
 }
 
-const DistanceTargetUpdateType = "distance_target"
+const DistanceTargetValueType = "distance_target"
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *DistanceTargetUpdate) UnmarshalJSON(value []byte) error {
+func (j *DistanceTargetValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw DistanceTargetUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw DistanceTargetValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in DistanceTargetUpdate: required")
+		return fmt.Errorf("field type in DistanceTargetValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in DistanceTargetUpdate: required")
+		return fmt.Errorf("field value in DistanceTargetValue: required")
 	}
-	type Plain DistanceTargetUpdate
+	type Plain DistanceTargetValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal DistanceTargetUpdate: %w", err)
+		return fmt.Errorf("unmarshal DistanceTargetValue: %w", err)
 	}
 	if plain.Type != "distance_target" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "distance_target")
 	}
-	*j = DistanceTargetUpdate(plain)
-	return nil
-}
-
-type DistanceTarget_1 string
-
-const DistanceTarget_1_Ally DistanceTarget_1 = "ally"
-const DistanceTarget_1_Enemy DistanceTarget_1 = "enemy"
-const DistanceTarget_1_Goal DistanceTarget_1 = "goal"
-const DistanceTarget_1_Luggage DistanceTarget_1 = "luggage"
-const DistanceTarget_1_Robot DistanceTarget_1 = "robot"
-const DistanceTarget_1_Rock DistanceTarget_1 = "rock"
-const DistanceTarget_1_Sea DistanceTarget_1 = "sea"
-const DistanceTarget_1_Territory DistanceTarget_1 = "territory"
-
-var enumValues_DistanceTarget_1 = []interface{}{
-	"robot",
-	"ally",
-	"enemy",
-	"rock",
-	"luggage",
-	"sea",
-	"goal",
-	"territory",
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *DistanceTarget_1) UnmarshalJSON(value []byte) error {
-	var v string
-	if err := json.Unmarshal(value, &v); err != nil {
-		return err
-	}
-	var ok bool
-	for _, expected := range enumValues_DistanceTarget_1 {
-		if reflect.DeepEqual(v, expected) {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_DistanceTarget_1, v)
-	}
-	*j = DistanceTarget_1(v)
+	*j = DistanceTargetValue(plain)
 	return nil
 }
 
@@ -954,7 +912,7 @@ func (j *InitialState) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-type IntegerUpdate struct {
+type IntegerValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
@@ -962,33 +920,33 @@ type IntegerUpdate struct {
 	Value int `json:"value"`
 }
 
-const IntegerUpdateType = "integer"
+const IntegerValueType = "integer"
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *IntegerUpdate) UnmarshalJSON(value []byte) error {
+func (j *IntegerValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw IntegerUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw IntegerValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in IntegerUpdate: required")
+		return fmt.Errorf("field type in IntegerValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in IntegerUpdate: required")
+		return fmt.Errorf("field value in IntegerValue: required")
 	}
-	type Plain IntegerUpdate
+	type Plain IntegerValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_IntegerUpdate); err != nil {
-			return fmt.Errorf("unmarshal IntegerUpdate: %w", err)
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_IntegerValue); err != nil {
+			return fmt.Errorf("unmarshal IntegerValue: %w", err)
 		}
 		plain = retry
 	}
 	if plain.Type != "integer" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "integer")
 	}
-	*j = IntegerUpdate(plain)
+	*j = IntegerValue(plain)
 	return nil
 }
 
@@ -1252,6 +1210,46 @@ func (j *Land) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type ListNode struct {
+	// 末尾の要素を除いた stack を表す、既存の空リスト root または list node の ID
+	Prev PicolangMemoryId `json:"prev"`
+
+	// Type corresponds to the JSON schema field "type".
+	Type string `json:"type"`
+
+	// 末尾の要素を表す既存の値の ID。入れ子の stack も指定できる
+	Value PicolangMemoryId `json:"value"`
+}
+
+const ListNodeType = "list_node"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ListNode) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw ListNode: %w", err)
+	}
+	if _, ok := raw["prev"]; raw != nil && !ok {
+		return fmt.Errorf("field prev in ListNode: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in ListNode: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in ListNode: required")
+	}
+	type Plain ListNode
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal ListNode: %w", err)
+	}
+	if plain.Type != "list_node" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "list_node")
+	}
+	*j = ListNode(plain)
+	return nil
+}
+
 // ロボットが運搬する荷物
 type Luggage struct {
 	// 荷物を識別するための空でない文字列
@@ -1444,11 +1442,27 @@ func (j *PicolangCurrentNodeEvent) UnmarshalJSON(value []byte) error {
 }
 
 // 1台の picolang interpreter が出力するデバッグイベント一件。
-// 処理中のノード、変数の初期化、変数の値の更新、変数の drop、VMの実行終了のいずれかを報告する。
-// 変数は初期化時に紐づけた hintId をキーとし、更新・drop でも同じ hintId を使う。
-// 初期化・更新・drop の対応は生成側で保証する。
+// 処理中のノード、仮想メモリの操作、変数と値 ID の紐づけ、VMの実行終了を報告する。
+// 再生側は interpreter ごとに独立した仮想メモリを持ち、履歴の順にイベントを適用する。
+// 仮想メモリは不変の値と参照カウントを保持する。値全体の snapshot や stack の差分は記録しない。
+// 初期状態では ID "0" の共通の空リスト root だけが存在し、メモリ自身が参照を一つ保持する。
+// memory_allocate は新しい値を作り、memory_retain は参照を一つ取得し、memory_release は参照を一つ解放する。
+// list node の辺による参照取得と、参照数が 0 になった値の再帰的な解放は再生側が行い、重複するイベントは出力しない。
+// 一時値や関数の引数・戻り値も含め、成功したメモリ操作だけを記録する。Get などの読み取りはイベントにしない。
+// 変数イベントは表示用の紐づけのみを変更し、メモリの参照カウントを変更しない。
+// 値を確保・参照取得してから変数に紐づけ、紐づけを更新・drop してから古い参照を解放する。
+// 変数は定義の hintId ごとに紐づけのスタックを持つ。variable_init は積み、variable_update
+// は最上位を更新し、variable_drop は最上位を取り除く。
+// これにより再帰呼び出しで同じ hintId が同時に使われても、呼び出し元の紐づけを保持する。
+// ID の有効性、参照カウント、変数の初期化・更新・drop の対応と型の一致は生成側で保証する。
 type PicolangDebugEvent struct {
 	CurrentNode *PicolangCurrentNodeEvent `json:"-" yaml:"-"`
+
+	MemoryAllocate *PicolangMemoryAllocateEvent `json:"-" yaml:"-"`
+
+	MemoryRetain *PicolangMemoryRetainEvent `json:"-" yaml:"-"`
+
+	MemoryRelease *PicolangMemoryReleaseEvent `json:"-" yaml:"-"`
 
 	VariableInit *PicolangVariableInitEvent `json:"-" yaml:"-"`
 
@@ -1464,6 +1478,15 @@ type PicolangDebugEvent struct {
 func (j PicolangDebugEvent) MarshalJSON() ([]byte, error) {
 	set := 0
 	if j.CurrentNode != nil {
+		set++
+	}
+	if j.MemoryAllocate != nil {
+		set++
+	}
+	if j.MemoryRetain != nil {
+		set++
+	}
+	if j.MemoryRelease != nil {
 		set++
 	}
 	if j.VariableInit != nil {
@@ -1483,6 +1506,15 @@ func (j PicolangDebugEvent) MarshalJSON() ([]byte, error) {
 	}
 	if j.CurrentNode != nil {
 		return json.Marshal(j.CurrentNode)
+	}
+	if j.MemoryAllocate != nil {
+		return json.Marshal(j.MemoryAllocate)
+	}
+	if j.MemoryRetain != nil {
+		return json.Marshal(j.MemoryRetain)
+	}
+	if j.MemoryRelease != nil {
+		return json.Marshal(j.MemoryRelease)
 	}
 	if j.VariableInit != nil {
 		return json.Marshal(j.VariableInit)
@@ -1531,6 +1563,24 @@ func (j *PicolangDebugEvent) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("PicolangDebugEvent.CurrentNode: %w", err)
 		}
 		j.CurrentNode = &v
+	case "memory_allocate":
+		var v PicolangMemoryAllocateEvent
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangDebugEvent.MemoryAllocate: %w", err)
+		}
+		j.MemoryAllocate = &v
+	case "memory_retain":
+		var v PicolangMemoryRetainEvent
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangDebugEvent.MemoryRetain: %w", err)
+		}
+		j.MemoryRetain = &v
+	case "memory_release":
+		var v PicolangMemoryReleaseEvent
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangDebugEvent.MemoryRelease: %w", err)
+		}
+		j.MemoryRelease = &v
 	case "variable_init":
 		var v PicolangVariableInitEvent
 		if err := json.Unmarshal(value, &v); err != nil {
@@ -1564,7 +1614,8 @@ func (j *PicolangDebugEvent) UnmarshalJSON(value []byte) error {
 // 複数台の実行を扱う history 上の picolang イベント。イベント種別と出力元の interpreter を指定し、1台分のデバッグ情報を
 // event に格納する
 type PicolangEvent struct {
-	// 指定した interpreter が出力したデバッグ情報。hintId は interpreterId が示すプログラム内のノードを指す
+	// 指定した interpreter が出力したデバッグ情報。hintId はそのプログラム内のノード、メモリ ID はその interpreter
+	// 専用の仮想メモリ内の値を指す
 	Event PicolangDebugEvent `json:"event"`
 
 	// この実行内で interpreter を一意に識別する ID。異なる interpreter が同じプログラムを実行する場合も別の ID を使う
@@ -1607,7 +1658,7 @@ func (j *PicolangEvent) UnmarshalJSON(value []byte) error {
 }
 
 // VMの実行が終了したことと、その理由を報告する。
-// 変数のdropなどの後処理イベントの後に一度だけ出力する。
+// 変数の drop と仮想メモリの参照解放などの後処理イベントの後に一度だけ出力する。
 // mainの正常終了、実行時エラー、リソース制限超過、開始済みVMのCloseによる打ち切りを対象とする。
 // actionによる一時中断、開始前のClose、再試行できる不正な再開入力では出力しない。
 type PicolangExecutionFinishedEvent struct {
@@ -1699,9 +1750,387 @@ func (j *PicolangExecutionFinishedEvent) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 初期化時に紐づけた hintId をキーに変数の drop を報告する
+// 指定した未使用の ID に不変の値を確保し、呼び出し元が所有する参照を一つ作る。
+// list node の確保では prev と value が指す値の参照数をそれぞれ一つ増やす。同じ ID なら二つ増やす。
+// 参照先はこのイベントより前に存在し、prev は空リスト root または list node を指す。
+// 空リストの取得は ID "0" の memory_retain で報告するため、root の確保イベントは出力しない。
+type PicolangMemoryAllocateEvent struct {
+	// 新しく確保する値の ID。"0" は指定できない
+	Id PicolangMemoryId `json:"id"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+
+	// Value corresponds to the JSON schema field "value".
+	Value PicolangMemoryValue `json:"value"`
+}
+
+const PicolangMemoryAllocateEventKind = "memory_allocate"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangMemoryAllocateEvent) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw PicolangMemoryAllocateEvent: %w", err)
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in PicolangMemoryAllocateEvent: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in PicolangMemoryAllocateEvent: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in PicolangMemoryAllocateEvent: required")
+	}
+	type Plain PicolangMemoryAllocateEvent
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangMemoryAllocateEvent: %w", err)
+	}
+	if plain.Kind != "memory_allocate" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "memory_allocate")
+	}
+	*j = PicolangMemoryAllocateEvent(plain)
+	return nil
+}
+
+// 一つの interpreter の仮想メモリ内で値を識別する uint64 の ID。
+// JavaScript の整数精度に依存せず保持できるよう、先頭の 0 のない十進文字列で表す。
+// "0" は共通の空リスト root を表す。新しく確保する値には正の ID を使い、解放後も再利用しない。
+// 18446744073709551615 以下であることは生成側で保証する。
+type PicolangMemoryId string
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangMemoryId) UnmarshalJSON(value []byte) error {
+	type Plain PicolangMemoryId
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangMemoryId: %w", err)
+	}
+	if matched, _ := regexp.MatchString(`^(0|[1-9][0-9]*)$`, string(plain)); !matched {
+		return fmt.Errorf("field %s pattern match: must match %s", "PicolangMemoryId", `^(0|[1-9][0-9]*)$`)
+	}
+	if utf8.RuneCountInString(string(plain)) > 20 {
+		return fmt.Errorf("field %s length: must be <= %d", "PicolangMemoryId", 20)
+	}
+	*j = PicolangMemoryId(plain)
+	return nil
+}
+
+// 既存の値の所有参照を一つ解放する。
+// 参照数が 0 になった値を削除し、list node なら prev と value の参照もそれぞれ一つ再帰的に解放する。
+// 再帰的な解放はこのイベントの適用に含め、削除された値ごとの release イベントは出力しない。
+// ID "0" のメモリ自身が保持する最後の一参照は解放できない。
+type PicolangMemoryReleaseEvent struct {
+	// 所有参照を解放する、同じ interpreter の仮想メモリ内の有効な ID
+	Id PicolangMemoryId `json:"id"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const PicolangMemoryReleaseEventKind = "memory_release"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangMemoryReleaseEvent) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw PicolangMemoryReleaseEvent: %w", err)
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in PicolangMemoryReleaseEvent: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in PicolangMemoryReleaseEvent: required")
+	}
+	type Plain PicolangMemoryReleaseEvent
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangMemoryReleaseEvent: %w", err)
+	}
+	if plain.Kind != "memory_release" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "memory_release")
+	}
+	*j = PicolangMemoryReleaseEvent(plain)
+	return nil
+}
+
+// 既存の値の参照数を一つ増やす。
+// 空リストの取得、変数の読み取り、引数・戻り値の受け渡し、pop_back や get_back による既存値の取得などで使う。
+// list node の辺の参照取得は memory_allocate の適用時に行うため、別の retain イベントにしない。
+type PicolangMemoryRetainEvent struct {
+	// 参照を取得する、同じ interpreter の仮想メモリ内の有効な ID
+	Id PicolangMemoryId `json:"id"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const PicolangMemoryRetainEventKind = "memory_retain"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PicolangMemoryRetainEvent) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw PicolangMemoryRetainEvent: %w", err)
+	}
+	if _, ok := raw["id"]; raw != nil && !ok {
+		return fmt.Errorf("field id in PicolangMemoryRetainEvent: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in PicolangMemoryRetainEvent: required")
+	}
+	type Plain PicolangMemoryRetainEvent
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal PicolangMemoryRetainEvent: %w", err)
+	}
+	if plain.Kind != "memory_retain" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "memory_retain")
+	}
+	*j = PicolangMemoryRetainEvent(plain)
+	return nil
+}
+
+// 仮想メモリに確保する不変の値。primitive は型と値を、list node は既存の値への ID を保持する。
+// stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot
+// は保持しない。
+// list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
+// 同じ stack の要素の型が統一されることは生成側で保証する。
+type PicolangMemoryValue struct {
+	Bool *BoolValue `json:"-" yaml:"-"`
+
+	Integer *IntegerValue `json:"-" yaml:"-"`
+
+	Unit *UnitValue `json:"-" yaml:"-"`
+
+	Terrain *TerrainValue `json:"-" yaml:"-"`
+
+	Rotation *RotationValue `json:"-" yaml:"-"`
+
+	DistanceTarget *DistanceTargetValue `json:"-" yaml:"-"`
+
+	ListNode *ListNode `json:"-" yaml:"-"`
+}
+
+// MarshalJSON implements json.Marshaler. Exactly one variant
+// pointer must be non-nil; otherwise marshaling errors.
+func (j PicolangMemoryValue) MarshalJSON() ([]byte, error) {
+	set := 0
+	if j.Bool != nil {
+		set++
+	}
+	if j.Integer != nil {
+		set++
+	}
+	if j.Unit != nil {
+		set++
+	}
+	if j.Terrain != nil {
+		set++
+	}
+	if j.Rotation != nil {
+		set++
+	}
+	if j.DistanceTarget != nil {
+		set++
+	}
+	if j.ListNode != nil {
+		set++
+	}
+	if set != 1 {
+		return nil, fmt.Errorf("PicolangMemoryValue: exactly one variant must be set, got %d", set)
+	}
+	if j.Bool != nil {
+		return json.Marshal(j.Bool)
+	}
+	if j.Integer != nil {
+		return json.Marshal(j.Integer)
+	}
+	if j.Unit != nil {
+		return json.Marshal(j.Unit)
+	}
+	if j.Terrain != nil {
+		return json.Marshal(j.Terrain)
+	}
+	if j.Rotation != nil {
+		return json.Marshal(j.Rotation)
+	}
+	if j.DistanceTarget != nil {
+		return json.Marshal(j.DistanceTarget)
+	}
+	if j.ListNode != nil {
+		return json.Marshal(j.ListNode)
+	}
+	return nil, nil // unreachable
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It peeks the
+// discriminator property "type" and dispatches the decode into the
+// matching variant.
+func (j *PicolangMemoryValue) UnmarshalJSON(value []byte) error {
+	// Reset to zero value so reusing the same holder across multiple
+	// Unmarshal calls doesn't leave a previous winner set alongside the
+	// new one (which would violate the one-variant-set invariant and
+	// break the corresponding MarshalJSON).
+	*j = PicolangMemoryValue{}
+	var peek struct {
+		Discriminator json.RawMessage `json:"type"`
+	}
+	if err := json.Unmarshal(value, &peek); err != nil {
+		return fmt.Errorf("unmarshal PicolangMemoryValue: %w", err)
+	}
+	if len(peek.Discriminator) == 0 {
+		return fmt.Errorf("PicolangMemoryValue: missing discriminator field type")
+	}
+	if string(peek.Discriminator) == "null" {
+		return fmt.Errorf("PicolangMemoryValue: type discriminator must be a string, got null")
+	}
+	var disc string
+	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
+		return fmt.Errorf("PicolangMemoryValue: type discriminator must be a string: %w", err)
+	}
+	switch disc {
+	case "bool":
+		var v BoolValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Bool: %w", err)
+		}
+		j.Bool = &v
+	case "integer":
+		var v IntegerValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Integer: %w", err)
+		}
+		j.Integer = &v
+	case "unit":
+		var v UnitValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Unit: %w", err)
+		}
+		j.Unit = &v
+	case "terrain":
+		var v TerrainValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Terrain: %w", err)
+		}
+		j.Terrain = &v
+	case "rotation":
+		var v RotationValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Rotation: %w", err)
+		}
+		j.Rotation = &v
+	case "distance_target":
+		var v DistanceTargetValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.DistanceTarget: %w", err)
+		}
+		j.DistanceTarget = &v
+	case "list_node":
+		var v ListNode
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.ListNode: %w", err)
+		}
+		j.ListNode = &v
+	default:
+		return fmt.Errorf("PicolangMemoryValue: unknown type value %q", disc)
+	}
+	return nil
+}
+
+// 観測時点の地形種別と属性
+type PicolangTerrain struct {
+	Land *Land `json:"-" yaml:"-"`
+
+	Rock *Rock `json:"-" yaml:"-"`
+
+	Sea *Sea `json:"-" yaml:"-"`
+}
+
+// MarshalJSON implements json.Marshaler. Exactly one variant
+// pointer must be non-nil; otherwise marshaling errors.
+func (j PicolangTerrain) MarshalJSON() ([]byte, error) {
+	set := 0
+	if j.Land != nil {
+		set++
+	}
+	if j.Rock != nil {
+		set++
+	}
+	if j.Sea != nil {
+		set++
+	}
+	if set != 1 {
+		return nil, fmt.Errorf("PicolangTerrain: exactly one variant must be set, got %d", set)
+	}
+	if j.Land != nil {
+		return json.Marshal(j.Land)
+	}
+	if j.Rock != nil {
+		return json.Marshal(j.Rock)
+	}
+	if j.Sea != nil {
+		return json.Marshal(j.Sea)
+	}
+	return nil, nil // unreachable
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It peeks the
+// discriminator property "type" and dispatches the decode into the
+// matching variant.
+func (j *PicolangTerrain) UnmarshalJSON(value []byte) error {
+	// Reset to zero value so reusing the same holder across multiple
+	// Unmarshal calls doesn't leave a previous winner set alongside the
+	// new one (which would violate the one-variant-set invariant and
+	// break the corresponding MarshalJSON).
+	*j = PicolangTerrain{}
+	var peek struct {
+		Discriminator json.RawMessage `json:"type"`
+	}
+	if err := json.Unmarshal(value, &peek); err != nil {
+		return fmt.Errorf("unmarshal PicolangTerrain: %w", err)
+	}
+	if len(peek.Discriminator) == 0 {
+		return fmt.Errorf("PicolangTerrain: missing discriminator field type")
+	}
+	if string(peek.Discriminator) == "null" {
+		return fmt.Errorf("PicolangTerrain: type discriminator must be a string, got null")
+	}
+	var disc string
+	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
+		return fmt.Errorf("PicolangTerrain: type discriminator must be a string: %w", err)
+	}
+	switch disc {
+	case "land":
+		var v Land
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangTerrain.Land: %w", err)
+		}
+		j.Land = &v
+	case "rock":
+		var v Rock
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangTerrain.Rock: %w", err)
+		}
+		j.Rock = &v
+	case "sea":
+		var v Sea
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangTerrain.Sea: %w", err)
+		}
+		j.Sea = &v
+	default:
+		return fmt.Errorf("PicolangTerrain: unknown type value %q", disc)
+	}
+	return nil
+}
+
+// 定義の hintId に対応する最上位の変数の紐づけを取り除く。
+// 呼び出し元に同じ hintId の変数があれば、その紐づけが再び最上位になる。
+// 参照カウントは変更しない。値の参照解放は後続の memory_release で報告する。
 type PicolangVariableDropEvent struct {
-	// drop する変数に初期化時に紐づけた hintId
+	// drop する変数の定義の hintId
 	HintId HintId `json:"hintId"`
 
 	// Kind corresponds to the JSON schema field "kind".
@@ -1734,22 +2163,21 @@ func (j *PicolangVariableDropEvent) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-// 変数の型との一致および stack の要素の型の統一は生成側で保証する。
-// 入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+// 変数の定義の hintId に、既存の値 ID の紐づけを積む。
+// 再帰呼び出しでは同じ hintId に複数の紐づけを持ち、最上位を現在の変数とする。
+// 値全体は保持せず、仮想メモリから解決する。参照カウントは変更しない。
 type PicolangVariableInitEvent struct {
-	// 初期化した変数に紐づける hintId。以後の更新・drop でこの値をキーとして使う
+	// 対象の変数の定義の hintId。処理中のノードの hintId とは区別する
 	HintId HintId `json:"hintId"`
 
 	// Kind corresponds to the JSON schema field "kind".
 	Kind string `json:"kind"`
 
-	// 初期化された変数の値
-	Value Value `json:"value"`
+	// 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID
+	ValueId PicolangMemoryId `json:"valueId"`
 }
 
 const PicolangVariableInitEventKind = "variable_init"
-const PicolangVariableInitEventKind_1 = "variable_init"
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *PicolangVariableInitEvent) UnmarshalJSON(value []byte) error {
@@ -1763,8 +2191,8 @@ func (j *PicolangVariableInitEvent) UnmarshalJSON(value []byte) error {
 	if _, ok := raw["kind"]; raw != nil && !ok {
 		return fmt.Errorf("field kind in PicolangVariableInitEvent: required")
 	}
-	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in PicolangVariableInitEvent: required")
+	if _, ok := raw["valueId"]; raw != nil && !ok {
+		return fmt.Errorf("field valueId in PicolangVariableInitEvent: required")
 	}
 	type Plain PicolangVariableInitEvent
 	var plain Plain
@@ -1778,42 +2206,21 @@ func (j *PicolangVariableInitEvent) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 初期化時に紐づけた hintId をキーに変数の値の差分を報告する。
-// 差分は picolang の型と同様に primitive と compound に分け、compound の内側に stack の更新を置く。
-// diff の更新を先頭から順に、直前の更新を反映した値に適用する。
-// primitive は型ごとの値全体で更新し、stack は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
-// 差分は hintId が示す変数の現在値そのものに適用する。入れ子の stack を直接変更する操作は持たない。
-// push_back と pop_back は独立した stack を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
-// 更新結果を変数へ代入したときに、その代入先の更新を報告する。get_back や size の戻り値を代入する場合も同様とする。
-// 生成側は差分を代入先の現在値に適用すると代入後の値を再現できることを保証する。別の値からの再代入など、末尾の操作で表さない更新は replace
-// で値全体を記録する。
-// new で生成した stack は初期値または全体置換の値として記録する。
-// 更新が変数の型に対応すること、pop_back の対象が空でないこと、要素の型との一致は生成側で保証する。
-// 記録時点の値を保持する。後の実行で過去の記録内容は変わらない。
+// 定義の hintId に対応する最上位の変数の紐づけを、既存の値 ID に更新する。
+// 値全体や差分は保持せず、代入先の値は仮想メモリから解決する。
+// 参照カウントは変更しない。古い値の参照解放は後続の memory_release で報告する。
 type PicolangVariableUpdateEvent struct {
-	// 変数の値に順に適用する、型ごとの更新
-	Diff []Update `json:"diff"`
-
-	// 更新する変数に初期化時に紐づけた hintId。代入などの処理中のノードの hintId とは区別する
+	// 対象の変数の定義の hintId。処理中のノードの hintId とは区別する
 	HintId HintId `json:"hintId"`
 
 	// Kind corresponds to the JSON schema field "kind".
 	Kind string `json:"kind"`
+
+	// 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID
+	ValueId PicolangMemoryId `json:"valueId"`
 }
 
 const PicolangVariableUpdateEventKind = "variable_update"
-
-// MarshalJSON implements json.Marshaler. It writes a required array or object left
-// nil as an empty one, where encoding/json would write null, which the schema
-// rejects.
-func (j PicolangVariableUpdateEvent) MarshalJSON() ([]byte, error) {
-	type Plain PicolangVariableUpdateEvent
-	plain := Plain(j)
-	if plain.Diff == nil {
-		plain.Diff = []Update{}
-	}
-	return json.Marshal(plain)
-}
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *PicolangVariableUpdateEvent) UnmarshalJSON(value []byte) error {
@@ -1821,22 +2228,19 @@ func (j *PicolangVariableUpdateEvent) UnmarshalJSON(value []byte) error {
 	if err := json.Unmarshal(value, &raw); err != nil {
 		return fmt.Errorf("unmarshal raw PicolangVariableUpdateEvent: %w", err)
 	}
-	if _, ok := raw["diff"]; raw != nil && !ok {
-		return fmt.Errorf("field diff in PicolangVariableUpdateEvent: required")
-	}
 	if _, ok := raw["hintId"]; raw != nil && !ok {
 		return fmt.Errorf("field hintId in PicolangVariableUpdateEvent: required")
 	}
 	if _, ok := raw["kind"]; raw != nil && !ok {
 		return fmt.Errorf("field kind in PicolangVariableUpdateEvent: required")
 	}
+	if _, ok := raw["valueId"]; raw != nil && !ok {
+		return fmt.Errorf("field valueId in PicolangVariableUpdateEvent: required")
+	}
 	type Plain PicolangVariableUpdateEvent
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal PicolangVariableUpdateEvent: %w", err)
-	}
-	if plain.Diff != nil && len(plain.Diff) < 1 {
-		return fmt.Errorf("field %s length: must be >= %d", "diff", 1)
 	}
 	if plain.Kind != "variable_update" {
 		return fmt.Errorf("field %s: must be equal to %s", "kind", "variable_update")
@@ -1903,36 +2307,6 @@ func (j *PlainLand) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の stack の末尾の要素を一つ取り除く。変数自体の drop は
-// variable_drop イベントで表す
-type PopBack struct {
-	// Op corresponds to the JSON schema field "op".
-	Op string `json:"op"`
-}
-
-const PopBackOp = "pop_back"
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *PopBack) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw PopBack: %w", err)
-	}
-	if _, ok := raw["op"]; raw != nil && !ok {
-		return fmt.Errorf("field op in PopBack: required")
-	}
-	type Plain PopBack
-	var plain Plain
-	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal PopBack: %w", err)
-	}
-	if plain.Op != "pop_back" {
-		return fmt.Errorf("field %s: must be equal to %s", "op", "pop_back")
-	}
-	*j = PopBack(plain)
-	return nil
-}
-
 // フィールド上のマスの座標
 type Position struct {
 	// 横方向の座標。最初の列を 0 とする
@@ -1970,135 +2344,6 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be >= %v", "y", 0)
 	}
 	*j = Position(plain)
-	return nil
-}
-
-// 基本型の値全体の更新
-type PrimitiveUpdate struct {
-	Bool *BoolUpdate `json:"-" yaml:"-"`
-
-	Integer *IntegerUpdate `json:"-" yaml:"-"`
-
-	Unit *UnitUpdate `json:"-" yaml:"-"`
-
-	Terrain *TerrainUpdate `json:"-" yaml:"-"`
-
-	Rotation *RotationUpdate `json:"-" yaml:"-"`
-
-	DistanceTarget *DistanceTargetUpdate `json:"-" yaml:"-"`
-}
-
-// MarshalJSON implements json.Marshaler. Exactly one variant
-// pointer must be non-nil; otherwise marshaling errors.
-func (j PrimitiveUpdate) MarshalJSON() ([]byte, error) {
-	set := 0
-	if j.Bool != nil {
-		set++
-	}
-	if j.Integer != nil {
-		set++
-	}
-	if j.Unit != nil {
-		set++
-	}
-	if j.Terrain != nil {
-		set++
-	}
-	if j.Rotation != nil {
-		set++
-	}
-	if j.DistanceTarget != nil {
-		set++
-	}
-	if set != 1 {
-		return nil, fmt.Errorf("PrimitiveUpdate: exactly one variant must be set, got %d", set)
-	}
-	if j.Bool != nil {
-		return json.Marshal(j.Bool)
-	}
-	if j.Integer != nil {
-		return json.Marshal(j.Integer)
-	}
-	if j.Unit != nil {
-		return json.Marshal(j.Unit)
-	}
-	if j.Terrain != nil {
-		return json.Marshal(j.Terrain)
-	}
-	if j.Rotation != nil {
-		return json.Marshal(j.Rotation)
-	}
-	if j.DistanceTarget != nil {
-		return json.Marshal(j.DistanceTarget)
-	}
-	return nil, nil // unreachable
-}
-
-// UnmarshalJSON implements json.Unmarshaler. It peeks the
-// discriminator property "type" and dispatches the decode into the
-// matching variant.
-func (j *PrimitiveUpdate) UnmarshalJSON(value []byte) error {
-	// Reset to zero value so reusing the same holder across multiple
-	// Unmarshal calls doesn't leave a previous winner set alongside the
-	// new one (which would violate the one-variant-set invariant and
-	// break the corresponding MarshalJSON).
-	*j = PrimitiveUpdate{}
-	var peek struct {
-		Discriminator json.RawMessage `json:"type"`
-	}
-	if err := json.Unmarshal(value, &peek); err != nil {
-		return fmt.Errorf("unmarshal PrimitiveUpdate: %w", err)
-	}
-	if len(peek.Discriminator) == 0 {
-		return fmt.Errorf("PrimitiveUpdate: missing discriminator field type")
-	}
-	if string(peek.Discriminator) == "null" {
-		return fmt.Errorf("PrimitiveUpdate: type discriminator must be a string, got null")
-	}
-	var disc string
-	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
-		return fmt.Errorf("PrimitiveUpdate: type discriminator must be a string: %w", err)
-	}
-	switch disc {
-	case "bool":
-		var v BoolUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.Bool: %w", err)
-		}
-		j.Bool = &v
-	case "integer":
-		var v IntegerUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.Integer: %w", err)
-		}
-		j.Integer = &v
-	case "unit":
-		var v UnitUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.Unit: %w", err)
-		}
-		j.Unit = &v
-	case "terrain":
-		var v TerrainUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.Terrain: %w", err)
-		}
-		j.Terrain = &v
-	case "rotation":
-		var v RotationUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.Rotation: %w", err)
-		}
-		j.Rotation = &v
-	case "distance_target":
-		var v DistanceTargetUpdate
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("PrimitiveUpdate.DistanceTarget: %w", err)
-		}
-		j.DistanceTarget = &v
-	default:
-		return fmt.Errorf("PrimitiveUpdate: unknown type value %q", disc)
-	}
 	return nil
 }
 
@@ -2309,7 +2554,7 @@ type PrintTerrainResult struct {
 	RobotId RobotId `json:"robotId"`
 
 	// Terrain corresponds to the JSON schema field "terrain".
-	Terrain Terrain_1 `json:"terrain"`
+	Terrain PicolangTerrain `json:"terrain"`
 }
 
 const PrintTerrainResultKind = "print_terrain"
@@ -2373,41 +2618,6 @@ func (j *PrintUnitResult) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be equal to %s", "kind", "print_unit")
 	}
 	*j = PrintUnitResult(plain)
-	return nil
-}
-
-// 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の stack の末尾に要素を一つ追加する
-type PushBack struct {
-	// Op corresponds to the JSON schema field "op".
-	Op string `json:"op"`
-
-	// 末尾に追加する要素の値
-	Value Value `json:"value"`
-}
-
-const PushBackOp = "push_back"
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *PushBack) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw PushBack: %w", err)
-	}
-	if _, ok := raw["op"]; raw != nil && !ok {
-		return fmt.Errorf("field op in PushBack: required")
-	}
-	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in PushBack: required")
-	}
-	type Plain PushBack
-	var plain Plain
-	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal PushBack: %w", err)
-	}
-	if plain.Op != "push_back" {
-		return fmt.Errorf("field %s: must be equal to %s", "op", "push_back")
-	}
-	*j = PushBack(plain)
 	return nil
 }
 
@@ -2691,67 +2901,67 @@ func (j *RotateResult) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-type RotationUpdate struct {
+type RotationValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
 	// Value corresponds to the JSON schema field "value".
-	Value RotationUpdateValue `json:"value"`
+	Value RotationValueValue `json:"value"`
 }
 
-const RotationUpdateType = "rotation"
+const RotationValueType = "rotation"
 
-type RotationUpdateValue string
+type RotationValueValue string
 
-const RotationUpdateValueLeft RotationUpdateValue = "left"
-const RotationUpdateValueRight RotationUpdateValue = "right"
+const RotationValueValueLeft RotationValueValue = "left"
+const RotationValueValueRight RotationValueValue = "right"
 
-var enumValues_RotationUpdateValue = []interface{}{
+var enumValues_RotationValueValue = []interface{}{
 	"left",
 	"right",
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *RotationUpdateValue) UnmarshalJSON(value []byte) error {
+func (j *RotationValueValue) UnmarshalJSON(value []byte) error {
 	var v string
 	if err := json.Unmarshal(value, &v); err != nil {
 		return err
 	}
 	var ok bool
-	for _, expected := range enumValues_RotationUpdateValue {
+	for _, expected := range enumValues_RotationValueValue {
 		if reflect.DeepEqual(v, expected) {
 			ok = true
 			break
 		}
 	}
 	if !ok {
-		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_RotationUpdateValue, v)
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_RotationValueValue, v)
 	}
-	*j = RotationUpdateValue(v)
+	*j = RotationValueValue(v)
 	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *RotationUpdate) UnmarshalJSON(value []byte) error {
+func (j *RotationValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw RotationUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw RotationValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in RotationUpdate: required")
+		return fmt.Errorf("field type in RotationValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in RotationUpdate: required")
+		return fmt.Errorf("field value in RotationValue: required")
 	}
-	type Plain RotationUpdate
+	type Plain RotationValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal RotationUpdate: %w", err)
+		return fmt.Errorf("unmarshal RotationValue: %w", err)
 	}
 	if plain.Type != "rotation" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "rotation")
 	}
-	*j = RotationUpdate(plain)
+	*j = RotationValue(plain)
 	return nil
 }
 
@@ -2811,298 +3021,43 @@ func (j *Sea) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 代入先の値全体を独立した stack の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う
-type StackReplace struct {
-	// Op corresponds to the JSON schema field "op".
-	Op string `json:"op"`
-
-	// 再代入する stack の値全体
-	Value []Value `json:"value"`
-}
-
-const StackReplaceOp = "replace"
-
-// MarshalJSON implements json.Marshaler. It writes a required array or object left
-// nil as an empty one, where encoding/json would write null, which the schema
-// rejects.
-func (j StackReplace) MarshalJSON() ([]byte, error) {
-	type Plain StackReplace
-	plain := Plain(j)
-	if plain.Value == nil {
-		plain.Value = []Value{}
-	}
-	return json.Marshal(plain)
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *StackReplace) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw StackReplace: %w", err)
-	}
-	if _, ok := raw["op"]; raw != nil && !ok {
-		return fmt.Errorf("field op in StackReplace: required")
-	}
-	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in StackReplace: required")
-	}
-	type Plain StackReplace
-	var plain Plain
-	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal StackReplace: %w", err)
-	}
-	if plain.Op != "replace" {
-		return fmt.Errorf("field %s: must be equal to %s", "op", "replace")
-	}
-	*j = StackReplace(plain)
-	return nil
-}
-
-// 代入先の stack の現在値に対する更新。操作内容は update の内側に格納する
-type StackUpdate struct {
-	// Type corresponds to the JSON schema field "type".
-	Type string `json:"type"`
-
-	// Update corresponds to the JSON schema field "update".
-	Update StackUpdateUpdate `json:"update"`
-}
-
-const StackUpdateType = "stack"
-
-type StackUpdateUpdate struct {
-	Replace *StackReplace `json:"-" yaml:"-"`
-
-	PushBack *PushBack `json:"-" yaml:"-"`
-
-	PopBack *PopBack `json:"-" yaml:"-"`
-}
-
-// MarshalJSON implements json.Marshaler. Exactly one variant
-// pointer must be non-nil; otherwise marshaling errors.
-func (j StackUpdateUpdate) MarshalJSON() ([]byte, error) {
-	set := 0
-	if j.Replace != nil {
-		set++
-	}
-	if j.PushBack != nil {
-		set++
-	}
-	if j.PopBack != nil {
-		set++
-	}
-	if set != 1 {
-		return nil, fmt.Errorf("StackUpdateUpdate: exactly one variant must be set, got %d", set)
-	}
-	if j.Replace != nil {
-		return json.Marshal(j.Replace)
-	}
-	if j.PushBack != nil {
-		return json.Marshal(j.PushBack)
-	}
-	if j.PopBack != nil {
-		return json.Marshal(j.PopBack)
-	}
-	return nil, nil // unreachable
-}
-
-// UnmarshalJSON implements json.Unmarshaler. It peeks the
-// discriminator property "op" and dispatches the decode into the
-// matching variant.
-func (j *StackUpdateUpdate) UnmarshalJSON(value []byte) error {
-	// Reset to zero value so reusing the same holder across multiple
-	// Unmarshal calls doesn't leave a previous winner set alongside the
-	// new one (which would violate the one-variant-set invariant and
-	// break the corresponding MarshalJSON).
-	*j = StackUpdateUpdate{}
-	var peek struct {
-		Discriminator json.RawMessage `json:"op"`
-	}
-	if err := json.Unmarshal(value, &peek); err != nil {
-		return fmt.Errorf("unmarshal StackUpdateUpdate: %w", err)
-	}
-	if len(peek.Discriminator) == 0 {
-		return fmt.Errorf("StackUpdateUpdate: missing discriminator field op")
-	}
-	if string(peek.Discriminator) == "null" {
-		return fmt.Errorf("StackUpdateUpdate: op discriminator must be a string, got null")
-	}
-	var disc string
-	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
-		return fmt.Errorf("StackUpdateUpdate: op discriminator must be a string: %w", err)
-	}
-	switch disc {
-	case "replace":
-		var v StackReplace
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("StackUpdateUpdate.Replace: %w", err)
-		}
-		j.Replace = &v
-	case "push_back":
-		var v PushBack
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("StackUpdateUpdate.PushBack: %w", err)
-		}
-		j.PushBack = &v
-	case "pop_back":
-		var v PopBack
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("StackUpdateUpdate.PopBack: %w", err)
-		}
-		j.PopBack = &v
-	default:
-		return fmt.Errorf("StackUpdateUpdate: unknown op value %q", disc)
-	}
-	return nil
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *StackUpdate) UnmarshalJSON(value []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw StackUpdate: %w", err)
-	}
-	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in StackUpdate: required")
-	}
-	if _, ok := raw["update"]; raw != nil && !ok {
-		return fmt.Errorf("field update in StackUpdate: required")
-	}
-	type Plain StackUpdate
-	var plain Plain
-	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal StackUpdate: %w", err)
-	}
-	if plain.Type != "stack" {
-		return fmt.Errorf("field %s: must be equal to %s", "type", "stack")
-	}
-	*j = StackUpdate(plain)
-	return nil
-}
-
 type Terrain string
 
 const TerrainLand Terrain = "land"
 const TerrainRock Terrain = "rock"
 const TerrainSea Terrain = "sea"
 
-type TerrainUpdate struct {
+type TerrainValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
 	// Value corresponds to the JSON schema field "value".
-	Value Terrain_1 `json:"value"`
+	Value PicolangTerrain `json:"value"`
 }
 
-const TerrainUpdateType = "terrain"
+const TerrainValueType = "terrain"
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *TerrainUpdate) UnmarshalJSON(value []byte) error {
+func (j *TerrainValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw TerrainUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw TerrainValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in TerrainUpdate: required")
+		return fmt.Errorf("field type in TerrainValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in TerrainUpdate: required")
+		return fmt.Errorf("field value in TerrainValue: required")
 	}
-	type Plain TerrainUpdate
+	type Plain TerrainValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal TerrainUpdate: %w", err)
+		return fmt.Errorf("unmarshal TerrainValue: %w", err)
 	}
 	if plain.Type != "terrain" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "terrain")
 	}
-	*j = TerrainUpdate(plain)
-	return nil
-}
-
-// 観測時点の地形種別
-type Terrain_1 struct {
-	Land *Land `json:"-" yaml:"-"`
-
-	Rock *Rock `json:"-" yaml:"-"`
-
-	Sea *Sea `json:"-" yaml:"-"`
-}
-
-// MarshalJSON implements json.Marshaler. Exactly one variant
-// pointer must be non-nil; otherwise marshaling errors.
-func (j Terrain_1) MarshalJSON() ([]byte, error) {
-	set := 0
-	if j.Land != nil {
-		set++
-	}
-	if j.Rock != nil {
-		set++
-	}
-	if j.Sea != nil {
-		set++
-	}
-	if set != 1 {
-		return nil, fmt.Errorf("Terrain_1: exactly one variant must be set, got %d", set)
-	}
-	if j.Land != nil {
-		return json.Marshal(j.Land)
-	}
-	if j.Rock != nil {
-		return json.Marshal(j.Rock)
-	}
-	if j.Sea != nil {
-		return json.Marshal(j.Sea)
-	}
-	return nil, nil // unreachable
-}
-
-// UnmarshalJSON implements json.Unmarshaler. It peeks the
-// discriminator property "type" and dispatches the decode into the
-// matching variant.
-func (j *Terrain_1) UnmarshalJSON(value []byte) error {
-	// Reset to zero value so reusing the same holder across multiple
-	// Unmarshal calls doesn't leave a previous winner set alongside the
-	// new one (which would violate the one-variant-set invariant and
-	// break the corresponding MarshalJSON).
-	*j = Terrain_1{}
-	var peek struct {
-		Discriminator json.RawMessage `json:"type"`
-	}
-	if err := json.Unmarshal(value, &peek); err != nil {
-		return fmt.Errorf("unmarshal Terrain_1: %w", err)
-	}
-	if len(peek.Discriminator) == 0 {
-		return fmt.Errorf("Terrain_1: missing discriminator field type")
-	}
-	if string(peek.Discriminator) == "null" {
-		return fmt.Errorf("Terrain_1: type discriminator must be a string, got null")
-	}
-	var disc string
-	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
-		return fmt.Errorf("Terrain_1: type discriminator must be a string: %w", err)
-	}
-	switch disc {
-	case "land":
-		var v Land
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("Terrain_1.Land: %w", err)
-		}
-		j.Land = &v
-	case "rock":
-		var v Rock
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("Terrain_1.Rock: %w", err)
-		}
-		j.Rock = &v
-	case "sea":
-		var v Sea
-		if err := json.Unmarshal(value, &v); err != nil {
-			return fmt.Errorf("Terrain_1.Sea: %w", err)
-		}
-		j.Sea = &v
-	default:
-		return fmt.Errorf("Terrain_1: unknown type value %q", disc)
-	}
+	*j = TerrainValue(plain)
 	return nil
 }
 
@@ -3132,7 +3087,7 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-type UnitUpdate struct {
+type UnitValue struct {
 	// Type corresponds to the JSON schema field "type".
 	Type string `json:"type"`
 
@@ -3140,24 +3095,24 @@ type UnitUpdate struct {
 	Value interface{} `json:"value"`
 }
 
-const UnitUpdateType = "unit"
+const UnitValueType = "unit"
 
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *UnitUpdate) UnmarshalJSON(value []byte) error {
+func (j *UnitValue) UnmarshalJSON(value []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(value, &raw); err != nil {
-		return fmt.Errorf("unmarshal raw UnitUpdate: %w", err)
+		return fmt.Errorf("unmarshal raw UnitValue: %w", err)
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
-		return fmt.Errorf("field type in UnitUpdate: required")
+		return fmt.Errorf("field type in UnitValue: required")
 	}
 	if _, ok := raw["value"]; raw != nil && !ok {
-		return fmt.Errorf("field value in UnitUpdate: required")
+		return fmt.Errorf("field value in UnitValue: required")
 	}
-	type Plain UnitUpdate
+	type Plain UnitValue
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
-		return fmt.Errorf("unmarshal UnitUpdate: %w", err)
+		return fmt.Errorf("unmarshal UnitValue: %w", err)
 	}
 	if plain.Type != "unit" {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "unit")
@@ -3165,12 +3120,9 @@ func (j *UnitUpdate) UnmarshalJSON(value []byte) error {
 	if plain.Value != nil {
 		return fmt.Errorf("field %s: must be null", "value")
 	}
-	*j = UnitUpdate(plain)
+	*j = UnitValue(plain)
 	return nil
 }
-
-// primitive または compound の更新
-type Update interface{}
 
 // 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する
 type UpdateState struct {
@@ -3230,9 +3182,6 @@ func (j *UpdateState) UnmarshalJSON(value []byte) error {
 	*j = UpdateState(plain)
 	return nil
 }
-
-// 初期値全体
-type Value interface{}
 
 // 機体の待機開始。イベントの tick は待機で消費する最初のターンを示す
 type WaitResult struct {
@@ -3300,7 +3249,7 @@ var integerPaths_FieldEvent = &unmarshalIntegral_LandKind_path{fields: map[strin
 	"tick": {kind: "int"},
 }}
 
-var integerPaths_IntegerUpdate = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
+var integerPaths_IntegerValue = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"value": {kind: "int"},
 }}
 

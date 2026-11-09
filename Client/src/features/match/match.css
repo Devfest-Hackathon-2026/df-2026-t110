@@ -341,6 +341,16 @@
   gap: var(--space-md);
   align-items: end;
 }
+.match-replay-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.match-replay-heading h2 svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
 .match-replay-heading > span {
   color: var(--color-ink-2);
   font-variant-numeric: tabular-nums;
