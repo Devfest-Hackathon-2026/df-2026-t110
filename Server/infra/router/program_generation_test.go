@@ -67,7 +67,7 @@ func TestCreateProgramWithVibe(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/program/create-with-vibe", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			if tt.cookie {
-				req.AddCookie(&http.Cookie{Name: "session", Value: "session-id"})
+				req.AddCookie(&http.Cookie{Name: "session", Value: "session-id", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 			}
 			res := httptest.NewRecorder()
 			e.ServeHTTP(res, req)

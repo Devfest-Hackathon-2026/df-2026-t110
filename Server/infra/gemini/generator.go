@@ -73,7 +73,7 @@ func (g *Generator) GenerateProgram(ctx context.Context, input usecase.ProgramGe
 		return nil, fmt.Errorf("generate Gemini program: %w", err)
 	}
 	if len(response.Candidates) == 0 {
-		return nil, errors.New("Gemini returned no program candidate")
+		return nil, errors.New("gemini returned no program candidate")
 	}
 	var result strings.Builder
 	for _, piece := range response.Candidates[0].Content.Parts {
@@ -82,7 +82,7 @@ func (g *Generator) GenerateProgram(ctx context.Context, input usecase.ProgramGe
 		}
 	}
 	if result.Len() == 0 {
-		return nil, errors.New("Gemini returned an empty program")
+		return nil, errors.New("gemini returned an empty program")
 	}
 	return json.RawMessage(result.String()), nil
 }
@@ -111,9 +111,9 @@ func (g *Generator) post(ctx context.Context, method string, payload, output any
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("Vertex AI %s returned HTTP %d", method, response.StatusCode)
+		return fmt.Errorf("vertex AI %s returned HTTP %d", method, response.StatusCode)
 	}
 	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(output); err != nil {
 		return fmt.Errorf("decode Vertex AI response: %w", err)

@@ -3,6 +3,7 @@ package gemini
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -81,7 +82,7 @@ func TestGeneratorRejectsInputThatExhaustsBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = g.GenerateProgram(context.Background(), usecase.ProgramGenerationInput{Prompt: "go", MaxTokens: 1000})
-	if err != usecase.ErrInvalidGenerationRequest || calls != 1 {
+	if !errors.Is(err, usecase.ErrInvalidGenerationRequest) || calls != 1 {
 		t.Errorf("error = %v; calls = %d", err, calls)
 	}
 }
