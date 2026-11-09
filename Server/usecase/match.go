@@ -40,7 +40,7 @@ type MatchRepository interface {
 
 type MatchDeps struct {
 	Users     MatchUserRepository
-	Programs  RunProgramRepository
+	Programs  ProgramGetter
 	Opponents MatchOpponentRepository
 	Layouts   MatchLayoutRepository
 	Executor  MatchExecutor

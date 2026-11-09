@@ -14,7 +14,7 @@ import (
 )
 
 var _ usecase.ProgramRepository = (*Programs)(nil)
-var _ usecase.RunProgramRepository = (*Programs)(nil)
+var _ usecase.ProgramGetter = (*Programs)(nil)
 
 type Programs struct{ queries *db.Queries }
 

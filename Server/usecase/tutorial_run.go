@@ -10,8 +10,8 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
 
-// RunProgramRepository retrieves saved programs, including their owner.
-type RunProgramRepository interface {
+// ProgramGetter retrieves saved programs, including their owner.
+type ProgramGetter interface {
 	Get(ctx context.Context, id string) (domain.Program, error)
 }
 
@@ -26,14 +26,14 @@ type RunRepository interface {
 }
 
 type TutorialRuns struct {
-	programs  RunProgramRepository
+	programs  ProgramGetter
 	tutorials TutorialRepository
 	executor  TutorialExecutor
 	runs      RunRepository
 	pick      func(int) int
 }
 
-func NewTutorialRuns(programs RunProgramRepository, tutorials TutorialRepository, executor TutorialExecutor, runs RunRepository) *TutorialRuns {
+func NewTutorialRuns(programs ProgramGetter, tutorials TutorialRepository, executor TutorialExecutor, runs RunRepository) *TutorialRuns {
 	return &TutorialRuns{programs: programs, tutorials: tutorials, executor: executor, runs: runs, pick: rand.IntN}
 }
 
