@@ -18,7 +18,7 @@ import (
 var _ usecase.TutorialRepository = (*Textbooks)(nil)
 var _ usecase.GenerationFields = (*Textbooks)(nil)
 
-// Textbooks keeps validated pages indexed by ID after loading the source.
+// Textbooks keeps validated pages in source file order and indexed by ID.
 type Textbooks struct {
 	byID map[string]domain.Tutorial
 	list []domain.Tutorial
@@ -36,6 +36,8 @@ func NewTextbooks(ctx context.Context, pages fs.FS) (*Textbooks, error) {
 func loadTextbooks(ctx context.Context, pages fs.FS) (map[string]domain.Tutorial, []domain.Tutorial, error) {
 	byID := make(map[string]domain.Tutorial)
 	var list []domain.Tutorial
+	// WalkDir visits entries in lexical filename order. Zero-padded page names
+	// (01.yaml, 02.yaml, ...) define the learning order independently of IDs.
 	err := fs.WalkDir(pages, ".", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return fmt.Errorf("walk textbook %s: %w", path, walkErr)
@@ -64,7 +66,6 @@ func loadTextbooks(ctx context.Context, pages fs.FS) (map[string]domain.Tutorial
 	if err != nil {
 		return nil, nil, fmt.Errorf("load textbooks: %w", err)
 	}
-	slices.SortFunc(list, func(a, b domain.Tutorial) int { return strings.Compare(a.ID, b.ID) })
 	return byID, list, nil
 }
 

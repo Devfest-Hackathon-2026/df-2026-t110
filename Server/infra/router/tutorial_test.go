@@ -41,6 +41,8 @@ stage:
     type: reach_goal
 `)},
 	}
+	pages["02.yaml"] = &fstest.MapFile{Data: []byte(strings.ReplaceAll(string(pages["01.yaml"].Data), "first-step", "turn"))}
+	pages["14.yaml"] = &fstest.MapFile{Data: []byte(strings.ReplaceAll(string(pages["01.yaml"].Data), "first-step", "deliver-luggage"))}
 	e := echo.New()
 	textbooks, err := repo.NewTextbooks(context.Background(), pages)
 	if err != nil {
@@ -52,8 +54,10 @@ stage:
 		wantStatus int
 		wantBody   string
 	}{
-		{"/api/tutorial", http.StatusOK, `"id":"first-step"`},
+		{"/api/tutorial", http.StatusOK, `[{"id":"first-step","title":"First step"},{"id":"turn","title":"First step"},{"id":"deliver-luggage","title":"First step"}]`},
 		{"/api/tutorial/first-step", http.StatusOK, `"description":"Move to the goal"`},
+		{"/api/tutorial/turn", http.StatusOK, `"id":"turn"`},
+		{"/api/tutorial/deliver-luggage", http.StatusOK, `"id":"deliver-luggage"`},
 		{"/api/tutorial/missing", http.StatusNotFound, `Not Found`},
 	} {
 		t.Run(tt.path, func(t *testing.T) {
