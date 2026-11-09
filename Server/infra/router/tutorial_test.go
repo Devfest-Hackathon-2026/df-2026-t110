@@ -130,7 +130,7 @@ func TestListTutorialPrograms(t *testing.T) {
 			})
 			request := httptest.NewRequest(http.MethodGet, "/api/tutorial/"+tutorialID+"/program", nil)
 			if !tc.noSession {
-				request.AddCookie(&http.Cookie{Name: "session", Value: "session-id"})
+				request.AddCookie(&http.Cookie{Name: "session", Value: "session-id", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 			}
 			response := httptest.NewRecorder()
 			e.ServeHTTP(response, request)
