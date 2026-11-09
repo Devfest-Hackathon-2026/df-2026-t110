@@ -15,7 +15,7 @@ func TestTutorials(t *testing.T) {
 	tutorials := usecase.NewTutorials(repo.NewTutorials(
 		domain.Tutorial{ID: "b", Title: "B"},
 		domain.Tutorial{ID: "a", Title: "A"},
-	))
+	), nil, nil)
 
 	list, err := tutorials.List(context.Background())
 	if err != nil {

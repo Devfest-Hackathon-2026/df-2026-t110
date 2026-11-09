@@ -9,7 +9,7 @@ import (
 )
 
 type ProgramRepository interface {
-	RunProgramRepository
+	ProgramGetter
 	Create(ctx context.Context, program domain.Program) error
 	// Update changes only name and source and archives a new revision atomically.
 	Update(ctx context.Context, program domain.Program) (domain.Program, error)

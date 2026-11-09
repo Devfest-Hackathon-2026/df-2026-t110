@@ -17,13 +17,13 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 )
 
-type matchCreatorStub struct {
+type matchServiceStub struct {
 	subject string
 	ids     []string
 	err     error
 }
 
-func (s *matchCreatorStub) Create(_ context.Context, subject string, ids []string) (domain.Match, error) {
+func (s *matchServiceStub) Create(_ context.Context, subject string, ids []string) (domain.Match, error) {
 	s.subject, s.ids = subject, ids
 	return domain.Match{
 		ID: "match-id", RunID: "019a5aa3-c000-7000-8000-000000000001",
@@ -60,7 +60,7 @@ func TestPostMatch(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			creator := &matchCreatorStub{err: tt.err}
+			creator := &matchServiceStub{err: tt.err}
 			e := echo.New()
 			api.RegisterHandlersWithOptions(e, NewRouter(Config{Matches: creator}), api.RegisterHandlersOptions{
 				BaseURL: "/api", OperationMiddlewares: map[string][]echo.MiddlewareFunc{

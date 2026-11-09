@@ -15,6 +15,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
+	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/labstack/echo/v5"
 )
 
@@ -48,7 +49,7 @@ stage:
 	if err != nil {
 		t.Fatal(err)
 	}
-	api.RegisterHandlersWithBaseURL(e, NewRouter(Config{Tutorials: textbooks}), "/api")
+	api.RegisterHandlersWithBaseURL(e, NewRouter(Config{Tutorials: usecase.NewTutorials(textbooks, nil, nil)}), "/api")
 	for _, tt := range []struct {
 		path       string
 		wantStatus int

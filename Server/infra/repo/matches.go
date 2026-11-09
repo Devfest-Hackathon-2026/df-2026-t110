@@ -15,6 +15,7 @@ import (
 )
 
 var _ usecase.MatchRepository = (*Matches)(nil)
+var _ usecase.MatchResultRepository = (*Matches)(nil)
 var _ usecase.MatchOpponentRepository = (*Matches)(nil)
 var _ usecase.RankingRepository = (*Matches)(nil)
 
@@ -79,77 +80,84 @@ func (r *Matches) Rating(ctx context.Context, subject string) (int, error) {
 	return int(rating), nil
 }
 
-func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain.Match, error) {
-	id, err := uuid.NewV7()
+// Complete saves the result of the pending run, the match under record.ID and the
+// challenger's rating update in one transaction.
+func (r *Matches) Complete(ctx context.Context, runID string, record domain.MatchRecord) error {
+	run, err := uuid.Parse(runID)
 	if err != nil {
-		return domain.Match{}, fmt.Errorf("generate match ID: %w", err)
+		return usecase.ErrNotFound
 	}
-	runID, err := uuid.NewV7()
+	id, err := uuid.Parse(record.ID)
 	if err != nil {
-		return domain.Match{}, fmt.Errorf("generate match run ID: %w", err)
+		return fmt.Errorf("parse match ID: %w", err)
 	}
-	err = pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+	return pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
 		queries := db.New(tx)
-		if err := queries.CreateMatchRun(ctx, db.CreateMatchRunParams{
-			ID: pgtype.UUID{Bytes: runID, Valid: true}, GoogleSubject: record.GoogleSubject,
-			FieldID: record.FieldID, Result: record.Result,
-		}); err != nil {
-			return fmt.Errorf("insert match run: %w", err)
-		}
-		references := db.CreateRunProgramsParams{RunID: pgtype.UUID{Bytes: runID, Valid: true}}
-		// Side values are part of the persisted format: challenger=0, opponent=1.
-		const challengerSide, opponentSide int16 = 0, 1
-		teams := []struct {
-			side     int16
-			programs []domain.ProgramRef
-		}{
-			{challengerSide, record.ChallengerPrograms}, {opponentSide, record.OpponentPrograms},
-		}
-		for _, team := range teams {
-			if len(team.programs) > domain.BattleRobotCount {
-				return domain.ErrInvalidProgram
-			}
-			for index, program := range team.programs {
-				revision, err := programRevisionToDB(program)
-				if err != nil {
-					return err
-				}
-				references.Sides = append(references.Sides, team.side)
-				references.RobotIndexes = append(references.RobotIndexes, int16(index))
-				references.ProgramIds = append(references.ProgramIds, program.ID)
-				references.Revisions = append(references.Revisions, revision)
-			}
-		}
-		if err := queries.CreateRunPrograms(ctx, references); err != nil {
-			return fmt.Errorf("insert match program revisions: %w", err)
-		}
-		after, err := queries.AddUserRating(ctx, db.AddUserRatingParams{
-			GoogleSubject: record.GoogleSubject, Delta: int64(record.RatingDelta),
-		})
+		rows, err := queries.SaveRunResult(ctx, db.SaveRunResultParams{ID: pgtype.UUID{Bytes: run, Valid: true}, Result: record.Result})
 		if err != nil {
-			return fmt.Errorf("update challenger rating: %w", err)
+			return fmt.Errorf("update match run result: %w", err)
 		}
-		// Store the ratings actually replaced, which differ from record.ChallengerRating
-		// when another result of the challenger was applied during this match.
-		if err := queries.CreateMatch(ctx, db.CreateMatchParams{
-			ID: pgtype.UUID{Bytes: id, Valid: true}, RunID: pgtype.UUID{Bytes: runID, Valid: true},
-			OpponentGoogleSubject: record.OpponentSubject, OpponentName: record.OpponentName,
-			Outcome:        string(record.Outcome),
-			OpponentRating: int64(record.OpponentRating),
-			RatingBefore:   int64(after) - int64(record.RatingDelta),
-			RatingAfter:    int64(after),
-		}); err != nil {
-			return fmt.Errorf("insert match: %w", err)
+		if rows == 0 {
+			return usecase.ErrNotFound
 		}
-		return nil
+		if err := saveRunPrograms(ctx, queries, run, record); err != nil {
+			return err
+		}
+		return saveRatedMatch(ctx, queries, id, run, record)
+	})
+}
+
+func saveRunPrograms(ctx context.Context, queries *db.Queries, runID uuid.UUID, record domain.MatchRecord) error {
+	references := db.CreateRunProgramsParams{RunID: pgtype.UUID{Bytes: runID, Valid: true}}
+	// Side values are part of the persisted format: challenger=0, opponent=1.
+	const challengerSide, opponentSide int16 = 0, 1
+	teams := []struct {
+		side     int16
+		programs []domain.ProgramRef
+	}{
+		{challengerSide, record.ChallengerPrograms}, {opponentSide, record.OpponentPrograms},
+	}
+	for _, team := range teams {
+		if len(team.programs) > domain.BattleRobotCount {
+			return domain.ErrInvalidProgram
+		}
+		for index, program := range team.programs {
+			revision, err := programRevisionToDB(program)
+			if err != nil {
+				return err
+			}
+			references.Sides = append(references.Sides, team.side)
+			references.RobotIndexes = append(references.RobotIndexes, int16(index))
+			references.ProgramIds = append(references.ProgramIds, program.ID)
+			references.Revisions = append(references.Revisions, revision)
+		}
+	}
+	if err := queries.CreateRunPrograms(ctx, references); err != nil {
+		return fmt.Errorf("insert match program revisions: %w", err)
+	}
+	return nil
+}
+
+func saveRatedMatch(ctx context.Context, queries *db.Queries, id, runID uuid.UUID, record domain.MatchRecord) error {
+	after, err := queries.AddUserRating(ctx, db.AddUserRatingParams{
+		GoogleSubject: record.GoogleSubject, Delta: int64(record.RatingDelta),
 	})
 	if err != nil {
-		return domain.Match{}, err
+		return fmt.Errorf("update challenger rating: %w", err)
 	}
-	return domain.Match{
-		ID: id.String(), RunID: runID.String(), FieldID: record.FieldID,
-		OpponentName: record.OpponentName,
-	}, nil
+	// Store the ratings actually replaced, which differ from record.ChallengerRating
+	// when another result of the challenger was applied during this match.
+	if err := queries.CreateMatch(ctx, db.CreateMatchParams{
+		ID: pgtype.UUID{Bytes: id, Valid: true}, RunID: pgtype.UUID{Bytes: runID, Valid: true},
+		OpponentGoogleSubject: record.OpponentSubject, OpponentName: record.OpponentName,
+		Outcome:        string(record.Outcome),
+		OpponentRating: int64(record.OpponentRating),
+		RatingBefore:   int64(after) - int64(record.RatingDelta),
+		RatingAfter:    int64(after),
+	}); err != nil {
+		return fmt.Errorf("insert match: %w", err)
+	}
+	return nil
 }
 
 func (r *Matches) Ranking(ctx context.Context) ([]domain.RankingEntry, error) {

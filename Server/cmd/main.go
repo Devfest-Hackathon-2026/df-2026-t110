@@ -38,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fields := usecase.NewFields(textbooks)
-	cfg := router.Config{Tutorials: textbooks, Fields: fields}
+	cfg := router.Config{Tutorials: usecase.NewTutorials(textbooks, nil, nil), Fields: fields}
 	var sessions router.SessionUserLookup
 	googleLogin := googleLoginConfigFromEnv()
 	if err := googleLogin.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
@@ -71,13 +71,13 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		runExecutor := usecase.NewExecutor(repo.NewRuns(pool), matches, tutorialrun.Simulator{}, matchrun.Simulator{})
 		cfg.Matches = usecase.NewMatches(usecase.MatchDeps{
 			Users: users, Programs: programs, Opponents: matches, Layouts: layouts,
-			Executor: matchrun.NewExecutor(), Matches: matches,
+			Executor: runExecutor, Matches: matches,
 		})
 		cfg.Rankings = usecase.NewRankings(matches)
-		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
-		cfg.TutorialRuns = runs
+		cfg.Tutorials = usecase.NewTutorials(textbooks, programs, runExecutor)
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
 		if project := os.Getenv("GOOGLE_CLOUD_PROJECT"); project != "" {
 			location := os.Getenv("GENERATION_LOCATION")

@@ -1,4 +1,4 @@
-// Package matchrun executes battle simulations in the server process.
+// Package matchrun simulates battles in the server process.
 package matchrun
 
 import (
@@ -25,13 +25,17 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
-var _ usecase.MatchExecutor = (*Executor)(nil)
+// Simulator adapts Simulate to usecase.MatchSimulator.
+type Simulator struct{}
 
-type Executor struct{}
+var _ usecase.MatchSimulator = Simulator{}
 
-func NewExecutor() *Executor { return &Executor{} }
+func (Simulator) Simulate(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
+	return Simulate(ctx, player, opponent, layout)
+}
 
-func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
+// Simulate runs both teams on layout and returns the scores and the encoded replay.
+func Simulate(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
 	if err := ctx.Err(); err != nil {
 		return domain.MatchResult{}, err
 	}

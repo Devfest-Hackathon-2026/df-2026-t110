@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -177,7 +178,7 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 	}
 	server := echo.New()
 	api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{Matches: usecase.NewMatches(usecase.MatchDeps{
-		Users: NewUsers(pool), Programs: programs, Opponents: matches, Layouts: layouts, Executor: matchrun.NewExecutor(), Matches: matches,
+		Users: NewUsers(pool), Programs: programs, Opponents: matches, Layouts: layouts, Executor: newExecutor(pool), Matches: matches,
 	})}), api.RegisterHandlersOptions{BaseURL: "/api", OperationMiddlewares: map[string][]echo.MiddlewareFunc{"createMatch": {router.Authentication(matchSession{})}}})
 	req := httptest.NewRequest(http.MethodPost, "/api/match", strings.NewReader(`[{"programId":"owner"},{"programId":"owner"},{"programId":"owner"}]`))
 	req.AddCookie(&http.Cookie{Name: "session", Value: "owner", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
@@ -277,7 +278,7 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 
 func ratedRecord(challenger, opponent string, outcome domain.MatchOutcome, delta int) domain.MatchRecord {
 	return domain.MatchRecord{
-		GoogleSubject: challenger, OpponentSubject: opponent, OpponentName: opponent, FieldID: "field",
+		ID: uuid.Must(uuid.NewV7()).String(), GoogleSubject: challenger, OpponentSubject: opponent, OpponentName: opponent,
 		Result:  jsontext.Value(`{"history":[],"summary":{"score":{"player":0,"opponent":0}}}`),
 		Outcome: outcome, ChallengerRating: domain.InitialRating, OpponentRating: domain.InitialRating, RatingDelta: delta,
 	}
@@ -295,33 +296,58 @@ func getRating(t *testing.T, pool interface {
 	return rating
 }
 
-func countRuns(t *testing.T, pool *pgxpool.Pool) int {
-	t.Helper()
-
-	var count int
-	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM runs").Scan(&count); err != nil {
-		t.Fatalf("count runs: %v", err)
+// completeMatch saves a pending match run as an executor does, then completes it.
+// It reports failures instead of stopping the test, so it is safe in goroutines.
+func completeMatch(ctx context.Context, pool *pgxpool.Pool, record domain.MatchRecord) (string, error) {
+	runID, err := NewRuns(pool).Create(ctx, domain.Run{GoogleSubject: record.GoogleSubject, FieldID: "field"})
+	if err != nil {
+		return "", fmt.Errorf("create match run: %w", err)
 	}
-	return count
+	if err := NewMatches(pool).Complete(ctx, runID, record); err != nil {
+		return runID, fmt.Errorf("complete match: %w", err)
+	}
+	return runID, nil
 }
 
-func TestMatchSaveRollsBackRunAndRating(t *testing.T) {
+func TestMatchCompleteRollsBackResultAndRating(t *testing.T) {
 	t.Parallel()
 
 	pool := newTestPool(t)
 	mustCreateUser(t, pool, "owner", ptr("Owner"))
 
 	// The match row is inserted after the rating update, so its failure shows that
-	// the update is rolled back together with the run.
-	if _, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "missing", domain.MatchWin, 30)); err == nil {
+	// the update is rolled back together with the run result.
+	runID, err := completeMatch(t.Context(), pool, ratedRecord("owner", "missing", domain.MatchWin, 30))
+	if err == nil {
 		t.Error("saving a nonexistent opponent succeeded")
 	}
 
-	if runs := countRuns(t, pool); runs != 0 {
-		t.Errorf("failed match left %d runs", runs)
+	run, err := NewRuns(pool).Get(t.Context(), runID)
+	if err != nil {
+		t.Fatalf("get run: %v", err)
+	}
+	if run.Result != nil {
+		t.Errorf("failed match saved run result %s", run.Result)
 	}
 	if got := getRating(t, pool, "owner"); got != domain.InitialRating {
 		t.Errorf("failed match changed rating to %d", got)
+	}
+}
+
+func TestCompleteUnknownMatchRun(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("Owner"))
+	mustCreateUser(t, pool, "opponent", ptr("Opponent"))
+
+	err := NewMatches(pool).Complete(t.Context(), uuid.Must(uuid.NewV7()).String(), ratedRecord("owner", "opponent", domain.MatchWin, 30))
+	if !errors.Is(err, usecase.ErrNotFound) {
+		t.Errorf("Complete error=%v, want %v", err, usecase.ErrNotFound)
+	}
+
+	if got := getRating(t, pool, "owner"); got != domain.InitialRating {
+		t.Errorf("unknown run changed rating to %d", got)
 	}
 }
 
@@ -340,26 +366,34 @@ func TestMatchRating(t *testing.T) {
 	}
 }
 
-func TestCreateMatchSavesRating(t *testing.T) {
+func TestCompleteMatchSavesRating(t *testing.T) {
 	t.Parallel()
 
 	pool := newTestPool(t)
 	mustCreateUser(t, pool, "owner", ptr("Owner"))
 	mustCreateUser(t, pool, "opponent", ptr("Opponent"))
 
-	match, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "opponent", domain.MatchLoss, -25))
+	record := ratedRecord("owner", "opponent", domain.MatchLoss, -25)
+	runID, err := completeMatch(t.Context(), pool, record)
 	if err != nil {
-		t.Fatalf("Create: %v", err)
+		t.Fatalf("Complete: %v", err)
 	}
 
-	var outcome string
+	var id, outcome string
 	var opponentRating, before, after int
-	if err := pool.QueryRow(t.Context(), "SELECT outcome, opponent_rating, rating_before, rating_after FROM matches WHERE run_id=$1", match.RunID).
-		Scan(&outcome, &opponentRating, &before, &after); err != nil {
+	if err := pool.QueryRow(t.Context(), "SELECT id::text, outcome, opponent_rating, rating_before, rating_after FROM matches WHERE run_id=$1", runID).
+		Scan(&id, &outcome, &opponentRating, &before, &after); err != nil {
 		t.Fatalf("get match: %v", err)
 	}
-	if outcome != "loss" || opponentRating != 1000 || before != 1000 || after != 975 {
-		t.Errorf("saved outcome=%s opponent=%d rating=%d->%d", outcome, opponentRating, before, after)
+	if id != record.ID || outcome != "loss" || opponentRating != 1000 || before != 1000 || after != 975 {
+		t.Errorf("saved match=%s outcome=%s opponent=%d rating=%d->%d", id, outcome, opponentRating, before, after)
+	}
+	run, err := NewRuns(pool).Get(t.Context(), runID)
+	if err != nil {
+		t.Fatalf("get run: %v", err)
+	}
+	if run.Result == nil || run.OpponentSubject != "opponent" {
+		t.Errorf("saved run=%+v", run)
 	}
 
 	if got := getRating(t, pool, "owner"); got != 975 {
@@ -372,7 +406,7 @@ func TestCreateMatchSavesRating(t *testing.T) {
 
 // Concurrent results of one challenger, all rated from the same matching-time rating,
 // are each added to the latest rating, and the saved histories chain without gaps.
-func TestCreateMatchAppliesConcurrentResults(t *testing.T) {
+func TestCompleteMatchAppliesConcurrentResults(t *testing.T) {
 	t.Parallel()
 
 	pool := newTestPool(t)
@@ -383,8 +417,8 @@ func TestCreateMatchAppliesConcurrentResults(t *testing.T) {
 	var wg sync.WaitGroup
 	for range results {
 		wg.Go(func() {
-			if _, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "opponent", domain.MatchWin, 30)); err != nil {
-				t.Errorf("Create: %v", err)
+			if _, err := completeMatch(t.Context(), pool, ratedRecord("owner", "opponent", domain.MatchWin, 30)); err != nil {
+				t.Errorf("Complete: %v", err)
 			}
 		})
 	}
@@ -441,8 +475,8 @@ func TestRanking(t *testing.T) {
 		{"dave", domain.MatchLoss, -25}, {"nameless", domain.MatchWin, 30}, {"blank", domain.MatchWin, 30},
 	}
 	for _, played := range matchesPlayed {
-		if _, err := matches.Create(t.Context(), ratedRecord(played.challenger, "idle", played.outcome, played.delta)); err != nil {
-			t.Fatalf("Create: %v", err)
+		if _, err := completeMatch(t.Context(), pool, ratedRecord(played.challenger, "idle", played.outcome, played.delta)); err != nil {
+			t.Fatalf("Complete: %v", err)
 		}
 	}
 

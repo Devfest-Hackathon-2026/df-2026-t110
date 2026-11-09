@@ -23,10 +23,9 @@ type Config struct {
 	ProgramGeneration ProgramGenerationService
 	Fields            FieldService
 	Tutorials         TutorialService
-	TutorialRuns      TutorialRunner
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
-	Matches           MatchCreator
+	Matches           MatchService
 	Rankings          RankingLister
 }
 
@@ -47,14 +46,12 @@ type FieldService interface {
 type TutorialService interface {
 	List(ctx context.Context) ([]domain.Tutorial, error)
 	Get(ctx context.Context, id string) (domain.Tutorial, error)
+	// Run returns usecase.ErrRunUnavailable when program execution is not configured.
+	Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error)
 }
 
 type RunResultGetter interface {
 	Result(ctx context.Context, subject, runID string) (jsontext.Value, error)
-}
-
-type TutorialRunner interface {
-	Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error)
 }
 
 type BattleProgramService interface {
@@ -62,7 +59,7 @@ type BattleProgramService interface {
 	Set(ctx context.Context, subject string, ids []string) error
 }
 
-type MatchCreator interface {
+type MatchService interface {
 	Create(ctx context.Context, subject string, ids []string) (domain.Match, error)
 }
 

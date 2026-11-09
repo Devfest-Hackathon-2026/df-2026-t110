@@ -13,11 +13,13 @@ import (
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/matchrun"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/tutorialrun"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 )
 
@@ -58,9 +60,9 @@ func TestTutorialRunPersistsResult(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			runs := usecase.NewTutorialRuns(programs, tutorials, tutorialrun.NewExecutor(), NewRuns(pool))
+			tutorialService := usecase.NewTutorials(tutorials, programs, newExecutor(pool))
 			server := echo.New()
-			api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{TutorialRuns: runs, RunResults: usecase.NewRunResults(NewRuns(pool))}), api.RegisterHandlersOptions{
+			api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{Tutorials: tutorialService, RunResults: usecase.NewRunResults(NewRuns(pool))}), api.RegisterHandlersOptions{
 				OperationMiddlewares: map[string][]echo.MiddlewareFunc{"runTutorial": {router.Authentication(runSession{})}, "runEvents": {router.Authentication(runSession{})}},
 			})
 			req := httptest.NewRequest(http.MethodPost, "/tutorial/tutorial-test/run", strings.NewReader(`{"programId":"p"}`))
@@ -131,4 +133,9 @@ func TestTutorialRunPersistsResult(t *testing.T) {
 			}
 		})
 	}
+}
+
+// newExecutor runs programs in the test process and saves into pool.
+func newExecutor(pool *pgxpool.Pool) *usecase.Executor {
+	return usecase.NewExecutor(NewRuns(pool), NewMatches(pool), tutorialrun.Simulator{}, matchrun.Simulator{})
 }

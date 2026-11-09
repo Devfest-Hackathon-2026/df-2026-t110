@@ -17,6 +17,7 @@ import (
 )
 
 type tutorialRunnerStub struct {
+	TutorialService
 	subject, tutorialID, programID string
 	err                            error
 }
@@ -43,13 +44,14 @@ func TestRunTutorial(t *testing.T) {
 		{name: "invalid program", body: `{"programId":"program-1"}`, err: domain.ErrInvalidProgram, want: 400},
 		{name: "forbidden", body: `{"programId":"program-1"}`, err: usecase.ErrForbidden, want: 403},
 		{name: "not found", body: `{"programId":"program-1"}`, err: usecase.ErrNotFound, want: 404},
+		{name: "execution not configured", body: `{"programId":"program-1"}`, err: usecase.ErrRunUnavailable, want: 501},
 		{name: "internal error", body: `{"programId":"program-1"}`, err: errors.New("database unavailable"), want: 500},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			runner := &tutorialRunnerStub{err: tt.err}
 			e := echo.New()
-			api.RegisterHandlersWithOptions(e, NewRouter(Config{TutorialRuns: runner}), api.RegisterHandlersOptions{
+			api.RegisterHandlersWithOptions(e, NewRouter(Config{Tutorials: runner}), api.RegisterHandlersOptions{
 				OperationMiddlewares: map[string][]echo.MiddlewareFunc{"runTutorial": {Authentication(sessionLookupStub{}), middleware.BodyLimit(1 << 20)}},
 			})
 			req := httptest.NewRequest(http.MethodPost, "/tutorial/tutorial-1/run", strings.NewReader(tt.body))
