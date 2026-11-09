@@ -1,14 +1,13 @@
 # 学び方: 操作
-# 制作用メモ: 配達先はゴールのマスで示す。reach_goal は荷物の位置を判定しないため、配達は盤面を見て確かめる。
 id: pick-and-place
 title: 荷物をひろう・置く
 goal: 荷物をひろって、前の陸に置こう。
-description: 見本に「拾う」と「置く」を足して、荷物をゴールのマスに置こう。
+description: 見本に「拾う」と「置く」を足して、荷物をじん地に置こう。
 lesson: 「拾う」と「置く」は、前のとなり1マスに使います。荷物は一つ持てます。
 guide:
   - 見本の最初に「拾う」を入れよう。荷物を持ったまま動けます。
-  - ゴールの手前に来たら、「置く」を入れよう。海には落とさず、陸に置きます。
-  - 最後に1マス進もう。荷物もゴールのマスにあるか、確かめよう。
+  - じん地の手前に来たら、「置く」を入れよう。海には落とさず、陸に置きます。
+  - じん地に荷物を置けたらクリアです。ロボットはじん地の手前にいてもかまいません。
 initialProgram:
   picolangVersion: 0
   picolang:
@@ -47,10 +46,6 @@ initialProgram:
                 hintId: a0000013-0000-4000-8000-000000000006
                 func: forward
                 args: []
-              - kind: call
-                hintId: a0000013-0000-4000-8000-000000000007
-                func: forward
-                args: []
               - kind: return
                 hintId: a0000013-0000-4000-8000-000000000009
                 value:
@@ -70,11 +65,12 @@ stage:
         - type: luggage
           id: parcel
           position: { x: 1, y: 0 }
-        - type: goal
+        - type: territory
           position: { x: 2, y: 1 }
       robot:
         position: { x: 0, y: 0 }
         direction: east
       drillLimit: 0
   clearCondition:
-    type: reach_goal
+    type: deliver_luggage
+    requiredCount: 1

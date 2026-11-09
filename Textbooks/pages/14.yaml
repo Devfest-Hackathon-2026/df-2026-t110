@@ -1,14 +1,13 @@
 # 学び方: 練習
-# 制作用メモ: 配達先はゴールのマスで示す。reach_goal は荷物の位置を判定しないため、配達は盤面を見て確かめる。
 id: deliver-luggage
 title: 荷物を届ける
 goal: 運ぶ順番と、立つ場所を考えよう。
-description: 道の横の荷物をひろい、ゴールのマスに届けよう。
-lesson: ひろう場所へ行く、運ぶ、置く、ゴールへ進む順に考えよう。
+description: 道の横の荷物をひろい、じん地に届けよう。
+lesson: ひろう場所へ行く、運ぶ、じん地に置く。この順番で考えよう。
 guide:
   - 荷物のとなりに立ち、荷物の方を向こう。
-  - ゴールのとなりから、ゴールの方を向いて置こう。
-  - 最後に進み、荷物とロボットがゴールのマスにいるか確かめよう。
+  - じん地のとなりから、じん地の方を向いて置こう。
+  - じん地に荷物を置けたらクリアです。ロボットはじん地の手前にいてもかまいません。
 stage:
   variants:
     - id: deliver-luggage-1
@@ -19,7 +18,7 @@ stage:
         - [sea, land, sea, land, sea]
         - [land, land, land, land, land]
       objects:
-        - type: goal
+        - type: territory
           position: { x: 3, y: 0 }
         - type: luggage
           id: parcel
@@ -29,4 +28,5 @@ stage:
         direction: east
       drillLimit: 0
   clearCondition:
-    type: reach_goal
+    type: deliver_luggage
+    requiredCount: 1
