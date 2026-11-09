@@ -3,6 +3,7 @@ name: CI (client)
 on:
   push:
     paths:
+      - 'lang/**'
       - 'Client/**'
       - 'infra/**'
       - '.github/workflows/client-deploy.yml'
@@ -15,6 +16,7 @@ on:
       - '.github/workflows/actions.lock'
   pull_request:
     paths:
+      - 'lang/**'
       - 'Client/**'
       - 'infra/**'
       - '.github/workflows/client-deploy.yml'

@@ -10,19 +10,6 @@ servers:
   - url: /api
 
 paths:
-  /picolang/v0/builtins:
-    get:
-      summary: picolang v0 の組み込み関数一覧を取得
-      description: 各組み込み関数の名前、シグネチャ、UI 上の表示先を表すタグを返す。
-      operationId: listPicolangV0Builtins
-      responses:
-        "200":
-          description: picolang v0 の組み込み関数一覧
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PicolangV0Header"
-
   /field/{fieldId}:
     $ref: "./openapi/paths/field.yaml#/~1field~1%7BfieldId%7D"
   /program/{programId}:
@@ -215,9 +202,6 @@ components:
 
     PicolangProgram:
       $ref: "./picolang/toplevel.schema.yaml"
-
-    PicolangV0Header:
-      $ref: "./picolang/header_v0/header.schema.yaml"
 
     Program:
       type: object

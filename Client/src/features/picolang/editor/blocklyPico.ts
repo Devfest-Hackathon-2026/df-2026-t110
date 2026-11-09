@@ -1,3 +1,4 @@
+import { hasTypeParameter } from '../language/picoSignatures.ts'
 import * as Blockly from 'blockly'
 import { PICO_BUILTIN_OPTIONS } from './picoOptions.ts'
 import {
@@ -12,6 +13,7 @@ import {
   type PicoFunction,
   type PicoStatement,
   type PicoType,
+  type PicoSignatureType,
 } from '../language/picolang.ts'
 import { argumentLabel, resultGuidance, typeLabel } from './picoGuidance.ts'
 import type { PicoDiagnostic } from '../language/analyzePicolang.ts'
@@ -63,9 +65,11 @@ export function keyType(key: string): PicoType {
     ? (key as PicoType)
     : 'integer'
 }
-function typeCheck(type: PicoType | undefined): string[] | null {
+function typeCheck(type: PicoSignatureType | undefined): string[] | null {
   if (type === undefined) return null
-  const key = typeKey(type)
+  if (typeof type !== 'string' && type.kind === 'type_parameter') return null
+  if (hasTypeParameter(type)) return [(type as { kind: string }).kind]
+  const key = typeKey(type as PicoType)
   return typeof type === 'string' ? [key] : [key, type.kind]
 }
 function nodeData(hintId: string, extra: Record<string, string> = {}): string {
@@ -98,7 +102,7 @@ function field(block: Block, name: string, fallback = ''): string {
 function value(
   block: Block,
   input: string,
-  fallback: PicoType | undefined,
+  fallback: PicoSignatureType | undefined,
   functions: Record<string, PicoFunction>,
 ): PicoExpr {
   const child = block.getInputTargetBlock(input)
@@ -118,8 +122,8 @@ function callSignature(
   name: string,
   functions: Record<string, PicoFunction>,
 ): {
-  args: Array<PicoType | undefined>
-  returns: PicoType | undefined
+  args: readonly (PicoSignatureType | undefined)[]
+  returns: PicoSignatureType | undefined
   category: string
   label: string
   blockMessage?: string
@@ -313,20 +317,8 @@ export function registerPicoBlocks(functions: Record<string, PicoFunction>): voi
 function defineCall(name: string, functions: Record<string, PicoFunction>): void {
   const signature = callSignature(name, functions)
   const userFunction = Object.hasOwn(functions, name)
-  const genericStack = ['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)
-  const genericOption = ['some', 'none', 'unwrap', 'is_some'].includes(name)
-  const inputCheck = (type: PicoType | undefined, index: number): string | string[] | null =>
-    userFunction
-      ? null
-      : genericOption
-        ? name === 'some'
-          ? null
-          : 'option'
-        : genericStack
-          ? index === 0
-            ? 'stack'
-            : null
-          : typeCheck(type)
+  const inputCheck = (type: PicoSignatureType | undefined): string[] | null =>
+    userFunction ? null : typeCheck(type)
   const missing = !PICO_BUILTIN_OPTIONS.some((item) => item.name === name) && !Object.hasOwn(functions, name)
   for (const statement of [false, true]) {
     Blockly.Blocks[callType(name, statement)] = {
@@ -337,7 +329,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
             args0: signature.args.map((type, index) => ({
               type: 'input_value',
               name: `ARG${index}`,
-              check: inputCheck(type, index),
+              check: inputCheck(type),
             })),
             inputsInline: true,
           })
@@ -345,28 +337,14 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
           this.appendDummyInput().appendField(signature.label)
           signature.args.forEach((type, index) =>
             this.appendValueInput(`ARG${index}`)
-              .setCheck(inputCheck(type, index))
+              .setCheck(inputCheck(type))
               .appendField(argumentLabel(name, index, functions)),
           )
         }
         if (statement) {
           this.setPreviousStatement(true)
           this.setNextStatement(true)
-        } else
-          this.setOutput(
-            true,
-            genericStack && name !== 'size'
-              ? name === 'get_back'
-                ? null
-                : 'stack'
-              : genericOption && name !== 'is_some'
-                ? name === 'unwrap'
-                  ? null
-                  : 'option'
-                : missing || userFunction
-                  ? null
-                  : typeCheck(signature.returns),
-          )
+        } else this.setOutput(true, missing || userFunction ? null : typeCheck(signature.returns))
         this.setColour(colours[signature.category] ?? colours.関数)
         this.setTooltip(
           [
@@ -656,7 +634,7 @@ export function readFunction(
 
 function toolboxBlock(
   type: string,
-  args: Array<PicoType | undefined> = [],
+  args: readonly (PicoSignatureType | undefined)[] = [],
   functions: Record<string, PicoFunction> = {},
 ): Blockly.utils.toolbox.BlockInfo {
   const defaults: Record<string, PicoType> = {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { compatibleSignatureTypes } from '../language/picoSignatures.ts'
 import { Icon } from '@iconify/vue'
 import infoIcon from '@iconify-icons/lucide/info'
 import { expressionFromDrop, PICO_VARIABLE_MIME } from './picoDrag.ts'
@@ -9,11 +10,10 @@ import {
   defaultExpr,
   ident,
   makeCall,
-  samePicoType,
   PICO_DISTANCE_TARGETS,
   type PicoExpr,
   type PicoFunction,
-  type PicoType,
+  type PicoSignatureType,
 } from '../language/picolang.ts'
 
 const props = defineProps<{
@@ -22,7 +22,7 @@ const props = defineProps<{
   variables?: PicoVariableOption[]
   statement?: boolean
   defaultCall?: string
-  expectedType?: PicoType
+  expectedType?: PicoSignatureType
 }>()
 const emit = defineEmits<{ replace: [node: PicoExpr] }>()
 const dragActive = ref(false)
@@ -58,29 +58,20 @@ const options = computed(() => [
     })),
 ])
 const availableVariables = computed(() =>
-  (props.variables ?? []).filter((variable) => samePicoType(props.expectedType, variable.type)),
+  (props.variables ?? []).filter((variable) => compatibleSignatureTypes(props.expectedType, variable.type)),
 )
 const availableCalls = computed(() =>
-  options.value.filter(
-    (option) =>
-      samePicoType(props.expectedType, option.returns) ||
-      (option.name === 'new' &&
-        typeof props.expectedType === 'object' &&
-        props.expectedType.kind === 'stack') ||
-      (['some', 'none'].includes(option.name) &&
-        typeof props.expectedType === 'object' &&
-        props.expectedType.kind === 'option'),
-  ),
+  options.value.filter((option) => compatibleSignatureTypes(props.expectedType, option.returns)),
 )
 const literalTypes = computed(() =>
   (['integer', 'bool', 'unit', 'rotation', 'distance_target'] as const).filter((type) =>
-    samePicoType(props.expectedType, type),
+    compatibleSignatureTypes(props.expectedType, type),
   ),
 )
 const invalidType = computed(() => {
   if (!props.expectedType) return false
   const node = props.node
-  if (node.kind === 'literal') return !samePicoType(props.expectedType, node.type)
+  if (node.kind === 'literal') return !compatibleSignatureTypes(props.expectedType, node.type)
   if (node.kind === 'ident') return !availableVariables.value.some((item) => item.name === node.name)
   return !availableCalls.value.some((item) => item.name === node.func)
 })
@@ -133,7 +124,7 @@ function replaceArg(index: number, expr: PicoExpr): void {
   if (props.node.kind === 'call')
     emit('replace', { ...props.node, args: props.node.args.map((arg, i) => (i === index ? expr : arg)) })
 }
-function argumentType(index: number): PicoType | undefined {
+function argumentType(index: number): PicoSignatureType | undefined {
   const node = props.node
   if (node.kind !== 'call') return undefined
   return options.value.find((item) => item.name === node.func)?.args[index]

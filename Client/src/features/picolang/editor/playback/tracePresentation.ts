@@ -15,7 +15,7 @@ const labels: Record<string, string> = {
   continue: '次のくり返しへ',
   param: '受け取る値',
 }
-const calls = new Map(PICO_BUILTIN_OPTIONS.map((option) => [option.name, option.label]))
+const calls = new Map<string, string>(PICO_BUILTIN_OPTIONS.map((option) => [option.name, option.label]))
 export function traceNodeLabel(node: TraceNode): string {
   if (node.kind === 'call') return calls.get(node.func ?? '') ?? node.func ?? node.kind
   if (node.kind === 'ident') return node.name ?? node.kind

@@ -1,5 +1,6 @@
+import { instantiateSignature } from './picoSignatures.ts'
 import {
-  PICO_BUILTINS,
+  builtinSignature,
   programFunctions,
   walkPicoStatements,
   type PicoBlock,
@@ -44,10 +45,7 @@ interface TypeVariable {
 }
 const invalid = '<invalid>'
 const compound = (name: string, args: Term[]): Term => ({ kind: 'compound', name, args })
-const stack = (element: Term): Term => compound('stack', [element])
 const functionType = (args: Term[], result: Term): Term => compound('function', [...args, result])
-const term = (type: PicoType): Term =>
-  typeof type === 'string' ? type : compound(type.kind, [term(type.elementType)])
 function prune(type: Term): Term {
   if (typeof type !== 'string' && type.kind === 'variable' && type.binding !== undefined) {
     type.binding = prune(type.binding)
@@ -145,7 +143,6 @@ function resolvedType(type: Term): PicoType | undefined {
 export function inferPicolang(program: PicoProgram): PicoAnalysis {
   const diagnostics: PicoDiagnostic[] = []
   const functions = programFunctions(program)
-  const builtins = new Map(PICO_BUILTINS.map((builtin) => [builtin.name as string, builtin]))
   const bindingTypes = new Map<string, Term>()
   const signatures = new Map<string, { params: Term[]; result: Term }>()
   const variables: Array<{ variable: TypeVariable; hintId: string; functionName: string }> = []
@@ -209,7 +206,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
           `変数「${ident.name}」と同じ名前の変数が後で作られています。`,
           ident.hintId,
         )
-      } else if (builtins.has(ident.name) || signatures.has(ident.name)) {
+      } else if (builtinSignature(ident.name) || signatures.has(ident.name)) {
         report(
           'function_name_conflict',
           'error',
@@ -238,42 +235,18 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       return invalid
     }
     function signature(name: string, hintId: string): Term | undefined {
-      const builtin = builtins.get(name)
+      const builtin = builtinSignature(name)
       if (!builtin) {
         const signature = signatures.get(name)
         return signature ? functionType(signature.params, signature.result) : undefined
       }
-      if (['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)) {
-        const variable = fresh(functionName, hintId)
-        const value = stack(variable)
-        switch (name) {
-          case 'new':
-            return functionType([], value)
-          case 'push_back':
-            return functionType([value, variable], value)
-          case 'pop_back':
-            return functionType([value], value)
-          case 'get_back':
-            return functionType([value], variable)
-          default:
-            return functionType([value], 'integer')
-        }
-      }
-      if (['some', 'none', 'unwrap', 'is_some'].includes(name)) {
-        const variable = fresh(functionName, hintId)
-        const value = compound('option', [variable])
-        switch (name) {
-          case 'some':
-            return functionType([variable], value)
-          case 'none':
-            return functionType([], value)
-          case 'unwrap':
-            return functionType([value], variable)
-          default:
-            return functionType([value], 'bool')
-        }
-      }
-      return functionType(builtin.args.map(term), term(builtin.returns))
+      const instantiated = instantiateSignature<Term>(
+        builtin,
+        () => fresh(functionName, hintId),
+        (primitive) => primitive,
+        (kind, element) => compound(kind, [element]),
+      )
+      return functionType(instantiated.params, instantiated.result)
     }
     function expression(expr: PicoExpr, scope: Scope): Term {
       if (expr.kind === 'literal') return expr.type
@@ -294,7 +267,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
           expr.hintId,
           `関数「${expr.func}」には ${params.length} 個の引数が必要ですが、${args.length} 個渡されています。`,
         )
-        if (builtins.has(expr.func)) invalidate(callee)
+        if (builtinSignature(expr.func)) invalidate(callee)
         args.forEach(invalidate)
         return invalid
       }
@@ -356,7 +329,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
     }
 
     if (!functionName.trim()) report('invalid_name', 'error', fn.hintId, '関数の名前を入力してください。')
-    if (builtins.has(functionName))
+    if (builtinSignature(functionName))
       report('function_conflict', 'error', fn.hintId, `「${functionName}」は組み込み関数の名前です。`)
     const parameterScope: Scope = {}
     fn.params.forEach((param, index) =>

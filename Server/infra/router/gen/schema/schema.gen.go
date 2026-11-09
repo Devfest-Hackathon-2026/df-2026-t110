@@ -1597,17 +1597,8 @@ func (j *PicolangV0BuiltinSignature) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
-type PicolangV0Header []struct {
-	// プログラムの call.func に指定する組み込み関数名
-	Name Name `json:"name"`
-
-	// Signature corresponds to the JSON schema field "signature".
-	Signature PicolangV0BuiltinSignature `json:"signature"`
-
-	// UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する
-	Tags []string `json:"tags"`
-}
+// 関数名をキー、シグネチャを値とする picolang v0 の組み込み関数定義
+type PicolangV0Header map[string]PicolangV0BuiltinSignature
 
 // 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
 type PicolangV0Program map[string]PicolangFunctionDefinition

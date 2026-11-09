@@ -1,3 +1,8 @@
+import { PICO_BUILTIN_SIGNATURES, type PicoBuiltinName } from './builtins.gen.ts'
+import type { PicoBuiltinSignature, PicoSignatureType } from './picoSignatures.ts'
+export { PICO_BUILTIN_SIGNATURES, type PicoBuiltinName } from './builtins.gen.ts'
+export type { PicoSignatureType } from './picoSignatures.ts'
+
 export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation' | 'distance_target'
 export const PICO_DISTANCE_TARGETS = [
   'robot',
@@ -78,74 +83,22 @@ export interface PicoTypedProgram extends PicoProgram {
   picolang: { v0: { program: Record<string, PicoTypedFunction> } }
 }
 export interface PicoBuiltin {
-  name: string
-  args: PicoType[]
-  returns: PicoType
+  name: PicoBuiltinName
+  args: readonly PicoSignatureType[]
+  returns: PicoSignatureType
 }
-const stackInteger: PicoType = { kind: 'stack', elementType: 'integer' }
-const optionInteger: PicoType = { kind: 'option', elementType: 'integer' }
-const builtin = <Name extends string>(
-  name: Name,
-  args: PicoType[],
-  returns: PicoType,
-): PicoBuiltin & { name: Name } => ({
-  name,
-  args,
-  returns,
-})
-export const PICO_BUILTINS = [
-  builtin('forward', [], 'bool'),
-  builtin('back', [], 'bool'),
-  builtin('rotate', ['rotation'], 'unit'),
-  builtin('wait', ['integer'], 'unit'),
-  builtin('pick_up', [], 'bool'),
-  builtin('release', [], 'bool'),
-  builtin('drill', [], 'bool'),
-  builtin('drill_durability', [], 'integer'),
-  builtin('distance', [], 'integer'),
-  builtin('search_front', [], 'terrain'),
-  builtin('search_now', [], 'terrain'),
-  builtin('is_land', ['terrain'], 'bool'),
-  builtin('is_goal', ['terrain'], 'bool'),
-  builtin('is_checkpoint', ['terrain'], 'bool'),
-  builtin('is_laggage', ['terrain'], 'bool'),
-  builtin('is_sea', ['terrain'], 'bool'),
-  builtin('is_rock', ['terrain'], 'bool'),
-  builtin('not', ['bool'], 'bool'),
-  builtin('and', ['bool', 'bool'], 'bool'),
-  builtin('or', ['bool', 'bool'], 'bool'),
-  builtin('bool_eq', ['bool', 'bool'], 'bool'),
-  builtin('bool_neq', ['bool', 'bool'], 'bool'),
-  builtin('add', ['integer', 'integer'], 'integer'),
-  builtin('minus', ['integer'], 'integer'),
-  builtin('sub', ['integer', 'integer'], 'integer'),
-  builtin('mul', ['integer', 'integer'], 'integer'),
-  builtin('div', ['integer', 'integer'], 'integer'),
-  builtin('integer_eq', ['integer', 'integer'], 'bool'),
-  builtin('integer_neq', ['integer', 'integer'], 'bool'),
-  builtin('gt', ['integer', 'integer'], 'bool'),
-  builtin('lt', ['integer', 'integer'], 'bool'),
-  builtin('geq', ['integer', 'integer'], 'bool'),
-  builtin('leq', ['integer', 'integer'], 'bool'),
-  builtin('random_bool', [], 'bool'),
-  builtin('random_integer', ['integer', 'integer'], 'integer'),
-  builtin('new', [], stackInteger),
-  builtin('push_back', [stackInteger, 'integer'], stackInteger),
-  builtin('pop_back', [stackInteger], stackInteger),
-  builtin('get_back', [stackInteger], 'integer'),
-  builtin('size', [stackInteger], 'integer'),
-  builtin('some', ['integer'], optionInteger),
-  builtin('none', [], optionInteger),
-  builtin('unwrap', [optionInteger], 'integer'),
-  builtin('is_some', [optionInteger], 'bool'),
-  builtin('print_integer', ['integer'], 'unit'),
-  builtin('print_bool', ['bool'], 'unit'),
-  builtin('print_unit', ['unit'], 'unit'),
-  builtin('print_terrain', ['terrain'], 'unit'),
-  builtin('print_rotation', ['rotation'], 'unit'),
-  builtin('print_distance_target', ['distance_target'], 'unit'),
-]
-export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
+export const PICO_BUILTINS: PicoBuiltin[] = (Object.keys(PICO_BUILTIN_SIGNATURES) as PicoBuiltinName[]).map(
+  (name) => ({
+    name,
+    args: PICO_BUILTIN_SIGNATURES[name].params,
+    returns: PICO_BUILTIN_SIGNATURES[name].returnType,
+  }),
+)
+export function builtinSignature(name: string): PicoBuiltinSignature | undefined {
+  return Object.hasOwn(PICO_BUILTIN_SIGNATURES, name)
+    ? PICO_BUILTIN_SIGNATURES[name as PicoBuiltinName]
+    : undefined
+}
 
 export function samePicoType(left: PicoType | undefined, right: PicoType | undefined): boolean {
   if (!left || !right) return true
@@ -156,7 +109,8 @@ export function samePicoType(left: PicoType | undefined, right: PicoType | undef
 export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
-export function defaultExpr(type: PicoType = 'integer'): PicoExpr {
+export function defaultExpr(type: PicoSignatureType = 'integer'): PicoExpr {
+  if (typeof type !== 'string' && type.kind === 'type_parameter') return defaultExpr('integer')
   if (typeof type !== 'string' && type.kind === 'option')
     return { kind: 'call', hintId: id(), func: 'some', args: [defaultExpr(type.elementType)] }
   if (typeof type !== 'string') return { kind: 'call', hintId: id(), func: 'new', args: [] }

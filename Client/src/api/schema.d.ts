@@ -4,26 +4,6 @@
  */
 
 export interface paths {
-    "/picolang/v0/builtins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * picolang v0 の組み込み関数一覧を取得
-         * @description 各組み込み関数の名前、シグネチャ、UI 上の表示先を表すタグを返す。
-         */
-        get: operations["listPicolangV0Builtins"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/field/{fieldId}": {
         parameters: {
             query?: never;
@@ -426,7 +406,6 @@ export interface components {
         Field: components["schemas"]["field.schema"];
         Stage: components["schemas"]["stage.schema"];
         PicolangProgram: components["schemas"]["toplevel.schema"];
-        PicolangV0Header: components["schemas"]["header.schema"];
         /**
          * @description プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
          * @example {
@@ -524,116 +503,6 @@ export interface components {
             code: string;
             message: string;
         };
-        /**
-         * Name
-         * @description 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
-         */
-        name: string;
-        /**
-         * PicolangV0SignatureType
-         * @description シグネチャ内の型。既存の基本型、再帰的な stack と option、または型パラメータの参照
-         */
-        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["StackType"] | components["schemas"]["OptionType"] | components["schemas"]["TypeParameter"]);
-        /**
-         * PrimitiveType
-         * @description picolang の基本型。unit は () を表す
-         * @enum {string}
-         */
-        "primitive-type": "bool" | "integer" | "unit" | "terrain" | "rotation" | "distance_target";
-        StackType: {
-            /** @constant */
-            kind: "stack";
-            elementType: components["schemas"]["signature-type"];
-        };
-        OptionType: {
-            /** @constant */
-            kind: "option";
-            elementType: components["schemas"]["signature-type"];
-        };
-        TypeParameter: {
-            /** @constant */
-            kind: "type_parameter";
-            /** @description 同じシグネチャの typeParameters で宣言した名前。同名の参照は同じ型を表す */
-            name: components["schemas"]["name"];
-        };
-        /**
-         * PicolangV0BuiltinSignature
-         * @description 組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する
-         */
-        "signature.schema": {
-            /** @description このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない */
-            typeParameters?: components["schemas"]["name"][];
-            /** @description 呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列 */
-            params: components["schemas"]["signature-type"][];
-            /** @description 戻り値の型。値を返さない関数は unit */
-            returnType: components["schemas"]["signature-type"];
-        };
-        /**
-         * PicolangV0Header
-         * @description picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
-         * @example [
-         *       {
-         *         "name": "forward",
-         *         "signature": {
-         *           "params": [],
-         *           "returnType": "bool"
-         *         },
-         *         "tags": [
-         *           "movement"
-         *         ]
-         *       },
-         *       {
-         *         "name": "distance",
-         *         "signature": {
-         *           "params": [
-         *             "distance_target"
-         *           ],
-         *           "returnType": "integer"
-         *         },
-         *         "tags": [
-         *           "sensing"
-         *         ]
-         *       },
-         *       {
-         *         "name": "push_back",
-         *         "signature": {
-         *           "typeParameters": [
-         *             "T"
-         *           ],
-         *           "params": [
-         *             {
-         *               "kind": "stack",
-         *               "elementType": {
-         *                 "kind": "type_parameter",
-         *                 "name": "T"
-         *               }
-         *             },
-         *             {
-         *               "kind": "type_parameter",
-         *               "name": "T"
-         *             }
-         *           ],
-         *           "returnType": {
-         *             "kind": "stack",
-         *             "elementType": {
-         *               "kind": "type_parameter",
-         *               "name": "T"
-         *             }
-         *           }
-         *         },
-         *         "tags": [
-         *           "stack"
-         *         ]
-         *       }
-         *     ]
-         */
-        "header.schema": {
-            /** @description プログラムの call.func に指定する組み込み関数名 */
-            name: components["schemas"]["name"];
-            signature: components["schemas"]["signature.schema"];
-            /** @description UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する */
-            tags: string[];
-        }[];
         /** @description フィールド上のマスの座標 */
         Position: {
             /** @description 横方向の座標。最初の列を 0 とする */
@@ -713,6 +582,11 @@ export interface components {
             drillLimit: number;
         };
         /**
+         * Name
+         * @description 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
+         */
+        name: string;
+        /**
          * HintId
          * Format: uuid
          * @description 構文ノードに対応するデバッグ用 UUID。プログラム全体での一意性は意味解析で検査する
@@ -728,6 +602,12 @@ export interface components {
             hintId: components["schemas"]["hint-id"];
             name: components["schemas"]["name"];
         };
+        /**
+         * PrimitiveType
+         * @description picolang の基本型。unit は () を表す
+         * @enum {string}
+         */
+        "primitive-type": "bool" | "integer" | "unit" | "terrain" | "rotation" | "distance_target";
         /**
          * Type
          * @description picolang の値の型。基本型または複合型
@@ -1511,26 +1391,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    listPicolangV0Builtins: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description picolang v0 の組み込み関数一覧 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["header.schema"];
-                };
-            };
-        };
-    };
     getField: {
         parameters: {
             query?: never;
