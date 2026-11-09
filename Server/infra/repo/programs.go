@@ -9,6 +9,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo/gen/db"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -44,4 +45,25 @@ func (r *Programs) Get(ctx context.Context, id string) (domain.Program, error) {
 		program.TutorialID = &row.TutorialID.String
 	}
 	return program, nil
+}
+
+func (r *Programs) GetByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error) {
+	rows, err := r.queries.GetByTutorialID(ctx, db.GetByTutorialIDParams{
+		TutorialID:    pgtype.Text{String: tutorialID, Valid: true},
+		GoogleSubject: subject,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get programs by tutorial ID: %w", err)
+	}
+
+	programs := make([]domain.Program, 0, len(rows))
+	for _, row := range rows {
+		program := domain.Program{ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
+		if row.TutorialID.Valid {
+			program.TutorialID = &row.TutorialID.String
+		}
+		programs = append(programs, program)
+	}
+
+	return programs, nil
 }

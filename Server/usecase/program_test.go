@@ -4,19 +4,29 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
 
 type programRepositoryStub struct {
-	saved []domain.Program
-	err   error
+	saved      []domain.Program
+	listed     []domain.Program
+	tutorialID string
+	subject    string
+	err        error
 }
 
 func (s *programRepositoryStub) Create(_ context.Context, p domain.Program) error {
 	s.saved = append(s.saved, p)
 	return s.err
+}
+
+func (s *programRepositoryStub) GetByTutorialID(_ context.Context, subject, tutorialID string) ([]domain.Program, error) {
+	s.tutorialID = tutorialID
+	s.subject = subject
+	return s.listed, s.err
 }
 
 type sourceValidatorStub struct{ err error }
@@ -59,6 +69,35 @@ func TestProgramsCreate(t *testing.T) {
 			}
 			if second.ID == got.ID {
 				t.Error("IDs are not unique")
+			}
+		})
+	}
+}
+
+func TestProgramsListByTutorialID(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name     string
+		programs []domain.Program
+		err      error
+	}{
+		{name: "matches", programs: []domain.Program{{ID: "draft-1"}, {ID: "draft-2"}}},
+		{name: "no matches"},
+		{name: "repository failure", err: context.DeadlineExceeded},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			store := &programRepositoryStub{listed: tc.programs, err: tc.err}
+			programs := NewPrograms(store, sourceValidatorStub{})
+			got, err := programs.ListByTutorialID(t.Context(), "owner", "tutorial-1")
+			if !errors.Is(err, tc.err) {
+				t.Errorf("error = %v, want %v", err, tc.err)
+			}
+			if store.subject != "owner" || store.tutorialID != "tutorial-1" {
+				t.Errorf("repository arguments = (%q, %q), want (owner, tutorial-1)", store.subject, store.tutorialID)
+			}
+			if !slices.EqualFunc(got, tc.programs, func(got, want domain.Program) bool { return got.ID == want.ID }) {
+				t.Errorf("programs = %+v, want %+v", got, tc.programs)
 			}
 		})
 	}

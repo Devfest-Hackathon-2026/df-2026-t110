@@ -78,3 +78,56 @@ func TestProgramsGet(t *testing.T) {
 		t.Errorf("Get(missing) = %v, want ErrNotFound", err)
 	}
 }
+
+func TestProgramsGetByTutorialID(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", nil)
+	programs := NewPrograms(pool)
+	ctx := t.Context()
+	mustCreateUser(t, pool, "other-owner", nil)
+
+	fixtures := []domain.Program{
+		{ID: "first", GoogleSubject: "owner", Name: "first draft", Source: jsontext.Value(`{"integer":9223372036854775807}`), TutorialID: ptr("tutorial-1")},
+		{ID: "second", GoogleSubject: "owner", Name: "second draft", Source: jsontext.Value(`{}`), TutorialID: ptr("tutorial-1")},
+		{ID: "other", GoogleSubject: "owner", Name: "other tutorial", Source: jsontext.Value(`{}`), TutorialID: ptr("tutorial-2")},
+		{ID: "private", GoogleSubject: "other-owner", Name: "other owner", Source: jsontext.Value(`{}`), TutorialID: ptr("tutorial-1")},
+		{ID: "battle", GoogleSubject: "owner", Name: "battle draft", Source: jsontext.Value(`{}`), IsBattle: true},
+	}
+	for _, p := range fixtures {
+		if err := programs.Create(ctx, p); err != nil {
+			t.Fatalf("create %q: %v", p.ID, err)
+		}
+	}
+
+	got, err := programs.GetByTutorialID(ctx, "owner", "tutorial-1")
+	if err != nil {
+		t.Errorf("GetByTutorialID(tutorial-1): %v", err)
+	}
+	wantByID := map[string]domain.Program{"first": fixtures[0], "second": fixtures[1]}
+	for _, p := range got {
+		want, ok := wantByID[p.ID]
+		if !ok {
+			t.Errorf("unexpected program %q", p.ID)
+			continue
+		}
+		delete(wantByID, p.ID)
+		if p.GoogleSubject != want.GoogleSubject || p.Name != want.Name || p.IsBattle != want.IsBattle || p.TutorialID == nil || *p.TutorialID != *want.TutorialID {
+			t.Errorf("program = %+v, want %+v", p, want)
+		}
+		if err := p.Source.Compact(); err != nil {
+			t.Errorf("compact source for %q: %v", p.ID, err)
+		}
+		if string(p.Source) != string(want.Source) {
+			t.Errorf("source for %q = %s, want %s", p.ID, p.Source, want.Source)
+		}
+	}
+	for id := range wantByID {
+		t.Errorf("missing program %q", id)
+	}
+
+	got, err = programs.GetByTutorialID(ctx, "owner", "missing")
+	if err != nil || len(got) != 0 {
+		t.Errorf("GetByTutorialID(missing) = %+v, %v, want no programs and no error", got, err)
+	}
+}

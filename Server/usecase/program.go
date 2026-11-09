@@ -10,6 +10,7 @@ import (
 
 type ProgramRepository interface {
 	Create(ctx context.Context, program domain.Program) error
+	GetByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }
 
 // ProgramSourceValidator checks the versioned source syntax. Drafts need not
@@ -48,4 +49,15 @@ func (p *Programs) Create(ctx context.Context, subject string, draft domain.Prog
 		return domain.Program{}, fmt.Errorf("create program: %w", err)
 	}
 	return draft, nil
+}
+
+func (p *Programs) ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error) {
+	if strings.TrimSpace(subject) == "" {
+		return nil, ErrUnauthenticated
+	}
+	programs, err := p.repo.GetByTutorialID(ctx, subject, tutorialID)
+	if err != nil {
+		return nil, fmt.Errorf("list tutorial programs: %w", err)
+	}
+	return programs, nil
 }
