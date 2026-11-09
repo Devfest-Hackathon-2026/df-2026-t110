@@ -15,6 +15,7 @@ import (
 )
 
 var _ usecase.MatchRepository = (*Matches)(nil)
+var _ usecase.MatchResultRepository = (*Matches)(nil)
 var _ usecase.MatchOpponentRepository = (*Matches)(nil)
 var _ usecase.RankingRepository = (*Matches)(nil)
 
@@ -77,34 +78,6 @@ func (r *Matches) Rating(ctx context.Context, subject string) (int, error) {
 		return 0, fmt.Errorf("get user rating: %w", err)
 	}
 	return int(rating), nil
-}
-
-func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain.Match, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return domain.Match{}, fmt.Errorf("generate match ID: %w", err)
-	}
-	runID, err := uuid.NewV7()
-	if err != nil {
-		return domain.Match{}, fmt.Errorf("generate match run ID: %w", err)
-	}
-	err = pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
-		queries := db.New(tx)
-		if err := queries.CreateMatchRun(ctx, db.CreateMatchRunParams{
-			ID: pgtype.UUID{Bytes: runID, Valid: true}, GoogleSubject: record.GoogleSubject,
-			FieldID: record.FieldID, Result: record.Result,
-		}); err != nil {
-			return fmt.Errorf("insert match run: %w", err)
-		}
-		return saveRatedMatch(ctx, queries, id, runID, record)
-	})
-	if err != nil {
-		return domain.Match{}, err
-	}
-	return domain.Match{
-		ID: id.String(), RunID: runID.String(), FieldID: record.FieldID,
-		OpponentName: record.OpponentName,
-	}, nil
 }
 
 // Complete saves the result of the pending run, the match under record.ID and the

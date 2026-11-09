@@ -70,13 +70,13 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		runExecutor := usecase.NewExecutor(repo.NewRuns(pool), matches, tutorialrun.Simulator{}, matchrun.Simulator{})
 		cfg.Matches = usecase.NewMatches(usecase.MatchDeps{
 			Users: users, Programs: programs, Opponents: matches, Layouts: layouts,
-			Executor: matchrun.NewExecutor(), Matches: matches,
+			Executor: runExecutor, Matches: matches,
 		})
 		cfg.Rankings = usecase.NewRankings(matches)
-		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
-		cfg.TutorialRuns = runs
+		cfg.TutorialRuns = usecase.NewTutorialRuns(programs, textbooks, runExecutor)
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
 		if project := os.Getenv("GOOGLE_CLOUD_PROJECT"); project != "" {
 			location := os.Getenv("GENERATION_LOCATION")

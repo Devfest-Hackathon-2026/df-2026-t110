@@ -1,4 +1,4 @@
-// Package tutorialrun executes tutorial simulations in the request process.
+// Package tutorialrun simulates tutorials in the server process.
 package tutorialrun
 
 import (
@@ -29,14 +29,12 @@ const (
 	maxTicks uint64 = 10_000
 )
 
-// Executor is stateless; recordings live only for the duration of Execute.
-type Executor struct{}
+// Simulator adapts Simulate to usecase.TutorialSimulator.
+type Simulator struct{}
 
-var _ usecase.TutorialExecutor = (*Executor)(nil)
+var _ usecase.TutorialSimulator = Simulator{}
 
-func NewExecutor() *Executor { return &Executor{} }
-
-func (*Executor) Execute(ctx context.Context, program domain.Program, lesson domain.Tutorial, variant int) (jsontext.Value, error) {
+func (Simulator) Simulate(ctx context.Context, program domain.Program, lesson domain.Tutorial, variant int) (jsontext.Value, error) {
 	return Simulate(ctx, program, lesson, variant)
 }
 

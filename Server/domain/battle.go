@@ -52,7 +52,6 @@ type MatchRecord struct {
 	GoogleSubject    string
 	OpponentSubject  string
 	OpponentName     string
-	FieldID          string
 	Result           jsontext.Value
 	Outcome          MatchOutcome
 	ChallengerRating int
