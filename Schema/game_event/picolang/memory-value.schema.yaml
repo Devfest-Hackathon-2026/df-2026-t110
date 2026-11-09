@@ -1,0 +1,100 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangMemoryValue
+description: |
+  仮想メモリに確保する不変の値。primitive は型と値を、list node は既存の値への ID を保持する。
+  stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot は保持しない。
+  list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
+  同じ stack の要素の型が統一されることは生成側で保証する。
+
+oneOf:
+  - $ref: '#/$defs/BoolValue'
+  - $ref: '#/$defs/IntegerValue'
+  - $ref: '#/$defs/UnitValue'
+  - $ref: '#/$defs/TerrainValue'
+  - $ref: '#/$defs/RotationValue'
+  - $ref: '#/$defs/DistanceTargetValue'
+  - $ref: '#/$defs/ListNode'
+
+$defs:
+  BoolValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: bool
+      value:
+        type: boolean
+
+  IntegerValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: integer
+      value:
+        description: i64 の範囲外の値の扱いは picolang の仕様に従い未定義
+        type: integer
+
+  UnitValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: unit
+      value:
+        type: 'null'
+
+  TerrainValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: terrain
+      value:
+        $ref: './terrain.schema.yaml'
+
+  RotationValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: rotation
+      value:
+        type: string
+        enum: [left, right]
+
+  DistanceTargetValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: distance_target
+      value:
+        $ref: '../../picolang/v0/distance-target.yaml'
+
+  ListNode:
+    type: object
+    additionalProperties: false
+    required: [type, prev, value]
+    properties:
+      type:
+        type: string
+        const: list_node
+      prev:
+        description: 末尾の要素を除いた stack を表す、既存の空リスト root または list node の ID
+        $ref: './memory-id.schema.yaml'
+      value:
+        description: 末尾の要素を表す既存の値の ID。入れ子の stack も指定できる
+        $ref: './memory-id.schema.yaml'

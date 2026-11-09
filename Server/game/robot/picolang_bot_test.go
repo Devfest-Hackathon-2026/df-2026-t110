@@ -9,8 +9,8 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	payload "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/memory"
 	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/recorder"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 	bot "github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot"
@@ -122,11 +122,14 @@ func TestPicolangBotRunsThroughHub(t *testing.T) {
 		t.Errorf("Run = %+v, %v", report, err)
 	}
 	boundResult, completed := false, 0
+	allocated := make(map[payload.ID]payload.Value)
 	for _, event := range storage.Events {
 		if event, ok := event.(gameevent.RobotEvent); ok && event.InterpreterID == "robot" {
 			switch event := event.Event.(type) {
+			case robotevent.MemoryAllocateEvent:
+				allocated[event.ID] = event.Value
 			case robotevent.VariableInitEvent:
-				if event.HintID == "00000000-0000-4000-8000-000000000004" && event.Value == (values.BoolValue{Bool: true}) {
+				if event.HintID == "00000000-0000-4000-8000-000000000004" && allocated[event.ValueID] == (payload.Bool{Bool: true}) {
 					boundResult = true
 				}
 			case robotevent.ExecutionFinishedEvent:

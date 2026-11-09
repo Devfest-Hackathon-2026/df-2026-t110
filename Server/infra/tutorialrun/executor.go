@@ -64,13 +64,9 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	if !ok {
 		return nil, fmt.Errorf("unexpected tutorial result %T", report.Result())
 	}
-	history := make(wire.GameHistory, 0, len(recording.Events))
-	for _, event := range recording.Events {
-		entry, err := historyEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		history = append(history, entry)
+	history, err := encodeHistory(recording.Events)
+	if err != nil {
+		return nil, err
 	}
 	var result struct {
 		History wire.GameHistory `json:"history"`

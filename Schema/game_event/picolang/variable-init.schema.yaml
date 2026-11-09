@@ -1,121 +1,20 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangVariableInitEvent
 description: |
-  変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-  変数の型との一致および stack の要素の型の統一は生成側で保証する。
-  入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+  変数の定義の hintId に、既存の値 ID の紐づけを積む。
+  再帰呼び出しでは同じ hintId に複数の紐づけを持ち、最上位を現在の変数とする。
+  値全体は保持せず、仮想メモリから解決する。参照カウントは変更しない。
 
 type: object
 additionalProperties: false
-required: [kind, hintId, value]
+required: [kind, hintId, valueId]
 properties:
   kind:
     type: string
     const: variable_init
   hintId:
-    description: 初期化した変数に紐づける hintId。以後の更新・drop でこの値をキーとして使う
+    description: 対象の変数の定義の hintId。処理中のノードの hintId とは区別する
     $ref: '../../picolang/v0/hint-id.yaml'
-  value:
-    description: 初期化された変数の値
-    $ref: '#/$defs/Value'
-
-$defs:
-  Value:
-    description: 初期値全体
-    oneOf:
-      - type: boolean
-      - type: integer
-        description: i64 の範囲外の値の扱いは picolang の仕様に従い未定義
-      - type: 'null'
-      - type: string
-        enum: [left, right]
-      - $ref: '../../picolang/v0/distance-target.yaml'
-      - $ref: '#/$defs/Terrain'
-      - type: array
-        items:
-          $ref: '#/$defs/Value'
-
-  Terrain:
-    description: 観測時点の地形種別
-    oneOf:
-      - $ref: '#/$defs/Land'
-      - $ref: '#/$defs/Rock'
-      - $ref: '#/$defs/Sea'
-
-  Land:
-    description: 陸の種別と、荷物・テリトリーの観測値
-    type: object
-    additionalProperties: false
-    required: [type, kind]
-    properties:
-      type:
-        type: string
-        const: land
-      kind:
-        oneOf:
-          - $ref: '#/$defs/PlainLand'
-          - $ref: '#/$defs/GoalLand'
-          - $ref: '#/$defs/CheckpointLand'
-      hasLuggage:
-        type: boolean
-      territory:
-        description: 観測したロボットから見たテリトリーの所属
-        type: string
-        enum: [own, enemy]
-    if:
-      required: [territory]
-    then:
-      properties:
-        kind:
-          $ref: '#/$defs/PlainLand'
-
-  PlainLand:
-    description: 通常の陸
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: plain
-
-  GoalLand:
-    description: ゴールを表す特殊な陸
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: goal
-
-  CheckpointLand:
-    description: 通過順を表す番号を持つ特殊な陸
-    type: object
-    additionalProperties: false
-    required: [type, order]
-    properties:
-      type:
-        type: string
-        const: checkpoint
-      order:
-        description: チェックポイントを通過する順序
-        type: integer
-
-  Rock:
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: rock
-
-  Sea:
-    type: object
-    additionalProperties: false
-    required: [type]
-    properties:
-      type:
-        type: string
-        const: sea
+  valueId:
+    description: 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID
+    $ref: './memory-id.schema.yaml'
