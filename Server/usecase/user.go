@@ -22,8 +22,8 @@ type User struct{ repo UserRepository }
 
 func NewUser(repo UserRepository) *User { return &User{repo: repo} }
 
-// ResolveIdentity returns the user for a verified provider identity, creating one if needed.
-func (u *User) ResolveIdentity(ctx context.Context, subject string) (domain.User, error) {
+// ResolveGoogleIdentity returns the user for a verified Google identity, creating one if needed.
+func (u *User) ResolveGoogleIdentity(ctx context.Context, subject string) (domain.User, error) {
 	if subject == "" {
 		return domain.User{}, fmt.Errorf("%w: missing subject", ErrInvalidLogin)
 	}

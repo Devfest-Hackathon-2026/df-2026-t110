@@ -550,7 +550,7 @@ onBeforeUnmount(() => {
         </div>
         <p v-if="runMessage" class="tutorial-run-feedback" role="status">
           {{ runMessage }}
-          <a v-if="loginRequired" href="/account">ログイン</a>
+          <a v-if="loginRequired" href="/account">Googleでログイン</a>
         </p>
         <div v-if="stage" class="tutorial-stage-toolbar">
           <button

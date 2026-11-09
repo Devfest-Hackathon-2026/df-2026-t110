@@ -124,11 +124,11 @@ async function signOut(): Promise<void> {
         <div class="account-identity">
           <p class="account-status account-status--guest">未ログイン</p>
           <h2 id="account-guest-title">学びの続きを始めよう</h2>
-          <p>ログインすると、教材のプログラム保存・実行と対戦ができます。</p>
+          <p>Googleアカウントでログインすると、教材のプログラム保存・実行と対戦ができます。</p>
         </div>
       </div>
       <div class="account-guest-actions">
-        <a class="action-primary" :href="loginUrl">ログイン</a>
+        <a class="action-primary" :href="loginUrl">Googleでログイン</a>
         <a class="text-link" href="/tutorials">教材を見る</a>
       </div>
     </section>

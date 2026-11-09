@@ -83,19 +83,14 @@ services:
       PORT: "8080"
       STATIC_DIR: /static
       APP_ENV: development
-      AUTH_PROVIDER: ${AUTH_PROVIDER:-oidc}
-      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-http://dex.localhost:5556/dex}
-      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-robot-field-local}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-local-development-client-secret}
-      OIDC_REDIRECT_URL: ${OIDC_REDIRECT_URL:-http://localhost:8080/api/login/callback}
+      # Keep the Google login interface; inject Dex parameters for local development.
+      GOOGLE_ISSUER_URL: ${GOOGLE_ISSUER_URL:-http://dex.localhost:5556/dex}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-robot-field-local}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-development-client-secret}
+      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-http://localhost:8080/api/login/callback}
       # Cloud Run: host=/cloudsql/<connection name>; Docker rejects colons in mount paths.
       DATABASE_URL: host=/cloudsql dbname=app user=app
       PGPASSWORD: app
-      # Set AUTH_PROVIDER=google to use Google instead of Dex; set all three,
-      # e.g. in .env with GOOGLE_REDIRECT_URL=http://localhost:8080/api/login/callback.
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URL: ${GOOGLE_REDIRECT_URL:-}
     ports:
       - "8080:8080"
     volumes:

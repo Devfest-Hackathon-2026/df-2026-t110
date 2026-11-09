@@ -1,5 +1,5 @@
-// Package oidcauth implements sign-in with the OpenID Connect authorization code flow.
-package oidcauth
+// Package googleauth implements sign-in with the OpenID Connect authorization code flow.
+package googleauth
 
 import (
 	"context"

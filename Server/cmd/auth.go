@@ -6,14 +6,15 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/infra/oidcauth"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/googleauth"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type loginConfig struct {
-	Provider          string
+// Google remains the default issuer. Local development can inject an OIDC test
+// issuer through the same Google login configuration.
+type googleLoginConfig struct {
 	IssuerURL         string
 	ClientID          string
 	ClientSecret      string
@@ -21,61 +22,57 @@ type loginConfig struct {
 	AllowInsecureHTTP bool
 }
 
-func loginConfigFromEnv() loginConfig { return readLoginConfig(os.Getenv) }
+func googleLoginConfigFromEnv() googleLoginConfig { return readGoogleLoginConfig(os.Getenv) }
 
-func readLoginConfig(getenv func(string) string) loginConfig {
-	provider := getenv("AUTH_PROVIDER")
-	if provider == "" {
-		provider = "google"
+func readGoogleLoginConfig(getenv func(string) string) googleLoginConfig {
+	issuer := getenv("GOOGLE_ISSUER_URL")
+	if issuer == "" {
+		issuer = googleauth.GoogleIssuer
 	}
-	cfg := loginConfig{Provider: provider}
-	if provider == "oidc" {
-		cfg.IssuerURL = getenv("OIDC_ISSUER_URL")
-		cfg.ClientID = getenv("OIDC_CLIENT_ID")
-		cfg.ClientSecret = getenv("OIDC_CLIENT_SECRET")
-		cfg.RedirectURL = getenv("OIDC_REDIRECT_URL")
-		cfg.AllowInsecureHTTP = getenv("APP_ENV") == "development" && getenv("K_SERVICE") == ""
-	} else {
-		cfg.IssuerURL = oidcauth.GoogleIssuer
-		cfg.ClientID = getenv("GOOGLE_CLIENT_ID")
-		cfg.ClientSecret = getenv("GOOGLE_CLIENT_SECRET")
-		cfg.RedirectURL = getenv("GOOGLE_REDIRECT_URL")
+	return googleLoginConfig{
+		IssuerURL:         issuer,
+		ClientID:          getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret:      getenv("GOOGLE_CLIENT_SECRET"),
+		RedirectURL:       getenv("GOOGLE_REDIRECT_URL"),
+		AllowInsecureHTTP: getenv("APP_ENV") == "development" && getenv("K_SERVICE") == "",
 	}
-	return cfg
 }
 
-func (c loginConfig) enabled() bool {
-	return c.Provider == "oidc" || c.ClientID != "" || c.ClientSecret != "" || c.RedirectURL != ""
+func (c googleLoginConfig) enabled() bool {
+	return c.ClientID != "" || c.ClientSecret != "" || c.RedirectURL != ""
 }
 
-func (c loginConfig) validate(hasDatabase bool) error {
-	if c.Provider != "google" && c.Provider != "oidc" {
-		return errors.New("AUTH_PROVIDER must be google or oidc")
-	}
+func (c googleLoginConfig) validate(hasDatabase bool) error {
 	if !c.enabled() {
 		return nil
 	}
-	if c.IssuerURL == "" || c.ClientID == "" || c.ClientSecret == "" || c.RedirectURL == "" {
-		return errors.New("the selected auth provider requires an issuer, client ID, client secret and redirect URL")
+	if c.ClientID == "" || c.ClientSecret == "" || c.RedirectURL == "" {
+		return errors.New("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URL must be set together")
 	}
 	if !hasDatabase {
-		return errors.New("login requires DATABASE_URL to store login attempts and sessions")
+		return errors.New("google login requires DATABASE_URL to store login attempts and sessions")
 	}
 	return nil
 }
 
-func (c loginConfig) secureCookies() bool {
+func (c googleLoginConfig) secureCookies() bool {
 	u, err := url.Parse(c.RedirectURL)
 	return err == nil && u.Scheme == "https"
 }
 
-func newLoginAuth(ctx context.Context, cfg loginConfig, pool *pgxpool.Pool, users usecase.AuthUsers, sessions usecase.AuthSessions) (*usecase.Auth, error) {
-	client, err := oidcauth.New(ctx, oidcauth.Config{IssuerURL: cfg.IssuerURL, ClientID: cfg.ClientID, ClientSecret: cfg.ClientSecret, RedirectURL: cfg.RedirectURL, AllowInsecureHTTP: cfg.AllowInsecureHTTP})
+func newGoogleAuth(ctx context.Context, cfg googleLoginConfig, pool *pgxpool.Pool, users usecase.AuthUsers, sessions usecase.AuthSessions) (*usecase.Auth, error) {
+	client, err := googleauth.New(ctx, googleauth.Config{
+		IssuerURL:         cfg.IssuerURL,
+		ClientID:          cfg.ClientID,
+		ClientSecret:      cfg.ClientSecret,
+		RedirectURL:       cfg.RedirectURL,
+		AllowInsecureHTTP: cfg.AllowInsecureHTTP,
+	})
 	if err != nil {
 		return nil, err
 	}
 	return usecase.NewAuth(usecase.AuthDeps{
-		Provider:      oidcauth.Provider{Client: client},
+		Provider:      googleauth.Provider{Client: client},
 		LoginAttempts: repo.NewLoginAttempts(pool),
 		Users:         users,
 		Sessions:      sessions,

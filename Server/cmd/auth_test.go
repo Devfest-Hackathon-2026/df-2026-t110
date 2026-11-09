@@ -1,67 +1,77 @@
 package main
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/infra/oidcauth"
-)
-
-func TestLoginConfigValidate(t *testing.T) {
+func TestGoogleLoginConfigValidate(t *testing.T) {
 	t.Parallel()
-	complete := loginConfig{Provider: "google", IssuerURL: oidcauth.GoogleIssuer, ClientID: "id", ClientSecret: "secret", RedirectURL: "https://example.com/api/login/callback"}
-	for _, tt := range []struct {
-		name                       string
-		cfg                        loginConfig
-		database, enabled, wantErr bool
+
+	complete := googleLoginConfig{ClientID: "id", ClientSecret: "secret", RedirectURL: "https://example.com/api/login/callback"}
+	tests := []struct {
+		name        string
+		cfg         googleLoginConfig
+		hasDatabase bool
+		wantEnabled bool
+		wantErr     bool
 	}{
-		{name: "Google unset stays disabled", cfg: loginConfig{Provider: "google", IssuerURL: oidcauth.GoogleIssuer}},
-		{name: "Google configured", cfg: complete, database: true, enabled: true},
-		{name: "Google requires database", cfg: complete, enabled: true, wantErr: true},
-		{name: "partial Google config fails", cfg: loginConfig{Provider: "google", ClientID: "id"}, database: true, enabled: true, wantErr: true},
-		{name: "selected OIDC must be configured", cfg: loginConfig{Provider: "oidc"}, database: true, enabled: true, wantErr: true},
-		{name: "OIDC configured", cfg: loginConfig{Provider: "oidc", IssuerURL: "https://issuer.example", ClientID: "id", ClientSecret: "secret", RedirectURL: complete.RedirectURL}, database: true, enabled: true},
-		{name: "unknown provider rejected", cfg: loginConfig{Provider: "typo"}, database: true, wantErr: true},
-	} {
+		{name: "unset stays disabled without a database", cfg: googleLoginConfig{}, wantEnabled: false},
+		{name: "complete with database", cfg: complete, hasDatabase: true, wantEnabled: true},
+		{name: "complete without database", cfg: complete, wantEnabled: true, wantErr: true},
+		{name: "missing secret", cfg: googleLoginConfig{ClientID: "id", RedirectURL: complete.RedirectURL}, hasDatabase: true, wantEnabled: true, wantErr: true},
+		{name: "only redirect URL", cfg: googleLoginConfig{RedirectURL: complete.RedirectURL}, hasDatabase: true, wantEnabled: true, wantErr: true},
+	}
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if tt.cfg.enabled() != tt.enabled {
-				t.Errorf("enabled=%v, want %v", tt.cfg.enabled(), tt.enabled)
+
+			if got := tt.cfg.enabled(); got != tt.wantEnabled {
+				t.Errorf("enabled() = %v, want %v", got, tt.wantEnabled)
 			}
-			if err := tt.cfg.validate(tt.database); (err != nil) != tt.wantErr {
-				t.Errorf("validate error=%v, wantErr %v", err, tt.wantErr)
+			if err := tt.cfg.validate(tt.hasDatabase); (err != nil) != tt.wantErr {
+				t.Errorf("validate(%v) error = %v, wantErr %v", tt.hasDatabase, err, tt.wantErr)
 			}
 		})
 	}
 }
-func TestReadLoginConfig(t *testing.T) {
+
+func TestGoogleLoginConfigSecureCookies(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]bool{
+		"https://example.com/api/login/callback":   true,
+		"http://localhost:5173/api/login/callback": false,
+		"http://127.0.0.1:8080/api/login/callback": false,
+	}
+	for redirectURL, want := range tests {
+		t.Run(redirectURL, func(t *testing.T) {
+			t.Parallel()
+
+			if got := (googleLoginConfig{RedirectURL: redirectURL}).secureCookies(); got != want {
+				t.Errorf("secureCookies() = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+func TestReadGoogleLoginConfig(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
-		name                     string
-		env                      map[string]string
-		provider, issuer, client string
-		insecure                 bool
+		name                               string
+		env                                map[string]string
+		issuer, clientID, secret, redirect string
+		enabled, insecure                  bool
 	}{
-		{name: "Google remains production default", env: map[string]string{"GOOGLE_CLIENT_ID": "google-id", "OIDC_CLIENT_ID": "unused"}, provider: "google", issuer: oidcauth.GoogleIssuer, client: "google-id"},
-		{name: "OIDC is explicitly selected", env: map[string]string{"AUTH_PROVIDER": "oidc", "OIDC_ISSUER_URL": "http://dex.localhost:5556/dex", "OIDC_CLIENT_ID": "dex-id", "GOOGLE_CLIENT_ID": "unused", "APP_ENV": "development"}, provider: "oidc", issuer: "http://dex.localhost:5556/dex", client: "dex-id", insecure: true},
-		{name: "Cloud Run forbids insecure issuer", env: map[string]string{"AUTH_PROVIDER": "oidc", "APP_ENV": "development", "K_SERVICE": "server"}, provider: "oidc"},
-		{name: "production forbids insecure issuer", env: map[string]string{"AUTH_PROVIDER": "oidc", "APP_ENV": "production"}, provider: "oidc"},
+		{name: "Google remains the default", issuer: "https://accounts.google.com"},
+		{name: "existing Google parameters", env: map[string]string{"GOOGLE_CLIENT_ID": "google-id", "GOOGLE_CLIENT_SECRET": "google-secret", "GOOGLE_REDIRECT_URL": "https://app.example/api/login/callback"}, issuer: "https://accounts.google.com", clientID: "google-id", secret: "google-secret", redirect: "https://app.example/api/login/callback", enabled: true},
+		{name: "Dex parameters injected through Google settings", env: map[string]string{"GOOGLE_ISSUER_URL": "http://dex.localhost:5556/dex", "GOOGLE_CLIENT_ID": "dex-id", "GOOGLE_CLIENT_SECRET": "dex-secret", "GOOGLE_REDIRECT_URL": "http://localhost:8080/api/login/callback", "APP_ENV": "development"}, issuer: "http://dex.localhost:5556/dex", clientID: "dex-id", secret: "dex-secret", redirect: "http://localhost:8080/api/login/callback", enabled: true, insecure: true},
+		{name: "Cloud Run forbids insecure issuer", env: map[string]string{"APP_ENV": "development", "K_SERVICE": "server"}, issuer: "https://accounts.google.com"},
+		{name: "production forbids insecure issuer", env: map[string]string{"APP_ENV": "production"}, issuer: "https://accounts.google.com"},
+		{name: "no separate provider selector", env: map[string]string{"AUTH_PROVIDER": "oidc", "OIDC_ISSUER_URL": "https://unused.example", "OIDC_CLIENT_ID": "unused"}, issuer: "https://accounts.google.com"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			cfg := readLoginConfig(func(k string) string { return tt.env[k] })
-			if cfg.Provider != tt.provider || cfg.IssuerURL != tt.issuer || cfg.ClientID != tt.client || cfg.AllowInsecureHTTP != tt.insecure {
+			cfg := readGoogleLoginConfig(func(k string) string { return tt.env[k] })
+			if cfg.IssuerURL != tt.issuer || cfg.ClientID != tt.clientID || cfg.ClientSecret != tt.secret || cfg.RedirectURL != tt.redirect || cfg.enabled() != tt.enabled || cfg.AllowInsecureHTTP != tt.insecure {
 				t.Errorf("config=%+v", cfg)
-			}
-		})
-	}
-}
-func TestLoginConfigSecureCookies(t *testing.T) {
-	t.Parallel()
-	for redirect, want := range map[string]bool{"https://example.com/callback": true, "http://localhost:8080/callback": false, "http://127.0.0.1:8080/callback": false} {
-		t.Run(redirect, func(t *testing.T) {
-			t.Parallel()
-			if got := (loginConfig{RedirectURL: redirect}).secureCookies(); got != want {
-				t.Errorf("secureCookies=%v,want %v", got, want)
 			}
 		})
 	}
