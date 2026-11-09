@@ -10,6 +10,10 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 )
 
+// TurnLimit is the number of turns allowed for a tutorial attempt.
+// It is a normal completion condition, independent of the board's safety limit.
+const TurnLimit uint64 = 1_000
+
 type completionRules struct {
 	robotID     protocol.RobotID
 	condition   string
@@ -34,7 +38,7 @@ func newCompletionRules(condition schema.ClearCondition, robotID protocol.RobotI
 	return rules, nil
 }
 
-func (*completionRules) TurnLimit() uint64 { return 0 }
+func (*completionRules) TurnLimit() uint64 { return TurnLimit }
 
 func (r *completionRules) AfterTurn(state board.Snapshot, update fieldevent.UpdateState) bool {
 	for _, action := range update.Actions {
