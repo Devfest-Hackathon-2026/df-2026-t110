@@ -38,17 +38,17 @@ class EditorNumberField extends Blockly.FieldNumber {
 }
 
 const colours: Record<string, string> = {
-  動き: '#347ac4',
-  操作: '#248b87',
+  動く: '#347ac4',
+  オブジェクト: '#248b87',
   制御: '#be8b32',
   変数: '#bd7446',
   調べる: '#287d98',
   論理: '#7555ac',
   計算: '#549641',
-  乱数: '#6476ad',
+  ランダム: '#6476ad',
   スタック: '#8a67ab',
-  オプション: '#95734b',
-  表示: '#60866a',
+  ヌラブル: '#95734b',
+  発言: '#60866a',
   関数: '#875c98',
   値: '#65758b',
 }
@@ -213,16 +213,15 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_declare = {
     init() {
-      this.appendDummyInput().appendField(new EditorTextField('x'), 'NAME')
-      this.appendValueInput('VALUE').appendField('を')
-      this.appendDummyInput().appendField('で初期化する').appendField('未確定', 'INFERRED_TYPE')
-      this.appendEndRowInput()
-      this.appendValueInput('TOKEN').appendField('この変数を使う')
+      this.appendValueInput('TOKEN').appendField('未確定', 'INFERRED_TYPE').appendField('型の')
+      this.appendDummyInput().appendField('を').appendField(new EditorTextField('x'), 'NAME')
+      this.appendValueInput('VALUE').appendField('という名前で')
+      this.appendDummyInput().appendField('に初期化する')
       this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.変数)
-      this.setTooltip('下の小さな変数ブロックをドラッグすると、別の入力欄でこの変数を使えます。')
+      this.setTooltip('小さな変数ブロックをドラッグすると、別の入力欄でこの変数を使えます。')
     },
   }
   Blockly.Blocks.pico_assign = {
@@ -248,8 +247,11 @@ function defineStaticBlocks(): void {
   Blockly.Blocks.pico_if_else = {
     init() {
       this.appendValueInput('CONDITION').setCheck('bool').appendField('もし')
-      this.appendStatementInput('THEN').appendField('なら')
-      this.appendStatementInput('ELSE').appendField('でなければ')
+      this.appendDummyInput().appendField('なら')
+      this.appendStatementInput('THEN')
+      this.appendDummyInput().appendField('そうではないなら')
+      this.appendStatementInput('ELSE')
+      this.setInputsInline(true)
       this.setPreviousStatement(true)
       this.setNextStatement(true)
       this.setColour(colours.制御)
@@ -269,8 +271,9 @@ function defineStaticBlocks(): void {
   }
   Blockly.Blocks.pico_for = {
     init() {
-      this.appendDummyInput().appendField(new EditorTextField('i'), 'NAME')
-      this.appendValueInput('START').setCheck('integer').appendField('を')
+      this.appendValueInput('TOKEN')
+      this.appendDummyInput().appendField('を').appendField(new EditorTextField('i'), 'NAME')
+      this.appendValueInput('START').setCheck('integer').appendField('という名前で')
       this.appendValueInput('END').setCheck('integer').appendField('から')
       this.appendDummyInput().appendField('-1まで')
       this.appendStatementInput('BODY')
@@ -356,7 +359,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
         this.setTooltip(
           [
             resultGuidance[name],
-            statement && !['動き', '操作', '表示'].includes(signature.category)
+            statement && !['動く', 'オブジェクト', '発言'].includes(signature.category)
               ? 'この行だけでは返した値を使いません。変数や条件の入力欄で使ってください。'
               : '',
           ]
@@ -492,7 +495,10 @@ function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>)
           ...(stmt.kind === 'for' ? { identId: stmt.ident.hintId } : {}),
         }),
         fields: stmt.kind === 'for' ? { NAME: stmt.ident.name } : {},
-        inputs: stmt.body.stmts.length ? { BODY: { block: chainState(stmt.body.stmts, functions)! } } : {},
+        inputs: {
+          ...(stmt.kind === 'for' ? { TOKEN: { shadow: exprState(ident(stmt.ident.name), functions) } } : {}),
+          ...(stmt.body.stmts.length ? { BODY: { block: chainState(stmt.body.stmts, functions)! } } : {}),
+        },
       },
       stmt.kind === 'while' ? { CONDITION: stmt.condition } : { START: stmt.start, END: stmt.end },
       functions,
@@ -674,7 +680,10 @@ function toolboxBlock(
     args.map((arg, i) => [`ARG${i}`, { block: exprState(defaultExpr(arg), functions) }]),
   )
   if (defaults[type]) inputs[inputNames[type]!] = { block: exprState(defaultExpr(defaults[type]), functions) }
-  if (type === 'pico_for') inputs.END = { block: exprState(defaultExpr('integer'), functions) }
+  if (type === 'pico_for') {
+    inputs.END = { block: exprState(defaultExpr('integer'), functions) }
+    inputs.TOKEN = { shadow: exprState(ident('i'), functions) }
+  }
   if (type === 'pico_declare') inputs.TOKEN = { shadow: exprState(ident('x'), functions) }
   return {
     kind: 'block',
@@ -685,17 +694,17 @@ function toolboxBlock(
 export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.utils.toolbox.ToolboxInfo {
   const categories: Blockly.utils.toolbox.StaticCategoryInfo[] = []
   for (const category of [
-    '動き',
-    '操作',
+    '動く',
+    'オブジェクト',
     '制御',
     '変数',
     '調べる',
     '論理',
     '計算',
-    '乱数',
+    'ランダム',
     'スタック',
-    'オプション',
-    '表示',
+    'ヌラブル',
+    '発言',
     '関数',
     '値',
   ]) {
@@ -729,7 +738,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
       for (const builtin of PICO_BUILTIN_OPTIONS.filter((item) => item.category === category))
         contents.push(
           toolboxBlock(
-            callType(builtin.name, ['動き', '操作', '表示'].includes(category)),
+            callType(builtin.name, ['動く', 'オブジェクト', '発言'].includes(category)),
             builtin.args,
             functions,
           ),
@@ -747,8 +756,8 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
 
 export function refreshVariableBlocks(workspace: Blockly.Workspace): void {
   for (const block of workspace.getAllBlocks(false)) {
-    if (block.type === 'pico_declare') {
-      const name = field(block, 'NAME', 'x')
+    if (block.type === 'pico_declare' || block.type === 'pico_for') {
+      const name = field(block, 'NAME', block.type === 'pico_for' ? 'i' : 'x')
       block.getInput('VALUE')?.connection?.setCheck(null)
       const input = block.getInput('TOKEN')?.connection
       const token = block.getInputTargetBlock('TOKEN')
