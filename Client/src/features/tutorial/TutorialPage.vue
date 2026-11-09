@@ -567,7 +567,9 @@ onBeforeUnmount(() => {
             </div>
           </template>
           <div v-else class="tutorial-load-message" role="alert">
-            {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+            {{ loadMessage }}
+            <button type="button" @click="load(tutorialId)">再試行</button>
+            <a :href="`/tutorials/${encodeURIComponent(tutorialId)}`">ページを開き直す</a>
           </div>
         </div>
       </aside>
