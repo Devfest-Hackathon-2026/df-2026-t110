@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	"fmt"
 	"math/rand/v2"
 	"strings"
@@ -15,8 +14,8 @@ type MatchUserRepository interface {
 }
 
 type MatchOpponentRepository interface {
-	// SelectOpponent chooses a user uniformly, excluding the challenger. The user's name
-	// and ordered battle programs must come from the same snapshot.
+	// SelectOpponent chooses a user uniformly, excluding the challenger. The user's name,
+	// rating and ordered battle programs must come from the same snapshot.
 	SelectOpponent(ctx context.Context, challenger string) (domain.BattleTeam, error)
 }
 
@@ -25,11 +24,16 @@ type MatchLayoutRepository interface {
 }
 
 type MatchExecutor interface {
-	Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (jsontext.Value, error)
+	Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error)
 }
 
 type MatchRepository interface {
-	Create(ctx context.Context, match domain.MatchRecord) (domain.Match, error)
+	// Rating returns the challenger's latest rating. It is read without a lock: a match
+	// is rated from the ratings at matching time.
+	Rating(ctx context.Context, subject string) (int, error)
+	// Create saves the match and adds record.RatingDelta to the challenger's current
+	// rating in one transaction.
+	Create(ctx context.Context, record domain.MatchRecord) (domain.Match, error)
 }
 
 type MatchDeps struct {
@@ -81,6 +85,10 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 		}
 		programs[i] = program
 	}
+	rating, err := m.deps.Matches.Rating(ctx, subject)
+	if err != nil {
+		return domain.Match{}, fmt.Errorf("get challenger rating: %w", err)
+	}
 	// Do not update the challenger's saved defense programs as a side effect.
 	opponent, err := m.deps.Opponents.SelectOpponent(ctx, subject)
 	if err != nil {
@@ -101,10 +109,12 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("execute match: %w", err)
 	}
-	// TODO: Update the challenger's rating with the result: https://github.com/dvpico/Programming-Learning-AR/issues/155
+	outcome := domain.OutcomeFromScores(result.ChallengerScore, result.OpponentScore)
 	match, err := m.deps.Matches.Create(ctx, domain.MatchRecord{
 		GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject,
-		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, SelectedLayoutID: layout.ID, Result: result,
+		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, SelectedLayoutID: layout.ID, Result: result.Replay,
+		Outcome: outcome, ChallengerRating: rating, OpponentRating: opponent.Rating,
+		RatingDelta: domain.RatingDelta(rating, opponent.Rating, outcome),
 	})
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("save match: %w", err)

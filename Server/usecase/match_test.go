@@ -46,21 +46,31 @@ func (s matchLayoutsStub) List(context.Context) ([]domain.BattleLayout, error) {
 type matchExecutorStub struct {
 	player, opponent []domain.Program
 	layout           domain.BattleLayout
+	scores           [2]int64
 	err              error
 	calls            int
 }
 
-func (s *matchExecutorStub) Execute(_ context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (jsontext.Value, error) {
+func (s *matchExecutorStub) Execute(_ context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
 	s.calls++
 	s.player, s.opponent, s.layout = player, opponent, layout
-	return jsontext.Value(`{"history":[],"summary":{"score":{"player":1,"opponent":0}}}`), s.err
+	if s.err != nil {
+		return domain.MatchResult{}, s.err
+	}
+	return domain.MatchResult{
+		ChallengerScore: s.scores[0], OpponentScore: s.scores[1],
+		Replay: jsontext.Value(`{"history":[],"summary":{"score":{"player":1,"opponent":0}}}`),
+	}, nil
 }
 
 type matchStoreStub struct {
+	rating int
 	record domain.MatchRecord
 	err    error
 	calls  int
 }
+
+func (s *matchStoreStub) Rating(context.Context, string) (int, error) { return s.rating, nil }
 
 func (s *matchStoreStub) Create(_ context.Context, record domain.MatchRecord) (domain.Match, error) {
 	s.calls++
@@ -100,12 +110,13 @@ func TestCreateMatch(t *testing.T) {
 			if !tt.noName {
 				displayName = &name
 			}
+			store := &matchStoreStub{rating: 1000, err: tt.saveErr}
 			opponent := &matchOpponentStub{team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
 				Programs: []domain.Program{{ID: "o2"}, {ID: "o1"}, {ID: "o2"}},
+				Rating:   1200,
 			}, err: tt.selectionErr}
-			executor := &matchExecutorStub{err: tt.executeErr}
-			store := &matchStoreStub{err: tt.saveErr}
+			executor := &matchExecutorStub{scores: [2]int64{1, 0}, err: tt.executeErr}
 			service := NewMatches(MatchDeps{
 				Users: matchUserStub{displayName}, Programs: matchProgramsStub{map[string]domain.Program{
 					"a":        {ID: "a", GoogleSubject: "owner", IsBattle: true},
@@ -150,6 +161,53 @@ func TestCreateMatch(t *testing.T) {
 			}
 			if store.record.GoogleSubject != "owner" || store.record.OpponentSubject != "opponent" || !store.record.Result.IsValid() {
 				t.Errorf("saved record=%+v", store.record)
+			}
+		})
+	}
+}
+
+func TestCreateMatchRatesChallenger(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		scores      [2]int64
+		wantOutcome domain.MatchOutcome
+		wantDelta   int
+	}{
+		{name: "win against stronger", scores: [2]int64{2, 1}, wantOutcome: domain.MatchWin, wantDelta: 120},
+		{name: "loss against stronger", scores: [2]int64{0, 1}, wantOutcome: domain.MatchLoss, wantDelta: -5},
+		{name: "draw against stronger", scores: [2]int64{1, 1}, wantOutcome: domain.MatchDraw, wantDelta: 10},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, opponentName := "Owner", "Opponent"
+			store := &matchStoreStub{rating: 1000}
+			service := NewMatches(MatchDeps{
+				Users: matchUserStub{&name},
+				Programs: matchProgramsStub{map[string]domain.Program{
+					"a": {ID: "a", GoogleSubject: "owner", IsBattle: true},
+				}},
+				Opponents: &matchOpponentStub{team: domain.BattleTeam{
+					User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
+					Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
+					Rating:   1200,
+				}},
+				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{ID: "layout", FieldID: "field"}}},
+				Executor: &matchExecutorStub{scores: tt.scores}, Matches: store,
+			})
+
+			if _, err := service.Create(t.Context(), "owner", []string{"a", "a", "a"}); err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+
+			got := store.record
+			if got.Outcome != tt.wantOutcome || got.ChallengerRating != 1000 || got.OpponentRating != 1200 || got.RatingDelta != tt.wantDelta {
+				t.Errorf("outcome=%s ratings=%d vs %d delta=%d, want %s 1000 vs 1200 delta=%d",
+					got.Outcome, got.ChallengerRating, got.OpponentRating, got.RatingDelta, tt.wantOutcome, tt.wantDelta)
 			}
 		})
 	}
