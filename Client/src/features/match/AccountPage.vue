@@ -74,13 +74,13 @@ async function signOut(): Promise<void> {
           </div>
           <div class="account-identity">
             <h2 id="account-profile-title">{{ store.user?.name || '名前を設定してください' }}</h2>
-            <p>チュートリアルの実行と対戦に、このアカウントを使用します。</p>
+            <p class="furigana-text">チュートリアルの実行と対戦に、このアカウントを使用します。</p>
           </div>
         </div>
 
         <form v-if="!store.user?.name" class="account-name-form" @submit.prevent="saveUsername">
           <label for="account-username">表示名を設定する</label>
-          <p>半角英数字・_・-を使用できます。設定後は変更できません。</p>
+          <p class="furigana-text">半角英数字・_・-を使用できます。設定後は変更できません。</p>
           <div class="account-name-controls">
             <input
               id="account-username"
@@ -110,7 +110,9 @@ async function signOut(): Promise<void> {
         </div>
         <div class="account-identity">
           <h2 id="account-guest-title">ログイン</h2>
-          <p>Googleアカウントでログインすると、チュートリアルのプログラム保存・実行と対戦ができます。</p>
+          <p class="furigana-text">
+            Googleアカウントでログインすると、チュートリアルのプログラム保存・実行と対戦ができます。
+          </p>
         </div>
       </div>
       <div class="account-guest-actions">

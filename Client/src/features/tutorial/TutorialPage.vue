@@ -527,20 +527,20 @@ onBeforeUnmount(() => {
                 {{ String(catalog.length).padStart(2, '0') }}
               </p>
               <h1>{{ tutorial.title }}</h1>
-              <p v-if="tutorial.goal">
+              <p v-if="tutorial.goal" class="furigana-text">
                 この課題の目標:
                 {{ tutorial.goal }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
               <h2 id="tutorial-note-title">この課題で考えること</h2>
-              <p>{{ tutorial.lesson ?? tutorial.description }}</p>
+              <p class="furigana-text">{{ tutorial.lesson ?? tutorial.description }}</p>
             </section>
             <div v-if="guideLines.length" class="tutor-conversation">
               <TutorAvatar />
               <div class="tutor-speech">
                 <span>案内役のロボット</span>
-                <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+                <p class="furigana-text" aria-live="polite">{{ guideLines[guideIndex] }}</p>
               </div>
             </div>
             <div v-if="guideLines.length" class="tutor-stepper" aria-label="説明を切り替える">

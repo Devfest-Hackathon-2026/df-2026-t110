@@ -84,7 +84,7 @@ document.title = tutorialId
     <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
         <h2>命令を組んで、ロボットを動かそう。</h2>
-        <p class="hero-lead">
+        <p class="hero-lead furigana-text">
           岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミングチュートリアルです。
         </p>
         <div class="home-entry-grid">
@@ -108,7 +108,9 @@ document.title = tutorialId
           <h2 id="learn-title" class="heading-with-icon">
             <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
           </h2>
-          <p>一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。</p>
+          <p class="furigana-text">
+            一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。
+          </p>
         </div>
         <HomeFeatureCarousel label="チュートリアルの紹介" :slides="tutorialSlides" />
         <a class="home-feature-link" href="/tutorials"
@@ -122,7 +124,7 @@ document.title = tutorialId
             <h2 id="match-title" class="heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
             </h2>
-            <p>
+            <p class="furigana-text">
               自分のプログラムをロボットに設定して対戦。結果だけでなく、どんな行動をしたかも振り返れます。
             </p>
           </div>

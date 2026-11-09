@@ -80,7 +80,7 @@ function onEditorToggle(event: Event): void {
   <main class="match-main container">
     <header class="match-heading">
       <h1 class="heading-with-icon"><Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span></h1>
-      <p>3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
+      <p class="furigana-text">3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
     <p v-if="store.error" class="match-error" role="alert">{{ store.error }}</p>
 
@@ -107,7 +107,9 @@ function onEditorToggle(event: Event): void {
         aria-labelledby="match-program-title"
       >
         <div class="match-section-heading"><h2 id="match-program-title">ロボットのプログラム</h2></div>
-        <p>3台それぞれに対戦用プログラムを選びます。同じプログラムを複数のロボットに使えます。</p>
+        <p class="furigana-text">
+          3台それぞれに対戦用プログラムを選びます。同じプログラムを複数のロボットに使えます。
+        </p>
         <p v-if="store.busy && !store.programs.length" role="status">プログラムを読み込んでいます…</p>
         <div class="match-assignments">
           <div v-for="slot in 3" :key="slot" class="match-assignment">
@@ -208,7 +210,9 @@ function onEditorToggle(event: Event): void {
         </details>
         <details class="match-editor-details">
           <summary>文章からプログラムを生成して試す</summary>
-          <p>文章から対戦用のプログラムを生成します。生成結果を確認してから保存できます。</p>
+          <p class="furigana-text">
+            文章から対戦用のプログラムを生成します。生成結果を確認してから保存できます。
+          </p>
           <ProgramGenerator
             :is-battle="true"
             @started="generatedDraft = null"
@@ -239,7 +243,7 @@ function onEditorToggle(event: Event): void {
         aria-labelledby="match-start-title"
       >
         <div class="match-section-heading"><h2 id="match-start-title">対戦を始める</h2></div>
-        <p>3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
+        <p class="furigana-text">3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
         <button
           type="button"
           class="action-primary"
