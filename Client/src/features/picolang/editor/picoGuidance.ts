@@ -14,7 +14,7 @@ export const builtinArguments: Partial<Record<PicoBuiltinName, readonly string[]
   is_own_territory: ['調べるマス'],
   is_enemy_territory: ['調べるマス'],
   rotate: ['回す向き'],
-  wait: ['待つ時間'],
+  wait: ['待つターン数'],
   is_land: ['調べるマス'],
   is_goal: ['調べるマス'],
   is_checkpoint: ['調べるマス'],

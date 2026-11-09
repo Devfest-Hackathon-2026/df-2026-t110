@@ -15,7 +15,7 @@ const builtinLabels = {
   forward: { label: '前に進む', category: '動き' },
   back: { label: '後ろに進む', category: '動き' },
   rotate: { label: '回転する', category: '動き', blockMessage: '%1 向きに回転する' },
-  wait: { label: '待つ', category: '動き', blockMessage: '%1 待つ' },
+  wait: { label: '待つ', category: '動き', blockMessage: '%1 ターン待つ' },
   pick_up: { label: '拾う', category: '操作' },
   release: { label: '置く', category: '操作' },
   drill: { label: '岩を壊す', category: '操作' },
@@ -63,7 +63,7 @@ const builtinLabels = {
   random_integer: {
     label: 'ランダムな数を返す',
     category: '乱数',
-    blockMessage: '%1 から %2 からランダムに選ぶ',
+    blockMessage: '%1 から %2 までの数をランダムに選ぶ',
   },
   new: { label: '空のスタック', category: 'スタック' },
   push_back: {

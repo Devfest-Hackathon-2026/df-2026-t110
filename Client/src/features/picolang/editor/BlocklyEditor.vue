@@ -586,9 +586,9 @@ onBeforeUnmount(() => {
       :open="showJson"
       @toggle="showJson = ($event.target as HTMLDetailsElement).open"
     >
-      <summary>Schema形式のJSON</summary>
+      <summary>プログラムのJSON</summary>
       <button type="button" :disabled="!executionJson" @click="copyJson">JSONをコピー</button>
-      <pre>{{ executionJson ?? 'エラーを解消すると推論した型付きのJSONを表示します。' }}</pre>
+      <pre>{{ executionJson ?? 'エラーを直すと、プログラムのJSONを表示できます。' }}</pre>
       <label for="blockly-json-input">JSONを読み込む</label>
       <textarea
         id="blockly-json-input"
