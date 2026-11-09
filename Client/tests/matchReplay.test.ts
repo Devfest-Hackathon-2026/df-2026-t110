@@ -186,10 +186,7 @@ test('pickup and release replay luggage transfers and discards', () => {
 })
 
 test('match responses require identifiers and scores', () => {
-  assert.equal(
-    parseMatch({ id: 'm1', fieldId: 'f1', selectedLayoutId: 'l1', runId: 'r1', opponentName: '相手' }).runId,
-    'r1',
-  )
+  assert.equal(parseMatch({ id: 'm1', fieldId: 'f1', runId: 'r1', opponentName: '相手' }).runId, 'r1')
   assert.throws(() => parseMatch({ id: 'm1' }))
   assert.deepEqual(
     parseMatchResult({ history: [], summary: { score: { player: 2, opponent: 1 } } }).summary.score,

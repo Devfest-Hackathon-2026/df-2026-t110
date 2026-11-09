@@ -6,11 +6,11 @@ VALUES ($1, $2, $3, $4);
 -- conversion, rejects values outside the integer columns.
 -- name: CreateMatch :exec
 INSERT INTO matches (
-    id, run_id, opponent_google_subject, opponent_name, selected_layout_id,
+    id, run_id, opponent_google_subject, opponent_name,
     outcome, opponent_rating, rating_before, rating_after
 )
 VALUES (
-    @id, @run_id, @opponent_google_subject, @opponent_name, @selected_layout_id, @outcome,
+    @id, @run_id, @opponent_google_subject, @opponent_name, @outcome,
     sqlc.arg(opponent_rating)::bigint, sqlc.arg(rating_before)::bigint, sqlc.arg(rating_after)::bigint
 );
 

@@ -17,7 +17,6 @@ type BattleTeam struct {
 
 // BattleLayout is a complete initial board and the rules used for one match.
 type BattleLayout struct {
-	ID             string                                           `json:"id"`
 	FieldID        string                                           `json:"fieldId"`
 	Terrain        [][]schema.Terrain                               `json:"terrain"`
 	Luggage        []schema.Position                                `json:"luggage"`
@@ -31,11 +30,10 @@ type BattleLayout struct {
 
 // Match identifies a completed simulation whose result is available via RunID.
 type Match struct {
-	ID               string
-	RunID            string
-	FieldID          string
-	SelectedLayoutID string
-	OpponentName     string
+	ID           string
+	RunID        string
+	FieldID      string
+	OpponentName string
 }
 
 // MatchResult is what the engine reports for a completed match.
@@ -54,7 +52,6 @@ type MatchRecord struct {
 	OpponentSubject  string
 	OpponentName     string
 	FieldID          string
-	SelectedLayoutID string
 	Result           jsontext.Value
 	Outcome          MatchOutcome
 	ChallengerRating int

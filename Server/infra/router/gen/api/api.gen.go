@@ -71,16 +71,14 @@ type GameHistory = history.GameHistory
 
 // Match defines model for Match.
 type Match struct {
+	// FieldId 対戦作成時にサーバーが選んだ具体的な盤面のID。
 	FieldId      string `json:"fieldId"`
 	Id           string `json:"id"`
 	OpponentName string `json:"opponentName"`
 
 	// RunId この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
-	RunId openapi_types.UUID `json:"runId"`
-
-	// SelectedLayoutId 対戦作成時にサーバーが選んだ配置候補のID。
-	SelectedLayoutId string       `json:"selectedLayoutId"`
-	Status           *MatchStatus `json:"status,omitempty"`
+	RunId  openapi_types.UUID `json:"runId"`
+	Status *MatchStatus       `json:"status,omitempty"`
 }
 
 // MatchStatus defines model for Match.Status.

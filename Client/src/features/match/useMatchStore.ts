@@ -197,7 +197,7 @@ export const useMatchStore = defineStore('match', () => {
     }
     const runId =
       record?.runId ?? saved?.runId ?? new URLSearchParams(window.location.search).get('runId') ?? ''
-    match.value = record ?? saved ?? { id, runId, fieldId: '', selectedLayoutId: '', opponentName: '' }
+    match.value = record ?? saved ?? { id, runId, fieldId: '', opponentName: '' }
     result.value = null
     frames.value = []
     error.value = ''

@@ -13,7 +13,6 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
-	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 )
 
 func source(actions ...string) jsontext.Value {
@@ -23,6 +22,49 @@ func source(actions ...string) jsontext.Value {
 	}
 	stmts = append(stmts, `{"kind":"return","hintId":"00000000-0000-4000-8000-000000000002","value":{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000003","type":"unit","value":null}}`)
 	return jsontext.Value(`{"picolangVersion":0,"picolang":{"v0":{"program":{"main":{"kind":"function","hintId":"00000000-0000-4000-8000-000000000000","params":[],"returnType":"unit","body":{"kind":"block","hintId":"00000000-0000-4000-8000-000000000001","stmts":[` + strings.Join(stmts, ",") + `]}}}}}}`)
+}
+
+func TestExecuteProductionLayouts(t *testing.T) {
+	t.Parallel()
+	layouts, err := testLayouts(t).List(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := os.ReadFile("testdata/query_move.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, layout := range layouts {
+		t.Run(layout.FieldID, func(t *testing.T) {
+			t.Parallel()
+			result, err := NewExecutor().Execute(t.Context(), team(program), team(program), layout)
+			if err != nil {
+				t.Errorf("execute production board: %v", err)
+				return
+			}
+			var decoded struct {
+				History []wire.FieldEvent `json:"history"`
+			}
+			if err := json.Unmarshal(result.Replay, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			if len(decoded.History) == 0 || decoded.History[0].State.Initial == nil {
+				t.Error("missing initial board")
+				return
+			}
+			initial := decoded.History[0].State.Initial
+			if len(initial.Terrain) != len(layout.Terrain) || len(initial.Terrain[0]) != len(layout.Terrain[0]) || len(initial.Robots) != 6 {
+				t.Error("recorded board dimensions or robot count differ from layout")
+			}
+			lastTick := decoded.History[len(decoded.History)-1].Tick
+			if lastTick < 0 || uint64(lastTick) != layout.Turns {
+				t.Errorf("final tick=%d, want %d", lastTick, layout.Turns)
+			}
+			if result.ChallengerScore != 0 || result.OpponentScore != 0 {
+				t.Errorf("movement-only programs scored %d-%d", result.ChallengerScore, result.OpponentScore)
+			}
+		})
+	}
 }
 
 func team(program jsontext.Value) []domain.Program {
@@ -35,65 +77,60 @@ func team(program jsontext.Value) []domain.Program {
 
 func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 	t.Parallel()
-	layouts, err := testLayouts(t).List(t.Context())
+	data, err := os.ReadFile("../../testdata/battle/cargo-lanes.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, layout := range layouts {
-		t.Run(layout.ID, func(t *testing.T) {
-			t.Parallel()
-			for _, y := range []int{1, 3, 5} {
-				layout.Territories[0] = append(layout.Territories[0], schema.Position{X: 1, Y: y})
-				layout.Luggage = append(layout.Luggage, schema.Position{X: 2, Y: y})
+	var layout domain.BattleLayout
+	if err := json.Unmarshal(data, &layout, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatal(err)
+	}
+	result, err := NewExecutor().Execute(t.Context(), team(source("forward", "pick_up", "back", "release")), team(source()), layout)
+	if err != nil {
+		t.Errorf("Execute: %v", err)
+		return
+	}
+	var decoded struct {
+		History []wire.FieldEvent `json:"history"`
+		Summary api.MatchSummary  `json:"summary"`
+	}
+	if result.ChallengerScore != 3 || result.OpponentScore != 0 {
+		t.Errorf("scores=%d-%d, want 3-0", result.ChallengerScore, result.OpponentScore)
+	}
+	if err := json.Unmarshal(result.Replay, &decoded); err != nil {
+		t.Errorf("decode result: %v", err)
+		return
+	}
+	if decoded.Summary.Score.Player != 3 || decoded.Summary.Score.Opponent != 0 {
+		t.Errorf("score=%+v", decoded.Summary.Score)
+	}
+	if len(decoded.History) == 0 || decoded.History[0].State.Initial == nil {
+		t.Errorf("missing initial board: %s", result.Replay)
+		return
+	}
+	initial := decoded.History[0].State.Initial
+	ids := make(map[wire.RobotId]struct{})
+	var teams [3]int
+	for _, robot := range initial.Robots {
+		ids[robot.Id] = struct{}{}
+		if robot.TeamId != nil {
+			switch *robot.TeamId {
+			case 1:
+				teams[1]++
+			case 2:
+				teams[2]++
+			default:
+				t.Errorf("invalid robot team: %v", *robot.TeamId)
 			}
-			result, err := NewExecutor().Execute(t.Context(), team(source("forward", "pick_up", "back", "release")), team(source()), layout)
-			if err != nil {
-				t.Errorf("Execute: %v", err)
-				return
-			}
-			var decoded struct {
-				History []wire.FieldEvent `json:"history"`
-				Summary api.MatchSummary  `json:"summary"`
-			}
-			if result.ChallengerScore != 3 || result.OpponentScore != 0 {
-				t.Errorf("scores=%d-%d, want 3-0", result.ChallengerScore, result.OpponentScore)
-			}
-			if err := json.Unmarshal(result.Replay, &decoded); err != nil {
-				t.Errorf("decode result: %v", err)
-				return
-			}
-			if decoded.Summary.Score.Player != 3 || decoded.Summary.Score.Opponent != 0 {
-				t.Errorf("score=%+v", decoded.Summary.Score)
-			}
-			if len(decoded.History) == 0 || decoded.History[0].State.Initial == nil {
-				t.Errorf("missing initial board: %s", result.Replay)
-				return
-			}
-			initial := decoded.History[0].State.Initial
-			ids := make(map[wire.RobotId]struct{})
-			var teams [3]int
-			for _, robot := range initial.Robots {
-				ids[robot.Id] = struct{}{}
-				if robot.TeamId != nil {
-					switch *robot.TeamId {
-					case 1:
-						teams[1]++
-					case 2:
-						teams[2]++
-					default:
-						t.Errorf("invalid robot team: %v", *robot.TeamId)
-					}
-				}
-			}
-			if len(ids) != 6 || teams[1] != 3 || teams[2] != 3 {
-				t.Errorf("initial robots=%+v", initial.Robots)
-			}
-			for _, event := range decoded.History {
-				if event.Type != "field" {
-					t.Errorf("execution logs were recorded: %s", event.Type)
-				}
-			}
-		})
+		}
+	}
+	if len(ids) != 6 || teams[1] != 3 || teams[2] != 3 {
+		t.Errorf("initial robots=%+v", initial.Robots)
+	}
+	for _, event := range decoded.History {
+		if event.Type != "field" {
+			t.Errorf("execution logs were recorded: %s", event.Type)
+		}
 	}
 }
 

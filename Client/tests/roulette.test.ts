@@ -26,7 +26,7 @@ test('ルーレットは候補を複数周して選ばれた配置で止まる',
 
 test('サーバーが指定した候補で止まり、不明な結果を拒否する', () => {
   const layouts = [{ id: 'a' }, { id: 'b' }]
-  assert.equal(resolveServerSelection(layouts, { selectedLayoutId: 'b' }), 1)
+  assert.equal(resolveServerSelection(layouts, { fieldId: 'b' }), 1)
   assert.equal(resolveServerSelection(layouts, { candidateIndex: 0 }), 0)
-  assert.throws(() => resolveServerSelection(layouts, { selectedLayoutId: 'missing' }), /抽選結果/)
+  assert.throws(() => resolveServerSelection(layouts, { fieldId: 'missing' }), /抽選結果/)
 })

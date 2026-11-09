@@ -478,9 +478,8 @@ export interface components {
         SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
             id: string;
+            /** @description 対戦作成時にサーバーが選んだ具体的な盤面のID。 */
             fieldId: string;
-            /** @description 対戦作成時にサーバーが選んだ配置候補のID。 */
-            selectedLayoutId: string;
             /** @enum {string} */
             status?: "ready" | "running" | "finished";
             opponentName: string;

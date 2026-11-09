@@ -50,7 +50,6 @@ CREATE TABLE matches (
     run_id uuid NOT NULL UNIQUE REFERENCES runs (id) ON DELETE CASCADE,
     opponent_google_subject text NOT NULL REFERENCES users (google_subject),
     opponent_name text NOT NULL,
-    selected_layout_id text NOT NULL,
     outcome text NOT NULL CHECK (outcome IN ('win', 'loss', 'draw')),
     -- NULL for matches played before ratings were introduced.
     opponent_rating integer,

@@ -27,7 +27,7 @@ func (s *matchCreatorStub) Create(_ context.Context, subject string, ids []strin
 	s.subject, s.ids = subject, ids
 	return domain.Match{
 		ID: "match-id", RunID: "019a5aa3-c000-7000-8000-000000000001",
-		FieldID: "field", SelectedLayoutID: "layout", OpponentName: "Opponent",
+		FieldID: "field", OpponentName: "Opponent",
 	}, s.err
 }
 
@@ -83,7 +83,7 @@ func TestPostMatch(t *testing.T) {
 					t.Errorf("decode response: %v", err)
 					return
 				}
-				if match.Id != "match-id" || match.RunId.Version() != 7 || match.Status == nil || *match.Status != api.Finished || match.FieldId != "field" || match.SelectedLayoutId != "layout" || match.OpponentName != "Opponent" {
+				if match.Id != "match-id" || match.RunId.Version() != 7 || match.Status == nil || *match.Status != api.Finished || match.FieldId != "field" || match.OpponentName != "Opponent" {
 					t.Errorf("match=%+v", match)
 				}
 				if creator.subject != "verified-subject" || !reflect.DeepEqual(creator.ids, []string{"b", "a", "b"}) {
