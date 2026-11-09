@@ -17,11 +17,17 @@
   unicode-range:
     U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF, U+20000-2FA1F, U+E0100-E01EF;
 }
-/* Opt in only explanatory prose: compact controls and code keep their fonts. */
-.site .furigana-text:lang(ja) {
+/* Opt in prose and selected headings; compact controls and code keep their fonts. */
+.site .furigana-text:lang(ja),
+.site .furigana-heading:lang(ja) {
   font-family: 'Furifont Sans', var(--font-body);
-  line-height: 1.8;
   letter-spacing: normal;
+}
+.site .furigana-text:lang(ja) {
+  line-height: 1.8;
+}
+.site .furigana-heading:lang(ja) {
+  line-height: 1.6;
 }
 :root {
   --color-paper: #f1f6f2;

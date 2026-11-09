@@ -102,7 +102,7 @@ onBeforeUnmount(() => {
 <template>
   <main class="ranking-page container">
     <header class="ranking-heading">
-      <h1><Icon :icon="trophyIcon" aria-hidden="true" />ランキング</h1>
+      <h1 class="furigana-heading"><Icon :icon="trophyIcon" aria-hidden="true" />ランキング</h1>
       <div class="ranking-heading-actions">
         <p class="furigana-text">対戦におけるユーザーの順位とレートの確認ができます。</p>
         <button type="button" :disabled="matchStore.authStatus === 'checking'" @click="jumpToMyRank">
