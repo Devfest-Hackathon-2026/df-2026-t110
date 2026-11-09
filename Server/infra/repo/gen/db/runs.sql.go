@@ -37,26 +37,28 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {
 	return err
 }
 
-const createRunProgram = `-- name: CreateRunProgram :exec
-INSERT INTO run_programs(run_id, side, robot_index, program_id, revision)
-VALUES ($1,$2,$3,$4,$5)
+const createRunPrograms = `-- name: CreateRunPrograms :exec
+INSERT INTO run_programs (run_id, side, robot_index, program_id, revision)
+SELECT $1, unnest($2::smallint[]),
+       unnest($3::smallint[]),
+       unnest($4::text[]), unnest($5::integer[])
 `
 
-type CreateRunProgramParams struct {
-	RunID      pgtype.UUID
-	Side       int16
-	RobotIndex int16
-	ProgramID  string
-	Revision   int32
+type CreateRunProgramsParams struct {
+	RunID        pgtype.UUID
+	Sides        []int16
+	RobotIndexes []int16
+	ProgramIds   []string
+	Revisions    []int32
 }
 
-func (q *Queries) CreateRunProgram(ctx context.Context, arg CreateRunProgramParams) error {
-	_, err := q.db.Exec(ctx, createRunProgram,
+func (q *Queries) CreateRunPrograms(ctx context.Context, arg CreateRunProgramsParams) error {
+	_, err := q.db.Exec(ctx, createRunPrograms,
 		arg.RunID,
-		arg.Side,
-		arg.RobotIndex,
-		arg.ProgramID,
-		arg.Revision,
+		arg.Sides,
+		arg.RobotIndexes,
+		arg.ProgramIds,
+		arg.Revisions,
 	)
 	return err
 }

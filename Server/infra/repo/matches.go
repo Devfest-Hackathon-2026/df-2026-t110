@@ -96,14 +96,17 @@ func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain
 		}); err != nil {
 			return fmt.Errorf("insert match run: %w", err)
 		}
+		references := db.CreateRunProgramsParams{RunID: pgtype.UUID{Bytes: runID, Valid: true}}
 		for side, programs := range record.Programs {
 			for index, program := range programs {
-				if err := queries.CreateRunProgram(ctx, db.CreateRunProgramParams{
-					RunID: pgtype.UUID{Bytes: runID, Valid: true}, Side: int16(side), RobotIndex: int16(index), ProgramID: program.ID, Revision: program.Revision,
-				}); err != nil {
-					return fmt.Errorf("insert match program revision: %w", err)
-				}
+				references.Sides = append(references.Sides, int16(side))
+				references.RobotIndexes = append(references.RobotIndexes, int16(index))
+				references.ProgramIds = append(references.ProgramIds, program.ID)
+				references.Revisions = append(references.Revisions, program.Revision)
 			}
+		}
+		if err := queries.CreateRunPrograms(ctx, references); err != nil {
+			return fmt.Errorf("insert match program revisions: %w", err)
 		}
 		after, err := queries.AddUserRating(ctx, db.AddUserRatingParams{
 			GoogleSubject: record.GoogleSubject, Delta: int64(record.RatingDelta),

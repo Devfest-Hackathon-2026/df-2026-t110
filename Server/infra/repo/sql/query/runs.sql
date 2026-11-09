@@ -11,6 +11,8 @@ SELECT runs.id, runs.google_subject, runs.tutorial_id, runs.field_id, runs.progr
 FROM runs LEFT JOIN matches ON matches.run_id = runs.id
 WHERE runs.id = $1;
 
--- name: CreateRunProgram :exec
-INSERT INTO run_programs(run_id, side, robot_index, program_id, revision)
-VALUES ($1,$2,$3,$4,$5);
+-- name: CreateRunPrograms :exec
+INSERT INTO run_programs (run_id, side, robot_index, program_id, revision)
+SELECT sqlc.arg(run_id), unnest(sqlc.arg(sides)::smallint[]),
+       unnest(sqlc.arg(robot_indexes)::smallint[]),
+       unnest(sqlc.arg(program_ids)::text[]), unnest(sqlc.arg(revisions)::integer[]);
