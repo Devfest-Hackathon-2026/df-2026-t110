@@ -42,7 +42,7 @@ type Signature struct {
 	Result Type
 }
 
-// typeParameter denotes the stack builtin's T, freshly instantiated per call.
+// typeParameter denotes a generic builtin's T, freshly instantiated per call.
 type typeParameter struct{}
 
 func (typeParameter) annotation()   {}
@@ -53,6 +53,7 @@ func BuiltinSignatures() map[Name]Signature {
 	b, i, u, t, r := BoolType{}, IntegerType{}, UnitType{}, TerrainType{}, RotationType{}
 	x := typeParameter{}
 	v := StackType{ElementType: x}
+	o := OptionType{ElementType: x}
 	return map[Name]Signature{
 		"not":                   {[]Type{b}, b},
 		"and":                   {[]Type{b, b}, b},
@@ -77,6 +78,10 @@ func BuiltinSignatures() map[Name]Signature {
 		"pop_back":              {[]Type{v}, v},
 		"get_back":              {[]Type{v}, x},
 		"size":                  {[]Type{v}, i},
+		"some":                  {[]Type{x}, o},
+		"none":                  {nil, o},
+		"unwrap":                {[]Type{o}, x},
+		"is_some":               {[]Type{o}, b},
 		"is_land":               {[]Type{t}, b},
 		"is_goal":               {[]Type{t}, b},
 		"is_own_territory":      {[]Type{t}, b},

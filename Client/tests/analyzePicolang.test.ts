@@ -656,3 +656,102 @@ test('old annotations are stripped and inferred types are filled in every nested
   assert.equal(isPicoProgram(compiled), false)
   assert.equal(isPicoDraft(compiled), true)
 })
+
+test('option builtins infer independent element types and preserve nested constructors in execution JSON', () => {
+  const program = source()
+  const functions = programFunctions(program)
+  const cases: Array<{ name: string; use: PicoExpr; type: PicoType }> = [
+    { name: 'readBool', use: call('print_bool', call('unwrap', ident('input'))), type: 'bool' },
+    {
+      name: 'readStack',
+      use: call('print_rotation', call('get_back', call('unwrap', ident('input')))),
+      type: stack('rotation'),
+    },
+    {
+      name: 'readNested',
+      use: call('print_integer', call('unwrap', call('unwrap', ident('input')))),
+      type: { kind: 'option', elementType: 'integer' },
+    },
+  ]
+  for (const { name, use } of cases)
+    functions[name] = fn([call('is_some', ident('input')), use, ret(ident('input'))], 'unit', [
+      { kind: 'param', hintId: id(), ident: ident('input') },
+    ])
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.equal(isPicoProgram(analysis.program), true)
+  for (const { name, type } of cases) {
+    const expected = { kind: 'option', elementType: type }
+    assert.deepEqual(analysis.signatures[name], { params: [expected], returns: expected })
+    const compiled = programFunctions(analysis.program!)[name]
+    assert.deepEqual(compiled.params[0].type, expected)
+    assert.deepEqual(compiled.returnType, expected)
+  }
+})
+
+test('option inference rejects non-options, unknown elements and infinite types', () => {
+  for (const expr of [call('unwrap', defaultExpr()), call('is_some', call('new'))]) {
+    const analysis = inferPicolang(source(expr))
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+    assert.equal(analysis.program, null)
+  }
+  const program = source()
+  const functions = programFunctions(program)
+  functions.inspect = fn([ret(call('is_some', ident('input')))], 'bool', [
+    { kind: 'param', hintId: id(), ident: ident('input') },
+  ])
+  assert.ok(inferPicolang(program).diagnostics.some((d) => d.code === 'cannot_infer_type'))
+  functions.inspect.body.stmts.unshift({
+    kind: 'assign',
+    hintId: id(),
+    ident: ident('input'),
+    value: call('unwrap', ident('input')),
+  })
+  assert.ok(inferPicolang(program).diagnostics.some((d) => d.code === 'type_mismatch'))
+})
+
+test('some and none infer their types from arguments and later uses without annotations', () => {
+  const absent = local('absent', call('none'))
+  const nested = local('nested', call('some', call('none')))
+  const held = local('held', call('some', call('new')))
+  const options = local('options', call('push_back', call('new'), call('none')))
+  const program = source(
+    absent,
+    nested,
+    held,
+    options,
+    call('print_bool', call('unwrap', ident('absent'))),
+    call('print_integer', call('unwrap', call('unwrap', ident('nested')))),
+    call('push_back', call('unwrap', ident('held')), defaultExpr('rotation')),
+    call('push_back', ident('options'), call('some', defaultExpr('bool'))),
+  )
+  const before = structuredClone(program)
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(program, before)
+  const option = (elementType: PicoType): PicoType => ({ kind: 'option', elementType })
+  for (const [declaration, expected] of [
+    [absent, option('bool')],
+    [nested, option(option('integer'))],
+    [held, option(stack('rotation'))],
+    [options, stack(option('bool'))],
+  ] as const)
+    assert.deepEqual(analysis.types[declaration.ident.hintId], expected)
+  assert.equal(isPicoProgram(analysis.program), true)
+})
+
+test('option constructors require resolvable types and the declared number of arguments', () => {
+  for (const expression of [call('none'), call('some', call('none')), call('is_some', call('none'))]) {
+    const analysis = inferPicolang(source(expression))
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'cannot_infer_type'))
+    assert.equal(analysis.program, null)
+  }
+  for (const expression of [call('some'), call('none', defaultExpr())]) {
+    const analysis = inferPicolang(source(expression))
+    assert.deepEqual(
+      analysis.diagnostics.map((d) => d.code),
+      ['argument_count'],
+    )
+    assert.equal(analysis.program, null)
+  }
+})

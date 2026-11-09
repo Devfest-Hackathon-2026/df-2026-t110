@@ -37,6 +37,11 @@ func matches(store *memory.Store, id memory.ID, t bot.Type) bool {
 		case memory.ListRoot, memory.ListNode:
 			return true
 		}
+	case bot.OptionType:
+		switch value.(type) {
+		case memory.Some, memory.None:
+			return true
+		}
 	}
 	return false
 }

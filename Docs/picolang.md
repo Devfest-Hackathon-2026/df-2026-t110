@@ -3,7 +3,7 @@
 ## 仕様
 ### 型
 
-bool、integer、unit、terrain、rotation、distance_target は primitive type、stack は compound type とする。
+bool、integer、unit、terrain、rotation、distance_target は primitive type、stack、option は compound type とする。
 
 - bool
     - true/false
@@ -21,6 +21,9 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - 型Tの要素を持つ連結リスト
     - 同じstackの要素はすべて同じ型
     - 内部的にはノードに参照カウンタのついた根付き木として表現し、コピーのコストはO(1)とする。
+- option\<T>
+    - 型Tの値を持つsome、または値を持たないnoneを表す
+    - リテラルなし。組み込み関数some、noneで生成する
 
 ### 組み込み関数
 
@@ -61,6 +64,17 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
         - 末尾の要素を独立した値として返す。元のstackの要素数は変わらない
         - 要素数が0の場合はパニック
     - size: stack\<T> -> integer
+- option
+    - some: T -> option\<T>
+        - 引数の値を持つsomeを返す
+    - none: () -> option\<T>
+        - 値を持たないnoneを返す
+        - 型Tは使用箇所の制約から推論する。型を確定できない場合は実行前の型エラー
+    - unwrap: option\<T> -> T
+        - someが持つ値を返す
+        - noneの場合はパニック
+    - is_some: option\<T> -> bool
+        - someの場合true、noneの場合false
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool

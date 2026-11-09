@@ -23,6 +23,7 @@ export class TraceMemory {
         this.entry(event.value.prev).refs++
         this.entry(event.value.value).refs++
       }
+      if (event.value.type === 'some') this.entry(event.value.value).refs++
       this.entries.set(event.id, { value: event.value, refs: 1 })
     } else if (event.kind === 'memory_retain') this.entry(event.id).refs++
     else if (event.kind === 'memory_release') {
@@ -34,6 +35,7 @@ export class TraceMemory {
         if (--entry.refs) continue
         this.entries.delete(id)
         if (entry.value?.type === 'list_node') pending.push(entry.value.prev, entry.value.value)
+        if (entry.value?.type === 'some') pending.push(entry.value.value)
       }
     }
   }
@@ -43,6 +45,8 @@ export class TraceMemory {
       if (--remaining < 0 || depth > 16) return '…'
       const value = this.entry(id).value
       if (value === null) return '[]'
+      if (value.type === 'none') return 'none'
+      if (value.type === 'some') return `some(${render(value.value, depth + 1)})`
       if (value.type !== 'list_node') return formatPicoValue(value.value)
       const items: string[] = []
       let next = id

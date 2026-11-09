@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: OptionType
+description: 型Tの値を持つsome、または値を持たないnoneを表す型
+
+type: object
+additionalProperties: false
+required: [kind, elementType]
+properties:
+  kind:
+    type: string
+    const: option
+  elementType:
+    description: someが持つ値の型。基本型と複合型のどちらも指定できる
+    $ref: './type.yaml'

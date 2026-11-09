@@ -13,7 +13,7 @@ type ID = payload.ID
 // Store owns one reference; Add(ListRoot{}) acquires a caller-owned reference.
 const RootID = payload.RootID
 
-// Value is a stored primitive or list node. Add accepts only the non-pointer
+// Value is a stored primitive, list node or option. Add accepts only the non-pointer
 // variants below, so inputs and values returned by Get cannot mutate storage.
 type Value interface{ memoryValue() }
 
@@ -23,6 +23,14 @@ type Unit struct{}
 type Terrain struct{ Value values.TerrainValue }
 type Rotation struct{ Value values.Rotation }
 type DistanceTarget struct{ Value values.DistanceTarget }
+
+// Some points to an immutable stored value by ID and retains it once.
+// None has no outgoing reference; Some{Element: RootID} is some(empty stack).
+type Some struct {
+	Element ID
+	Value
+}
+type None struct{ Value }
 
 type ListRoot struct{}
 

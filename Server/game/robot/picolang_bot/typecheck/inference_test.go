@@ -23,6 +23,8 @@ func annotations(t *testing.T, program bot.TypedProgram) map[bot.HintID]bot.Type
 		case bot.BoolType, bot.IntegerType, bot.UnitType, bot.TerrainType, bot.RotationType:
 		case bot.StackType:
 			checkType(typ.ElementType)
+		case bot.OptionType:
+			checkType(typ.ElementType)
 		default:
 			t.Errorf("non-concrete type escaped checking: %T", typ)
 		}

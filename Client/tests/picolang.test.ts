@@ -5,6 +5,7 @@ import {
   makeStatement,
   newProgram,
   programFunctions,
+  samePicoType,
   type PicoType,
 } from '../src/features/picolang/language/picolang.ts'
 
@@ -59,4 +60,21 @@ test('必須returnとノード形状の破損を拒否する', () => {
   }
   other.picolang.v0.program.main.body.extra = true
   assert.equal(isPicoProgram(other), false)
+})
+
+test('option型を入れ子でも検証し、stackとは区別する', () => {
+  const source = newProgram()
+  const definition = programFunctions(newProgram()).main
+  programFunctions(source).inspect = definition
+  const option: PicoType = { kind: 'option', elementType: { kind: 'stack', elementType: 'bool' } }
+  definition.returnType = option
+  assert.equal(isPicoProgram(source), true)
+  assert.equal(samePicoType(option, structuredClone(option)), true)
+  assert.equal(samePicoType(option, { kind: 'stack', elementType: option.elementType }), false)
+  assert.equal(
+    samePicoType(option, { kind: 'option', elementType: { kind: 'stack', elementType: 'integer' } }),
+    false,
+  )
+  definition.returnType = { kind: 'option' } as PicoType
+  assert.equal(isPicoProgram(source), false)
 })

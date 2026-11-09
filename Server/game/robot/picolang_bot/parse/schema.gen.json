@@ -94,6 +94,23 @@
     },
     "header_v0/signature-type.yaml": {
       "$defs": {
+        "OptionType": {
+          "additionalProperties": false,
+          "properties": {
+            "elementType": {
+              "$ref": "#/$defs/header_v0~1signature-type.yaml"
+            },
+            "kind": {
+              "const": "option",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "elementType"
+          ],
+          "type": "object"
+        },
         "StackType": {
           "additionalProperties": false,
           "properties": {
@@ -131,13 +148,16 @@
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "description": "シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照",
+      "description": "シグネチャ内の型。既存の基本型、再帰的な stack と option、または型パラメータの参照",
       "oneOf": [
         {
           "$ref": "#/$defs/v0~1primitive-type.yaml"
         },
         {
           "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/StackType"
+        },
+        {
+          "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/OptionType"
         },
         {
           "$ref": "#/$defs/header_v0~1signature-type.yaml/$defs/TypeParameter"
@@ -315,9 +335,16 @@
       "type": "object"
     },
     "v0/compound-type.yaml": {
-      "$ref": "#/$defs/v0~1stack-type.yaml",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "他の型を組み合わせて構成する picolang の複合型",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/v0~1stack-type.yaml"
+        },
+        {
+          "$ref": "#/$defs/v0~1option-type.yaml"
+        }
+      ],
       "title": "CompoundType"
     },
     "v0/distance-target-literal.yaml": {
@@ -509,6 +536,27 @@
       "minLength": 1,
       "title": "Name",
       "type": "string"
+    },
+    "v0/option-type.yaml": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "型Tの値を持つsome、または値を持たないnoneを表す型",
+      "properties": {
+        "elementType": {
+          "$ref": "#/$defs/v0~1type.yaml",
+          "description": "someが持つ値の型。基本型と複合型のどちらも指定できる"
+        },
+        "kind": {
+          "const": "option",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "elementType"
+      ],
+      "title": "OptionType",
+      "type": "object"
     },
     "v0/param.yaml": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

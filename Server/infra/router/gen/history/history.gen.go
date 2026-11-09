@@ -1362,6 +1362,34 @@ func (j *MoveResult) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+type NoneValue struct {
+	// Type corresponds to the JSON schema field "type".
+	Type string `json:"type"`
+}
+
+const NoneValueType = "none"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *NoneValue) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw NoneValue: %w", err)
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in NoneValue: required")
+	}
+	type Plain NoneValue
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal NoneValue: %w", err)
+	}
+	if plain.Type != "none" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "none")
+	}
+	*j = NoneValue(plain)
+	return nil
+}
+
 // 荷物の取得結果。成功時は対象マスから荷物を除き、機体が運搬する
 type PickUpResult struct {
 	// Kind corresponds to the JSON schema field "kind".
@@ -1897,6 +1925,7 @@ func (j *PicolangMemoryRetainEvent) UnmarshalJSON(value []byte) error {
 // は保持しない。
 // list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
 // 同じ stack の要素の型が統一されることは生成側で保証する。
+// option の some は既存の値への ID を1つ保持し、none は値への参照を持たない。
 type PicolangMemoryValue struct {
 	Bool *BoolValue `json:"-" yaml:"-"`
 
@@ -1911,6 +1940,10 @@ type PicolangMemoryValue struct {
 	DistanceTarget *DistanceTargetValue `json:"-" yaml:"-"`
 
 	ListNode *ListNode `json:"-" yaml:"-"`
+
+	Some *SomeValue `json:"-" yaml:"-"`
+
+	None *NoneValue `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -1938,6 +1971,12 @@ func (j PicolangMemoryValue) MarshalJSON() ([]byte, error) {
 	if j.ListNode != nil {
 		set++
 	}
+	if j.Some != nil {
+		set++
+	}
+	if j.None != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("PicolangMemoryValue: exactly one variant must be set, got %d", set)
 	}
@@ -1961,6 +2000,12 @@ func (j PicolangMemoryValue) MarshalJSON() ([]byte, error) {
 	}
 	if j.ListNode != nil {
 		return json.Marshal(j.ListNode)
+	}
+	if j.Some != nil {
+		return json.Marshal(j.Some)
+	}
+	if j.None != nil {
+		return json.Marshal(j.None)
 	}
 	return nil, nil // unreachable
 }
@@ -2033,6 +2078,18 @@ func (j *PicolangMemoryValue) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("PicolangMemoryValue.ListNode: %w", err)
 		}
 		j.ListNode = &v
+	case "some":
+		var v SomeValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.Some: %w", err)
+		}
+		j.Some = &v
+	case "none":
+		var v NoneValue
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("PicolangMemoryValue.None: %w", err)
+		}
+		j.None = &v
 	default:
 		return fmt.Errorf("PicolangMemoryValue: unknown type value %q", disc)
 	}
@@ -3018,6 +3075,40 @@ func (j *Sea) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("field %s: must be equal to %s", "type", "sea")
 	}
 	*j = Sea(plain)
+	return nil
+}
+
+type SomeValue struct {
+	// Type corresponds to the JSON schema field "type".
+	Type string `json:"type"`
+
+	// someが持つ既存の値のID
+	Value PicolangMemoryId `json:"value"`
+}
+
+const SomeValueType = "some"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *SomeValue) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw SomeValue: %w", err)
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in SomeValue: required")
+	}
+	if _, ok := raw["value"]; raw != nil && !ok {
+		return fmt.Errorf("field value in SomeValue: required")
+	}
+	type Plain SomeValue
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal SomeValue: %w", err)
+	}
+	if plain.Type != "some" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "some")
+	}
+	*j = SomeValue(plain)
 	return nil
 }
 

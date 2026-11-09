@@ -26,6 +26,8 @@ func TestMemoryUsagePerEntry(t *testing.T) {
 		{"bool", memory.Bool{Value: true}, 1},
 		{"integer", memory.Integer{Value: 42}, 8},
 		{"unit", memory.Unit{}, 0},
+		{"none", memory.None{}, 2 * wordBytes},
+		{"some", memory.Some{Element: memory.RootID}, 2*wordBytes + 8},
 		{"plain", memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}}}, 9 * wordBytes},
 		{"goal", memory.Terrain{Value: values.LandTerrain{Kind: values.GoalLand{}}}, 9 * wordBytes},
 		{"checkpoint", memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 3}}}, 9*wordBytes + 8},

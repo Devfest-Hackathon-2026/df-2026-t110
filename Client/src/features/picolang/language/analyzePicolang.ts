@@ -36,7 +36,7 @@ export interface PicoDiagnostic {
   message: string
 }
 
-// Function signatures and stacks use the same first-order type constructors.
+// Function signatures, stacks and options use the same first-order type constructors.
 type Term = string | { kind: 'compound'; name: string; args: Term[] } | TypeVariable
 interface TypeVariable {
   kind: 'variable'
@@ -46,7 +46,8 @@ const invalid = '<invalid>'
 const compound = (name: string, args: Term[]): Term => ({ kind: 'compound', name, args })
 const stack = (element: Term): Term => compound('stack', [element])
 const functionType = (args: Term[], result: Term): Term => compound('function', [...args, result])
-const term = (type: PicoType): Term => (typeof type === 'string' ? type : stack(term(type.elementType)))
+const term = (type: PicoType): Term =>
+  typeof type === 'string' ? type : compound(type.kind, [term(type.elementType)])
 function prune(type: Term): Term {
   if (typeof type !== 'string' && type.kind === 'variable' && type.binding !== undefined) {
     type.binding = prune(type.binding)
@@ -135,7 +136,9 @@ function resolvedType(type: Term): PicoType | undefined {
   if (typeof type === 'string') return type === invalid ? undefined : (type as PicoType)
   if (type.kind === 'variable') return undefined
   const elementType = resolvedType(type.args[0])
-  return elementType ? { kind: 'stack', elementType } : undefined
+  return elementType && (type.name === 'stack' || type.name === 'option')
+    ? { kind: type.name, elementType }
+    : undefined
 }
 
 /** Share monomorphic function signatures across every body and call, including recursive calls. */
@@ -254,6 +257,20 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
             return functionType([value], variable)
           default:
             return functionType([value], 'integer')
+        }
+      }
+      if (['some', 'none', 'unwrap', 'is_some'].includes(name)) {
+        const variable = fresh(functionName, hintId)
+        const value = compound('option', [variable])
+        switch (name) {
+          case 'some':
+            return functionType([variable], value)
+          case 'none':
+            return functionType([], value)
+          case 'unwrap':
+            return functionType([value], variable)
+          default:
+            return functionType([value], 'bool')
         }
       }
       return functionType(builtin.args.map(term), term(builtin.returns))

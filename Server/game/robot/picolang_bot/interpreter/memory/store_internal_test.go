@@ -14,6 +14,10 @@ func TestReferenceCountOverflowIsAtomic(t *testing.T) {
 		operation func(*Store, ID) error
 	}{
 		{"retain primitive", 1, func(s *Store, id ID) error { return s.Retain(id) }},
+		{"some edge", 1, func(s *Store, id ID) error {
+			_, err := s.Add(Some{Element: id})
+			return err
+		}},
 		{"retain root", math.MaxUint64, func(s *Store, _ ID) error { return s.Retain(RootID) }},
 		{"add root", math.MaxUint64, func(s *Store, _ ID) error {
 			_, err := s.Add(ListRoot{})
@@ -77,7 +81,7 @@ func TestIDExhaustionDoesNotRetainEdges(t *testing.T) {
 
 func TestMemoryUsageOverflowIsAtomic(t *testing.T) {
 	t.Parallel()
-	for _, value := range []Value{Unit{}, ListNode{Prev: RootID, Value: RootID}} {
+	for _, value := range []Value{Unit{}, None{}, Some{Element: RootID}, ListNode{Prev: RootID, Value: RootID}} {
 		t.Run(fmt.Sprintf("%T", value), func(t *testing.T) {
 			t.Parallel()
 			var s Store

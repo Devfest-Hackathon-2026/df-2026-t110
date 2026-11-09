@@ -19,7 +19,7 @@ func ValidPicolangEvent(message PicolangEvent) bool {
 			return false
 		}
 		switch value := event.Value.(type) {
-		case memory.Bool, memory.Integer, memory.Unit, memory.ListNode:
+		case memory.Bool, memory.Integer, memory.Unit, memory.ListNode, memory.Some, memory.None:
 			return true
 		case memory.Terrain:
 			return values.ValidValue(value.Terrain)

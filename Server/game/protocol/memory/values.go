@@ -8,7 +8,7 @@ type ID uint64
 
 const RootID ID = 0
 
-// Value is a primitive allocation or a list node. The common root is implicit.
+// Value is a primitive allocation, list node or option. The common root is implicit.
 type Value interface{ memoryValue() }
 
 type Bool struct {
@@ -40,3 +40,10 @@ type ListNode struct {
 	Element ID
 	Value
 }
+
+// Some retains a single existing value by ID. None has no outgoing edge.
+type Some struct {
+	Element ID
+	Value
+}
+type None struct{ Value }

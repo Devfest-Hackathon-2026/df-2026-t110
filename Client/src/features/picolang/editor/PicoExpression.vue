@@ -64,7 +64,12 @@ const availableCalls = computed(() =>
   options.value.filter(
     (option) =>
       samePicoType(props.expectedType, option.returns) ||
-      (option.name === 'new' && typeof props.expectedType === 'object'),
+      (option.name === 'new' &&
+        typeof props.expectedType === 'object' &&
+        props.expectedType.kind === 'stack') ||
+      (['some', 'none'].includes(option.name) &&
+        typeof props.expectedType === 'object' &&
+        props.expectedType.kind === 'option'),
   ),
 )
 const literalTypes = computed(() =>

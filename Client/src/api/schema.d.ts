@@ -523,9 +523,9 @@ export interface components {
         name: string;
         /**
          * PicolangV0SignatureType
-         * @description シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
+         * @description シグネチャ内の型。既存の基本型、再帰的な stack と option、または型パラメータの参照
          */
-        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["StackType"] | components["schemas"]["TypeParameter"]);
+        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["StackType"] | components["schemas"]["OptionType"] | components["schemas"]["TypeParameter"]);
         /**
          * PrimitiveType
          * @description picolang の基本型。unit は () を表す
@@ -535,6 +535,11 @@ export interface components {
         StackType: {
             /** @constant */
             kind: "stack";
+            elementType: components["schemas"]["signature-type"];
+        };
+        OptionType: {
+            /** @constant */
+            kind: "option";
             elementType: components["schemas"]["signature-type"];
         };
         TypeParameter: {
@@ -719,7 +724,7 @@ export interface components {
          * Type
          * @description picolang の値の型。基本型または複合型
          */
-        type: components["schemas"]["primitive-type"] | components["schemas"]["stack-type"];
+        type: components["schemas"]["primitive-type"] | components["schemas"]["compound-type"];
         /**
          * StackType
          * @description 同じ型の要素を持つ連結リストで表現するスタックの型
@@ -730,6 +735,21 @@ export interface components {
             /** @description 要素の型。基本型と複合型のどちらも指定できる */
             elementType: components["schemas"]["type"];
         };
+        /**
+         * OptionType
+         * @description 型Tの値を持つsome、または値を持たないnoneを表す型
+         */
+        "option-type": {
+            /** @constant */
+            kind: "option";
+            /** @description someが持つ値の型。基本型と複合型のどちらも指定できる */
+            elementType: components["schemas"]["type"];
+        };
+        /**
+         * CompoundType
+         * @description 他の型を組み合わせて構成する picolang の複合型
+         */
+        "compound-type": components["schemas"]["stack-type"] | components["schemas"]["option-type"];
         /**
          * Param
          * @description 関数の仮引数の名前と型
@@ -1264,14 +1284,25 @@ export interface components {
             /** @description 末尾の要素を表す既存の値の ID。入れ子の stack も指定できる */
             value: components["schemas"]["memory-id.schema"];
         };
+        SomeValue: {
+            /** @constant */
+            type: "some";
+            /** @description someが持つ既存の値のID */
+            value: components["schemas"]["memory-id.schema"];
+        };
+        NoneValue: {
+            /** @constant */
+            type: "none";
+        };
         /**
          * PicolangMemoryValue
          * @description 仮想メモリに確保する不変の値。primitive は型と値を、list node は既存の値への ID を保持する。
          *     stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot は保持しない。
          *     list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
          *     同じ stack の要素の型が統一されることは生成側で保証する。
+         *     option の some は既存の値への ID を1つ保持し、none は値への参照を持たない。
          */
-        "memory-value.schema": {} & (components["schemas"]["BoolValue"] | components["schemas"]["IntegerValue"] | components["schemas"]["UnitValue"] | components["schemas"]["TerrainValue"] | components["schemas"]["RotationValue"] | components["schemas"]["DistanceTargetValue"] | components["schemas"]["ListNode"]);
+        "memory-value.schema": {} & (components["schemas"]["BoolValue"] | components["schemas"]["IntegerValue"] | components["schemas"]["UnitValue"] | components["schemas"]["TerrainValue"] | components["schemas"]["RotationValue"] | components["schemas"]["DistanceTargetValue"] | components["schemas"]["ListNode"] | components["schemas"]["SomeValue"] | components["schemas"]["NoneValue"]);
         /**
          * PicolangMemoryAllocateEvent
          * @description 指定した未使用の ID に不変の値を確保し、呼び出し元が所有する参照を一つ作る。
