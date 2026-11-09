@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent } from 'vue'
 import { Icon } from '@iconify/vue'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
+import arrowUpRightIcon from '@iconify-icons/lucide/arrow-up-right'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import AppHeader from './AppHeader.vue'
 import HomeFeatureCarousel from './HomeFeatureCarousel.vue'
@@ -81,13 +82,17 @@ document.title = tutorialId
         <p class="hero-lead">
           岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
         </p>
-        <div class="hero-actions">
-          <a class="action-primary" href="/tutorials">
-            <Icon :icon="bookOpenIcon" aria-hidden="true" />教材を始める</a
-          >
-          <a class="action-primary" href="/rooms">
-            <Icon :icon="swordsIcon" aria-hidden="true" />対戦を始める</a
-          >
+        <div class="home-entry-grid">
+          <a class="home-entry-card" href="/tutorials">
+            <Icon :icon="bookOpenIcon" aria-hidden="true" />
+            <span><strong>教材を始める</strong><small>プログラムを組んでロボットを動かす</small></span>
+            <Icon :icon="arrowUpRightIcon" class="home-entry-arrow" aria-hidden="true" />
+          </a>
+          <a class="home-entry-card" href="/rooms">
+            <Icon :icon="swordsIcon" aria-hidden="true" />
+            <span><strong>対戦を始める</strong><small>ロボットにプログラムを割り当てる</small></span>
+            <Icon :icon="arrowUpRightIcon" class="home-entry-arrow" aria-hidden="true" />
+          </a>
         </div>
       </section>
 
