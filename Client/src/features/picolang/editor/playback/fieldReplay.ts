@@ -1,24 +1,24 @@
 import { toRaw } from 'vue'
-import type { ReplayAction, ReplayFrame } from '../match/matchReplay.ts'
-import type { PicoValue } from '../picolang/language/picolang.ts'
-import type { AnimationEvent } from '../stage/robotAnimator.ts'
-import type { StageLayout, StageObject } from '../stage/stage.ts'
-import { speechForValue, type TutorialSpeech } from './tutorialSpeech.ts'
+import type { ReplayAction, ReplayFrame } from './fieldHistory.ts'
+import type { PicoValue } from '../../language/picolang.ts'
+import type { AnimationEvent } from '../../../stage/robotAnimator.ts'
+import type { StageLayout, StageObject } from '../../../stage/stage.ts'
+import { speechForValue, type PicolangSpeech } from './picolangSpeech.ts'
 
-export function cloneTutorialLayout(layout: StageLayout): StageLayout {
+export function cloneReplayLayout(layout: StageLayout): StageLayout {
   return structuredClone(toRaw(layout))
 }
 
-export function selectedTutorialLayout(
+export function selectedReplayLayout(
   layouts: StageLayout[],
   fieldId: string,
 ): { index: number; stage: StageLayout } {
   const index = layouts.findIndex((layout) => layout.id === fieldId)
-  if (index < 0) throw new Error(`選ばれたフィールド ${fieldId} が教材の候補にありません`)
-  return { index, stage: cloneTutorialLayout(layouts[index]) }
+  if (index < 0) throw new Error(`選ばれたフィールド ${fieldId} が配置の候補にありません`)
+  return { index, stage: cloneReplayLayout(layouts[index]) }
 }
 
-export function tutorialActionAnimation(action: ReplayAction, id: number): AnimationEvent | null {
+export function actionAnimation(action: ReplayAction, id: number): AnimationEvent | null {
   if (
     action.kind !== 'forward' &&
     action.kind !== 'back' &&
@@ -39,7 +39,7 @@ export function tutorialActionAnimation(action: ReplayAction, id: number): Anima
   }
 }
 
-export function tutorialActionSpeech(action: ReplayAction, id: number): TutorialSpeech | null {
+export function actionSpeech(action: ReplayAction, id: number): PicolangSpeech | null {
   let value: PicoValue
   switch (action.kind) {
     case 'print_integer':
@@ -71,9 +71,9 @@ export function tutorialActionSpeech(action: ReplayAction, id: number): Tutorial
   return speechForValue(value, id)
 }
 
-export function applyTutorialFrame(stage: StageLayout, frame: ReplayFrame): boolean {
+export function applyReplayFrame(stage: StageLayout, frame: ReplayFrame): boolean {
   if (frame.terrain.length !== stage.height || frame.terrain.some((row) => row.length !== stage.width))
-    throw new Error('実行履歴の盤面サイズが教材と一致しません')
+    throw new Error('実行履歴の盤面サイズが初期盤面と一致しません')
   let changed = false
   for (const cell of stage.cells) {
     const actual = frame.terrain[cell.y][cell.x]

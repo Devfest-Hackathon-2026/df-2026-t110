@@ -1,3 +1,4 @@
+import { parsePicolangExecutionJson } from '../picolang/language/executionJson.ts'
 import type { PicoProgram } from '../picolang/language/picolang.ts'
 
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
@@ -37,6 +38,21 @@ async function postJson(path: string, body: unknown, signal: AbortSignal): Promi
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function parseTutorialResult(json: string): TutorialResult {
+  const result = parsePicolangExecutionJson(json)
+
+  if (
+    !isRecord(result) ||
+    !Array.isArray(result.history) ||
+    !isRecord(result.summary) ||
+    typeof result.summary.cleared !== 'boolean' ||
+    !Number.isInteger(result.summary.tick) ||
+    !['all_stopped', 'turn_limit', 'condition_met'].includes(String(result.summary.reason))
+  )
+    throw new Error('教材の実行結果の形式が不正です')
+  return result as unknown as TutorialResult
 }
 
 export async function saveTutorialProgram(
@@ -97,18 +113,9 @@ export function receiveTutorialResult(runId: string, signal: AbortSignal): Promi
     signal.addEventListener('abort', abort, { once: true })
     source.addEventListener('result', (event) => {
       try {
-        const result: unknown = JSON.parse((event as MessageEvent).data)
-        if (
-          !isRecord(result) ||
-          !Array.isArray(result.history) ||
-          !isRecord(result.summary) ||
-          typeof result.summary.cleared !== 'boolean' ||
-          !Number.isInteger(result.summary.tick) ||
-          !['all_stopped', 'turn_limit', 'condition_met'].includes(String(result.summary.reason))
-        )
-          throw new Error('教材の実行結果の形式が不正です')
+        const result = parseTutorialResult((event as MessageEvent).data)
         cleanup()
-        resolve(result as unknown as TutorialResult)
+        resolve(result)
       } catch (error) {
         cleanup()
         reject(error)

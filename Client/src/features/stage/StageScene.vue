@@ -19,7 +19,7 @@ import {
 } from '../rooms/roomMarkerTracking.ts'
 import type { StageCell, StageLayout } from './stage.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
-import type { TutorialSpeech } from '../tutorial/tutorialSpeech.ts'
+import type { PicolangSpeech } from '../picolang/editor/playback/picolangSpeech.ts'
 import TerrainSpeechModel from '../tutorial/TerrainSpeechModel.vue'
 
 const props = withDefaults(
@@ -27,7 +27,7 @@ const props = withDefaults(
     stage: StageLayout
     mode: 'preview' | 'camera'
     animationEvent?: AnimationEvent | null
-    speech?: TutorialSpeech | null
+    speech?: PicolangSpeech | null
     previewDistance?: number
   }>(),
   { animationEvent: null, speech: null, previewDistance: 4.8 },

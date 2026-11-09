@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { speechForValue } from '../src/features/tutorial/tutorialSpeech.ts'
+import { speechForValue } from '../src/features/picolang/editor/playback/picolangSpeech.ts'
 
 test('発話は配列を横並びに分け、観測した地形をモデル用の値として保持する', () => {
   const values = speechForValue([2, 5, 8], 1)

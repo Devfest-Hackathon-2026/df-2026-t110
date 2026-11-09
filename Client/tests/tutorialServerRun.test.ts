@@ -3,12 +3,12 @@ import assert from 'node:assert/strict'
 import { reactive } from 'vue'
 import { normalizeStage } from '../src/features/stage/stage.ts'
 import {
-  applyTutorialFrame,
-  cloneTutorialLayout,
-  selectedTutorialLayout,
-  tutorialActionAnimation,
-  tutorialActionSpeech,
-} from '../src/features/tutorial/tutorialReplay.ts'
+  applyReplayFrame,
+  cloneReplayLayout,
+  selectedReplayLayout,
+  actionAnimation,
+  actionSpeech,
+} from '../src/features/picolang/editor/playback/fieldReplay.ts'
 import { replayFrames } from '../src/features/match/matchReplay.ts'
 import { newProgram } from '../src/features/picolang/language/picolang.ts'
 import {
@@ -116,10 +116,10 @@ test('サーバーが選んだ候補を使い、履歴の破壊と発話を教�
   const first = normalizeStage({ id: 'variant-a', map: ['S.G'] })
   const second = normalizeStage({ id: 'variant-b', map: ['S#G'] })
   const layouts = reactive([first, second])
-  const { index, stage } = selectedTutorialLayout(layouts, 'variant-b')
+  const { index, stage } = selectedReplayLayout(layouts, 'variant-b')
   assert.equal(index, 1)
   assert.equal(stage.cells[1].terrain, 'rock')
-  assert.equal(cloneTutorialLayout(layouts[0]).id, 'variant-a')
+  assert.equal(cloneReplayLayout(layouts[0]).id, 'variant-a')
   const frames = replayFrames([
     {
       type: 'field',
@@ -145,8 +145,8 @@ test('サーバーが選んだ候補を使い、履歴の破壊と発話を教�
       },
     },
   ])
-  assert.equal(applyTutorialFrame(stage, frames[0]), false)
-  assert.deepEqual(tutorialActionAnimation(frames[1].actions[0], 1), {
+  assert.equal(applyReplayFrame(stage, frames[0]), false)
+  assert.deepEqual(actionAnimation(frames[1].actions[0], 1), {
     id: 1,
     type: 'drill',
     success: true,
@@ -154,13 +154,12 @@ test('サーバーが選んだ候補を使い、履歴の破壊と発話を教�
     direction: undefined,
     ticks: undefined,
   })
-  assert.equal(applyTutorialFrame(stage, frames[1]), true)
+  assert.equal(applyReplayFrame(stage, frames[1]), true)
   assert.equal(stage.cells[1].terrain, 'land')
   assert.equal(stage.rows[0], '...')
-  assert.equal(tutorialActionSpeech({ kind: 'print_integer', robotId: 'robot-1', integer: 0 }, 2)?.label, '0')
+  assert.equal(actionSpeech({ kind: 'print_integer', robotId: 'robot-1', integer: 0 }, 2)?.label, '0')
   assert.equal(
-    tutorialActionSpeech({ kind: 'print_terrain', robotId: 'robot-1', terrain: { type: 'sea' } }, 3)?.terrain
-      ?.type,
+    actionSpeech({ kind: 'print_terrain', robotId: 'robot-1', terrain: { type: 'sea' } }, 3)?.terrain?.type,
     'sea',
   )
 })
