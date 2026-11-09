@@ -32,7 +32,7 @@ type matchOpponentStub struct {
 	challenger string
 }
 
-func (s *matchOpponentStub) Draw(_ context.Context, challenger string) (domain.BattleTeam, error) {
+func (s *matchOpponentStub) SelectOpponent(_ context.Context, challenger string) (domain.BattleTeam, error) {
 	s.challenger = challenger
 	return s.team, s.err
 }
@@ -72,11 +72,11 @@ func TestCreateMatch(t *testing.T) {
 	t.Parallel()
 	storageErr := errors.New("storage unavailable")
 	for _, tt := range []struct {
-		name                                  string
-		subject                               string
-		ids                                   []string
-		noName                                bool
-		drawErr, executeErr, saveErr, wantErr error
+		name                                       string
+		subject                                    string
+		ids                                        []string
+		noName                                     bool
+		selectionErr, executeErr, saveErr, wantErr error
 	}{
 		{name: "ordered duplicate programs", subject: "owner", ids: []string{"b", "a", "b"}},
 		{name: "no session", ids: []string{"a", "a", "a"}, wantErr: ErrUnauthenticated},
@@ -88,8 +88,8 @@ func TestCreateMatch(t *testing.T) {
 		{name: "missing program", subject: "owner", ids: []string{"a", "missing", "a"}, wantErr: ErrNotFound},
 		{name: "other user's program", subject: "owner", ids: []string{"a", "foreign", "a"}, wantErr: ErrForbidden},
 		{name: "tutorial program", subject: "owner", ids: []string{"a", "tutorial", "a"}, wantErr: domain.ErrInvalidProgram},
-		{name: "no opponent", subject: "owner", ids: []string{"a", "a", "a"}, drawErr: ErrNoOpponent, wantErr: ErrNoOpponent},
-		{name: "draw failure", subject: "owner", ids: []string{"a", "a", "a"}, drawErr: storageErr, wantErr: storageErr},
+		{name: "no opponent", subject: "owner", ids: []string{"a", "a", "a"}, selectionErr: ErrNoOpponent, wantErr: ErrNoOpponent},
+		{name: "selection failure", subject: "owner", ids: []string{"a", "a", "a"}, selectionErr: storageErr, wantErr: storageErr},
 		{name: "execution failure", subject: "owner", ids: []string{"a", "a", "a"}, executeErr: domain.ErrInvalidProgram, wantErr: domain.ErrInvalidProgram},
 		{name: "save failure", subject: "owner", ids: []string{"a", "a", "a"}, saveErr: storageErr, wantErr: storageErr},
 	} {
@@ -103,7 +103,7 @@ func TestCreateMatch(t *testing.T) {
 			opponent := &matchOpponentStub{team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
 				Programs: []domain.Program{{ID: "o2"}, {ID: "o1"}, {ID: "o2"}},
-			}, err: tt.drawErr}
+			}, err: tt.selectionErr}
 			executor := &matchExecutorStub{err: tt.executeErr}
 			store := &matchStoreStub{err: tt.saveErr}
 			service := NewMatches(MatchDeps{
@@ -143,7 +143,7 @@ func TestCreateMatch(t *testing.T) {
 				t.Errorf("engine programs=%v/%v", gotIDs, executor.opponent)
 			}
 			if opponent.challenger != "owner" || executor.layout.ID != "layout-b" || executor.calls != 1 {
-				t.Errorf("draw=%+v, execution=%+v", opponent, executor)
+				t.Errorf("selection=%+v, execution=%+v", opponent, executor)
 			}
 			if match.ID != "match-id" || match.RunID != "run-id" || match.OpponentName != opponentName || match.SelectedLayoutID != "layout-b" {
 				t.Errorf("match=%+v", match)

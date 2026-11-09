@@ -21,7 +21,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func TestDrawBattleOpponent(t *testing.T) {
+func TestSelectBattleOpponent(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 	programs, battle := NewPrograms(pool), NewBattlePrograms(pool)
@@ -63,9 +63,9 @@ func TestDrawBattleOpponent(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 3 {
-		team, err := NewMatches(pool).Draw(t.Context(), "owner")
+		team, err := NewMatches(pool).SelectOpponent(t.Context(), "owner")
 		if err != nil {
-			t.Errorf("Draw: %v", err)
+			t.Errorf("SelectOpponent: %v", err)
 			continue
 		}
 		var ids []string
@@ -82,7 +82,7 @@ func TestDrawBattleOpponent(t *testing.T) {
 	if err := battle.Set(t.Context(), "opponent", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewMatches(pool).Draw(t.Context(), "owner"); !errors.Is(err, usecase.ErrNoOpponent) {
+	if _, err := NewMatches(pool).SelectOpponent(t.Context(), "owner"); !errors.Is(err, usecase.ErrNoOpponent) {
 		t.Errorf("no opponent error=%v", err)
 	}
 }
@@ -96,7 +96,7 @@ func (matchSession) CurrentUser(_ context.Context, id string) (domain.User, erro
 func TestPostMatchPersistsAndReplays(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
-	source, err := os.ReadFile("../tutorialrun/testdata/forward.json")
+	source, err := os.ReadFile("../matchrun/testdata/query_move.json")
 	if err != nil {
 		t.Fatal(err)
 	}

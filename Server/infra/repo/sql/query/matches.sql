@@ -6,7 +6,7 @@ VALUES ($1, $2, $3, $4);
 INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, selected_layout_id)
 VALUES ($1, $2, $3, $4, $5);
 
--- name: DrawBattleOpponent :many
+-- name: SelectBattleOpponent :many
 WITH candidate AS (
     SELECT users.google_subject, users.name
     FROM users

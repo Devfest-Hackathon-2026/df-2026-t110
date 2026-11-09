@@ -10,6 +10,7 @@
 ## 相手の選び方
 
 - (仮実装) 表示名と3台分の対戦用プログラムを登録している自分以外のユーザーからランダムに1人選び、登録済みのプログラムをロボット順に使う。プログラムIDの重複は保持する
+  - レートを考慮した相手選択は [#156](https://github.com/dvpico/Programming-Learning-AR/issues/156) で対応する
   - ランクが近い人だけに絞る場合、似た組み合わせの対戦になりやすい
   - プログラム単位で選ぶ場合、多く提出したユーザーほど選ばれやすくなる
 
@@ -36,16 +37,37 @@
 
 既存DBには、サーバー更新前に `Server/infra/repo/sql/migrations/20261109_matches.sql` を適用する。新規DBでは `Server/infra/repo/sql/schema/schema.sql` を使う。
 
+### DBスキーマの適用方法
+
+`schema.sql` は新規DBを作るためのDDLで、`sqlc` はこのファイルとクエリからGoコードを生成するだけである。コード生成やサーバー起動ではDBのテーブルは作成・更新されない。
+
+| 実行環境 | 現在の適用方法 |
+| --- | --- |
+| ローカルの Docker Compose | `sql/schema` を `/docker-entrypoint-initdb.d` にマウントし、PostgreSQLのデータ領域が空の初回起動時だけ実行する。既存ボリュームの再起動・再ビルド時には再実行しない |
+| DB統合テスト | テストごとに一時スキーマを作り、`schema.sql` を適用する |
+| Cloud SQL | TerraformはDBインスタンス・DB・ユーザーを作成する。テーブルDDLを適用する処理はない |
+| サーバーのデプロイCI | イメージのビルド・配布・Cloud Runの更新を行う。DBマイグレーションを実行する処理はない |
+
+今回の変更は `matches` の追加と、対戦では使わない `runs.tutorial_id` / `runs.program_id` のNULL許可を含む。既存DBのデータを維持してこの構造に更新するために移行SQLが必要となる。`sql/migrations` は現時点では手動適用用のSQLを置くディレクトリであり、適用履歴の管理や自動実行の仕組みはない。
+
+Composeの既存DBでは、リポジトリルートから以下を一度実行する。
+
+```sh
+docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261109_matches.sql
+```
+
+Cloud SQLでは接続を用意したうえで同じ移行SQLを手動適用する。新規の空DBには移行SQLではなく `schema.sql` を適用する。
+
 ## 仮の盤面設定
 
 - フィールドIDは `battle-1`、配置候補は2種類。9×7マスで、左右の端1列を各チームのテリトリーとする
 - 各チーム3台、掘削上限3回、規定200ターン、中央の荷物3個、荷物単価1点、投棄ペナルティ1点
-- 初期位置・向きとテリトリーは固定し、岩の配置が異なる左右対称な候補から抽選する。設定は `Server/infra/matchrun/layouts.go` に集約する
+- 初期位置・向きとテリトリーは固定し、岩の配置が異なる左右対称な候補から抽選する。地形の各行・荷物・テリトリー・ロボットの座標とルールは `Server/infra/matchrun/layouts.json` で定義する
 - ステップ数・メモリ・呼び出し深度に上限を設け、実行エラーのロボットは停止する。申込側の解析・型検査に失敗した場合は `400` とし、相手側の場合は該当ロボットを停止する
 
 ## ランキングについて
 
-- レート計算・更新は未実装。実装時にはランキングは対戦を申し込んだ側だけ変動させる
+- レート計算・更新は [#155](https://github.com/dvpico/Programming-Learning-AR/issues/155) で対応する。実装時にはランキングは対戦を申し込んだ側だけ変動させる
   - 相手側は自分の知らないところで対戦されるため、気づいたときに勝手にレートが上下するのはあまり直感的でない
 - ランキング掲載には DisplayName の設定を必須とする
   - なお、 DisplayName は変更不可 (ref: [users.md](users.md))

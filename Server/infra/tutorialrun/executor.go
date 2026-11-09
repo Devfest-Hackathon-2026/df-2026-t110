@@ -8,6 +8,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"math"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
@@ -18,7 +19,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/tutorial"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/replay"
-	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
@@ -78,16 +79,14 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	if err != nil {
 		return nil, err
 	}
-	var result struct {
-		History wire.GameHistory `json:"history"`
-		Summary struct {
-			Cleared bool               `json:"cleared"`
-			Tick    uint64             `json:"tick"`
-			Reason  boardmsg.EndReason `json:"reason"`
-		} `json:"summary"`
+	result := api.TutorialResult{History: history}
+	result.Summary.Cleared = outcome.Cleared()
+	tick := outcome.Tick()
+	if tick > uint64(math.MaxInt) {
+		return nil, fmt.Errorf("tutorial tick exceeds integer range")
 	}
-	result.History = history
-	result.Summary.Cleared, result.Summary.Tick, result.Summary.Reason = outcome.Cleared(), outcome.Tick(), outcome.EndReason()
+	result.Summary.Tick = int(tick)
+	result.Summary.Reason = api.TutorialResultSummaryReason(outcome.EndReason())
 	encoded, err := json.Marshal(result)
 	if err != nil {
 		return nil, fmt.Errorf("encode tutorial result: %w", err)

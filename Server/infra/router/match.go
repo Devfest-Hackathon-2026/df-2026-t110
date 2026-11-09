@@ -10,6 +10,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
 )
 
@@ -42,14 +43,15 @@ func (r *Router) CreateMatch(ctx *echo.Context) error {
 	if err != nil {
 		return battleProgramError(ctx, err)
 	}
-	body, err := json.Marshal(struct {
-		ID               string `json:"id"`
-		FieldID          string `json:"fieldId"`
-		SelectedLayoutID string `json:"selectedLayoutId"`
-		OpponentName     string `json:"opponentName"`
-		RunID            string `json:"runId"`
-		Status           string `json:"status"`
-	}{match.ID, match.FieldID, match.SelectedLayoutID, match.OpponentName, match.RunID, "finished"})
+	runID, err := uuid.Parse(match.RunID)
+	if err != nil {
+		return fmt.Errorf("parse match run ID: %w", err)
+	}
+	status := api.Finished
+	body, err := json.Marshal(api.Match{
+		Id: match.ID, FieldId: match.FieldID, SelectedLayoutId: match.SelectedLayoutID,
+		OpponentName: match.OpponentName, RunId: runID, Status: &status,
+	})
 	if err != nil {
 		return fmt.Errorf("marshal match: %w", err)
 	}

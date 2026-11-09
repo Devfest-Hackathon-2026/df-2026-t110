@@ -411,9 +411,15 @@ export interface components {
         MatchSummary: {
             /** @description 両プレイヤーの最終得点。同点の場合は引き分け */
             score: {
-                /** @description 対戦を申し込んだプレイヤーの最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦を申し込んだプレイヤーの最終得点
+                 */
                 player: number;
-                /** @description 対戦相手の最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦相手の最終得点
+                 */
                 opponent: number;
             };
         };

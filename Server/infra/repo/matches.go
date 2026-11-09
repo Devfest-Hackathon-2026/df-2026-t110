@@ -20,12 +20,13 @@ type Matches struct{ pool *pgxpool.Pool }
 
 func NewMatches(pool *pgxpool.Pool) *Matches { return &Matches{pool: pool} }
 
-func (r *Matches) Draw(ctx context.Context, challenger string) (domain.BattleTeam, error) {
-	rows, err := db.New(r.pool).DrawBattleOpponent(ctx, db.DrawBattleOpponentParams{
+func (r *Matches) SelectOpponent(ctx context.Context, challenger string) (domain.BattleTeam, error) {
+	// TODO: Consider rating differences when selecting an opponent: https://github.com/dvpico/Programming-Learning-AR/issues/156
+	rows, err := db.New(r.pool).SelectBattleOpponent(ctx, db.SelectBattleOpponentParams{
 		Challenger: challenger, RobotCount: domain.BattleRobotCount,
 	})
 	if err != nil {
-		return domain.BattleTeam{}, fmt.Errorf("draw battle opponent: %w", err)
+		return domain.BattleTeam{}, fmt.Errorf("select battle opponent: %w", err)
 	}
 	if len(rows) == 0 {
 		return domain.BattleTeam{}, usecase.ErrNoOpponent

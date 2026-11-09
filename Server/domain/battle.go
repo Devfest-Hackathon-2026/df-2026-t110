@@ -1,6 +1,10 @@
 package domain
 
-import "encoding/json/jsontext"
+import (
+	"encoding/json/jsontext"
+
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
+)
 
 const BattleRobotCount = 3
 
@@ -12,23 +16,16 @@ type BattleTeam struct {
 
 // BattleLayout is a complete initial board and the rules used for one match.
 type BattleLayout struct {
-	ID, FieldID                   string
-	Terrain                       [][]BattleCell
-	Robots                        [2][BattleRobotCount]BattleRobot
-	DrillLimit                    int64
-	Turns                         uint64
-	LuggagePoints, DiscardPenalty int64
-}
-
-type BattleCell struct {
-	Terrain        string
-	HasLuggage     bool
-	TerritoryOwner int
-}
-
-type BattleRobot struct {
-	X, Y      int
-	Direction string
+	ID             string                                           `json:"id"`
+	FieldID        string                                           `json:"fieldId"`
+	Terrain        [][]schema.Terrain                               `json:"terrain"`
+	Luggage        []schema.Position                                `json:"luggage"`
+	Territories    [2][]schema.Position                             `json:"territories"`
+	Robots         [2][BattleRobotCount]schema.FieldDefinitionRobot `json:"robots"`
+	DrillLimit     int64                                            `json:"drillLimit"`
+	Turns          uint64                                           `json:"turns"`
+	LuggagePoints  int64                                            `json:"luggagePoints"`
+	DiscardPenalty int64                                            `json:"discardPenalty"`
 }
 
 // Match identifies a completed simulation whose result is available via RunID.

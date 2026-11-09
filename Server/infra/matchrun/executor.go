@@ -21,7 +21,8 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/replay"
-	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
@@ -38,6 +39,7 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 	if len(player) != domain.BattleRobotCount || len(opponent) != domain.BattleRobotCount {
 		return nil, domain.ErrInvalidProgram
 	}
+	limits := interpreter.Limits{MaxSteps: 10_000, MaxMemoryBytes: 1 << 20, MaxCallDepth: 64}
 	var participants []hub.Participant
 	states := make(map[protocol.RobotID]board.RobotState, 2*domain.BattleRobotCount)
 	for team, programs := range [][]domain.Program{player, opponent} {
@@ -46,9 +48,7 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 			if _, err := rand.Read(seed[:]); err != nil {
 				return nil, fmt.Errorf("generate battle seed: %w", err)
 			}
-			bot, err := robot.NewPicolangBot(program.Source, binary.LittleEndian.Uint64(seed[:]), interpreter.Limits{
-				MaxSteps: 10_000, MaxMemoryBytes: 1 << 20, MaxCallDepth: 64,
-			}, false)
+			bot, err := robot.NewPicolangBot(program.Source, binary.LittleEndian.Uint64(seed[:]), limits, false)
 			id := protocol.RobotID(fmt.Sprintf("team-%d-robot-%d", team+1, slot+1))
 			participant := hub.Participant{ID: id}
 			if err != nil {
@@ -64,7 +64,7 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 			}
 			participants = append(participants, participant)
 			start := layout.Robots[team][slot]
-			states[id] = board.NewRobotState(board.NewPosition(start.X, start.Y), board.Direction(start.Direction), layout.DrillLimit).WithTeam(board.TeamID(team + 1))
+			states[id] = board.NewRobotState(board.NewPosition(start.Position.X, start.Position.Y), board.Direction(start.Direction), layout.DrillLimit).WithTeam(board.TeamID(team + 1))
 		}
 	}
 	b, err := newBoard(layout, states)
@@ -76,8 +76,9 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 		return nil, fmt.Errorf("build battle hub: %w", err)
 	}
 	recording := contextRecorder{ctx: ctx}
-	// Every robot starts once and resumes at most once per turn.
-	report, err := game.Run(hub.Options{MaxResumes: 2 * domain.BattleRobotCount * (layout.Turns + 1), Recorder: &recording})
+	// Queries can resume a robot repeatedly without advancing a turn. Every
+	// action charges at least one VM step; allow a final resume to stop each VM.
+	report, err := game.Run(hub.Options{MaxResumes: uint64(len(participants)) * (limits.MaxSteps + 1), Recorder: &recording})
 	if err != nil {
 		return nil, fmt.Errorf("run battle simulation: %w", err)
 	}
@@ -92,16 +93,7 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 	if err != nil {
 		return nil, err
 	}
-	var result struct {
-		History wire.GameHistory `json:"history"`
-		Summary struct {
-			Score struct {
-				Player   int64 `json:"player"`
-				Opponent int64 `json:"opponent"`
-			} `json:"score"`
-		} `json:"summary"`
-	}
-	result.History = history
+	result := api.MatchResult{History: history}
 	result.Summary.Score.Player, result.Summary.Score.Opponent = outcome.Team1().Score(), outcome.Team2().Score()
 	encoded, err := json.Marshal(result)
 	if err != nil {
@@ -115,17 +107,39 @@ func newBoard(layout domain.BattleLayout, robots map[protocol.RobotID]board.Robo
 	for y, row := range layout.Terrain {
 		terrain[y] = make([]board.Terrain, len(row))
 		for x, cell := range row {
-			switch cell.Terrain {
-			case "land":
-				terrain[y][x] = board.NewLandTerrain(board.PlainLand{}, cell.HasLuggage, board.TeamID(cell.TerritoryOwner))
-			case "rock":
+			switch cell {
+			case schema.TerrainLand:
+				terrain[y][x] = board.NewLandTerrain(board.PlainLand{}, false, board.NoTeam)
+			case schema.TerrainRock:
 				terrain[y][x] = board.RockTerrain{}
-			case "sea":
+			case schema.TerrainSea:
 				terrain[y][x] = board.SeaTerrain{}
 			default:
-				return nil, fmt.Errorf("invalid battle terrain %q", cell.Terrain)
+				return nil, fmt.Errorf("invalid battle terrain %q", cell)
 			}
 		}
+	}
+	for team, positions := range layout.Territories {
+		for _, position := range positions {
+			land, err := landAt(terrain, position)
+			if err != nil {
+				return nil, err
+			}
+			if land.TerritoryOwner() != board.NoTeam {
+				return nil, fmt.Errorf("overlapping battle territories at %+v", position)
+			}
+			terrain[position.Y][position.X] = board.NewLandTerrain(board.PlainLand{}, false, board.TeamID(team+1))
+		}
+	}
+	for _, position := range layout.Luggage {
+		land, err := landAt(terrain, position)
+		if err != nil {
+			return nil, err
+		}
+		if land.HasLuggage() {
+			return nil, fmt.Errorf("overlapping battle luggage at %+v", position)
+		}
+		terrain[position.Y][position.X] = board.NewLandTerrain(board.PlainLand{}, true, land.TerritoryOwner())
 	}
 	rules, err := board.NewBattleConfig(layout.Turns, layout.LuggagePoints, layout.DiscardPenalty).CompletionRules()
 	if err != nil {
@@ -136,6 +150,17 @@ func newBoard(layout domain.BattleLayout, robots map[protocol.RobotID]board.Robo
 		return nil, err
 	}
 	return board.New(config)
+}
+
+func landAt(terrain [][]board.Terrain, position schema.Position) (board.LandTerrain, error) {
+	if position.Y < 0 || position.Y >= len(terrain) || position.X < 0 || position.X >= len(terrain[position.Y]) {
+		return board.LandTerrain{}, fmt.Errorf("battle position %+v is outside the field", position)
+	}
+	land, ok := terrain[position.Y][position.X].(board.LandTerrain)
+	if !ok {
+		return board.LandTerrain{}, fmt.Errorf("battle position %+v must be on land", position)
+	}
+	return land, nil
 }
 
 type contextRecorder struct {

@@ -57,7 +57,7 @@ func (q *Queries) CreateMatchRun(ctx context.Context, arg CreateMatchRunParams) 
 	return err
 }
 
-const drawBattleOpponent = `-- name: DrawBattleOpponent :many
+const selectBattleOpponent = `-- name: SelectBattleOpponent :many
 WITH candidate AS (
     SELECT users.google_subject, users.name
     FROM users
@@ -80,12 +80,12 @@ JOIN programs ON programs.id = battle_programs.program_id
 ORDER BY battle_programs.robot_index
 `
 
-type DrawBattleOpponentParams struct {
+type SelectBattleOpponentParams struct {
 	Challenger string
 	RobotCount int32
 }
 
-type DrawBattleOpponentRow struct {
+type SelectBattleOpponentRow struct {
 	GoogleSubject string
 	Name          pgtype.Text
 	ID            string
@@ -93,15 +93,15 @@ type DrawBattleOpponentRow struct {
 	Source        []byte
 }
 
-func (q *Queries) DrawBattleOpponent(ctx context.Context, arg DrawBattleOpponentParams) ([]DrawBattleOpponentRow, error) {
-	rows, err := q.db.Query(ctx, drawBattleOpponent, arg.Challenger, arg.RobotCount)
+func (q *Queries) SelectBattleOpponent(ctx context.Context, arg SelectBattleOpponentParams) ([]SelectBattleOpponentRow, error) {
+	rows, err := q.db.Query(ctx, selectBattleOpponent, arg.Challenger, arg.RobotCount)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []DrawBattleOpponentRow
+	var items []SelectBattleOpponentRow
 	for rows.Next() {
-		var i DrawBattleOpponentRow
+		var i SelectBattleOpponentRow
 		if err := rows.Scan(
 			&i.GoogleSubject,
 			&i.Name,

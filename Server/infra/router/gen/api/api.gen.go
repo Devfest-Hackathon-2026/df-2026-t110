@@ -99,10 +99,10 @@ type MatchSummary struct {
 	// Score 両プレイヤーの最終得点。同点の場合は引き分け
 	Score struct {
 		// Opponent 対戦相手の最終得点
-		Opponent float32 `json:"opponent"`
+		Opponent int64 `json:"opponent"`
 
 		// Player 対戦を申し込んだプレイヤーの最終得点
-		Player float32 `json:"player"`
+		Player int64 `json:"player"`
 	} `json:"score"`
 }
 

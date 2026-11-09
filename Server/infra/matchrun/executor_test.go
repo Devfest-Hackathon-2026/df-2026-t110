@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 )
 
 func source(actions ...string) jsontext.Value {
@@ -41,8 +43,8 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 		t.Run(layout.ID, func(t *testing.T) {
 			t.Parallel()
 			for _, y := range []int{1, 3, 5} {
-				layout.Terrain[y][1].TerritoryOwner = 1
-				layout.Terrain[y][2].HasLuggage = true
+				layout.Territories[0] = append(layout.Territories[0], schema.Position{X: 1, Y: y})
+				layout.Luggage = append(layout.Luggage, schema.Position{X: 2, Y: y})
 			}
 			result, err := NewExecutor().Execute(t.Context(), team(source("forward", "pick_up", "back", "release")), team(source()), layout)
 			if err != nil {
@@ -50,16 +52,8 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 				return
 			}
 			var decoded struct {
-				History []struct {
-					Type  string               `json:"type"`
-					State wire.FieldEventState `json:"state"`
-				} `json:"history"`
-				Summary struct {
-					Score struct {
-						Player   int64 `json:"player"`
-						Opponent int64 `json:"opponent"`
-					} `json:"score"`
-				} `json:"summary"`
+				History []wire.FieldEvent `json:"history"`
+				Summary api.MatchSummary  `json:"summary"`
 			}
 			if err := json.Unmarshal(result, &decoded); err != nil {
 				t.Errorf("decode result: %v", err)
@@ -111,6 +105,11 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 		t.Fatal(err)
 	}
 	actionLoop := strings.Replace(string(loop), `"stmts": []`, `"stmts": [{"kind":"call","hintId":"00000000-0000-4000-8000-000000000092","func":"forward","args":[]}]`, 1)
+	queryMove, err := os.ReadFile("testdata/query_move.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	queryOnly := jsontext.Value(strings.Replace(string(queryMove), `"func": "forward"`, `"func": "search_now"`, 1))
 	for _, tt := range []struct {
 		name             string
 		player, opponent jsontext.Value
@@ -122,6 +121,9 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 		{name: "invalid defense stops", player: source(), opponent: jsontext.Value(`{}`)},
 		{name: "pure computation limit", player: loop, opponent: loop, wantTick: 1},
 		{name: "turn limit", player: jsontext.Value(actionLoop), opponent: jsontext.Value(actionLoop), wantTick: layouts[0].Turns},
+		{name: "queries before every move", player: queryMove, opponent: queryMove, wantTick: layouts[0].Turns},
+		{name: "query heavy defense", player: jsontext.Value(actionLoop), opponent: queryMove, wantTick: layouts[0].Turns},
+		{name: "queries without advancing turns", player: queryOnly, opponent: queryOnly},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -133,9 +135,7 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 				return
 			}
 			var decoded struct {
-				History []struct {
-					Tick uint64 `json:"tick"`
-				} `json:"history"`
+				History []wire.FieldEvent `json:"history"`
 			}
 			if err := json.Unmarshal(result, &decoded); err != nil {
 				t.Errorf("decode: %v", err)
@@ -143,8 +143,13 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 			}
 			if len(decoded.History) == 0 {
 				t.Error("missing execution history")
-			} else if got := decoded.History[len(decoded.History)-1].Tick; got != tt.wantTick {
-				t.Errorf("final tick=%d, want %d", got, tt.wantTick)
+			} else {
+				got := decoded.History[len(decoded.History)-1].Tick
+				if got < 0 {
+					t.Errorf("negative final tick=%d", got)
+				} else if uint64(got) != tt.wantTick {
+					t.Errorf("final tick=%d, want %d", got, tt.wantTick)
+				}
 			}
 		})
 	}

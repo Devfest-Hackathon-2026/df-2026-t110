@@ -15,9 +15,9 @@ type MatchUserRepository interface {
 }
 
 type MatchOpponentRepository interface {
-	// Draw chooses a user uniformly, excluding the challenger. The user's name
+	// SelectOpponent chooses a user uniformly, excluding the challenger. The user's name
 	// and ordered battle programs must come from the same snapshot.
-	Draw(ctx context.Context, challenger string) (domain.BattleTeam, error)
+	SelectOpponent(ctx context.Context, challenger string) (domain.BattleTeam, error)
 }
 
 type MatchLayoutRepository interface {
@@ -82,9 +82,9 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 		programs[i] = program
 	}
 	// Do not update the challenger's saved defense programs as a side effect.
-	opponent, err := m.deps.Opponents.Draw(ctx, subject)
+	opponent, err := m.deps.Opponents.SelectOpponent(ctx, subject)
 	if err != nil {
-		return domain.Match{}, fmt.Errorf("draw opponent: %w", err)
+		return domain.Match{}, fmt.Errorf("select opponent: %w", err)
 	}
 	if opponent.User.GoogleSubject == subject || opponent.User.Name == nil || len(opponent.Programs) != domain.BattleRobotCount {
 		return domain.Match{}, fmt.Errorf("invalid opponent snapshot")
@@ -101,6 +101,7 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("execute match: %w", err)
 	}
+	// TODO: Update the challenger's rating with the result: https://github.com/dvpico/Programming-Learning-AR/issues/155
 	match, err := m.deps.Matches.Create(ctx, domain.MatchRecord{
 		GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject,
 		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, SelectedLayoutID: layout.ID, Result: result,
