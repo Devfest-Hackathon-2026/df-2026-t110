@@ -46,7 +46,7 @@ func (r *Users) Get(ctx context.Context, subject string) (domain.User, error) {
 	if err != nil {
 		return domain.User{}, fmt.Errorf("get user: %w", err)
 	}
-	return userFromRow(user), nil
+	return userFromRow(user.GoogleSubject, user.Name), nil
 }
 
 func (r *Users) SetNameIfAbsent(ctx context.Context, subject, name string) (domain.User, error) {
@@ -56,7 +56,7 @@ func (r *Users) SetNameIfAbsent(ctx context.Context, subject, name string) (doma
 	})
 	switch {
 	case err == nil:
-		return userFromRow(user), nil
+		return userFromRow(user.GoogleSubject, user.Name), nil
 	case isUniqueViolation(err):
 		return domain.User{}, usecase.ErrUsernameTaken
 	case errors.Is(err, pgx.ErrNoRows):
@@ -70,10 +70,10 @@ func (r *Users) SetNameIfAbsent(ctx context.Context, subject, name string) (doma
 	}
 }
 
-func userFromRow(row db.User) domain.User {
-	user := domain.User{GoogleSubject: row.GoogleSubject}
-	if row.Name.Valid {
-		user.Name = &row.Name.String
+func userFromRow(subject string, name pgtype.Text) domain.User {
+	user := domain.User{GoogleSubject: subject}
+	if name.Valid {
+		user.Name = &name.String
 	}
 	return user
 }

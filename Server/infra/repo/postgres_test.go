@@ -59,12 +59,19 @@ func TestMain(m *testing.M) {
 // schema.sql applied, isolating each test from the others.
 func newTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
+	return newTestPoolWithDDL(t, "sql/schema/schema.sql")
+}
+
+// newTestPoolWithDDL is newTestPool with another DDL file, such as the schema
+// that a migration starts from.
+func newTestPoolWithDDL(t *testing.T, ddlPath string) *pgxpool.Pool {
+	t.Helper()
 	url, err := testDatabaseURL()
 	if err != nil {
 		t.Fatalf("prepare test database: %v", err)
 	}
 	ctx := context.Background()
-	ddl, err := os.ReadFile("sql/schema/schema.sql")
+	ddl, err := os.ReadFile(ddlPath) //nolint:gosec // Callers pass fixed DDL paths in this package.
 	if err != nil {
 		t.Fatalf("read schema: %v", err)
 	}

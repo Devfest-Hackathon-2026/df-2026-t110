@@ -35,6 +35,10 @@ type Match struct {
 	OpponentGoogleSubject string
 	OpponentName          string
 	SelectedLayoutID      string
+	Outcome               string
+	OpponentRating        pgtype.Int4
+	RatingBefore          pgtype.Int4
+	RatingAfter           pgtype.Int4
 }
 
 type Program struct {
@@ -64,4 +68,5 @@ type Session struct {
 type User struct {
 	GoogleSubject string
 	Name          pgtype.Text
+	Rating        int32
 }
