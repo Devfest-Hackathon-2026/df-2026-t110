@@ -441,7 +441,7 @@ function importJson(): void {
         :open="showJson"
         @toggle="showJson = ($event.target as HTMLDetailsElement).open"
       >
-        <summary><Icon :icon="fileJsonIcon" aria-hidden="true" />Schema形式のJSON</summary>
+        <summary><Icon :icon="fileJsonIcon" aria-hidden="true" />JSON形式で表示</summary>
         <button type="button" :disabled="!executionJson" @click="copyJson">
           <Icon :icon="copyIcon" aria-hidden="true" />JSONをコピー
         </button>
