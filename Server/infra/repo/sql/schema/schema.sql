@@ -54,3 +54,11 @@ CREATE TABLE generation_usages (
 
 CREATE INDEX generation_usages_google_subject_reserved_at_idx
     ON generation_usages (google_subject, reserved_at);
+
+-- Ordered robot slots; the API determines the required number of programs.
+CREATE TABLE battle_programs (
+    google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
+    program_id text NOT NULL REFERENCES programs (id),
+    robot_index smallint NOT NULL CHECK (robot_index >= 0),
+    PRIMARY KEY (google_subject, robot_index)
+);

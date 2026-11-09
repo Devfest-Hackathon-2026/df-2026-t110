@@ -63,6 +63,7 @@ func main() {
 		}
 		programs := repo.NewPrograms(pool)
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
+		cfg.BattlePrograms = usecase.NewBattlePrograms(repo.NewBattlePrograms(pool), programs)
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
 		cfg.TutorialRuns = runs
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
@@ -98,6 +99,7 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
+			"setBattlePrograms":     {authenticate, middleware.BodyLimit(1 << 20)},
 			"getMe":                 {authenticate},
 			"logout":                {authenticate},
 			"createProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
