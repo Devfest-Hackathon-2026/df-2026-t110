@@ -107,9 +107,14 @@ const previewDistance = computed(() =>
   Math.min(3.2, 2.75 + Math.max(stage.value?.width ?? 2, stage.value?.height ?? 1) * 0.05),
 )
 
+function exitStageFullscreen(): void {
+  if (!stageRef.value || document.fullscreenElement !== stageRef.value) return
+  void document.exitFullscreen?.()?.catch(() => {})
+}
+
 async function load(id: string): Promise<void> {
   stopRun()
-  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+  exitStageFullscreen()
   controller?.abort()
   controller = new AbortController()
   const signal = controller.signal
@@ -364,7 +369,7 @@ function resetProgram(): void {
 function toggleStageFullscreen(): void {
   if (stageFullscreen.value) {
     stageFullscreen.value = false
-    if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+    exitStageFullscreen()
     return
   }
   stageFullscreen.value = true
@@ -453,7 +458,7 @@ onBeforeUnmount(() => {
   stopRun()
   controller?.abort()
   document.removeEventListener('fullscreenchange', syncFullscreen)
-  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+  exitStageFullscreen()
 })
 </script>
 
@@ -567,7 +572,9 @@ onBeforeUnmount(() => {
             </div>
           </template>
           <div v-else class="tutorial-load-message" role="alert">
-            {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+            {{ loadMessage }}
+            <button type="button" @click="load(tutorialId)">再試行</button>
+            <a :href="`/tutorials/${encodeURIComponent(tutorialId)}`">ページを開き直す</a>
           </div>
         </div>
       </aside>

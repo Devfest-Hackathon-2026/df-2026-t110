@@ -1,4 +1,4 @@
-const base = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
+const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 export interface TutorialRecord {
   id: string
@@ -19,25 +19,32 @@ export interface TutorialSummary {
 async function getJson(path: string, signal: AbortSignal): Promise<unknown | null> {
   const request = new AbortController()
   const abort = () => request.abort()
-  let timedOut = false
-  const timer = window.setTimeout(() => {
-    timedOut = true
-    request.abort()
-  }, 20_000)
+  let timer: number | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => {
+      request.abort()
+      reject(new Error('教材APIの応答が20秒以内に返りませんでした。ページを開き直してください。'))
+    }, 20_000)
+  })
   signal.addEventListener('abort', abort, { once: true })
   if (signal.aborted) request.abort()
   try {
-    const response = await fetch(`${base}${path}`, { signal: request.signal })
-    if (response.status === 404) return null
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    if (!response.headers.get('content-type')?.includes('json'))
-      throw new Error('教材APIからJSONを取得できませんでした')
-    return response.json()
-  } catch (error) {
-    if (timedOut && !signal.aborted) throw new Error('教材APIの応答が20秒以内に返りませんでした')
-    throw error
+    return await Promise.race([
+      (async () => {
+        const response = await fetch(`${base}${path}`, { signal: request.signal, credentials: 'same-origin' })
+        if (response.status === 404) return null
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        if (!response.headers.get('content-type')?.includes('json')) {
+          if (response.redirected)
+            throw new Error('教材APIがログイン画面へ転送されました。ページを開き直して認証してください。')
+          throw new Error('教材APIからJSONを取得できませんでした')
+        }
+        return await response.json()
+      })(),
+      timeout,
+    ])
   } finally {
-    window.clearTimeout(timer)
+    if (timer !== undefined) window.clearTimeout(timer)
     signal.removeEventListener('abort', abort)
   }
 }
