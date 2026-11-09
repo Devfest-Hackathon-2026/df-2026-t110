@@ -33,6 +33,7 @@ type ProgramGenerator interface {
 type ProgramGenerationInput struct {
 	Prompt          string
 	Field           json.RawMessage
+	IsBattle        bool
 	PreviousOutput  json.RawMessage
 	ValidationError string
 	MaxTokens       int
@@ -61,6 +62,12 @@ type ProgramGenerationDeps struct {
 
 type ProgramGeneration struct{ deps ProgramGenerationDeps }
 
+type ProgramGenerationRequest struct {
+	FieldID  string
+	Prompt   string
+	IsBattle bool
+}
+
 func NewProgramGeneration(deps ProgramGenerationDeps) *ProgramGeneration {
 	if deps.MaxAttempts <= 0 {
 		deps.MaxAttempts = DefaultGenerationAttempts
@@ -74,10 +81,19 @@ func NewProgramGeneration(deps ProgramGenerationDeps) *ProgramGeneration {
 // Generate returns a validated draft without saving it. subject must come from a
 // verified Google identity, never directly from an untrusted request.
 func (g *ProgramGeneration) Generate(ctx context.Context, subject, fieldID, prompt string) (json.RawMessage, error) {
+	if strings.TrimSpace(fieldID) == "" {
+		return nil, ErrInvalidGenerationRequest
+	}
+	return g.GenerateWithOptions(ctx, subject, ProgramGenerationRequest{FieldID: fieldID, Prompt: prompt})
+}
+
+// GenerateWithOptions also supports requests without a field. Such requests
+// receive no stage context, but still receive the selected tutorial/battle rules.
+func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject string, request ProgramGenerationRequest) (json.RawMessage, error) {
 	if strings.TrimSpace(subject) == "" {
 		return nil, ErrUnauthenticated
 	}
-	if strings.TrimSpace(fieldID) == "" || strings.TrimSpace(prompt) == "" {
+	if strings.TrimSpace(request.Prompt) == "" || len(request.Prompt) > 4096 {
 		return nil, ErrInvalidGenerationRequest
 	}
 	if g.deps.Fields == nil || g.deps.Quota == nil || g.deps.Generator == nil || g.deps.Validator == nil || g.deps.MaxTokens <= 0 {
@@ -85,14 +101,18 @@ func (g *ProgramGeneration) Generate(ctx context.Context, subject, fieldID, prom
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.deps.Timeout)
 	defer cancel()
-	field, err := g.deps.Fields.GetGenerationField(ctx, subject, fieldID)
-	if err != nil {
-		return nil, fmt.Errorf("get generation field: %w", err)
+	field := json.RawMessage(`{}`)
+	if strings.TrimSpace(request.FieldID) != "" {
+		var err error
+		field, err = g.deps.Fields.GetGenerationField(ctx, subject, request.FieldID)
+		if err != nil {
+			return nil, fmt.Errorf("get generation field: %w", err)
+		}
 	}
 	if !json.Valid(field) {
 		return nil, errors.New("invalid field data")
 	}
-	input := ProgramGenerationInput{Prompt: prompt, Field: field, MaxTokens: g.deps.MaxTokens}
+	input := ProgramGenerationInput{Prompt: request.Prompt, Field: field, IsBattle: request.IsBattle, MaxTokens: g.deps.MaxTokens}
 	for attempt := 0; attempt < g.deps.MaxAttempts; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return nil, err

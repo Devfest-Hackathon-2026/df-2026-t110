@@ -47,6 +47,8 @@
       picolang のソースだけを生成し、保存や対戦用の登録は行わない。
       生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
     operationId: createProgramWithVibe
+    security:
+      - sessionCookie: []
     requestBody:
       required: true
       content:
@@ -59,10 +61,10 @@
                 type: string
               fieldId:
                 type: string
-                description: Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+                description: 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。
               isBattle:
                 type: boolean
-                description: 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+                description: trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
     responses:
       "201":
         description: 生成した picolang のソース
@@ -70,6 +72,24 @@
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/PicolangProgram"
+      "400":
+        description: 本文または生成依頼が不正
+      "401":
+        description: 有効なセッションが必要
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "413":
+        description: Content-Lengthが16 KiBを超過
+      "422":
+        description: 再試行後も有効なPicolangを生成できなかった
+      "429":
+        description: 生成の利用枠を超過
+      "500":
+        description: 生成サービスまたは保存先でエラーが発生
+      "501":
+        description: 生成サービスが未設定
+      "504":
+        description: 生成が時間切れ
 
 /program:
   post:

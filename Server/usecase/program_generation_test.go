@@ -111,6 +111,20 @@ func TestProgramGenerationRetriesInvalidDraft(t *testing.T) {
 	}
 }
 
+func TestProgramGenerationWithoutFieldPreservesBattleMode(t *testing.T) {
+	t.Parallel()
+	f := &generationFixture{outputs: draftOutputs(goodDraft)}
+	got, err := f.service().GenerateWithOptions(context.Background(), "google-sub", usecase.ProgramGenerationRequest{
+		Prompt: "collect luggage", IsBattle: true,
+	})
+	if err != nil || string(got) != goodDraft {
+		t.Errorf("GenerateWithOptions = %s, %v", got, err)
+	}
+	if len(f.inputs) != 1 || !f.inputs[0].IsBattle || string(f.inputs[0].Field) != `{}` {
+		t.Errorf("generation input = %+v", f.inputs)
+	}
+}
+
 func TestProgramGenerationFailures(t *testing.T) {
 	t.Parallel()
 	serviceErr := errors.New("service failure")

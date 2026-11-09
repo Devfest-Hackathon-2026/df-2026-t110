@@ -9,6 +9,12 @@ resource "google_project_iam_member" "server_cloudsql_client" {
   member  = google_service_account.server.member
 }
 
+resource "google_project_iam_member" "server_vertex_ai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = google_service_account.server.member
+}
+
 resource "google_secret_manager_secret_iam_member" "server_db_app_password" {
   secret_id = google_secret_manager_secret.db_app_password.id
   role      = "roles/secretmanager.secretAccessor"
@@ -78,6 +84,10 @@ resource "google_cloud_run_v2_service" "server" {
         name  = "STATIC_DIR"
         value = "/static"
       }
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
       # The server only reads DATABASE_URL. The password stays out of it and comes from PGPASSWORD,
       # which pgx applies to keyword/value connection strings like libpq does.
       env {
@@ -142,6 +152,7 @@ resource "google_cloud_run_v2_service" "server" {
   depends_on = [
     google_project_service.required,
     google_project_iam_member.server_cloudsql_client,
+    google_project_iam_member.server_vertex_ai_user,
     google_secret_manager_secret_iam_member.server_db_app_password,
     google_secret_manager_secret_version.db_app_password,
     google_secret_manager_secret_iam_member.server_google_login_client_secret,

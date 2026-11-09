@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
@@ -79,7 +80,62 @@ func (r *Router) CreateProgram(ctx *echo.Context) error {
 }
 
 func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
-	return errNotImplemented()
+	if r.cfg.ProgramGeneration == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	body, err := io.ReadAll(ctx.Request().Body)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	}
+	var request struct {
+		Prompt   *string `json:"prompt"`
+		FieldID  *string `json:"fieldId"`
+		IsBattle *bool   `json:"isBattle"`
+	}
+	if err := json.Unmarshal(body, &request, json.RejectUnknownMembers(true)); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	}
+	if request.Prompt == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+	}
+	var members map[string]jsontext.Value
+	if err := json.Unmarshal(body, &members); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	}
+	for _, key := range []string{"fieldId", "isBattle"} {
+		if value, exists := members[key]; exists && string(value) == "null" {
+			return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		}
+	}
+	options := usecase.ProgramGenerationRequest{Prompt: *request.Prompt}
+	if request.FieldID != nil {
+		options.FieldID = *request.FieldID
+	}
+	if request.IsBattle != nil {
+		options.IsBattle = *request.IsBattle
+	}
+	program, err := r.cfg.ProgramGeneration.GenerateWithOptions(ctx.Request().Context(), user.GoogleSubject, options)
+	switch {
+	case errors.Is(err, usecase.ErrInvalidGenerationRequest):
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	case errors.Is(err, usecase.ErrUnauthenticated):
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(err)
+	case errors.Is(err, usecase.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).Wrap(err)
+	case errors.Is(err, usecase.ErrGenerationQuotaExceeded):
+		return echo.NewHTTPError(http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests)).Wrap(err)
+	case errors.Is(err, usecase.ErrInvalidGeneratedProgram):
+		return echo.NewHTTPError(http.StatusUnprocessableEntity, http.StatusText(http.StatusUnprocessableEntity)).Wrap(err)
+	case errors.Is(err, context.DeadlineExceeded):
+		return echo.NewHTTPError(http.StatusGatewayTimeout, http.StatusText(http.StatusGatewayTimeout)).Wrap(err)
+	case err != nil:
+		return fmt.Errorf("generate program: %w", err)
+	}
+	return ctx.JSONBlob(http.StatusCreated, program)
 }
 
 func (r *Router) GetProgram(ctx *echo.Context, programID api.ProgramId) error {

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 )
 
 var _ usecase.TutorialRepository = (*Textbooks)(nil)
+var _ usecase.GenerationFields = (*Textbooks)(nil)
 
 // Textbooks keeps validated pages indexed by ID after loading the source.
 type Textbooks struct {
@@ -83,6 +85,20 @@ func (r *Textbooks) Get(ctx context.Context, id string) (domain.Tutorial, error)
 		return domain.Tutorial{}, usecase.ErrNotFound
 	}
 	return tutorial, nil
+}
+
+// GetGenerationField exposes only the stage of a published textbook. Battle
+// fields are not available until the field repository is implemented.
+func (r *Textbooks) GetGenerationField(ctx context.Context, _ string, fieldID string) (stdjson.RawMessage, error) {
+	tutorial, err := r.Get(ctx, fieldID)
+	if err != nil {
+		return nil, err
+	}
+	stage, err := json.Marshal(tutorial.Stage)
+	if err != nil {
+		return nil, fmt.Errorf("encode generation field %q: %w", fieldID, err)
+	}
+	return stage, nil
 }
 
 func parseTextbook(path string, raw []byte) (domain.Tutorial, error) {
