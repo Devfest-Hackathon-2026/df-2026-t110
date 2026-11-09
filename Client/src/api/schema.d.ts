@@ -2099,6 +2099,20 @@ export interface operations {
                     "application/json": string[];
                 };
             };
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 対戦用プログラムが未設定 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     setBattlePrograms: {

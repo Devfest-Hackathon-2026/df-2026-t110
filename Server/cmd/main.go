@@ -99,6 +99,7 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
+			"getBattlePrograms":     {authenticate},
 			"setBattlePrograms":     {authenticate, middleware.BodyLimit(1 << 20)},
 			"getMe":                 {authenticate},
 			"logout":                {authenticate},

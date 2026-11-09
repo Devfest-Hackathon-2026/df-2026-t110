@@ -9,6 +9,7 @@ import (
 )
 
 type BattleProgramRepository interface {
+	Get(ctx context.Context, subject string) ([]string, error)
 	Set(ctx context.Context, subject string, ids []string) error
 }
 
@@ -48,4 +49,16 @@ func (b *BattlePrograms) Set(ctx context.Context, subject string, ids []string) 
 		return fmt.Errorf("save battle programs: %w", err)
 	}
 	return nil
+}
+
+// Get returns the three saved slots, or ErrNotFound when no settings exist.
+func (b *BattlePrograms) Get(ctx context.Context, subject string) ([]string, error) {
+	if strings.TrimSpace(subject) == "" {
+		return nil, ErrUnauthenticated
+	}
+	ids, err := b.repo.Get(ctx, subject)
+	if err != nil {
+		return nil, fmt.Errorf("get battle programs: %w", err)
+	}
+	return ids, nil
 }

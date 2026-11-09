@@ -85,12 +85,19 @@
     security:
       - sessionCookie: []
     responses:
+      "401":
+        description: 認証されていない
+      "404":
+        description: 対戦用プログラムが未設定
       "200":
         description: 対戦用のプログラム設定
         content:
           application/json:
             schema:
               type: array
+              minItems: 3
+              maxItems: 3
+              uniqueItems: false
               items:
                 type: string
                 description: プログラムのID

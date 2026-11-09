@@ -2,9 +2,11 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,12 +21,28 @@ func TestBattleProgramsSet(t *testing.T) {
 		}
 	}
 	repo := NewBattlePrograms(pool)
+	if _, err := repo.Get(ctx, "owner"); !errors.Is(err, usecase.ErrNotFound) {
+		t.Errorf("unset error=%v", err)
+	}
+
 	for _, ids := range [][]string{{"a", "b", "c"}, {"c", "a", "c"}, {"b", "a"}, {"a", "b", "a", "c"}, {}} {
 		if err := repo.Set(ctx, "owner", ids); err != nil {
 			t.Errorf("set %v: %v", ids, err)
 			continue
 		}
 		assertBattlePrograms(t, pool, ids)
+		got, err := repo.Get(ctx, "owner")
+		if len(ids) == 0 {
+			if !errors.Is(err, usecase.ErrNotFound) {
+				t.Errorf("empty error=%v", err)
+			}
+		} else if err != nil || !reflect.DeepEqual(got, ids) {
+			t.Errorf("Get=%v, %v; want %v", got, err, ids)
+		}
+		if _, err := repo.Get(ctx, "other"); !errors.Is(err, usecase.ErrNotFound) {
+			t.Errorf("other user error=%v", err)
+		}
+
 	}
 	if err := repo.Set(ctx, "owner", []string{"a", "b", "a"}); err != nil {
 		t.Errorf("set rollback baseline: %v", err)
