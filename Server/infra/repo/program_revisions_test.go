@@ -28,16 +28,14 @@ func TestProgramRevisions(t *testing.T) {
 	}
 	var count int
 	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM program_revisions WHERE program_id='p'`).Scan(&count); err != nil {
-		t.Fatal(err)
-	}
-	if count != 3 {
+		t.Errorf("read revision count: %v", err)
+	} else if count != 3 {
 		t.Errorf("revisions = %d", count)
 	}
 	var name, source string
 	if err := pool.QueryRow(t.Context(), `SELECT name,source FROM program_revisions WHERE program_id='p' AND revision=1`).Scan(&name, &source); err != nil {
-		t.Fatal(err)
-	}
-	if name != "first" {
+		t.Errorf("read archived revision: %v", err)
+	} else if name != "first" {
 		t.Errorf("old name = %s", name)
 	}
 	for _, query := range []string{`UPDATE program_revisions SET name='changed'`, `DELETE FROM program_revisions`, `UPDATE programs SET is_battle=false,tutorial_id='lesson' WHERE id='p'`} {

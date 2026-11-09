@@ -38,7 +38,7 @@ func (q *Queries) CreateProgram(ctx context.Context, arg CreateProgramParams) er
 }
 
 const getByTutorialID = `-- name: GetByTutorialID :many
-SELECT id, google_subject, name, source, is_battle, tutorial_id, revision
+SELECT id, google_subject, name, source, revision, is_battle, tutorial_id
 FROM programs WHERE tutorial_id = $1 AND google_subject = $2
 `
 
@@ -47,33 +47,23 @@ type GetByTutorialIDParams struct {
 	GoogleSubject string
 }
 
-type GetByTutorialIDRow struct {
-	ID            string
-	GoogleSubject string
-	Name          string
-	Source        []byte
-	IsBattle      bool
-	TutorialID    pgtype.Text
-	Revision      int32
-}
-
-func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams) ([]GetByTutorialIDRow, error) {
+func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams) ([]Program, error) {
 	rows, err := q.db.Query(ctx, getByTutorialID, arg.TutorialID, arg.GoogleSubject)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetByTutorialIDRow
+	var items []Program
 	for rows.Next() {
-		var i GetByTutorialIDRow
+		var i Program
 		if err := rows.Scan(
 			&i.ID,
 			&i.GoogleSubject,
 			&i.Name,
 			&i.Source,
+			&i.Revision,
 			&i.IsBattle,
 			&i.TutorialID,
-			&i.Revision,
 		); err != nil {
 			return nil, err
 		}
@@ -86,31 +76,21 @@ func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams
 }
 
 const getProgram = `-- name: GetProgram :one
-SELECT id, google_subject, name, source, is_battle, tutorial_id, revision
+SELECT id, google_subject, name, source, revision, is_battle, tutorial_id
 FROM programs WHERE id = $1
 `
 
-type GetProgramRow struct {
-	ID            string
-	GoogleSubject string
-	Name          string
-	Source        []byte
-	IsBattle      bool
-	TutorialID    pgtype.Text
-	Revision      int32
-}
-
-func (q *Queries) GetProgram(ctx context.Context, id string) (GetProgramRow, error) {
+func (q *Queries) GetProgram(ctx context.Context, id string) (Program, error) {
 	row := q.db.QueryRow(ctx, getProgram, id)
-	var i GetProgramRow
+	var i Program
 	err := row.Scan(
 		&i.ID,
 		&i.GoogleSubject,
 		&i.Name,
 		&i.Source,
+		&i.Revision,
 		&i.IsBattle,
 		&i.TutorialID,
-		&i.Revision,
 	)
 	return i, err
 }
