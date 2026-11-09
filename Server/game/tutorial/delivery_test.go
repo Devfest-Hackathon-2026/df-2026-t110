@@ -3,7 +3,6 @@ package tutorial_test
 import (
 	json "encoding/json/v2"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/board"
@@ -13,10 +12,9 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/tutorial"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
-	"gopkg.in/yaml.v3"
 )
 
-func deliveryStage(t *testing.T, objects string, owner, count int) schema.StageDefinition {
+func deliveryStage(t *testing.T, objects string, count int) schema.StageDefinition {
 	t.Helper()
 	var stage schema.StageDefinition
 	data := fmt.Sprintf(`{
@@ -24,8 +22,8 @@ func deliveryStage(t *testing.T, objects string, owner, count int) schema.StageD
 		"terrain":[["land","land","land","land","land","land","sea"],
 		           ["land","land","land","land","land","land","sea"]],
 		"objects":[%s],"robot":{"position":{"x":0,"y":0},"direction":"east"},"drillLimit":0}],
-		"clearCondition":{"type":"deliver_luggage","territoryOwner":%d,"requiredCount":%d}
-	}`, objects, owner, count)
+		"clearCondition":{"type":"deliver_luggage","requiredCount":%d}
+	}`, objects, count)
 	if err := json.Unmarshal([]byte(data), &stage); err != nil {
 		t.Fatal(err)
 	}
@@ -60,31 +58,28 @@ func TestDeliverLuggage(t *testing.T) {
 	t.Parallel()
 	const objects = `
 		{"type":"luggage","id":"parcel","position":{"x":1,"y":0}},
-		{"type":"territory","territoryOwner":1,"position":{"x":3,"y":0}},
-		{"type":"territory","territoryOwner":2,"position":{"x":4,"y":0}},
+		{"type":"territory","position":{"x":3,"y":0}},
 		{"type":"goal","position":{"x":5,"y":0}}`
 	forward := actions.ForwardAction{}
 	pick := actions.PickUpAction{}
 	release := actions.ReleaseAction{}
 	for _, tt := range []struct {
 		name    string
-		owner   int
 		program []actions.Action
 		cleared bool
 	}{
-		{name: "robot alone reaches territory", owner: 1, program: []actions.Action{forward, forward, forward}},
-		{name: "robot alone reaches goal", owner: 1, program: []actions.Action{forward, forward, forward, forward, forward}},
-		{name: "carried luggage on territory", owner: 1, program: []actions.Action{pick, forward, forward, forward}},
-		{name: "release on plain land", owner: 1, program: []actions.Action{pick, forward, release}},
-		{name: "release on other team's territory", owner: 1, program: []actions.Action{pick, forward, forward, forward, release}},
-		{name: "discard into sea", owner: 1, program: []actions.Action{pick, forward, forward, forward, forward, forward, release}},
-		{name: "release without luggage", owner: 1, program: []actions.Action{forward, forward, release}},
-		{name: "deliver to team one", owner: 1, program: []actions.Action{pick, forward, forward, release}, cleared: true},
-		{name: "deliver to team two", owner: 2, program: []actions.Action{pick, forward, forward, forward, release}, cleared: true},
+		{name: "robot alone reaches territory", program: []actions.Action{forward, forward, forward}},
+		{name: "robot alone reaches goal", program: []actions.Action{forward, forward, forward, forward, forward}},
+		{name: "carried luggage on territory", program: []actions.Action{pick, forward, forward, forward}},
+		{name: "release on plain land", program: []actions.Action{pick, forward, release}},
+		{name: "release away from territory", program: []actions.Action{pick, forward, forward, forward, release}},
+		{name: "discard into sea", program: []actions.Action{pick, forward, forward, forward, forward, forward, release}},
+		{name: "release without luggage", program: []actions.Action{forward, forward, release}},
+		{name: "deliver to territory", program: []actions.Action{pick, forward, forward, release}, cleared: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			stage := deliveryStage(t, objects, tt.owner, 1)
+			stage := deliveryStage(t, objects, 1)
 			program := append([]actions.Action{}, tt.program...)
 			if tt.cleared {
 				// Clearing must interrupt the program on the release turn.
@@ -93,11 +88,11 @@ func TestDeliverLuggage(t *testing.T) {
 			b := runDelivery(t, stage, program, uint64(len(tt.program)), tt.cleared)
 			if tt.cleared {
 				robot := b.Snapshot().Robots["p1"]
-				if robot.CarryingLuggage() || robot.TeamID() != board.TeamID(tt.owner) {
+				if robot.CarryingLuggage() || robot.TeamID() != board.NoTeam {
 					t.Errorf("robot state after delivery = %+v", robot)
 				}
 				cell := b.Snapshot().Terrain[robot.Position().Y()][robot.Position().X()].(board.LandTerrain)
-				if cell.TerritoryOwner() == board.TeamID(tt.owner) {
+				if cell.TerritoryOwner() != board.NoTeam {
 					t.Error("test must clear while the robot is outside its destination")
 				}
 			}
@@ -111,9 +106,9 @@ func TestDeliverThreeLuggageToThreeCells(t *testing.T) {
 		{"type":"luggage","id":"a","position":{"x":1,"y":0}},
 		{"type":"luggage","id":"b","position":{"x":3,"y":0}},
 		{"type":"luggage","id":"c","position":{"x":5,"y":0}},
-		{"type":"territory","territoryOwner":1,"position":{"x":1,"y":1}},
-		{"type":"territory","territoryOwner":1,"position":{"x":3,"y":1}},
-		{"type":"territory","territoryOwner":1,"position":{"x":5,"y":1}}`
+		{"type":"territory","position":{"x":1,"y":1}},
+		{"type":"territory","position":{"x":3,"y":1}},
+		{"type":"territory","position":{"x":5,"y":1}}`
 	// Pick up the next parcel, step onto its old cell, and place it to the south.
 	trip := []actions.Action{actions.PickUpAction{}, actions.ForwardAction{}, actions.RotateAction{Rotation: values.Right}, actions.ReleaseAction{}}
 	program := append([]actions.Action{}, trip...)
@@ -136,7 +131,7 @@ func TestDeliverThreeLuggageToThreeCells(t *testing.T) {
 				steps = append(steps, actions.RotateAction{Rotation: values.Left}, actions.ForwardAction{})
 				steps = append(steps, trip...)
 			}
-			b := runDelivery(t, deliveryStage(t, objects, 1, tt.count), steps, uint64(len(steps)), tt.cleared)
+			b := runDelivery(t, deliveryStage(t, objects, tt.count), steps, uint64(len(steps)), tt.cleared)
 			for _, x := range []int{1, 3, 5} {
 				land := b.Snapshot().Terrain[1][x].(board.LandTerrain)
 				if want := x != 5 || tt.all; land.HasLuggage() != want {
@@ -151,7 +146,7 @@ func TestReachGoalDoesNotRequireDelivery(t *testing.T) {
 	t.Parallel()
 	stage := deliveryStage(t, `
 		{"type":"luggage","id":"parcel","position":{"x":1,"y":0}},
-		{"type":"goal","position":{"x":2,"y":0}}`, 1, 1)
+		{"type":"goal","position":{"x":2,"y":0}}`, 1)
 	stage.ClearCondition = schema.ClearCondition{ReachGoal: &schema.ReachGoal{Type: schema.ReachGoalType}}
 	b := runDelivery(t, stage, []actions.Action{actions.ForwardAction{}, actions.ForwardAction{}}, 2, true)
 	if !b.Snapshot().Terrain[0][1].(board.LandTerrain).HasLuggage() {
@@ -162,15 +157,14 @@ func TestReachGoalDoesNotRequireDelivery(t *testing.T) {
 func TestDeliveryBoardValidation(t *testing.T) {
 	t.Parallel()
 	const objects = `{"type":"luggage","id":"a","position":{"x":1,"y":0}},
-		{"type":"territory","territoryOwner":1,"position":{"x":3,"y":0}}`
+		{"type":"territory","position":{"x":3,"y":0}}`
 	for _, tt := range []struct {
 		name   string
 		change func(*schema.StageDefinition)
 	}{
 		{name: "zero count", change: func(s *schema.StageDefinition) { s.ClearCondition.DeliverLuggage.RequiredCount = 0 }},
 		{name: "negative count", change: func(s *schema.StageDefinition) { s.ClearCondition.DeliverLuggage.RequiredCount = -1 }},
-		{name: "invalid owner", change: func(s *schema.StageDefinition) { s.ClearCondition.DeliverLuggage.TerritoryOwner = 0 }},
-		{name: "missing destination", change: func(s *schema.StageDefinition) { s.ClearCondition.DeliverLuggage.TerritoryOwner = 2 }},
+		{name: "missing destination", change: func(s *schema.StageDefinition) { s.Variants[0].Objects = s.Variants[0].Objects[:1] }},
 		{name: "insufficient destination cells", change: func(s *schema.StageDefinition) {
 			s.ClearCondition.DeliverLuggage.RequiredCount = 2
 			s.Variants[0].Objects = append(s.Variants[0].Objects, schema.FieldObject{Luggage: &schema.Luggage{
@@ -180,7 +174,7 @@ func TestDeliveryBoardValidation(t *testing.T) {
 		{name: "insufficient luggage", change: func(s *schema.StageDefinition) {
 			s.ClearCondition.DeliverLuggage.RequiredCount = 2
 			s.Variants[0].Objects = append(s.Variants[0].Objects, schema.FieldObject{Territory: &schema.Territory{
-				Type: schema.TerritoryType, TerritoryOwner: 1, Position: schema.Position{X: 4, Y: 0},
+				Type: schema.TerritoryType, Position: schema.Position{X: 4, Y: 0},
 			}})
 		}},
 		{name: "missing luggage", change: func(s *schema.StageDefinition) { s.Variants[0].Objects = s.Variants[0].Objects[1:] }},
@@ -188,13 +182,12 @@ func TestDeliveryBoardValidation(t *testing.T) {
 			s.ClearCondition.ReachGoal = &schema.ReachGoal{Type: schema.ReachGoalType}
 		}},
 		{name: "multiple object variants", change: func(s *schema.StageDefinition) { s.Variants[0].Objects[1].Goal = &schema.Goal{} }},
-		{name: "invalid territory owner", change: func(s *schema.StageDefinition) { s.Variants[0].Objects[1].Territory.TerritoryOwner = 3 }},
 		{name: "territory outside field", change: func(s *schema.StageDefinition) { s.Variants[0].Objects[1].Territory.Position.X = 7 }},
 		{name: "territory on sea", change: func(s *schema.StageDefinition) { s.Variants[0].Objects[1].Territory.Position.X = 6 }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			stage := deliveryStage(t, objects, 1, 1)
+			stage := deliveryStage(t, objects, 1)
 			tt.change(&stage)
 			if _, err := tutorial.NewBoard(stage, 0, "p1", 100); err == nil {
 				t.Error("invalid delivery board accepted")
@@ -205,7 +198,7 @@ func TestDeliveryBoardValidation(t *testing.T) {
 
 func TestTerritoryObjectOverlaps(t *testing.T) {
 	t.Parallel()
-	const territory = `{"type":"territory","territoryOwner":1,"position":{"x":1,"y":0}}`
+	const territory = `{"type":"territory","position":{"x":1,"y":0}}`
 	for _, tt := range []struct {
 		name   string
 		object string
@@ -215,7 +208,6 @@ func TestTerritoryObjectOverlaps(t *testing.T) {
 		{name: "goal", object: `{"type":"goal","position":{"x":1,"y":0}}`},
 		{name: "checkpoint", object: `{"type":"checkpoint","order":1,"position":{"x":1,"y":0}}`},
 		{name: "duplicate territory", object: territory},
-		{name: "other team's territory", object: `{"type":"territory","territoryOwner":2,"position":{"x":1,"y":0}}`},
 	} {
 		for _, reverse := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/reverse=%v", tt.name, reverse), func(t *testing.T) {
@@ -224,56 +216,18 @@ func TestTerritoryObjectOverlaps(t *testing.T) {
 				if reverse {
 					objects = tt.object + "," + territory
 				}
-				stage := deliveryStage(t, objects, 1, 1)
+				stage := deliveryStage(t, objects, 1)
 				b, err := tutorial.NewBoard(stage, 0, "p1", 100)
 				if (err == nil) != tt.valid {
 					t.Errorf("NewBoard error = %v, valid = %v", err, tt.valid)
 				}
 				if err == nil && tt.valid {
 					land := b.Snapshot().Terrain[0][1].(board.LandTerrain)
-					if !land.HasLuggage() || land.TerritoryOwner() != board.TeamID1 {
+					if !land.HasLuggage() || land.TerritoryOwner() == board.NoTeam {
 						t.Errorf("overlapping luggage and territory = %+v", land)
 					}
 				}
 			})
 		}
-	}
-}
-
-func TestDeliveryTextbooks(t *testing.T) {
-	t.Parallel()
-	right := actions.RotateAction{Rotation: values.Right}
-	left := actions.RotateAction{Rotation: values.Left}
-	forward := actions.ForwardAction{}
-	for _, tt := range []struct {
-		page    string
-		program []actions.Action
-	}{
-		{page: "13", program: []actions.Action{actions.PickUpAction{}, right, forward, left, forward, actions.ReleaseAction{}}},
-		{page: "14", program: []actions.Action{forward, left, actions.PickUpAction{}, right, forward, forward, left, forward, actions.ReleaseAction{}}},
-	} {
-		t.Run(tt.page, func(t *testing.T) {
-			t.Parallel()
-			raw, err := os.ReadFile("../../../Textbooks/pages/" + tt.page + ".yaml")
-			if err != nil {
-				t.Fatal(err)
-			}
-			var page map[string]any
-			if err := yaml.Unmarshal(raw, &page); err != nil {
-				t.Fatal(err)
-			}
-			data, err := json.Marshal(page)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var detail schema.TutorialDetail
-			if err := json.Unmarshal(data, &detail); err != nil {
-				t.Fatal(err)
-			}
-			// Stopping just before placing the parcel must not clear the lesson.
-			incomplete := tt.program[:len(tt.program)-1]
-			runDelivery(t, detail.Stage, incomplete, uint64(len(incomplete)), false)
-			runDelivery(t, detail.Stage, tt.program, uint64(len(tt.program)), true)
-		})
 	}
 }

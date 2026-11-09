@@ -15,11 +15,10 @@ import (
 const TurnLimit uint64 = 1_000
 
 type completionRules struct {
-	robotID        protocol.RobotID
-	condition      string
-	checkpoints    []int64
-	territoryOwner board.TeamID
-	requiredCount  int
+	robotID       protocol.RobotID
+	condition     string
+	checkpoints   []int64
+	requiredCount int
 }
 
 func newCompletionRules(condition schema.ClearCondition, robotID protocol.RobotID, checkpoints []int64, terrain [][]board.Terrain) (*completionRules, error) {
@@ -45,16 +44,15 @@ func newCompletionRules(condition schema.ClearCondition, robotID protocol.RobotI
 	case condition.DeliverLuggage != nil:
 		delivery := condition.DeliverLuggage
 		rules.condition = schema.DeliverLuggageType
-		rules.territoryOwner = board.TeamID(delivery.TerritoryOwner)
 		rules.requiredCount = delivery.RequiredCount
-		if rules.requiredCount < 1 || (rules.territoryOwner != board.TeamID1 && rules.territoryOwner != board.TeamID2) {
-			return nil, fmt.Errorf("deliver_luggage requires a positive count and territory owner 1 or 2")
+		if rules.requiredCount < 1 {
+			return nil, fmt.Errorf("deliver_luggage requires a positive count")
 		}
 		var destinations, luggage int
 		for _, row := range terrain {
 			for _, cell := range row {
 				if land, ok := cell.(board.LandTerrain); ok {
-					if land.TerritoryOwner() == rules.territoryOwner {
+					if land.TerritoryOwner() != board.NoTeam {
 						destinations++
 					}
 					if land.HasLuggage() {
@@ -75,12 +73,12 @@ func (*completionRules) TurnLimit() uint64 { return TurnLimit }
 
 func (r *completionRules) AfterTurn(state board.Snapshot, update fieldevent.UpdateState) bool {
 	if r.condition == schema.DeliverLuggageType {
-		// Count only luggage placed on the destination team's cells. Carrying
+		// Count only luggage placed on territory cells. Carrying
 		// luggage over a territory never counts as delivery.
 		delivered := 0
 		for _, row := range state.Terrain {
 			for _, cell := range row {
-				if land, ok := cell.(board.LandTerrain); ok && land.TerritoryOwner() == r.territoryOwner && land.HasLuggage() {
+				if land, ok := cell.(board.LandTerrain); ok && land.TerritoryOwner() != board.NoTeam && land.HasLuggage() {
 					delivered++
 				}
 			}

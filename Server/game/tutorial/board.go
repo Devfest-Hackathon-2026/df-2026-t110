@@ -45,8 +45,6 @@ func NewBoard(stage schema.StageDefinition, variant int, robotID protocol.RobotI
 	}
 	position := field.Robot.Position
 	robot := board.NewRobotState(board.NewPosition(position.X, position.Y), board.Direction(field.Robot.Direction), int64(field.DrillLimit))
-	// Delivery tutorials use the destination team as the robot's own territory.
-	robot = robot.WithTeam(rules.territoryOwner)
 	config, err := board.NewConfig(terrain, map[protocol.RobotID]board.RobotState{robotID: robot}, maxTicks, rules)
 	if err != nil {
 		return nil, err
@@ -107,10 +105,9 @@ func placeObject(terrain [][]board.Terrain, object schema.FieldObject) error {
 		position, luggage = object.Luggage.Position, true
 	case object.Territory != nil:
 		position, kind = object.Territory.Position, board.PlainLand{}
-		owner = board.TeamID(object.Territory.TerritoryOwner)
-		if owner != board.TeamID1 && owner != board.TeamID2 {
-			return fmt.Errorf("invalid tutorial territory owner %d", owner)
-		}
+		// Reuse the battle engine's territory marker internally. Tutorials have
+		// no teams: robots stay unassigned and every territory is a destination.
+		owner = board.TeamID1
 	}
 
 	x, y := position.X, position.Y

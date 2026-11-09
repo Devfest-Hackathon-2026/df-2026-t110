@@ -111,16 +111,11 @@ $defs:
       - $ref: "#/$defs/Territory"
         description: 1マスの陣地の定義
 
-  TerritoryOwner:
-    description: 陣地を所有するチーム。1または2
-    type: integer
-    enum: [1, 2]
-
   Territory:
-    description: 指定チームが所有する1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+    description: 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
     type: object
     additionalProperties: false
-    required: [type, position, territoryOwner]
+    required: [type, position]
     properties:
       type:
         description: オブジェクトが陣地であることを示す種別
@@ -129,9 +124,6 @@ $defs:
       position:
         description: 陣地を配置するマスの座標
         $ref: "#/$defs/Position"
-      territoryOwner:
-        description: 陣地を所有するチーム
-        $ref: "#/$defs/TerritoryOwner"
 
   Goal:
     description: ロボットが到達するゴール

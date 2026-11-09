@@ -73,7 +73,7 @@ func (j *Cell) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_Cell); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_Cell); err != nil {
 			return fmt.Errorf("unmarshal Cell: %w", err)
 		}
 		plain = retry
@@ -132,7 +132,7 @@ func (j *CheckpointLand_1) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_LandKind); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_LandKind); err != nil {
 			return fmt.Errorf("unmarshal CheckpointLand_1: %w", err)
 		}
 		plain = retry
@@ -160,7 +160,7 @@ func (j *CheckpointLand) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_LandKind); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_LandKind); err != nil {
 			return fmt.Errorf("unmarshal CheckpointLand: %w", err)
 		}
 		plain = retry
@@ -193,7 +193,7 @@ func (j *Checkpoint) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_LandKind); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_LandKind); err != nil {
 			return fmt.Errorf("unmarshal Checkpoint: %w", err)
 		}
 		plain = retry
@@ -357,7 +357,7 @@ func (j *DrillResult) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_DrillResult); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_DrillResult); err != nil {
 			return fmt.Errorf("unmarshal DrillResult: %w", err)
 		}
 		plain = retry
@@ -472,7 +472,7 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_FieldDefinition); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_FieldDefinition); err != nil {
 			return fmt.Errorf("unmarshal FieldDefinition: %w", err)
 		}
 		plain = retry
@@ -606,7 +606,7 @@ func (j *FieldEvent) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_FieldEvent); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_FieldEvent); err != nil {
 			return fmt.Errorf("unmarshal FieldEvent: %w", err)
 		}
 		plain = retry
@@ -952,7 +952,7 @@ func (j *IntegerValue) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_IntegerValue); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_IntegerValue); err != nil {
 			return fmt.Errorf("unmarshal IntegerValue: %w", err)
 		}
 		plain = retry
@@ -1118,7 +1118,7 @@ func (j *LandKind) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_LandKind); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_LandKind); err != nil {
 			return fmt.Errorf("unmarshal LandKind: %w", err)
 		}
 		plain = retry
@@ -2403,7 +2403,7 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_Position); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_Position); err != nil {
 			return fmt.Errorf("unmarshal Position: %w", err)
 		}
 		plain = retry
@@ -2533,7 +2533,7 @@ func (j *PrintIntegerResult) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_PrintIntegerResult); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_PrintIntegerResult); err != nil {
 			return fmt.Errorf("unmarshal PrintIntegerResult: %w", err)
 		}
 		plain = retry
@@ -2828,7 +2828,7 @@ func (j *RobotState) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_DrillResult); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_DrillResult); err != nil {
 			return fmt.Errorf("unmarshal RobotState: %w", err)
 		}
 		plain = retry
@@ -3192,45 +3192,13 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// 指定チームが所有する1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+// 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
 type Territory struct {
 	// 陣地を配置するマスの座標
 	Position Position `json:"position"`
 
-	// 陣地を所有するチーム
-	TerritoryOwner TerritoryOwner `json:"territoryOwner"`
-
 	// オブジェクトが陣地であることを示す種別
 	Type string `json:"type"`
-}
-
-type TerritoryOwner int
-
-var enumValues_TerritoryOwner = []interface{}{
-	1,
-	2,
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *TerritoryOwner) UnmarshalJSON(value []byte) error {
-	var v int
-	if err := json.Unmarshal(value, &v); err != nil {
-		if err = unmarshalIntegral_TerritoryOwner(value, &v, err, unmarshalIntegral_TerritoryOwner_int); err != nil {
-			return err
-		}
-	}
-	var ok bool
-	for _, expected := range enumValues_TerritoryOwner {
-		if reflect.DeepEqual(v, expected) {
-			ok = true
-			break
-		}
-	}
-	if !ok {
-		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_TerritoryOwner, v)
-	}
-	*j = TerritoryOwner(v)
-	return nil
 }
 
 const TerritoryType = "territory"
@@ -3243,9 +3211,6 @@ func (j *Territory) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["position"]; raw != nil && !ok {
 		return fmt.Errorf("field position in Territory: required")
-	}
-	if _, ok := raw["territoryOwner"]; raw != nil && !ok {
-		return fmt.Errorf("field territoryOwner in Territory: required")
 	}
 	if _, ok := raw["type"]; raw != nil && !ok {
 		return fmt.Errorf("field type in Territory: required")
@@ -3391,7 +3356,7 @@ func (j *WaitResult) UnmarshalJSON(value []byte) error {
 	var plain Plain
 	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
 		var retry Plain
-		if err = unmarshalIntegral_TerritoryOwner(value, &retry, err, integerPaths_WaitResult); err != nil {
+		if err = unmarshalIntegral_LandKind(value, &retry, err, integerPaths_WaitResult); err != nil {
 			return fmt.Errorf("unmarshal WaitResult: %w", err)
 		}
 		plain = retry
@@ -3406,42 +3371,42 @@ func (j *WaitResult) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-var integerPaths_Cell = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_Cell = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"territoryOwner": {kind: "int"},
 }}
 
-var integerPaths_DrillResult = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_DrillResult = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"drillDurability": {kind: "int"},
 }}
 
-var integerPaths_FieldDefinition = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_FieldDefinition = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"drillLimit": {kind: "int"},
 	"height":     {kind: "int"},
 	"width":      {kind: "int"},
 }}
 
-var integerPaths_FieldEvent = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_FieldEvent = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"tick": {kind: "int"},
 }}
 
-var integerPaths_IntegerValue = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_IntegerValue = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"value": {kind: "int"},
 }}
 
-var integerPaths_LandKind = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_LandKind = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"order": {kind: "int"},
 }}
 
-var integerPaths_Position = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_Position = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"x": {kind: "int"},
 	"y": {kind: "int"},
 }}
 
-var integerPaths_PrintIntegerResult = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_PrintIntegerResult = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"integer": {kind: "int"},
 }}
 
-var integerPaths_WaitResult = &unmarshalIntegral_TerritoryOwner_path{fields: map[string]*unmarshalIntegral_TerritoryOwner_path{
+var integerPaths_WaitResult = &unmarshalIntegral_LandKind_path{fields: map[string]*unmarshalIntegral_LandKind_path{
 	"ticks": {kind: "int"},
 }}
 
@@ -3520,15 +3485,15 @@ func uniqueItemKey_UpdateState_number(s string) json.Number {
 	return json.Number(canonical)
 }
 
-// unmarshalIntegral_TerritoryOwner decodes data into v again, as json.Unmarshal
-// does, after a decode that failed with err. It first writes each number at one of
-// p's integer paths that holds an integer, such as 2.0 or 1e2, as that integer,
-// which JSON Schema counts it as and encoding/json requires for a Go integer.
-// Every other byte stays as written, and so does a number that the Go integer type
-// can't hold, so that the error of the second decode names it as written. It
-// returns err when no number needs writing. Every decoder in this file calls it;
-// it is named after the first, so that no other file of the package declares it.
-func unmarshalIntegral_TerritoryOwner(data []byte, v interface{}, err error, p *unmarshalIntegral_TerritoryOwner_path) error {
+// unmarshalIntegral_LandKind decodes data into v again, as json.Unmarshal does,
+// after a decode that failed with err. It first writes each number at one of p's
+// integer paths that holds an integer, such as 2.0 or 1e2, as that integer, which
+// JSON Schema counts it as and encoding/json requires for a Go integer. Every
+// other byte stays as written, and so does a number that the Go integer type can't
+// hold, so that the error of the second decode names it as written. It returns err
+// when no number needs writing. Every decoder in this file calls it; it is named
+// after the first, so that no other file of the package declares it.
+func unmarshalIntegral_LandKind(data []byte, v interface{}, err error, p *unmarshalIntegral_LandKind_path) error {
 	if !json.Valid(data) {
 		return err
 	}
@@ -3536,8 +3501,8 @@ func unmarshalIntegral_TerritoryOwner(data []byte, v interface{}, err error, p *
 	dec.UseNumber()
 	var written []byte
 	copied := 0
-	var walk func(p *unmarshalIntegral_TerritoryOwner_path) bool
-	walk = func(p *unmarshalIntegral_TerritoryOwner_path) bool {
+	var walk func(p *unmarshalIntegral_LandKind_path) bool
+	walk = func(p *unmarshalIntegral_LandKind_path) bool {
 		if p == nil {
 			var skipped json.RawMessage
 			return dec.Decode(&skipped) == nil
@@ -3564,8 +3529,8 @@ func unmarshalIntegral_TerritoryOwner(data []byte, v interface{}, err error, p *
 			return terr == nil
 		}
 		if n, ok := tok.(json.Number); ok && p.kind != "" {
-			s, ok := unmarshalIntegral_TerritoryOwner_number(string(n))
-			if ok && s != "" && s != string(n) && unmarshalIntegral_TerritoryOwner_fits(s, p.kind) {
+			s, ok := unmarshalIntegral_LandKind_number(string(n))
+			if ok && s != "" && s != string(n) && unmarshalIntegral_LandKind_fits(s, p.kind) {
 				end := int(dec.InputOffset())
 				written = append(append(written, data[copied:end-len(n)]...), s...)
 				copied = end
@@ -3582,9 +3547,9 @@ func unmarshalIntegral_TerritoryOwner(data []byte, v interface{}, err error, p *
 	return dec.Decode(v)
 }
 
-// unmarshalIntegral_TerritoryOwner_fits reports whether the Go integer type kind
-// holds the integer s.
-func unmarshalIntegral_TerritoryOwner_fits(s, kind string) bool {
+// unmarshalIntegral_LandKind_fits reports whether the Go integer type kind holds
+// the integer s.
+func unmarshalIntegral_LandKind_fits(s, kind string) bool {
 	size := strconv.IntSize
 	switch strings.TrimPrefix(kind, "u") {
 	case "int8":
@@ -3604,13 +3569,11 @@ func unmarshalIntegral_TerritoryOwner_fits(s, kind string) bool {
 	return err == nil
 }
 
-var unmarshalIntegral_TerritoryOwner_int = &unmarshalIntegral_TerritoryOwner_path{kind: "int"}
-
-// unmarshalIntegral_TerritoryOwner_number returns the integer that the number s
-// holds, written without a fraction, an exponent or a plus sign, or false when s
-// holds none. An integer of more than 20 digits, which no Go integer holds, is
-// returned as "".
-func unmarshalIntegral_TerritoryOwner_number(s string) (string, bool) {
+// unmarshalIntegral_LandKind_number returns the integer that the number s holds,
+// written without a fraction, an exponent or a plus sign, or false when s holds
+// none. An integer of more than 20 digits, which no Go integer holds, is returned
+// as "".
+func unmarshalIntegral_LandKind_number(s string) (string, bool) {
 	neg := strings.HasPrefix(s, "-")
 	if neg || strings.HasPrefix(s, "+") {
 		s = s[1:]
@@ -3654,20 +3617,20 @@ func unmarshalIntegral_TerritoryOwner_number(s string) (string, bool) {
 	return whole, true
 }
 
-// unmarshalIntegral_TerritoryOwner_path is where a value holds Go integers that
-// its own decoder decodes: the value itself, whose Go integer type kind names, or
-// the values below it, in its items, its values or its fields. A nil field holds
-// none, but has a name that a JSON key can match.
-type unmarshalIntegral_TerritoryOwner_path struct {
+// unmarshalIntegral_LandKind_path is where a value holds Go integers that its own
+// decoder decodes: the value itself, whose Go integer type kind names, or the
+// values below it, in its items, its values or its fields. A nil field holds none,
+// but has a name that a JSON key can match.
+type unmarshalIntegral_LandKind_path struct {
 	kind          string
-	items, values *unmarshalIntegral_TerritoryOwner_path
-	fields        map[string]*unmarshalIntegral_TerritoryOwner_path
+	items, values *unmarshalIntegral_LandKind_path
+	fields        map[string]*unmarshalIntegral_LandKind_path
 }
 
 // at returns the path of the value at key in an object at p. With fold, it also
 // finds a field whose name key matches only when case is ignored, the first such
 // in name order, as encoding/json does.
-func (p *unmarshalIntegral_TerritoryOwner_path) at(key string, fold bool) *unmarshalIntegral_TerritoryOwner_path {
+func (p *unmarshalIntegral_LandKind_path) at(key string, fold bool) *unmarshalIntegral_LandKind_path {
 	if p.fields == nil {
 		return p.values
 	}

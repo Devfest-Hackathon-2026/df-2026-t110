@@ -557,12 +557,7 @@ export interface components {
             /** @description 荷物の初期位置 */
             position: components["schemas"]["Position"];
         };
-        /**
-         * @description 陣地を所有するチーム。1または2
-         * @enum {integer}
-         */
-        TerritoryOwner: 1 | 2;
-        /** @description 指定チームが所有する1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない */
+        /** @description 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない */
         Territory: {
             /**
              * @description オブジェクトが陣地であることを示す種別
@@ -571,8 +566,6 @@ export interface components {
             type: "territory";
             /** @description 陣地を配置するマスの座標 */
             position: components["schemas"]["Position"];
-            /** @description 陣地を所有するチーム */
-            territoryOwner: components["schemas"]["TerritoryOwner"];
         };
         /**
          * @description マスの地形。land は陸地、rock は岩、sea は海を表す
@@ -913,15 +906,13 @@ export interface components {
              */
             type: "visit_checkpoints";
         };
-        /** @description 指定チームの陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要 */
+        /** @description 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要 */
         DeliverLuggage: {
             /**
              * @description 荷物の配達を求めるクリア条件の種別
              * @constant
              */
             type: "deliver_luggage";
-            /** @description 配送先となる陣地の所有チーム */
-            territoryOwner: components["schemas"]["TerritoryOwner"];
             /** @description 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける */
             requiredCount: number;
         };
