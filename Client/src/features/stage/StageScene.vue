@@ -78,6 +78,7 @@ let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
 const speechPosition = ref<{ x: number; y: number } | null>(null)
+const speechBubble = ref<HTMLElement | null>(null)
 defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals, setCarrying })
 let yaw = 0.55
 let pitch = 0.65
@@ -456,15 +457,26 @@ function animate(time: number): void {
     board.updateMatrixWorld(true)
     camera.updateMatrixWorld()
     const point = new THREE.Vector3(0, 1.1, 0).applyMatrix4(robotRig.matrixWorld).project(camera)
+    const horizontalInset = Math.min(
+      host.value.clientWidth / 2,
+      (speechBubble.value?.offsetWidth ?? 144) / 2 + 12,
+    )
+    const verticalInset = Math.min(
+      host.value.clientHeight - 12,
+      (speechBubble.value?.offsetHeight ?? 100) + 12,
+    )
     speechPosition.value =
       point.z >= -1 && point.z <= 1
         ? {
             x: Math.max(
-              72,
-              Math.min(host.value.clientWidth - 72, (point.x * 0.5 + 0.5) * host.value.clientWidth),
+              horizontalInset,
+              Math.min(
+                host.value.clientWidth - horizontalInset,
+                (point.x * 0.5 + 0.5) * host.value.clientWidth,
+              ),
             ),
             y: Math.max(
-              112,
+              verticalInset,
               Math.min(host.value.clientHeight - 12, (-point.y * 0.5 + 0.5) * host.value.clientHeight),
             ),
           }
@@ -653,6 +665,7 @@ onBeforeUnmount(() => {
   >
     <div
       v-if="speech && speechPosition"
+      ref="speechBubble"
       :key="speech.id"
       class="stage-robot-speech"
       :style="{ left: `${speechPosition.x}px`, top: `${speechPosition.y}px` }"
@@ -728,8 +741,9 @@ body {
   z-index: 5;
   display: grid;
   justify-items: center;
-  max-width: min(80%, 400px);
-  padding: 7px 10px;
+  min-width: 120px;
+  max-width: min(85%, 480px);
+  padding: 12px 16px;
   transform: translate(-50%, -100%);
   border: 2px solid #356b61;
   border-radius: 14px;
@@ -755,7 +769,7 @@ body {
   max-width: 100%;
   gap: 6px;
   overflow-x: auto;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
   white-space: nowrap;
   touch-action: pan-x;
@@ -769,13 +783,13 @@ body {
   content: '·';
 }
 .terrain-speech-model {
-  width: 116px;
-  height: 94px;
+  width: 150px;
+  height: 120px;
 }
 .terrain-speech-model canvas {
   display: block;
-  width: 116px;
-  height: 94px;
+  width: 150px;
+  height: 120px;
 }
 .stage-scene .marker-overlay {
   position: absolute;

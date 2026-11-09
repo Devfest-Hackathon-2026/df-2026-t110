@@ -11,6 +11,7 @@ import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
 import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlayback.ts'
+import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
@@ -59,6 +60,10 @@ const activeStage = ref<StageLayout | null>(null)
 const playback = usePicolangPlayback()
 const { animationEvent, speech, executionTrace, playbackReady, playbackPaused, nodeInterval, stepPlayback } =
   playback
+const previewSpeech =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has('previewSpeech')
+    ? speechForValue([1, 2, 3], 0)
+    : null
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
 const loginRequired = ref(false)
@@ -185,7 +190,7 @@ async function load(id: string): Promise<void> {
     field.value = nextField
     layoutIndex.value = 0
     loadState.value = 'ready'
-    document.title = `${remote.title} | Robot Field`
+    document.title = `${remote.title} | PicoBots`
     void getTutorials(signal)
       .then((items) => {
         if (!signal.aborted) catalog.value = items
@@ -601,7 +606,7 @@ onBeforeUnmount(() => {
           :stage="stage"
           :mode="mode"
           :animation-event="animationEvent"
-          :speech="speech"
+          :speech="speech ?? previewSpeech"
           :preview-distance="previewDistance"
           @error="handleSceneError"
         />

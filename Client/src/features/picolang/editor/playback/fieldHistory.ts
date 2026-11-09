@@ -185,6 +185,7 @@ export function replayFrameToStage(frame: ReplayFrame): StageLayout {
       y,
       symbol: cell.type === 'rock' ? '#' : cell.type === 'sea' ? '_' : '.',
       terrain: cell.type,
+      territoryOwner: cell.territoryOwner,
       objects: [
         ...(cell.kind?.type === 'goal'
           ? [{ type: 'goal' as const }]
