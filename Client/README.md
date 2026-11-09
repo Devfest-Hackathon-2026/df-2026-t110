@@ -6,7 +6,7 @@
 
 ## 対戦
 
-`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。Clientのログインリンクは `GET /api/login` を開きます。`/account` ではユーザー名の初回設定とログアウトができます。認証できた場合は、フィールドIDを入力して保存済みプログラムをロボット1台に割り当てるか、Blocklyで作成して保存します。対戦開始時は `POST /api/field/{fieldId}/match` に選択した `programId` を送り、返された対戦IDの `/matches/:matchId` で `GET /api/match/{matchId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果の「計算過程を見る」ではfield履歴を3Dまたはカメラ映像に重ねて再生し、移動・回転・掘削・荷物・待機・出力を表示します。開発中は `/matches/demo` でサンプル履歴を確認できます。対戦相手を指定するAPIは現行スキーマにはありません。現在のServerリポジトリでは対戦ハンドラーが `501 Not Implemented` を返すため、サーバー対戦の結合にはサーバー側の実装が必要です。`User.name` はGoogleアカウント名ではなく一度だけ設定できるユーザー名です。
+`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。Clientのログインリンクは `GET /api/login` を開きます。`/account` ではユーザー名の初回設定とログアウトができます。認証できた場合は、Blocklyで対戦用プログラムを作成し、3台のロボットへ割り当てます。設定は `PUT /api/battle/program` で保存し、`GET /api/battle/program` で読み込みます。対戦開始時は `POST /api/match` に3台分の `programId` を送り、返された `runId` を使って `/matches/:matchId` で `GET /api/run/{runId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果の「計算過程を見る」ではfield履歴を3Dまたはカメラ映像に重ねて再生し、移動・回転・掘削・荷物・待機・出力を表示します。対戦相手はサーバーが選びます。`GET /api/program/{id}` は未実装なので、Clientで作成したプログラム名は同じブラウザ内に保存し、ほかの環境ではIDを表示します。`User.name` はGoogleアカウント名ではなく一度だけ設定できるユーザー名です。
 
 ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 

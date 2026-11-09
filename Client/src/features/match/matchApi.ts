@@ -3,9 +3,10 @@ import type { PicoProgram } from '../picolang/language/picolang.ts'
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 export interface ProgramRecord {
-  id?: string
+  id: string
   name: string
   source: PicoProgram
+  isBattle: boolean
 }
 
 export interface MatchUser {
@@ -19,6 +20,8 @@ export interface MatchRecord {
   id: string
   fieldId: string
   selectedLayoutId: string
+  runId: string
+  opponentName: string
   status?: 'ready' | 'running' | 'finished'
 }
 
@@ -49,9 +52,7 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
     throw new MatchApiError(response.status, message)
   }
   if (!response.headers.get('content-type')?.includes('application/json'))
-    throw new Error(
-      'APIからJSONが返されませんでした。開発サーバーを再起動し、Goサーバーの起動を確認してください。',
-    )
+    throw new Error('対戦データを取得できませんでした。しばらくしてから再試行してください。')
   return response.json()
 }
 
@@ -59,12 +60,22 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
-export function parsePrograms(value: unknown): ProgramRecord[] {
-  if (!Array.isArray(value)) throw new Error('プログラム一覧の形式が不正です')
-  return value.filter(
-    (item): item is ProgramRecord =>
-      isObject(item) && typeof item.id === 'string' && typeof item.name === 'string',
+export function parseProgram(value: unknown): ProgramRecord {
+  if (
+    !isObject(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.name !== 'string' ||
+    value.isBattle !== true ||
+    !isObject(value.source)
   )
+    throw new Error('対戦用プログラムの形式が不正です')
+  return value as unknown as ProgramRecord
+}
+
+export function parseBattleProgramIds(value: unknown): [string, string, string] {
+  if (!Array.isArray(value) || value.length !== 3 || value.some((id) => typeof id !== 'string' || !id))
+    throw new Error('対戦用プログラム設定の形式が不正です')
+  return value as [string, string, string]
 }
 
 export function parseMatchUser(value: unknown): MatchUser {
@@ -103,7 +114,9 @@ export function parseMatch(value: unknown): MatchRecord {
     !isObject(value) ||
     typeof value.id !== 'string' ||
     typeof value.fieldId !== 'string' ||
-    typeof value.selectedLayoutId !== 'string'
+    typeof value.selectedLayoutId !== 'string' ||
+    typeof value.runId !== 'string' ||
+    typeof value.opponentName !== 'string'
   )
     throw new Error('対戦作成レスポンスの形式が不正です')
   return value as unknown as MatchRecord
@@ -118,40 +131,51 @@ export function parseMatchResult(value: unknown): MatchResult {
   return value as unknown as MatchResult
 }
 
-export async function listPrograms(fieldId: string, signal?: AbortSignal): Promise<ProgramRecord[]> {
-  return parsePrograms(await request(`/field/${encodeURIComponent(fieldId)}/program`, { signal }))
+export async function getBattlePrograms(signal?: AbortSignal): Promise<[string, string, string] | null> {
+  try {
+    return parseBattleProgramIds(await request('/battle/program', { signal }))
+  } catch (cause) {
+    if (cause instanceof MatchApiError && cause.status === 404) return null
+    throw cause
+  }
 }
 
-export async function createProgram(
-  fieldId: string,
-  program: Omit<ProgramRecord, 'id'>,
-): Promise<ProgramRecord> {
-  const value = await request(`/field/${encodeURIComponent(fieldId)}/program`, {
+export async function setBattlePrograms(ids: [string, string, string]): Promise<void> {
+  const response = await fetch(`${base}/battle/program`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ids),
+  })
+  if (!response.ok)
+    throw new MatchApiError(response.status, `対戦用プログラムを登録できませんでした (${response.status})`)
+}
+
+export async function createProgram(program: Pick<ProgramRecord, 'name' | 'source'>): Promise<ProgramRecord> {
+  const value = await request('/program', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(program),
+    body: JSON.stringify({ ...program, isBattle: true }),
   })
-  if (!isObject(value) || typeof value.id !== 'string' || typeof value.name !== 'string')
-    throw new Error('保存したプログラムの形式が不正です')
-  return value as unknown as ProgramRecord
+  return parseProgram(value)
 }
 
-export async function createMatch(fieldId: string, programId: string): Promise<MatchRecord> {
+export async function createMatch(ids: [string, string, string]): Promise<MatchRecord> {
   return parseMatch(
-    await request(`/field/${encodeURIComponent(fieldId)}/match`, {
+    await request('/match', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ programId }),
+      body: JSON.stringify(ids.map((programId) => ({ programId }))),
     }),
   )
 }
 
 export function subscribeMatchResult(
-  matchId: string,
+  runId: string,
   onResult: (result: MatchResult) => void,
   onError: (message: string) => void,
 ): () => void {
-  const source = new EventSource(`${base}/match/${encodeURIComponent(matchId)}/events`, {
+  const source = new EventSource(`${base}/run/${encodeURIComponent(runId)}/events`, {
     withCredentials: true,
   })
   source.addEventListener('result', (event) => {

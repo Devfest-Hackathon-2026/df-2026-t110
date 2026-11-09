@@ -3,9 +3,10 @@ import { computed, ref } from 'vue'
 import {
   createMatch,
   createProgram,
+  getBattlePrograms,
   getMe,
-  listPrograms,
   MatchApiError,
+  setBattlePrograms,
   subscribeMatchResult,
   type MatchRecord,
   type MatchResult,
@@ -13,21 +14,55 @@ import {
   type ProgramRecord,
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/language/picolang.ts'
-import { parseBoardEventHistory, replayFrames, type ReplayFrame } from './matchReplay.ts'
+import { replayFrames, type ReplayFrame } from './matchReplay.ts'
+
+type ProgramIds = [string, string, string]
+type ProgramSummary = Pick<ProgramRecord, 'id' | 'name'>
+const emptyIds = (): ProgramIds => ['', '', '']
+const matchKey = (id: string) => `match:record:${id}`
+const programKey = 'battle:created-programs'
+
+function cachedPrograms(): ProgramSummary[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(programKey) ?? '[]')
+    if (!Array.isArray(value)) return []
+    return value.filter(
+      (item): item is ProgramSummary =>
+        item !== null &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string',
+    )
+  } catch {
+    return []
+  }
+}
+
+function rememberProgram(program: ProgramSummary): void {
+  try {
+    const previous = cachedPrograms().filter((item) => item.id !== program.id)
+    localStorage.setItem(programKey, JSON.stringify([...previous, program].slice(-100)))
+  } catch {
+    // The program remains available for this page even when storage is disabled.
+  }
+}
 
 export const useMatchStore = defineStore('match', () => {
-  const fieldId = ref('')
-  const programs = ref<ProgramRecord[]>([])
-  const selectedProgramId = ref('')
+  const programs = ref<ProgramSummary[]>([])
+  const selectedProgramIds = ref<ProgramIds>(emptyIds())
+  const registeredProgramIds = ref<ProgramIds | null>(null)
   const match = ref<MatchRecord | null>(null)
   const result = ref<MatchResult | null>(null)
   const frames = ref<ReplayFrame[]>([])
-  const importedBoardEvents = ref(false)
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const busy = ref(false)
   const error = ref('')
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
+  const canStart = computed(() => selectedProgramIds.value.every(Boolean))
+  const settingsSaved = computed(
+    () => registeredProgramIds.value?.every((id, index) => id === selectedProgramIds.value[index]) ?? false,
+  )
   let stopEvents: (() => void) | undefined
   let loadController: AbortController | undefined
   let authRequest: Promise<void> | undefined
@@ -36,18 +71,6 @@ export const useMatchStore = defineStore('match', () => {
     stopEvents?.()
     stopEvents = undefined
     loadController?.abort()
-  }
-
-  function setField(id: string): void {
-    dispose()
-    fieldId.value = id.trim()
-    programs.value = []
-    selectedProgramId.value = ''
-    match.value = null
-    result.value = null
-    frames.value = []
-    importedBoardEvents.value = false
-    error.value = ''
   }
 
   function loadMe(force = false): Promise<void> {
@@ -68,30 +91,63 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function loadPrograms(): Promise<void> {
-    if (!fieldId.value) return
     if (authStatus.value !== 'signed-in') return
     loadController?.abort()
-    loadController = new AbortController()
+    const controller = new AbortController()
+    loadController = controller
+    busy.value = true
+    error.value = ''
+    programs.value = cachedPrograms()
+    try {
+      const ids = await getBattlePrograms(controller.signal)
+      if (controller.signal.aborted) return
+      if (!ids) {
+        registeredProgramIds.value = null
+        selectedProgramIds.value = emptyIds()
+        return
+      }
+      const names = new Map(programs.value.map((program) => [program.id, program.name]))
+      programs.value = [...new Set([...ids, ...names.keys()])].map((id) => ({
+        id,
+        name: names.get(id) ?? id,
+      }))
+      selectedProgramIds.value = [...ids]
+      registeredProgramIds.value = [...ids]
+    } catch (cause) {
+      if (!controller.signal.aborted) error.value = errorText(cause)
+    } finally {
+      if (loadController === controller) {
+        loadController = undefined
+        busy.value = false
+      }
+    }
+  }
+
+  async function saveProgram(name: string, source: PicoProgram): Promise<void> {
+    if (authStatus.value !== 'signed-in' || !name.trim()) return
     busy.value = true
     error.value = ''
     try {
-      programs.value = await listPrograms(fieldId.value, loadController.signal)
-      if (!programs.value.some((item) => item.id === selectedProgramId.value)) selectedProgramId.value = ''
+      const saved = await createProgram({ name: name.trim(), source })
+      programs.value = [...programs.value, { id: saved.id, name: saved.name }]
+      rememberProgram(saved)
+      const slot = selectedProgramIds.value.findIndex((id) => !id)
+      selectedProgramIds.value[slot < 0 ? 0 : slot] = saved.id
     } catch (cause) {
-      if (!loadController.signal.aborted) error.value = errorText(cause)
+      error.value = errorText(cause)
     } finally {
       busy.value = false
     }
   }
 
-  async function saveProgram(name: string, source: PicoProgram): Promise<void> {
-    if (authStatus.value !== 'signed-in' || !fieldId.value || !name.trim()) return
+  async function saveSettings(): Promise<void> {
+    if (authStatus.value !== 'signed-in' || !canStart.value) return
     busy.value = true
     error.value = ''
     try {
-      const saved = await createProgram(fieldId.value, { name: name.trim(), source })
-      programs.value = [...programs.value, saved]
-      selectedProgramId.value = saved.id ?? ''
+      const ids: ProgramIds = [...selectedProgramIds.value]
+      await setBattlePrograms(ids)
+      registeredProgramIds.value = ids
     } catch (cause) {
       error.value = errorText(cause)
     } finally {
@@ -100,13 +156,25 @@ export const useMatchStore = defineStore('match', () => {
   }
 
   async function startMatch(): Promise<void> {
-    if (authStatus.value !== 'signed-in' || !fieldId.value || !selectedProgramId.value) return
+    if (authStatus.value !== 'signed-in' || !canStart.value || busy.value) return
     busy.value = true
     error.value = ''
     try {
-      const created = await createMatch(fieldId.value, selectedProgramId.value)
+      const ids: ProgramIds = [...selectedProgramIds.value]
+      await setBattlePrograms(ids)
+      registeredProgramIds.value = ids
+      const created = await createMatch(ids)
+      try {
+        sessionStorage.setItem(matchKey(created.id), JSON.stringify(created))
+      } catch {
+        // The runId is also kept in the URL for reloads when storage is disabled.
+      }
+      window.history.pushState(
+        null,
+        '',
+        `/matches/${encodeURIComponent(created.id)}?runId=${encodeURIComponent(created.runId)}`,
+      )
       watchMatch(created.id, created)
-      window.history.pushState(null, '', `/matches/${encodeURIComponent(created.id)}`)
     } catch (cause) {
       error.value = errorText(cause)
     } finally {
@@ -116,23 +184,29 @@ export const useMatchStore = defineStore('match', () => {
 
   function watchMatch(id: string, record?: MatchRecord): void {
     stopEvents?.()
-    importedBoardEvents.value = false
-    if (import.meta.env.DEV && id === 'demo') {
-      void import('./replayDemo.ts').then(({ replayDemoHistory }) => {
-        if (importedBoardEvents.value) return
-        match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'sample' }
-        result.value = { history: replayDemoHistory, summary: { score: { player: 1, opponent: 0 } } }
-        frames.value = replayFrames(replayDemoHistory)
-        error.value = ''
-      })
-      return
+    stopEvents = undefined
+    let saved: MatchRecord | null = null
+    try {
+      const raw = sessionStorage.getItem(matchKey(id))
+      if (raw) {
+        const candidate = JSON.parse(raw) as MatchRecord
+        if (candidate.id === id && typeof candidate.runId === 'string') saved = candidate
+      }
+    } catch {
+      // The runId in the URL is sufficient to retrieve the result.
     }
-    match.value = record ?? { id, fieldId: '', selectedLayoutId: '' }
+    const runId =
+      record?.runId ?? saved?.runId ?? new URLSearchParams(window.location.search).get('runId') ?? ''
+    match.value = record ?? saved ?? { id, runId, fieldId: '', selectedLayoutId: '', opponentName: '' }
     result.value = null
     frames.value = []
     error.value = ''
+    if (!runId) {
+      error.value = 'この対戦の結果を開けません。対戦を開始した画面から開き直してください。'
+      return
+    }
     stopEvents = subscribeMatchResult(
-      id,
+      runId,
       (received) => {
         result.value = received
         try {
@@ -149,43 +223,30 @@ export const useMatchStore = defineStore('match', () => {
     )
   }
 
-  function importBoardEvents(json: string): void {
-    const history = parseBoardEventHistory(json)
-    const nextFrames = replayFrames(history)
-    if (nextFrames.length === 0) throw new Error('再生できるfieldイベントがありません。')
-    stopEvents?.()
-    stopEvents = undefined
-    match.value = { id: 'demo', fieldId: 'demo', selectedLayoutId: 'Boardイベント' }
-    result.value = { history, summary: { score: { player: 0, opponent: 0 } } }
-    frames.value = nextFrames
-    importedBoardEvents.value = true
-    error.value = ''
-  }
-
   function reconnect(): void {
-    if (match.value) watchMatch(match.value.id, match.value)
+    if (match.value?.runId) watchMatch(match.value.id, match.value)
   }
 
   return {
-    fieldId,
     programs,
-    selectedProgramId,
+    selectedProgramIds,
+    registeredProgramIds,
     match,
     result,
     frames,
-    importedBoardEvents,
     user,
     authStatus,
     busy,
     error,
     phase,
+    canStart,
+    settingsSaved,
     loadMe,
-    setField,
     loadPrograms,
     saveProgram,
+    saveSettings,
     startMatch,
     watchMatch,
-    importBoardEvents,
     reconnect,
     dispose,
   }
@@ -194,10 +255,10 @@ export const useMatchStore = defineStore('match', () => {
 function errorText(cause: unknown): string {
   if (cause instanceof MatchApiError) {
     if (cause.status === 401) return 'ログインが必要です。'
-    if (cause.status === 403)
-      return 'サーバーが表示名の登録を要求しています。Googleアカウント名を使うにはサーバー側の対応が必要です。'
-    if (cause.status === 409) return 'このフィールドには対戦相手の候補がいません。'
-    if (cause.status === 501) return 'このAPIはサーバー側でまだ実装されていません。'
+    if (cause.status === 403) return '表示名と対戦用プログラムの設定を確認してください。'
+    if (cause.status === 404) return '指定したプログラムが見つかりません。'
+    if (cause.status === 409) return '対戦できる相手がまだいません。'
+    if (cause.status === 501) return 'この機能は現在利用できません。'
   }
   return cause instanceof Error ? cause.message : '通信に失敗しました。'
 }
