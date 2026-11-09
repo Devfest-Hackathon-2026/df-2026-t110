@@ -7,7 +7,7 @@
 # client-build keeps re-running `vite build` into client-dist.
 #   app:      http://localhost:8080
 #   postgres: postgres://app:app@localhost:5432/app?sslmode=disable
-#             (repo integration tests: TEST_DATABASE_URL with the same URL)
+# Run server tests with an isolated Docker database: `mise run test-server`.
 name: programming-learning-ar
 
 services:
