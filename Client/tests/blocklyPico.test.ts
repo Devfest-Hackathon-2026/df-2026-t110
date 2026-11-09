@@ -46,7 +46,7 @@ test('オプションカテゴリのブロックはoptionを受け取り、unwra
     (item) => item.kind === 'category' && 'name' in item && item.name === 'オプション',
   ) as Blockly.utils.toolbox.StaticCategoryInfo
   assert.ok(category)
-  assert.equal(category.contents.length, 2)
+  assert.equal(category.contents.length, 4)
   const workspace = new Blockly.Workspace()
   try {
     for (const name of ['unwrap', 'is_some']) {
@@ -58,7 +58,7 @@ test('オプションカテゴリのブロックはoptionを受け取り、unwra
       const block = Blockly.serialization.blocks.append({ ...entry, type }, workspace)
       const input = block.getInput('ARG0')!.connection!
       assert.deepEqual(input.getCheck(), ['option'])
-      assert.equal(block.getInputTargetBlock('ARG0')!.type, 'pico_ident')
+      assert.equal(block.getInputTargetBlock('ARG0')!.type, 'pico_expr_some')
       assert.deepEqual(block.outputConnection!.getCheck(), name === 'unwrap' ? null : ['bool'])
       for (const other of ['pico_number', 'pico_expr_new'])
         assert.equal(
@@ -105,6 +105,48 @@ test('option引数とboolのunwrapをBlocklyとAST・実行JSONの間で保持�
       params: [{ kind: 'option', elementType: 'bool' }],
       returns: { kind: 'option', elementType: 'bool' },
     })
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('someとnoneのブロックを生成し、型を推論したプログラムとして往復できる', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  const declaration = makeStatement('declare', functions)
+  assert.equal(declaration.kind, 'declare')
+  declaration.ident = ident('maybe')
+  declaration.value = makeCall('none')
+  const some = makeCall('some')
+  some.args = [defaultExpr('bool')]
+  const assignment = makeStatement('assign', functions)
+  assert.equal(assignment.kind, 'assign')
+  assignment.ident = ident('maybe')
+  assignment.value = some
+  const unwrap = makeCall('unwrap')
+  unwrap.args = [ident('maybe')]
+  const print = makeCall('print_bool')
+  print.args = [unwrap]
+  functions.main.body.stmts.unshift(declaration, assignment, print)
+  const before = structuredClone(functions.main)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    for (const name of ['some', 'none']) {
+      const block = workspace.newBlock(`pico_expr_${name}`)
+      assert.deepEqual(block.outputConnection!.getCheck(), ['option'])
+      if (name === 'some') assert.equal(block.getInput('ARG0')!.connection!.getCheck(), null)
+      else assert.equal(block.getInput('ARG0'), null)
+    }
+    loadFunction(workspace, functions.main, functions)
+    refreshVariableBlocks(workspace)
+    assert.equal(workspace.getTopBlocks(false).length, 1)
+    functions.main = readFunction(workspace, functions.main, functions)
+    assert.deepEqual(functions.main, before)
+    const analysis = inferPicolang(program)
+    assert.deepEqual(analysis.diagnostics, [])
+    assert.deepEqual(analysis.types[declaration.ident.hintId], { kind: 'option', elementType: 'bool' })
+    assert.equal(isPicoProgram(analysis.program), true)
   } finally {
     workspace.dispose()
   }

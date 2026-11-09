@@ -45,7 +45,8 @@ export function expressionFromDrop(
   if (!returnType && Object.hasOwn(functions, name)) return makeCall(name, functions)
   return returnType &&
     (samePicoType(expectedType, returnType) ||
-      (name === 'new' && typeof expectedType === 'object' && expectedType.kind === 'stack'))
+      (name === 'new' && typeof expectedType === 'object' && expectedType.kind === 'stack') ||
+      (['some', 'none'].includes(name) && typeof expectedType === 'object' && expectedType.kind === 'option'))
     ? makeCall(name, functions)
     : null
 }

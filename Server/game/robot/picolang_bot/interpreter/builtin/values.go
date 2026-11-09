@@ -70,6 +70,10 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 		}
 	case "new":
 		result = memory.ListRoot{}
+	case "some":
+		result = memory.Some{Element: ids[0]}
+	case "none":
+		result = memory.None{}
 	case "unwrap":
 		some, ok := args[0].(memory.Some)
 		if !ok {

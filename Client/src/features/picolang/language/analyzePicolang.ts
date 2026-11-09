@@ -259,9 +259,19 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
             return functionType([value], 'integer')
         }
       }
-      if (name === 'unwrap' || name === 'is_some') {
+      if (['some', 'none', 'unwrap', 'is_some'].includes(name)) {
         const variable = fresh(functionName, hintId)
-        return functionType([compound('option', [variable])], name === 'unwrap' ? variable : 'bool')
+        const value = compound('option', [variable])
+        switch (name) {
+          case 'some':
+            return functionType([variable], value)
+          case 'none':
+            return functionType([], value)
+          case 'unwrap':
+            return functionType([value], variable)
+          default:
+            return functionType([value], 'bool')
+        }
       }
       return functionType(builtin.args.map(term), term(builtin.returns))
     }

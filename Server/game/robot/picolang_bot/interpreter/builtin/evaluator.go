@@ -129,7 +129,7 @@ func matches(value memory.Value, typ bot.Type) bool {
 			return false
 		}
 	default:
-		// The only remaining builtin parameter is push_back's generic T.
+		// Generic T parameters accept any outer kind.
 		return true
 	}
 }

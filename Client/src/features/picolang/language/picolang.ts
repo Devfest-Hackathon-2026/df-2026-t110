@@ -134,6 +134,8 @@ export const PICO_BUILTINS = [
   builtin('pop_back', [stackInteger], stackInteger),
   builtin('get_back', [stackInteger], 'integer'),
   builtin('size', [stackInteger], 'integer'),
+  builtin('some', ['integer'], optionInteger),
+  builtin('none', [], optionInteger),
   builtin('unwrap', [optionInteger], 'integer'),
   builtin('is_some', [optionInteger], 'bool'),
   builtin('print_integer', ['integer'], 'unit'),
@@ -155,8 +157,8 @@ export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
 export function defaultExpr(type: PicoType = 'integer'): PicoExpr {
-  // Options have no constructor yet; leave a variable for the author to supply.
-  if (typeof type !== 'string' && type.kind === 'option') return ident('option')
+  if (typeof type !== 'string' && type.kind === 'option')
+    return { kind: 'call', hintId: id(), func: 'some', args: [defaultExpr(type.elementType)] }
   if (typeof type !== 'string') return { kind: 'call', hintId: id(), func: 'new', args: [] }
   if (type === 'bool') return { kind: 'literal', hintId: id(), type, value: false }
   if (type === 'unit') return { kind: 'literal', hintId: id(), type, value: null }

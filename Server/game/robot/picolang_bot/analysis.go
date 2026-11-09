@@ -78,6 +78,8 @@ func BuiltinSignatures() map[Name]Signature {
 		"pop_back":              {[]Type{v}, v},
 		"get_back":              {[]Type{v}, x},
 		"size":                  {[]Type{v}, i},
+		"some":                  {[]Type{x}, o},
+		"none":                  {nil, o},
 		"unwrap":                {[]Type{o}, x},
 		"is_some":               {[]Type{o}, b},
 		"is_land":               {[]Type{t}, b},

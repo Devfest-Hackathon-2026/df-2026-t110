@@ -15,6 +15,8 @@ func TestOptionBuiltinTypes(t *testing.T) {
 			t.Parallel()
 			option := bot.OptionType{ElementType: element}
 			for _, tc := range []builtinCase{
+				{"some", []bot.Type{element}, option},
+				{"none", nil, option},
 				{"unwrap", []bot.Type{option}, element},
 				{"is_some", []bot.Type{option}, bot.BoolType{}},
 			} {
@@ -84,5 +86,39 @@ func TestOptionCanonicalTypes(t *testing.T) {
 	testutil.AssertType(t, got, bot.OptionType{ElementType: bot.StackType{ElementType: bot.IntegerType{}}})
 	if outer.ElementType.(*bot.StackType).ElementType != inner {
 		t.Error("canonicalization mutated the source type")
+	}
+}
+
+func TestOptionConstructorInference(t *testing.T) {
+	t.Parallel()
+	i := bot.IntegerType{}
+	o := bot.OptionType{ElementType: i}
+	nested := bot.OptionType{ElementType: o}
+	program := testutil.MainProgram[bot.VariableIndex](
+		declaration("absent", 0, o, testutil.Call[bot.VariableIndex]("none", "none")),
+		declaration("nested", 1, nested, testutil.Call[bot.VariableIndex]("some", "some", testutil.Call[bot.VariableIndex]("inner-none", "none"))),
+		declaration("items", 2, bot.StackType{ElementType: o}, testutil.Call[bot.VariableIndex]("push", "push_back",
+			testutil.Call[bot.VariableIndex]("new", "new"), testutil.Call[bot.VariableIndex]("stack-none", "none"))),
+		declaration("unwrapped", 3, i, testutil.Call[bot.VariableIndex]("unwrap", "unwrap", testutil.Call[bot.VariableIndex]("context-none", "none"))),
+		testutil.UnitReturn[bot.VariableIndex](),
+	)
+	got := annotations(t, testutil.Typed(t, program))
+	for _, hint := range []bot.HintID{"none", "inner-none", "stack-none", "context-none"} {
+		testutil.AssertType(t, got[hint], o)
+	}
+	testutil.AssertType(t, got["some"], nested)
+	for _, name := range []bot.Name{"some", "none"} {
+		t.Run(string(name)+"_unconstrained", func(t *testing.T) {
+			t.Parallel()
+			value := testutil.Call[bot.VariableIndex]("none", "none")
+			if name == "some" {
+				value = testutil.Call[bot.VariableIndex]("some", "some", value)
+			}
+			_, err := typecheck.TypeCheck(testutil.MainProgram[bot.VariableIndex](value, testutil.UnitReturn[bot.VariableIndex]()))
+			ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
+			if len(ds) != 1 || ds[0].Code != bot.CodeCannotInferType {
+				t.Errorf("unconstrained constructor diagnostics = %v, want one cannot-infer-type error", ds)
+			}
+		})
 	}
 }

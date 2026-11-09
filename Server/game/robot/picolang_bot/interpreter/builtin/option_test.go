@@ -12,10 +12,12 @@ func TestOptionBuiltins(t *testing.T) {
 	t.Parallel()
 	store, e := setup(t, 0)
 	base := store.MemoryUsage()
-	none := add(t, store, memory.None{})
-	inner := add(t, store, memory.Some{Element: none})
-	some := add(t, store, memory.Some{Element: inner})
-	empty := add(t, store, memory.Some{Element: memory.RootID})
+	none := immediate(t, e, "none")
+	inner := immediate(t, e, "some", none)
+	some := immediate(t, e, "some", inner)
+	empty := immediate(t, e, "some", memory.RootID)
+	assertValue(t, store, none, memory.None{})
+	assertValue(t, store, inner, memory.Some{Element: none})
 	for _, tc := range []struct {
 		id   memory.ID
 		want bool

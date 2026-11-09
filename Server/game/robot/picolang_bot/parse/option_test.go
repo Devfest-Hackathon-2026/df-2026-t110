@@ -21,6 +21,9 @@ func TestParseAndCheckNestedOptions(t *testing.T) {
 	functions := map[string]any{
 		"main": f.node("function", "params", []any{}, "returnType", "unit", "body", f.block(
 			f.node("declare", "type", stack, "ident", f.ident("options"), "value", f.call("new")),
+			f.node("assign", "ident", f.ident("options"), "value", f.call("push_back", f.ident("options"), f.call("none"))),
+			f.node("assign", "ident", f.ident("options"), "value", f.call("push_back", f.ident("options"), f.call("some", f.literal("integer", 42)))),
+			f.call("identity", f.call("some", f.ident("options"))),
 			f.node("return", "value", f.literal("unit", nil)))),
 		"identity": f.node("function", "params", []any{f.node("param", "ident", f.ident("input"), "type", nested)}, "returnType", nested, "body", f.block(
 			f.call("is_some", f.ident("input")),

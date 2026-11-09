@@ -61,7 +61,7 @@ func (RotationType) primitiveType()       {}
 func (DistanceTargetType) primitiveType() {}
 func (StackType) compoundType()           {}
 
-// Literal contains only source literals. Terrain and stack values are
+// Literal contains only source literals. Terrain, stack and option values are
 // produced by builtins, so they have no literal representation.
 type Literal interface{ literal() }
 

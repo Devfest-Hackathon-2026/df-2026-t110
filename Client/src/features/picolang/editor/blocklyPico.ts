@@ -314,12 +314,14 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
   const signature = callSignature(name, functions)
   const userFunction = Object.hasOwn(functions, name)
   const genericStack = ['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)
-  const genericOption = name === 'unwrap' || name === 'is_some'
+  const genericOption = ['some', 'none', 'unwrap', 'is_some'].includes(name)
   const inputCheck = (type: PicoType | undefined, index: number): string | string[] | null =>
     userFunction
       ? null
       : genericOption
-        ? 'option'
+        ? name === 'some'
+          ? null
+          : 'option'
         : genericStack
           ? index === 0
             ? 'stack'
@@ -357,9 +359,13 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
               ? name === 'get_back'
                 ? null
                 : 'stack'
-              : missing || userFunction || name === 'unwrap'
-                ? null
-                : typeCheck(signature.returns),
+              : genericOption && name !== 'is_some'
+                ? name === 'unwrap'
+                  ? null
+                  : 'option'
+                : missing || userFunction
+                  ? null
+                  : typeCheck(signature.returns),
           )
         this.setColour(colours[signature.category] ?? colours.関数)
         this.setTooltip(

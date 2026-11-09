@@ -709,3 +709,49 @@ test('option inference rejects non-options, unknown elements and infinite types'
   })
   assert.ok(inferPicolang(program).diagnostics.some((d) => d.code === 'type_mismatch'))
 })
+
+test('some and none infer their types from arguments and later uses without annotations', () => {
+  const absent = local('absent', call('none'))
+  const nested = local('nested', call('some', call('none')))
+  const held = local('held', call('some', call('new')))
+  const options = local('options', call('push_back', call('new'), call('none')))
+  const program = source(
+    absent,
+    nested,
+    held,
+    options,
+    call('print_bool', call('unwrap', ident('absent'))),
+    call('print_integer', call('unwrap', call('unwrap', ident('nested')))),
+    call('push_back', call('unwrap', ident('held')), defaultExpr('rotation')),
+    call('push_back', ident('options'), call('some', defaultExpr('bool'))),
+  )
+  const before = structuredClone(program)
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(program, before)
+  const option = (elementType: PicoType): PicoType => ({ kind: 'option', elementType })
+  for (const [declaration, expected] of [
+    [absent, option('bool')],
+    [nested, option(option('integer'))],
+    [held, option(stack('rotation'))],
+    [options, stack(option('bool'))],
+  ] as const)
+    assert.deepEqual(analysis.types[declaration.ident.hintId], expected)
+  assert.equal(isPicoProgram(analysis.program), true)
+})
+
+test('option constructors require resolvable types and the declared number of arguments', () => {
+  for (const expression of [call('none'), call('some', call('none')), call('is_some', call('none'))]) {
+    const analysis = inferPicolang(source(expression))
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'cannot_infer_type'))
+    assert.equal(analysis.program, null)
+  }
+  for (const expression of [call('some'), call('none', defaultExpr())]) {
+    const analysis = inferPicolang(source(expression))
+    assert.deepEqual(
+      analysis.diagnostics.map((d) => d.code),
+      ['argument_count'],
+    )
+    assert.equal(analysis.program, null)
+  }
+})
