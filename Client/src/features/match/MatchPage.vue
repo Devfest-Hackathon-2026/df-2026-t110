@@ -7,7 +7,15 @@ import saveIcon from '@iconify-icons/lucide/save'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
-import type { PicoProgram, PicoTypedProgram } from '../picolang/language/picolang.ts'
+import {
+  isPicoProgram,
+  makeStatement,
+  newProgram,
+  programFunctions,
+  type PicoProgram,
+  type PicoTypedProgram,
+} from '../picolang/language/picolang.ts'
+import type { generateProgram } from '../program-generation/programGenerationApi.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/BlocklyEditor.vue'))
 const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
@@ -75,6 +83,13 @@ async function saveGenerated(): Promise<void> {
   if (!generatedDraft.value) return
   await store.saveProgram(generatedName.value, generatedDraft.value)
 }
+const previewGenerate: typeof generateProgram = async () => {
+  const sample = newProgram()
+  const main = programFunctions(sample).main
+  main.body.stmts.unshift(makeStatement('forward', programFunctions(sample)))
+  if (!isPicoProgram(sample)) throw new Error('表示確認用のプログラムを作成できませんでした。')
+  return sample
+}
 function onEditorToggle(event: Event): void {
   editorOpen.value = (event.target as HTMLDetailsElement).open
 }
@@ -106,6 +121,12 @@ function onEditorToggle(event: Event): void {
           <p>Google認証を以下のリンクから行ってください</p>
           <a class="match-login" :href="loginUrl">Googleでログイン</a>
         </template>
+      </section>
+
+      <section v-if="isDev && store.authStatus === 'guest'" class="match-programs">
+        <h2>生成コンポーネントの表示確認</h2>
+        <p>ローカル用の固定サンプルを表示します。入力した文章はAPIへ送信されず、保存もされません。</p>
+        <ProgramGenerator :is-battle="true" :generate="previewGenerate" />
       </section>
 
       <section

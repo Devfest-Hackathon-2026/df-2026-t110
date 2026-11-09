@@ -3,10 +3,13 @@ import { onBeforeUnmount, ref, useId } from 'vue'
 import type { PicoTypedProgram } from '../picolang/language/picolang.ts'
 import { generateProgram } from './programGenerationApi.ts'
 
-const props = withDefaults(defineProps<{ fieldId?: string; isBattle?: boolean }>(), {
-  fieldId: undefined,
-  isBattle: false,
-})
+const props = withDefaults(
+  defineProps<{ fieldId?: string; isBattle?: boolean; generate?: typeof generateProgram }>(),
+  {
+    fieldId: undefined,
+    isBattle: false,
+  },
+)
 const emit = defineEmits<{ started: []; generated: [program: PicoTypedProgram] }>()
 const prompt = ref('')
 const promptId = useId()
@@ -25,7 +28,7 @@ async function submit() {
   generated.value = ''
   emit('started')
   try {
-    const program = await generateProgram(
+    const program = await (props.generate ?? generateProgram)(
       {
         prompt: instruction,
         ...(props.fieldId ? { fieldId: props.fieldId } : {}),
