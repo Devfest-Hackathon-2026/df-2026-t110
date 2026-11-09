@@ -22,9 +22,9 @@ const errorMessages: Record<number, string> = {
   404: '指定した教材が見つかりません。',
   413: '依頼文が長すぎます。',
   422: '有効なプログラムを生成できませんでした。依頼文を変えて再試行してください。',
-  429: '生成の利用枠を超えました。',
-  501: 'サーバーの生成機能が設定されていません。',
-  504: '生成が時間切れになりました。',
+  429: 'プログラム生成の利用上限に達しました。',
+  501: 'プログラム生成は現在利用できません。',
+  504: 'プログラム生成が時間内に終わりませんでした。もう一度お試しください。',
 }
 
 export async function generateProgram(
@@ -41,17 +41,22 @@ export async function generateProgram(
   if (!response.ok) {
     throw new ProgramGenerationApiError(
       response.status,
-      errorMessages[response.status] ?? `プログラムの生成に失敗しました (HTTP ${response.status})`,
+      errorMessages[response.status] ?? 'プログラムを生成できませんでした。もう一度お試しください。',
     )
   }
   if (!response.headers.get('content-type')?.includes('application/json')) {
-    throw new Error(
+    throw new ProgramGenerationApiError(
+      response.status,
       response.redirected
-        ? 'ログイン画面へ転送されました。ログイン状態を確認してください。'
-        : '生成APIからJSONが返されませんでした。',
+        ? 'プログラムを生成するには、ログインし直してください。'
+        : '生成したプログラムを受け取れませんでした。もう一度お試しください。',
     )
   }
   const result: unknown = await response.json()
-  if (!isPicoProgram(result)) throw new Error('生成APIから有効なPicolangプログラムが返されませんでした。')
+  if (!isPicoProgram(result))
+    throw new ProgramGenerationApiError(
+      response.status,
+      '生成したプログラムを使用できませんでした。文章を変えて、もう一度お試しください。',
+    )
   return result
 }

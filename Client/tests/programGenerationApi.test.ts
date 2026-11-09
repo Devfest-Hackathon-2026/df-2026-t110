@@ -46,7 +46,10 @@ test('認証エラーと不正な成功レスポンスを区別する', async ()
       (error: unknown) => error instanceof ProgramGenerationApiError && error.status === 401,
     )
     globalThis.fetch = async () => Response.json({ invalid: true }, { status: 201 })
-    await assert.rejects(generateProgram({ prompt: '前進' }, new AbortController().signal), /有効なPicolang/)
+    await assert.rejects(
+      generateProgram({ prompt: '前進' }, new AbortController().signal),
+      /生成したプログラムを使用できませんでした/,
+    )
   } finally {
     globalThis.fetch = originalFetch
   }
