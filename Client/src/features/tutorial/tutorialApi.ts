@@ -23,7 +23,7 @@ async function getJson(path: string, signal: AbortSignal): Promise<unknown | nul
   const timeout = new Promise<never>((_, reject) => {
     timer = window.setTimeout(() => {
       request.abort()
-      reject(new Error('教材APIの応答が20秒以内に返りませんでした。ページを開き直してください。'))
+      reject(new Error('チュートリアルAPIの応答が20秒以内に返りませんでした。ページを開き直してください。'))
     }, 20_000)
   })
   signal.addEventListener('abort', abort, { once: true })
@@ -36,8 +36,10 @@ async function getJson(path: string, signal: AbortSignal): Promise<unknown | nul
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         if (!response.headers.get('content-type')?.includes('json')) {
           if (response.redirected)
-            throw new Error('教材APIがログイン画面へ転送されました。ページを開き直して認証してください。')
-          throw new Error('教材APIからJSONを取得できませんでした')
+            throw new Error(
+              'チュートリアルAPIがログイン画面へ転送されました。ページを開き直して認証してください。',
+            )
+          throw new Error('チュートリアルAPIからJSONを取得できませんでした')
         }
         return await response.json()
       })(),
@@ -62,7 +64,7 @@ export async function getTutorials(signal: AbortSignal): Promise<TutorialSummary
         !item || typeof item !== 'object' || typeof item.id !== 'string' || typeof item.title !== 'string',
     )
   ) {
-    throw new Error('教材一覧の形式が不正です')
+    throw new Error('チュートリアル一覧の形式が不正です')
   }
   return result as TutorialSummary[]
 }

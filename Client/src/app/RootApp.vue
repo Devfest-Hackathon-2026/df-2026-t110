@@ -67,7 +67,7 @@ const page = computed(() => {
 })
 
 document.title = tutorialId
-  ? '教材 | PicoBots'
+  ? 'チュートリアル | PicoBots'
   : matchId
     ? '対戦結果 | PicoBots'
     : path === '/rooms'
@@ -85,12 +85,14 @@ document.title = tutorialId
       <section class="home-hero container" aria-labelledby="home-title">
         <h2>命令を組んで、ロボットを動かそう。</h2>
         <p class="hero-lead">
-          岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
+          岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミングチュートリアルです。
         </p>
         <div class="home-entry-grid">
           <a class="home-entry-card" href="/tutorials">
             <Icon :icon="bookOpenIcon" aria-hidden="true" />
-            <span><strong>教材を始める</strong><small>プログラムを組んでロボットを動かす</small></span>
+            <span
+              ><strong>チュートリアルを始める</strong><small>プログラムを組んでロボットを動かす</small></span
+            >
             <Icon :icon="arrowUpRightIcon" class="home-entry-arrow" aria-hidden="true" />
           </a>
           <a class="home-entry-card" href="/rooms">
@@ -104,12 +106,14 @@ document.title = tutorialId
       <section class="home-explainer container" aria-labelledby="learn-title">
         <div class="home-feature-copy">
           <h2 id="learn-title" class="heading-with-icon">
-            <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル</span>
+            <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
           </h2>
           <p>一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。</p>
         </div>
-        <HomeFeatureCarousel label="学習チュートリアルの紹介" :slides="tutorialSlides" />
-        <a class="home-feature-link" href="/tutorials">教材を見る <span aria-hidden="true">↗</span></a>
+        <HomeFeatureCarousel label="チュートリアルの紹介" :slides="tutorialSlides" />
+        <a class="home-feature-link" href="/tutorials"
+          >チュートリアルを見る <span aria-hidden="true">↗</span></a
+        >
       </section>
 
       <section class="home-next" aria-labelledby="match-title">

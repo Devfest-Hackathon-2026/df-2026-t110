@@ -35,7 +35,7 @@ const accountLabel = computed(() => {
       <a
         href="/tutorials"
         :aria-current="activePage === 'tutorials' || activePage === 'tutorial-detail' ? 'page' : undefined"
-        ><Icon :icon="bookOpenIcon" aria-hidden="true" /><span>教材</span></a
+        ><Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span></a
       >
       <a href="/rooms" :aria-current="activePage === 'rooms' ? 'page' : undefined"
         ><Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span></a

@@ -180,11 +180,11 @@ async function load(id: string): Promise<void> {
       typeof remote.description !== 'string' ||
       (!remote.stage && typeof remote.fieldId !== 'string')
     )
-      throw new Error('教材データに id、title、description または stage / fieldId がありません')
+      throw new Error('チュートリアルデータに id、title、description または stage / fieldId がありません')
     const remoteField = remote.stage ?? (await getTutorialField(remote.fieldId!, signal))
     if (signal.aborted) return
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
-      throw new Error('教材のフィールドが見つかりません')
+      throw new Error('チュートリアルのフィールドが見つかりません')
     const nextField = normalizeField(remoteField as Record<string, unknown>)
     tutorial.value = remote
     field.value = nextField
@@ -200,13 +200,13 @@ async function load(id: string): Promise<void> {
     if (signal.aborted) return
     field.value = null
     loadState.value = 'error'
-    console.error('教材の読み込みに失敗しました', error)
-    loadMessage.value = '教材を読み込めませんでした。'
+    console.error('チュートリアルの読み込みに失敗しました', error)
+    loadMessage.value = 'チュートリアルを読み込めませんでした。'
   }
 }
 
 function handleSceneError(detail: string): void {
-  console.error('教材のフィールド表示に失敗しました', detail)
+  console.error('チュートリアルのフィールド表示に失敗しました', detail)
   sceneError.value = detail
 }
 
@@ -251,7 +251,7 @@ async function runProgram(): Promise<void> {
     const signal = controller.signal
     const programId = await saveTutorialProgram(
       props.tutorialId,
-      `教材: ${tutorial.value.title}`,
+      `チュートリアル: ${tutorial.value.title}`,
       program,
       signal,
     )
@@ -299,7 +299,7 @@ async function runProgram(): Promise<void> {
     if (generation !== runGeneration || controller.signal.aborted) return
     runState.value = 'error'
     loginRequired.value = error instanceof TutorialRunApiError && error.status === 401
-    console.error('教材の実行に失敗しました', error)
+    console.error('チュートリアルの実行に失敗しました', error)
     runMessage.value =
       error instanceof TutorialRunApiError
         ? error.message
@@ -436,7 +436,7 @@ onBeforeUnmount(() => {
     }"
     :style="{ '--editor-width': `${editorWidth}%` }"
   >
-    <nav class="tutorial-mobile-tabs" aria-label="教材画面の切り替え">
+    <nav class="tutorial-mobile-tabs" aria-label="チュートリアル画面の切り替え">
       <button type="button" :aria-pressed="compactPane === 'work'" @click="switchCompactPane('work')">
         操作
       </button>
@@ -467,7 +467,7 @@ onBeforeUnmount(() => {
           @interval="nodeInterval = $event"
         />
         <p v-else-if="loadState === 'loading'" class="tutorial-editor-loading" role="status">
-          教材を読み込んでいます…
+          チュートリアルを読み込んでいます…
         </p>
       </div>
     </section>
@@ -509,10 +509,10 @@ onBeforeUnmount(() => {
             <a href="/tutorials">チュートリアルへ戻る</a>
           </div>
           <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
-            教材を読み込んでいます。
+            チュートリアルを読み込んでいます。
           </div>
           <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-            <h1>教材が見つかりません。</h1>
+            <h1>チュートリアルが見つかりません。</h1>
             <a href="/tutorials">チュートリアルを見る</a>
           </div>
           <template v-else-if="loadState === 'ready' && tutorial">
@@ -597,7 +597,7 @@ onBeforeUnmount(() => {
         ref="stageRef"
         class="tutorial-stage"
         :class="{ 'tutorial-stage--fullscreen': stageFullscreen }"
-        aria-label="教材のフィールド"
+        aria-label="チュートリアルのフィールド"
         :inert="compactScreen && compactPane !== 'ar'"
       >
         <StageScene
