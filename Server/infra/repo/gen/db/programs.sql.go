@@ -37,6 +37,43 @@ func (q *Queries) CreateProgram(ctx context.Context, arg CreateProgramParams) er
 	return err
 }
 
+const getByTutorialID = `-- name: GetByTutorialID :many
+SELECT id, google_subject, name, source, is_battle, tutorial_id
+FROM programs WHERE tutorial_id = $1 AND google_subject = $2
+`
+
+type GetByTutorialIDParams struct {
+	TutorialID    pgtype.Text
+	GoogleSubject string
+}
+
+func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams) ([]Program, error) {
+	rows, err := q.db.Query(ctx, getByTutorialID, arg.TutorialID, arg.GoogleSubject)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Program
+	for rows.Next() {
+		var i Program
+		if err := rows.Scan(
+			&i.ID,
+			&i.GoogleSubject,
+			&i.Name,
+			&i.Source,
+			&i.IsBattle,
+			&i.TutorialID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProgram = `-- name: GetProgram :one
 SELECT id, google_subject, name, source, is_battle, tutorial_id
 FROM programs WHERE id = $1

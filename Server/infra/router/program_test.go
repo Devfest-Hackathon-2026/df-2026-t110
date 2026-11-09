@@ -28,6 +28,10 @@ func (s *programStore) Create(_ context.Context, p domain.Program) error {
 	return s.err
 }
 
+func (s *programStore) GetByTutorialID(_ context.Context, _, _ string) ([]domain.Program, error) {
+	return nil, s.err
+}
+
 func TestCreateProgram(t *testing.T) {
 	t.Parallel()
 	valid := `{"id":"client-id","name":"draft","isBattle":true,"source":` + programSource + `}`
