@@ -27,7 +27,7 @@ func (b *BattlePrograms) Set(ctx context.Context, subject string, ids []string) 
 	if strings.TrimSpace(subject) == "" {
 		return ErrUnauthenticated
 	}
-	if len(ids) != 3 {
+	if len(ids) != domain.BattleRobotCount {
 		return domain.ErrInvalidProgram
 	}
 	for _, id := range ids {

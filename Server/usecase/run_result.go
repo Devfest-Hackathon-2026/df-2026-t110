@@ -19,7 +19,7 @@ func NewRunResults(runs RunResultRepository) *RunResults {
 	return &RunResults{runs: runs}
 }
 
-// Result returns the saved result, or nil while pending, to the run owner only.
+// Result returns the saved result, or nil while pending, to a run participant.
 func (r *RunResults) Result(ctx context.Context, subject, id string) (jsontext.Value, error) {
 	if strings.TrimSpace(subject) == "" {
 		return nil, ErrUnauthenticated
@@ -28,7 +28,7 @@ func (r *RunResults) Result(ctx context.Context, subject, id string) (jsontext.V
 	if err != nil {
 		return nil, fmt.Errorf("get run: %w", err)
 	}
-	if run.GoogleSubject != subject {
+	if run.GoogleSubject != subject && run.OpponentSubject != subject {
 		return nil, ErrForbidden
 	}
 	return run.Result, nil

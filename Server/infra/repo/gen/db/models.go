@@ -29,6 +29,14 @@ type LoginAttempt struct {
 	ExpiresAt    pgtype.Timestamptz
 }
 
+type Match struct {
+	ID                    pgtype.UUID
+	RunID                 pgtype.UUID
+	OpponentGoogleSubject string
+	OpponentName          string
+	SelectedLayoutID      string
+}
+
 type Program struct {
 	ID            string
 	GoogleSubject string
@@ -41,9 +49,9 @@ type Program struct {
 type Run struct {
 	ID            pgtype.UUID
 	GoogleSubject string
-	TutorialID    string
+	TutorialID    pgtype.Text
 	FieldID       string
-	ProgramID     string
+	ProgramID     pgtype.Text
 	Result        []byte
 }
 

@@ -19,9 +19,9 @@ VALUES ($1, $2, $3, $4, $5)
 type CreateRunParams struct {
 	ID            pgtype.UUID
 	GoogleSubject string
-	TutorialID    string
+	TutorialID    pgtype.Text
 	FieldID       string
-	ProgramID     string
+	ProgramID     pgtype.Text
 }
 
 func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {
@@ -36,13 +36,25 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {
 }
 
 const getRun = `-- name: GetRun :one
-SELECT id, google_subject, tutorial_id, field_id, program_id, result
-FROM runs WHERE id = $1
+SELECT runs.id, runs.google_subject, runs.tutorial_id, runs.field_id, runs.program_id, runs.result,
+       matches.opponent_google_subject
+FROM runs LEFT JOIN matches ON matches.run_id = runs.id
+WHERE runs.id = $1
 `
 
-func (q *Queries) GetRun(ctx context.Context, id pgtype.UUID) (Run, error) {
+type GetRunRow struct {
+	ID                    pgtype.UUID
+	GoogleSubject         string
+	TutorialID            pgtype.Text
+	FieldID               string
+	ProgramID             pgtype.Text
+	Result                []byte
+	OpponentGoogleSubject pgtype.Text
+}
+
+func (q *Queries) GetRun(ctx context.Context, id pgtype.UUID) (GetRunRow, error) {
 	row := q.db.QueryRow(ctx, getRun, id)
-	var i Run
+	var i GetRunRow
 	err := row.Scan(
 		&i.ID,
 		&i.GoogleSubject,
@@ -50,6 +62,7 @@ func (q *Queries) GetRun(ctx context.Context, id pgtype.UUID) (Run, error) {
 		&i.FieldID,
 		&i.ProgramID,
 		&i.Result,
+		&i.OpponentGoogleSubject,
 	)
 	return i, err
 }

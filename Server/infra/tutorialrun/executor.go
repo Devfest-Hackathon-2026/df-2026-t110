@@ -17,6 +17,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/tutorial"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/replay"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
@@ -73,7 +74,7 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	if !ok {
 		return nil, fmt.Errorf("unexpected tutorial result %T", report.Result())
 	}
-	history, err := encodeHistory(recording.Events)
+	history, err := replay.History(recording.Events)
 	if err != nil {
 		return nil, err
 	}

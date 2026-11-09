@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/gemini"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/matchrun"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
@@ -64,6 +65,11 @@ func main() {
 		programs := repo.NewPrograms(pool)
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
 		cfg.BattlePrograms = usecase.NewBattlePrograms(repo.NewBattlePrograms(pool), programs)
+		matches := repo.NewMatches(pool)
+		cfg.Matches = usecase.NewMatches(usecase.MatchDeps{
+			Users: users, Programs: programs, Opponents: matches, Layouts: matchrun.NewLayouts(),
+			Executor: matchrun.NewExecutor(), Matches: matches,
+		})
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
 		cfg.TutorialRuns = runs
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
@@ -99,6 +105,7 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
+			"createMatch": {authenticate, middleware.BodyLimit(1 << 20)},
 			"getBattlePrograms":     {authenticate},
 			"setBattlePrograms":     {authenticate, middleware.BodyLimit(1 << 20)},
 			"getMe":                 {authenticate},
