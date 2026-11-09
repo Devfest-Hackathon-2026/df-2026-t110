@@ -1,11 +1,47 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 import { Icon } from '@iconify/vue'
-import infoIcon from '@iconify-icons/lucide/info'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
 import circleHelpIcon from '@iconify-icons/lucide/circle-help'
 import AppHeader from './AppHeader.vue'
+import HomeFeatureCarousel from './HomeFeatureCarousel.vue'
+
+const tutorialSlides = [
+  {
+    image: '/home-tutorial-first.svg',
+    alt: '緑のロボットが隣のゴールへ進むイメージ',
+    caption: '最初の一歩は、右隣のゴールへ。命令と動きのつながりを確かめます。',
+  },
+  {
+    image: '/home-tutorial-beam.svg',
+    alt: 'ロボットが目のビームで岩を壊して道を作るイメージ',
+    caption: '道をふさぐ岩にはビーム。地形を観察して、次の行動を選びます。',
+  },
+  {
+    image: '/home-tutorial-route.svg',
+    alt: 'ロボットが海を渡り、ゴールまでの道を探すイメージ',
+    caption: '海を埋めて進みます。同じ命令でも、盤面に合わせて考え方が変わります。',
+  },
+]
+
+const matchSlides = [
+  {
+    image: '/home-match-programs.svg',
+    alt: '緑と紫のロボットにプログラムを割り当てる対戦準備のイメージ',
+    caption: '作ったプログラムをロボットに割り当て、対戦の準備をします。',
+  },
+  {
+    image: '/home-match-field.svg',
+    alt: '緑と紫のロボットが荷物のあるフィールドで競うイメージ',
+    caption: 'どの道を通るか、いつ荷物を運ぶか。作戦をプログラムにします。',
+  },
+  {
+    image: '/home-match-replay.svg',
+    alt: '対戦結果と行動の再生画面のイメージ',
+    caption: '結果を見たら動きを再生。うまくいかなかった理由を探せます。',
+  },
+]
 
 const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/TutorialPage.vue'))
 const TutorialCatalog = defineAsyncComponent(() => import('../features/tutorial/TutorialCatalog.vue'))
@@ -41,50 +77,40 @@ document.title = tutorialId
 
     <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
-        <div class="hero-copy">
-          <h1 id="home-title" class="heading-with-icon">
-            <Icon :icon="infoIcon" aria-hidden="true" /><span>About</span>
-          </h1>
-          <p class="hero-lead">
-            命令を組んで、ロボットを動かそう。<br>岩をこわし、海に道をつくりながら、ゴールまでの道を考える教材です。
-          </p>
-          <div class="hero-actions">
-            <a class="action-primary" href="/tutorials">教材を始める</a>
-            <a class="text-link" href="/rooms">対戦について</a>
-          </div>
+        <p class="home-eyebrow">ROBOT FIELD / LEARN BY MAKING</p>
+        <h1 id="home-title">命令を組んで、<br />ロボットを動かそう。</h1>
+        <p class="hero-lead">
+          岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
+        </p>
+        <div class="hero-actions">
+          <a class="action-primary" href="/tutorials">教材を始める</a>
+          <a class="text-link" href="/rooms">対戦について</a>
         </div>
-        <a class="hero-preview">
-          <img
-            src="/preview-first-step.png"
-            alt="緑のロボットがスタートに立ち、右隣にゴールがある3Dステージ"
-            width="768"
-            height="1024"
-          />
-        </a>
       </section>
 
       <section class="home-explainer container" aria-labelledby="learn-title">
-        <h1 id="learn-title" class="heading-with-icon">
-          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル機能</span>
-        </h1>
-        <div class="lesson-list">
-          <p><span>01</span>前へ進み、向きを変える</p>
-          <p><span>02</span>岩をこわし、海を埋める</p>
-          <p><span>03</span>条件と繰り返しで道を見つける</p>
+        <div class="home-feature-copy">
+          <p class="home-eyebrow">01 / LEARN</p>
+          <h2 id="learn-title" class="heading-with-icon">
+            <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル</span>
+          </h2>
+          <p>一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。</p>
         </div>
+        <HomeFeatureCarousel label="学習チュートリアルの紹介" :slides="tutorialSlides" />
+        <a class="home-feature-link" href="/tutorials">教材を見る <span aria-hidden="true">↗</span></a>
       </section>
 
-      <section class="home-next">
+      <section class="home-next" aria-labelledby="match-title">
         <div class="container next-inner">
-          <div>
-            <h1 class="heading-with-icon">
+          <div class="home-feature-copy">
+            <p class="home-eyebrow">02 / MATCH</p>
+            <h2 id="match-title" class="heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
-            </h1>
+            </h2>
+            <p>自分のプログラムをロボットに託して対戦。結果だけでなく、どんな行動をしたかも振り返れます。</p>
           </div>
-          <div class="next-links">
-            <a href="/tutorials"><strong>教材を始める</strong></a>
-            <a href="/rooms"><strong>対戦を見る</strong></a>
-          </div>
+          <HomeFeatureCarousel label="対戦機能の紹介" :slides="matchSlides" />
+          <a class="home-feature-link" href="/rooms">対戦を見る <span aria-hidden="true">↗</span></a>
         </div>
       </section>
     </main>

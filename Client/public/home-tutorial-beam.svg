@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="ロボットがビームで岩を壊す場面">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#102f32"/><stop offset="1" stop-color="#1d5954"/></linearGradient>
+    <linearGradient id="tile" x2="0" y2="1"><stop stop-color="#508d7d"/><stop offset="1" stop-color="#1d514d"/></linearGradient>
+    <linearGradient id="beam" x2="1"><stop stop-color="#f9ed9c"/><stop offset=".55" stop-color="#a8fbe9"/><stop offset="1" stop-color="#ecfff9"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <circle cx="1040" cy="80" r="230" fill="#60bba0" opacity=".08"/>
+  <circle cx="110" cy="550" r="230" fill="#60bba0" opacity=".08"/>
+  <path d="M80 420 520 248 1030 397 589 574Z" fill="#0b2528" opacity=".6"/>
+  <path d="M90 409 311 323 524 385 304 475Z" fill="url(#tile)" stroke="#86d9b5" stroke-width="5"/>
+  <path d="M316 320 536 234 748 298 529 385Z" fill="url(#tile)" stroke="#86d9b5" stroke-width="5"/>
+  <path d="M539 234 757 152 972 214 752 298Z" fill="url(#tile)" stroke="#86d9b5" stroke-width="5"/>
+  <path d="M90 409v43l214 66v-43ZM304 475v43l220-88v-45ZM316 320v42l213 67v-44ZM529 385v44l219-88v-43ZM539 234v42l213 66v-44ZM752 298v44l220-85v-43Z" fill="#12383a"/>
+  <path d="M122 420 299 352M329 331 517 262M555 245 744 175" stroke="#9df5cb" stroke-width="5" opacity=".7"/>
+  <ellipse cx="304" cy="414" rx="83" ry="23" fill="#021f1d" opacity=".45"/>
+  <path d="m211 300 79-31 95 28-80 33Z" fill="#7dff51"/>
+  <path d="m211 300 94 30v89l-94-31Z" fill="#24cb13"/>
+  <path d="m305 330 80-33v90l-80 32Z" fill="#13990b"/>
+  <ellipse cx="336" cy="352" rx="8" ry="12" fill="#092a21"/><ellipse cx="365" cy="339" rx="8" ry="12" fill="#092a21"/>
+  <path d="m218 374-56 58 13 10 74-44M370 386l66 46 12-12-66-61" fill="#31dd23" stroke="#1f9f18" stroke-width="3"/>
+  <path d="M350 345 706 280" stroke="#98ffdb" stroke-width="25" opacity=".3" filter="url(#glow)"/>
+  <path d="M350 345 706 280" stroke="url(#beam)" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="708" cy="279" r="25" fill="#e4fff4" opacity=".55" filter="url(#glow)"/>
+  <path d="m668 233 38-37 42 32 17 42-37 26-45-8Z" fill="#9aa5a2" stroke="#d9e1d6" stroke-width="5"/>
+  <path d="m706 196-3 73 45-41M668 233l63 29 34 8M683 288l20-19 25 27" fill="none" stroke="#394f55" stroke-width="7"/>
+  <path d="m783 220 25-24 18 8-11 31ZM795 285l34 7 7 25-29-8ZM654 178l-13-28 19-12 14 28ZM697 336l-17 30-20-9 14-27Z" fill="#b8c8c1"/>
+  <g fill="#b9fff1"><circle cx="814" cy="163" r="5"/><circle cx="862" cy="261" r="4"/><circle cx="643" cy="116" r="5"/><circle cx="682" cy="370" r="4"/></g>
+  <path d="M57 559h1086" stroke="#7db9a9" stroke-opacity=".45" stroke-width="2"/>
+</svg>
