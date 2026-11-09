@@ -22,25 +22,48 @@ type Matches struct{ pool *pgxpool.Pool }
 
 func NewMatches(pool *pgxpool.Pool) *Matches { return &Matches{pool: pool} }
 
-func (r *Matches) SelectOpponent(ctx context.Context, challenger string) (domain.BattleTeam, error) {
-	// TODO: Consider rating differences when selecting an opponent: https://github.com/dvpico/Programming-Learning-AR/issues/156
-	rows, err := db.New(r.pool).SelectBattleOpponent(ctx, db.SelectBattleOpponentParams{
-		Challenger: challenger, RobotCount: domain.BattleRobotCount,
+func (r *Matches) SelectOpponent(ctx context.Context, challenger string, choose func([]domain.OpponentCandidate) (domain.OpponentCandidate, error)) (domain.BattleTeam, error) {
+	var team domain.BattleTeam
+	// Repeatable read keeps the chosen user's team as eligible as it was when listed.
+	err := pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
+		queries := db.New(tx)
+		rows, err := queries.ListBattleOpponentCandidates(ctx, db.ListBattleOpponentCandidatesParams{
+			Challenger: challenger, RobotCount: domain.BattleRobotCount,
+		})
+		if err != nil {
+			return fmt.Errorf("list battle opponent candidates: %w", err)
+		}
+		if len(rows) == 0 {
+			return usecase.ErrNoOpponent
+		}
+		candidates := make([]domain.OpponentCandidate, len(rows))
+		for i, row := range rows {
+			candidates[i] = domain.OpponentCandidate{GoogleSubject: row.GoogleSubject, Rating: int(row.Rating)}
+		}
+		chosen, err := choose(candidates)
+		if err != nil {
+			return err
+		}
+		programs, err := queries.GetBattleTeam(ctx, chosen.GoogleSubject)
+		if err != nil {
+			return fmt.Errorf("get battle team: %w", err)
+		}
+		if len(programs) == 0 {
+			return fmt.Errorf("chosen opponent %q has no battle team", chosen.GoogleSubject)
+		}
+		team = domain.BattleTeam{
+			User:   domain.User{GoogleSubject: programs[0].GoogleSubject, Name: &programs[0].Name.String},
+			Rating: int(programs[0].Rating),
+		}
+		for _, row := range programs {
+			team.Programs = append(team.Programs, domain.Program{
+				ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
+			})
+		}
+		return nil
 	})
 	if err != nil {
-		return domain.BattleTeam{}, fmt.Errorf("select battle opponent: %w", err)
-	}
-	if len(rows) == 0 {
-		return domain.BattleTeam{}, usecase.ErrNoOpponent
-	}
-	team := domain.BattleTeam{
-		User:   domain.User{GoogleSubject: rows[0].GoogleSubject, Name: &rows[0].Name.String},
-		Rating: int(rows[0].Rating),
-	}
-	for _, row := range rows {
-		team.Programs = append(team.Programs, domain.Program{
-			ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
-		})
+		return domain.BattleTeam{}, err
 	}
 	return team, nil
 }

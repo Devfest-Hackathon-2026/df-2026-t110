@@ -28,9 +28,13 @@ func TestSelectBattleOpponent(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 	programs, battle := NewPrograms(pool), NewBattlePrograms(pool)
-	for _, subject := range []string{"owner", "opponent", "nameless", "partial", "extra", "tutorial", "foreign", "gap"} {
+	for _, subject := range []string{"owner", "opponent", "rival", "nameless", "blank", "partial", "extra", "tutorial", "foreign", "gap"} {
 		var name *string
-		if subject != "nameless" {
+		switch subject {
+		case "nameless":
+		case "blank":
+			name = ptr(" ")
+		default:
 			name = ptr(subject)
 		}
 		mustCreateUser(t, pool, subject, name)
@@ -58,35 +62,83 @@ func TestSelectBattleOpponent(t *testing.T) {
 	if _, err := pool.Exec(t.Context(), "UPDATE battle_programs SET robot_index=3 WHERE google_subject='gap' AND robot_index=0"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := pool.Exec(t.Context(), "UPDATE users SET rating=1234 WHERE google_subject='opponent'"); err != nil {
+		t.Fatal(err)
+	}
 	if err := programs.Create(t.Context(), domain.Program{ID: "opponent-b", GoogleSubject: "opponent", Name: "B", Source: jsontext.Value(`{"source":"B"}`), IsBattle: true}); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"opponent-b", "opponent", "opponent-b"}
-	if err := battle.Set(t.Context(), "opponent", want); err != nil {
+	if err := battle.Set(t.Context(), "opponent", []string{"opponent-b", "opponent", "opponent-b"}); err != nil {
 		t.Fatal(err)
 	}
-	for range 3 {
-		team, err := NewMatches(pool).SelectOpponent(t.Context(), "owner")
-		if err != nil {
-			t.Errorf("SelectOpponent: %v", err)
-			continue
-		}
-		var ids []string
-		for _, p := range team.Programs {
-			ids = append(ids, p.ID)
-			if p.GoogleSubject != "opponent" || !p.IsBattle || !p.Source.IsValid() {
-				t.Errorf("program=%+v", p)
+	// Only complete, named battle teams of users other than the challenger are candidates.
+	wantCandidates := []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1234}, {GoogleSubject: "rival", Rating: domain.InitialRating}}
+	errChoose := errors.New("choose failed")
+
+	cases := []struct {
+		name       string
+		chosen     int
+		chooseErr  error
+		wantRating int
+		wantIDs    []string
+	}{
+		{name: "keeps robot order and duplicates", chosen: 0, wantRating: 1234, wantIDs: []string{"opponent-b", "opponent", "opponent-b"}},
+		{name: "returns the chosen candidate", chosen: 1, wantRating: domain.InitialRating, wantIDs: []string{"rival", "rival", "rival"}},
+		{name: "choose error", chooseErr: errChoose},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var gotCandidates []domain.OpponentCandidate
+			team, err := NewMatches(pool).SelectOpponent(t.Context(), "owner", func(candidates []domain.OpponentCandidate) (domain.OpponentCandidate, error) {
+				gotCandidates = candidates
+				if tt.chooseErr != nil {
+					return domain.OpponentCandidate{}, tt.chooseErr
+				}
+				return candidates[tt.chosen], nil
+			})
+			if !errors.Is(err, tt.chooseErr) {
+				t.Fatalf("SelectOpponent error=%v, want %v", err, tt.chooseErr)
 			}
-		}
-		if team.User.GoogleSubject != "opponent" || team.User.Name == nil || *team.User.Name != "opponent" || !reflect.DeepEqual(ids, want) {
-			t.Errorf("team=%+v ids=%v", team, ids)
-		}
+			if !reflect.DeepEqual(gotCandidates, wantCandidates) {
+				t.Errorf("candidates=%+v, want %+v", gotCandidates, wantCandidates)
+			}
+			if tt.chooseErr != nil {
+				return
+			}
+			subject := wantCandidates[tt.chosen].GoogleSubject
+			var ids []string
+			for _, p := range team.Programs {
+				ids = append(ids, p.ID)
+				if p.GoogleSubject != subject || !p.IsBattle || !p.Source.IsValid() {
+					t.Errorf("program=%+v", p)
+				}
+			}
+			if team.User.GoogleSubject != subject || team.User.Name == nil || *team.User.Name != subject || team.Rating != tt.wantRating || !reflect.DeepEqual(ids, tt.wantIDs) {
+				t.Errorf("team=%+v ids=%v", team, ids)
+			}
+		})
 	}
-	if err := battle.Set(t.Context(), "opponent", nil); err != nil {
+}
+
+func TestSelectBattleOpponentWithoutCandidates(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("owner"))
+	if err := NewPrograms(pool).Create(t.Context(), domain.Program{ID: "owner", GoogleSubject: "owner", Name: "owner", Source: jsontext.Value(`{}`), IsBattle: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewMatches(pool).SelectOpponent(t.Context(), "owner"); !errors.Is(err, usecase.ErrNoOpponent) {
-		t.Errorf("no opponent error=%v", err)
+	if err := NewBattlePrograms(pool).Set(t.Context(), "owner", []string{"owner", "owner", "owner"}); err != nil {
+		t.Fatal(err)
+	}
+
+	called := false
+	_, err := NewMatches(pool).SelectOpponent(t.Context(), "owner", func([]domain.OpponentCandidate) (domain.OpponentCandidate, error) {
+		called = true
+		return domain.OpponentCandidate{}, nil
+	})
+	if !errors.Is(err, usecase.ErrNoOpponent) || called {
+		t.Errorf("error=%v called=%v, want %v without choosing", err, called, usecase.ErrNoOpponent)
 	}
 }
 

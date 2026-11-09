@@ -14,9 +14,11 @@ type MatchUserRepository interface {
 }
 
 type MatchOpponentRepository interface {
-	// SelectOpponent chooses a user uniformly, excluding the challenger. The user's name,
-	// rating and ordered battle programs must come from the same snapshot.
-	SelectOpponent(ctx context.Context, challenger string) (domain.BattleTeam, error)
+	// SelectOpponent passes choose the users other than the challenger who have a display
+	// name and a complete battle team, and returns the team of the chosen user. The
+	// candidates and the chosen user's name, rating and ordered battle programs must come
+	// from the same snapshot. It returns ErrNoOpponent when there is no candidate.
+	SelectOpponent(ctx context.Context, challenger string, choose func([]domain.OpponentCandidate) (domain.OpponentCandidate, error)) (domain.BattleTeam, error)
 }
 
 type MatchLayoutRepository interface {
@@ -48,9 +50,12 @@ type MatchDeps struct {
 type Matches struct {
 	deps MatchDeps
 	pick func(int) int
+	draw func() float64
 }
 
-func NewMatches(deps MatchDeps) *Matches { return &Matches{deps: deps, pick: rand.IntN} }
+func NewMatches(deps MatchDeps) *Matches {
+	return &Matches{deps: deps, pick: rand.IntN, draw: rand.Float64}
+}
 
 // Create runs the engine in the server process and saves a completed match.
 // Rejected requests and failed executions do not leave pending runs behind.
@@ -90,7 +95,9 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 		return domain.Match{}, fmt.Errorf("get challenger rating: %w", err)
 	}
 	// Do not update the challenger's saved defense programs as a side effect.
-	opponent, err := m.deps.Opponents.SelectOpponent(ctx, subject)
+	opponent, err := m.deps.Opponents.SelectOpponent(ctx, subject, func(candidates []domain.OpponentCandidate) (domain.OpponentCandidate, error) {
+		return domain.SelectRatedOpponent(subject, rating, candidates, m.draw)
+	})
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("select opponent: %w", err)
 	}

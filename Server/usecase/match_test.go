@@ -27,14 +27,24 @@ func (s matchProgramsStub) Get(_ context.Context, id string) (domain.Program, er
 }
 
 type matchOpponentStub struct {
+	candidates []domain.OpponentCandidate
 	team       domain.BattleTeam
 	err        error
 	challenger string
+	chosen     domain.OpponentCandidate
 }
 
-func (s *matchOpponentStub) SelectOpponent(_ context.Context, challenger string) (domain.BattleTeam, error) {
+func (s *matchOpponentStub) SelectOpponent(_ context.Context, challenger string, choose func([]domain.OpponentCandidate) (domain.OpponentCandidate, error)) (domain.BattleTeam, error) {
 	s.challenger = challenger
-	return s.team, s.err
+	if s.err != nil {
+		return domain.BattleTeam{}, s.err
+	}
+	chosen, err := choose(s.candidates)
+	if err != nil {
+		return domain.BattleTeam{}, err
+	}
+	s.chosen = chosen
+	return s.team, nil
 }
 
 type matchLayoutsStub struct{ layouts []domain.BattleLayout }
@@ -111,7 +121,7 @@ func TestCreateMatch(t *testing.T) {
 				displayName = &name
 			}
 			store := &matchStoreStub{rating: 1000, err: tt.saveErr}
-			opponent := &matchOpponentStub{team: domain.BattleTeam{
+			opponent := &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
 				Programs: []domain.Program{{ID: "o2"}, {ID: "o1"}, {ID: "o2"}},
 				Rating:   1200,
@@ -191,7 +201,7 @@ func TestCreateMatchRatesChallenger(t *testing.T) {
 				Programs: matchProgramsStub{map[string]domain.Program{
 					"a": {ID: "a", GoogleSubject: "owner", IsBattle: true},
 				}},
-				Opponents: &matchOpponentStub{team: domain.BattleTeam{
+				Opponents: &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
 					User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
 					Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
 					Rating:   1200,
@@ -208,6 +218,61 @@ func TestCreateMatchRatesChallenger(t *testing.T) {
 			if got.Outcome != tt.wantOutcome || got.ChallengerRating != 1000 || got.OpponentRating != 1200 || got.RatingDelta != tt.wantDelta {
 				t.Errorf("outcome=%s ratings=%d vs %d delta=%d, want %s 1000 vs 1200 delta=%d",
 					got.Outcome, got.ChallengerRating, got.OpponentRating, got.RatingDelta, tt.wantOutcome, tt.wantDelta)
+			}
+		})
+	}
+}
+
+func TestCreateMatchChoosesOpponentByRating(t *testing.T) {
+	t.Parallel()
+
+	// Relative to a challenger rated 1000, near weighs exp(-0.22) and far exp(-8), so far
+	// owns only the lowest 0.04% of draws. A challenger rated 1600 reverses the shares.
+	candidates := []domain.OpponentCandidate{
+		{GoogleSubject: "owner", Rating: 1000},
+		{GoogleSubject: "far", Rating: 1600},
+		{GoogleSubject: "near", Rating: 1100},
+	}
+
+	cases := []struct {
+		name       string
+		rating     int
+		candidates []domain.OpponentCandidate
+		draw       float64
+		want       string
+		wantErr    error
+	}{
+		{name: "closer rating takes most draws", rating: 1000, candidates: candidates, draw: 0.5, want: "near"},
+		{name: "farther rating keeps a small share", rating: 1000, candidates: candidates, draw: 0, want: "far"},
+		{name: "weights follow the challenger rating", rating: 1600, candidates: candidates, draw: 0.5, want: "far"},
+		{name: "challenger is never chosen", rating: 1000, candidates: candidates[:1], draw: 0, wantErr: ErrNoOpponent},
+		{name: "no candidates", rating: 1000, candidates: nil, draw: 0, wantErr: ErrNoOpponent},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			name, opponentName := "Owner", "Opponent"
+			opponent := &matchOpponentStub{candidates: tt.candidates, team: domain.BattleTeam{
+				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
+				Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
+			}}
+			service := NewMatches(MatchDeps{
+				Users:     matchUserStub{&name},
+				Programs:  matchProgramsStub{map[string]domain.Program{"a": {ID: "a", GoogleSubject: "owner", IsBattle: true}}},
+				Opponents: opponent,
+				Layouts:   matchLayoutsStub{[]domain.BattleLayout{{ID: "layout", FieldID: "field"}}},
+				Executor:  &matchExecutorStub{}, Matches: &matchStoreStub{rating: tt.rating},
+			})
+			service.draw = func() float64 { return tt.draw }
+
+			_, err := service.Create(t.Context(), "owner", []string{"a", "a", "a"})
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("Create error=%v, want %v", err, tt.wantErr)
+			}
+			if opponent.chosen.GoogleSubject != tt.want {
+				t.Errorf("chosen=%+v, want %s", opponent.chosen, tt.want)
 			}
 		})
 	}
