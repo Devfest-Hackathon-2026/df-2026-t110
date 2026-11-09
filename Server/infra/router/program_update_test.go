@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,7 +20,16 @@ import (
 
 func TestUpdateProgram(t *testing.T) {
 	t.Parallel()
-	valid := `{"name":"edited","source":` + programSource + `}`
+	source, err := os.ReadFile("../tutorialrun/testdata/forward.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	compact := jsontext.Value(source)
+	if err := compact.Compact(); err != nil {
+		t.Fatal(err)
+	}
+	validSource := string(compact)
+	valid := `{"name":"edited","source":` + validSource + `}`
 	for _, tt := range []struct {
 		name, body, owner           string
 		cookie, unknownLength       bool
@@ -33,11 +43,14 @@ func TestUpdateProgram(t *testing.T) {
 		{name: "save error", body: valid, cookie: true, saveErr: errors.New("failure"), want: 500},
 		{name: "missing source", body: `{"name":"edited"}`, cookie: true, want: 400},
 		{name: "blank name", body: strings.Replace(valid, `"edited"`, `" "`, 1), cookie: true, want: 400},
-		{name: "syntax", body: strings.Replace(valid, programSource, `{}`, 1), cookie: true, want: 400},
+		{name: "syntax", body: strings.Replace(valid, validSource, `{}`, 1), cookie: true, want: 400},
 		{name: "body id", body: strings.Replace(valid, `"name":`, `"id":"x","name":`, 1), cookie: true, want: 400},
 		{name: "purpose", body: strings.Replace(valid, `"name":`, `"isBattle":true,"name":`, 1), cookie: true, want: 400},
 		{name: "tutorial", body: strings.Replace(valid, `"name":`, `"tutorialID":"x","name":`, 1), cookie: true, want: 400},
-		{name: "type error", body: strings.Replace(valid, `"returnType":"integer"`, `"returnType":"bool"`, 1), cookie: true, want: 200},
+		{name: "unknown function", body: strings.Replace(valid, `"func":"print_integer"`, `"func":"missing"`, 1), cookie: true, want: 400},
+		{name: "invalid main", body: strings.Replace(valid, `"returnType":"unit"`, `"returnType":"integer"`, 1), cookie: true, want: 400},
+		{name: "multiple bodies", body: valid + `{}`, cookie: true, want: 400},
+		{name: "type error", body: strings.Replace(valid, `"func":"print_integer"`, `"func":"print_bool"`, 1), cookie: true, want: 400},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

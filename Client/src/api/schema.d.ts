@@ -37,7 +37,7 @@ export interface paths {
          * プログラムを更新
          * @description 所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
          *     成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
-         *     ソースは文法を検証するが、編集中の型エラーは保存できる。
+         *     ソースは文法・名前解決・型検査を行い、不正なプログラムは400で拒否する。更新に失敗した場合は既存の内容とrevisionを変更しない。
          */
         put: operations["updateProgram"];
         post?: never;

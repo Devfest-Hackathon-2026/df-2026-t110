@@ -16,10 +16,10 @@ type ProgramRepository interface {
 	GetByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }
 
-// ProgramSourceValidator checks the versioned source syntax. Drafts need not
-// pass name resolution or type checking until execution.
+// ProgramSourceValidator checks syntax for creation and full static validity for updates.
 type ProgramSourceValidator interface {
 	ValidateSource(ctx context.Context, source []byte) error
+	ValidateExecutableSource(ctx context.Context, source []byte) error
 }
 
 type Programs struct {
@@ -55,7 +55,7 @@ func (p *Programs) Create(ctx context.Context, subject string, draft domain.Prog
 }
 
 // Update uses the path ID and authenticated owner, ignoring the draft's identity.
-// Like Create, it validates syntax but permits type errors in an editable draft.
+// Updates must pass syntax, name resolution and type checking before persistence.
 func (p *Programs) Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error) {
 	if strings.TrimSpace(subject) == "" {
 		return domain.Program{}, ErrUnauthenticated
@@ -71,7 +71,7 @@ func (p *Programs) Update(ctx context.Context, subject, id string, draft domain.
 	if err := draft.Validate(); err != nil {
 		return domain.Program{}, fmt.Errorf("validate program: %w", err)
 	}
-	if err := p.validator.ValidateSource(ctx, draft.Source); err != nil {
+	if err := p.validator.ValidateExecutableSource(ctx, draft.Source); err != nil {
 		return domain.Program{}, fmt.Errorf("validate program source: %w", err)
 	}
 	draft.ID, draft.GoogleSubject = id, subject

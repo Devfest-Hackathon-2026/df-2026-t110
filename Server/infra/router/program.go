@@ -181,15 +181,11 @@ func (r *Router) UpdateProgram(ctx *echo.Context, programID api.ProgramId) error
 }
 
 func decodeProgramUpdateRequest(ctx *echo.Context) (domain.Program, error) {
-	body, err := io.ReadAll(ctx.Request().Body)
-	if err != nil {
-		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
-	}
 	var request struct {
 		Name   *string        `json:"name"`
 		Source jsontext.Value `json:"source"`
 	}
-	if err := json.Unmarshal(body, &request, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.UnmarshalRead(ctx.Request().Body, &request, json.RejectUnknownMembers(true)); err != nil {
 		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
 	}
 	if request.Name == nil {

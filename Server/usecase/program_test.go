@@ -45,6 +45,8 @@ func (s *programRepositoryStub) GetByTutorialID(_ context.Context, subject, tuto
 
 type sourceValidatorStub struct{ err error }
 
+func (s sourceValidatorStub) ValidateExecutableSource(context.Context, []byte) error { return s.err }
+
 func (s sourceValidatorStub) ValidateSource(context.Context, []byte) error { return s.err }
 
 func TestProgramsCreate(t *testing.T) {
