@@ -38,7 +38,7 @@ func (q *Queries) CreateProgram(ctx context.Context, arg CreateProgramParams) er
 }
 
 const getByTutorialID = `-- name: GetByTutorialID :many
-SELECT id, google_subject, name, source, is_battle, tutorial_id
+SELECT id, google_subject, name, source, revision, is_battle, tutorial_id
 FROM programs WHERE tutorial_id = $1 AND google_subject = $2
 `
 
@@ -61,6 +61,7 @@ func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams
 			&i.GoogleSubject,
 			&i.Name,
 			&i.Source,
+			&i.Revision,
 			&i.IsBattle,
 			&i.TutorialID,
 		); err != nil {
@@ -75,7 +76,7 @@ func (q *Queries) GetByTutorialID(ctx context.Context, arg GetByTutorialIDParams
 }
 
 const getProgram = `-- name: GetProgram :one
-SELECT id, google_subject, name, source, is_battle, tutorial_id
+SELECT id, google_subject, name, source, revision, is_battle, tutorial_id
 FROM programs WHERE id = $1
 `
 
@@ -87,6 +88,40 @@ func (q *Queries) GetProgram(ctx context.Context, id string) (Program, error) {
 		&i.GoogleSubject,
 		&i.Name,
 		&i.Source,
+		&i.Revision,
+		&i.IsBattle,
+		&i.TutorialID,
+	)
+	return i, err
+}
+
+const updateProgram = `-- name: UpdateProgram :one
+UPDATE programs SET name=$1, source=$2
+WHERE id=$3 AND google_subject=$4
+RETURNING id, google_subject, name, source, revision, is_battle, tutorial_id
+`
+
+type UpdateProgramParams struct {
+	Name          string
+	Source        []byte
+	ID            string
+	GoogleSubject string
+}
+
+func (q *Queries) UpdateProgram(ctx context.Context, arg UpdateProgramParams) (Program, error) {
+	row := q.db.QueryRow(ctx, updateProgram,
+		arg.Name,
+		arg.Source,
+		arg.ID,
+		arg.GoogleSubject,
+	)
+	var i Program
+	err := row.Scan(
+		&i.ID,
+		&i.GoogleSubject,
+		&i.Name,
+		&i.Source,
+		&i.Revision,
 		&i.IsBattle,
 		&i.TutorialID,
 	)

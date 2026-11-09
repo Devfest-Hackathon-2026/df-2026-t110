@@ -27,6 +27,7 @@ CREATE TABLE programs (
     google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
     name text NOT NULL CHECK (btrim(name) <> ''),
     source jsonb NOT NULL,
+    revision integer NOT NULL DEFAULT 1 CHECK (revision > 0),
     is_battle boolean NOT NULL,
     tutorial_id text,
     CHECK ((is_battle AND tutorial_id IS NULL) OR
@@ -35,14 +36,70 @@ CREATE TABLE programs (
 
 CREATE INDEX programs_google_subject_idx ON programs (google_subject);
 
+
+CREATE TABLE program_revisions (
+    program_id text NOT NULL REFERENCES programs(id),
+    revision integer NOT NULL CHECK (revision > 0),
+    name text NOT NULL,
+    source jsonb NOT NULL,
+    PRIMARY KEY (program_id, revision)
+);
+
+CREATE FUNCTION version_program() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.id IS DISTINCT FROM OLD.id OR NEW.google_subject IS DISTINCT FROM OLD.google_subject
+           OR NEW.is_battle IS DISTINCT FROM OLD.is_battle OR NEW.tutorial_id IS DISTINCT FROM OLD.tutorial_id THEN
+            RAISE EXCEPTION 'program identity and purpose are immutable' USING ERRCODE = '23514';
+        END IF;
+        NEW.revision := OLD.revision + 1;
+    ELSE
+        NEW.revision := 1;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+CREATE FUNCTION archive_program() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    INSERT INTO program_revisions(program_id, revision, name, source)
+    VALUES (NEW.id, NEW.revision, NEW.name, NEW.source);
+    RETURN NEW;
+END;
+$$;
+CREATE TRIGGER version_program BEFORE INSERT OR UPDATE ON programs
+FOR EACH ROW EXECUTE FUNCTION version_program();
+CREATE TRIGGER archive_program AFTER INSERT OR UPDATE ON programs
+FOR EACH ROW EXECUTE FUNCTION archive_program();
+CREATE FUNCTION protect_program_revision() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'program revisions are immutable' USING ERRCODE = '23514';
+END;
+$$;
+CREATE TRIGGER protect_program_revision BEFORE UPDATE OR DELETE ON program_revisions
+FOR EACH ROW EXECUTE FUNCTION protect_program_revision();
+
 CREATE TABLE runs (
     id uuid PRIMARY KEY,
     google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
     tutorial_id text,
     field_id text NOT NULL,
     program_id text REFERENCES programs (id),
+    program_revision integer,
+    CHECK ((program_id IS NULL) = (program_revision IS NULL)),
+    FOREIGN KEY (program_id, program_revision) REFERENCES program_revisions(program_id, revision),
     result jsonb,
     CONSTRAINT runs_tutorial_program_pair CHECK ((tutorial_id IS NULL) = (program_id IS NULL))
+);
+
+
+CREATE TABLE run_programs (
+    run_id uuid NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    side smallint NOT NULL CHECK (side IN (0,1)),
+    robot_index smallint NOT NULL CHECK (robot_index BETWEEN 0 AND 2),
+    program_id text NOT NULL,
+    revision integer NOT NULL,
+    PRIMARY KEY (run_id, side, robot_index),
+    FOREIGN KEY (program_id, revision) REFERENCES program_revisions(program_id, revision)
 );
 
 CREATE TABLE matches (

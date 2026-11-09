@@ -94,7 +94,7 @@ func (q *Queries) CreateMatchRun(ctx context.Context, arg CreateMatchRunParams) 
 }
 
 const getBattleTeam = `-- name: GetBattleTeam :many
-SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source
+SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source, programs.revision
 FROM users
 JOIN battle_programs ON battle_programs.google_subject = users.google_subject
 JOIN programs ON programs.id = battle_programs.program_id
@@ -109,6 +109,7 @@ type GetBattleTeamRow struct {
 	ID            string
 	ProgramName   string
 	Source        []byte
+	Revision      int32
 }
 
 func (q *Queries) GetBattleTeam(ctx context.Context, googleSubject string) ([]GetBattleTeamRow, error) {
@@ -127,6 +128,7 @@ func (q *Queries) GetBattleTeam(ctx context.Context, googleSubject string) ([]Ge
 			&i.ID,
 			&i.ProgramName,
 			&i.Source,
+			&i.Revision,
 		); err != nil {
 			return nil, err
 		}

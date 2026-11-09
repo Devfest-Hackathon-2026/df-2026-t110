@@ -268,6 +268,17 @@ components:
                             type: unit
                             value: null
 
+    UpdateProgramRequest:
+      type: object
+      additionalProperties: false
+      required: [name, source]
+      properties:
+        name:
+          type: string
+          description: 空白のみ不可
+        source:
+          $ref: "#/components/schemas/PicolangProgram"
+
     SavedProgram:
       description: 保存済みのプログラム
       allOf:
@@ -340,9 +351,10 @@ components:
 
     ApiError:
       type: object
-      required: [code, message]
+      required: [message]
       properties:
         code:
           type: string
+          description: 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。
         message:
           type: string

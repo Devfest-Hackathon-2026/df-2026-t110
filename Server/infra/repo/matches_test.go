@@ -202,8 +202,24 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 		t.Errorf("get persisted run: %v", err)
 		return
 	}
-	if run.GoogleSubject != "owner" || run.OpponentSubject != "opponent" || run.FieldID != match.FieldId || run.TutorialID != "" || run.ProgramID != "" || !run.Result.IsValid() {
+	if run.GoogleSubject != "owner" || run.OpponentSubject != "opponent" || run.FieldID != match.FieldId || run.TutorialID != "" || run.Program != nil || !run.Result.IsValid() {
 		t.Errorf("run=%+v", run)
+	}
+	var revisionCount int
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM run_programs WHERE run_id=$1 AND revision=1", match.RunId).Scan(&revisionCount); err != nil {
+		t.Fatal(err)
+	}
+	if revisionCount != 6 {
+		t.Errorf("saved robot revisions = %d, want 6", revisionCount)
+	}
+	if _, err := pool.Exec(t.Context(), "UPDATE programs SET name='edited' WHERE id='opponent'"); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM run_programs rp JOIN program_revisions p ON p.program_id=rp.program_id AND p.revision=rp.revision WHERE run_id=$1 AND p.name='forward'", match.RunId).Scan(&revisionCount); err != nil {
+		t.Fatal(err)
+	}
+	if revisionCount != 6 {
+		t.Errorf("run source references changed: %d", revisionCount)
 	}
 	var savedField string
 	var before, after int

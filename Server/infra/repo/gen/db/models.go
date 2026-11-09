@@ -45,17 +45,34 @@ type Program struct {
 	GoogleSubject string
 	Name          string
 	Source        []byte
+	Revision      int32
 	IsBattle      bool
 	TutorialID    pgtype.Text
 }
 
+type ProgramRevision struct {
+	ProgramID string
+	Revision  int32
+	Name      string
+	Source    []byte
+}
+
 type Run struct {
-	ID            pgtype.UUID
-	GoogleSubject string
-	TutorialID    pgtype.Text
-	FieldID       string
-	ProgramID     pgtype.Text
-	Result        []byte
+	ID              pgtype.UUID
+	GoogleSubject   string
+	TutorialID      pgtype.Text
+	FieldID         string
+	ProgramID       pgtype.Text
+	ProgramRevision pgtype.Int4
+	Result          []byte
+}
+
+type RunProgram struct {
+	RunID      pgtype.UUID
+	Side       int16
+	RobotIndex int16
+	ProgramID  string
+	Revision   int32
 }
 
 type Session struct {

@@ -16,10 +16,13 @@ import (
 var _ usecase.ProgramRepository = (*Programs)(nil)
 var _ usecase.RunProgramRepository = (*Programs)(nil)
 
-type Programs struct{ queries *db.Queries }
+type Programs struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
 
 func NewPrograms(pool *pgxpool.Pool) *Programs {
-	return &Programs{queries: db.New(pool)}
+	return &Programs{pool: pool, queries: db.New(pool)}
 }
 
 func (r *Programs) Create(ctx context.Context, program domain.Program) error {
@@ -40,11 +43,27 @@ func (r *Programs) Get(ctx context.Context, id string) (domain.Program, error) {
 	if err != nil {
 		return domain.Program{}, fmt.Errorf("get program: %w", err)
 	}
-	program := domain.Program{ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
+	return programFromRow(row), nil
+}
+
+// Update replaces only editable fields. The database atomically increments and archives the revision.
+func (r *Programs) Update(ctx context.Context, program domain.Program) (domain.Program, error) {
+	row, err := r.queries.UpdateProgram(ctx, db.UpdateProgramParams{ID: program.ID, GoogleSubject: program.GoogleSubject, Name: program.Name, Source: program.Source})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Program{}, usecase.ErrNotFound
+	}
+	if err != nil {
+		return domain.Program{}, fmt.Errorf("update program: %w", err)
+	}
+	return programFromRow(row), nil
+}
+
+func programFromRow(row db.Program) domain.Program {
+	program := domain.Program{ID: row.ID, Revision: int(row.Revision), GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
 	if row.TutorialID.Valid {
 		program.TutorialID = &row.TutorialID.String
 	}
-	return program, nil
+	return program
 }
 
 func (r *Programs) GetByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error) {
@@ -58,11 +77,7 @@ func (r *Programs) GetByTutorialID(ctx context.Context, subject, tutorialID stri
 
 	programs := make([]domain.Program, 0, len(rows))
 	for _, row := range rows {
-		program := domain.Program{ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.Name, Source: row.Source, IsBattle: row.IsBattle}
-		if row.TutorialID.Valid {
-			program.TutorialID = &row.TutorialID.String
-		}
-		programs = append(programs, program)
+		programs = append(programs, programFromRow(row))
 	}
 
 	return programs, nil

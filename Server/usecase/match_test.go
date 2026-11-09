@@ -123,14 +123,14 @@ func TestCreateMatch(t *testing.T) {
 			store := &matchStoreStub{rating: 1000, err: tt.saveErr}
 			opponent := &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
-				Programs: []domain.Program{{ID: "o2"}, {ID: "o1"}, {ID: "o2"}},
+				Programs: []domain.Program{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}},
 				Rating:   1200,
 			}, err: tt.selectionErr}
 			executor := &matchExecutorStub{scores: [2]int64{1, 0}, err: tt.executeErr}
 			service := NewMatches(MatchDeps{
 				Users: matchUserStub{displayName}, Programs: matchProgramsStub{map[string]domain.Program{
-					"a":        {ID: "a", GoogleSubject: "owner", IsBattle: true},
-					"b":        {ID: "b", GoogleSubject: "owner", IsBattle: true},
+					"a":        {ID: "a", Revision: 2, GoogleSubject: "owner", IsBattle: true},
+					"b":        {ID: "b", Revision: 5, GoogleSubject: "owner", IsBattle: true},
 					"foreign":  {ID: "foreign", GoogleSubject: "other", IsBattle: true},
 					"tutorial": {ID: "tutorial", GoogleSubject: "owner"},
 				}}, Opponents: opponent,
@@ -168,6 +168,11 @@ func TestCreateMatch(t *testing.T) {
 			}
 			if match.ID != "match-id" || match.RunID != "run-id" || match.OpponentName != opponentName || match.FieldID != "layout-b" {
 				t.Errorf("match=%+v", match)
+			}
+			wantChallenger := []domain.ProgramRef{{ID: "b", Revision: 5}, {ID: "a", Revision: 2}, {ID: "b", Revision: 5}}
+			wantOpponent := []domain.ProgramRef{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}}
+			if !reflect.DeepEqual(store.record.ChallengerPrograms, wantChallenger) || !reflect.DeepEqual(store.record.OpponentPrograms, wantOpponent) {
+				t.Errorf("saved program references=%v/%v, want %v/%v", store.record.ChallengerPrograms, store.record.OpponentPrograms, wantChallenger, wantOpponent)
 			}
 			if store.record.GoogleSubject != "owner" || store.record.OpponentSubject != "opponent" || !store.record.Result.IsValid() {
 				t.Errorf("saved record=%+v", store.record)

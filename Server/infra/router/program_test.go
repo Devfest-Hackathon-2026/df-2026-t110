@@ -19,8 +19,22 @@ import (
 const programSource = `{"picolangVersion":0,"picolang":{"v0":{"program":{"main":{"kind":"function","hintId":"00000000-0000-4000-8000-000000000001","params":[],"returnType":"integer","body":{"kind":"block","hintId":"00000000-0000-4000-8000-000000000002","stmts":[{"kind":"return","hintId":"00000000-0000-4000-8000-000000000003","value":{"kind":"literal","hintId":"00000000-0000-4000-8000-000000000004","type":"integer","value":9223372036854775807}}]}}}}}}`
 
 type programStore struct {
-	saved []domain.Program
-	err   error
+	saved   []domain.Program
+	updated []domain.Program
+	program domain.Program
+	getID   string
+	getErr  error
+	err     error
+}
+
+func (s *programStore) Get(_ context.Context, id string) (domain.Program, error) {
+	s.getID = id
+	return s.program, s.getErr
+}
+
+func (s *programStore) Update(_ context.Context, p domain.Program) (domain.Program, error) {
+	s.updated = append(s.updated, p)
+	return p, s.err
 }
 
 func (s *programStore) Create(_ context.Context, p domain.Program) error {

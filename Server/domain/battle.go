@@ -48,15 +48,17 @@ type MatchResult struct {
 // the challenger's rating current at saving time, so concurrent matches of one
 // challenger never lose an update.
 type MatchRecord struct {
-	GoogleSubject    string
-	OpponentSubject  string
-	OpponentName     string
-	FieldID          string
-	Result           jsontext.Value
-	Outcome          MatchOutcome
-	ChallengerRating int
-	OpponentRating   int
-	RatingDelta      int
+	ChallengerPrograms []ProgramRef
+	OpponentPrograms   []ProgramRef
+	GoogleSubject      string
+	OpponentSubject    string
+	OpponentName       string
+	FieldID            string
+	Result             jsontext.Value
+	Outcome            MatchOutcome
+	ChallengerRating   int
+	OpponentRating     int
+	RatingDelta        int
 }
 
 // RankingEntry is a challenger's standing. Users sharing a rating share a rank.

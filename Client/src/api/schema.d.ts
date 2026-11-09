@@ -31,9 +31,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** プログラムを取得 */
+        /**
+         * プログラムを取得
+         * @description 有効なセッションの所有者だけが保存済みプログラムを取得できる。
+         *     他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+         *     ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+         */
         get: operations["getProgram"];
-        /** プログラムを更新 */
+        /**
+         * プログラムを更新
+         * @description 所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
+         *     成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
+         *     ソースは文法・名前解決・型検査を行い、不正なプログラムは400で拒否する。更新に失敗した場合は既存の内容とrevisionを変更しない。
+         */
         put: operations["updateProgram"];
         post?: never;
         delete?: never;
@@ -474,6 +484,11 @@ export interface components {
             /** @description チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。 */
             tutorialID?: string;
         };
+        UpdateProgramRequest: {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description 保存済みのプログラム */
         SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
@@ -513,7 +528,8 @@ export interface components {
         };
         TutorialDetail: components["schemas"]["tutorial-detail.schema"];
         ApiError: {
-            code: string;
+            /** @description 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。 */
+            code?: string;
             message: string;
         };
         /** @description フィールド上のマスの座標 */
@@ -880,6 +896,11 @@ export interface components {
          * @description 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
          */
         "toplevel.schema": {} & components["schemas"]["Version0"];
+        "schemas-UpdateProgramRequest": {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description ロボットがゴールに到達するとクリアする条件 */
         ReachGoal: {
             /**
@@ -1441,13 +1462,42 @@ export interface operations {
             /** @description プログラム */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     updateProgram: {
@@ -1461,7 +1511,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Program"];
+                "application/json": components["schemas"]["schemas-UpdateProgramRequest"];
             };
         };
         responses: {
@@ -1474,7 +1524,46 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: components["responses"]["BadRequest"];
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     createProgramWithVibe: {

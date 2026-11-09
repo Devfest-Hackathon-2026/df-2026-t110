@@ -57,7 +57,7 @@ func (r *Matches) SelectOpponent(ctx context.Context, challenger string, choose 
 		}
 		for _, row := range programs {
 			team.Programs = append(team.Programs, domain.Program{
-				ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
+				ID: row.ID, Revision: int(row.Revision), GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
 			})
 		}
 		return nil
@@ -95,6 +95,33 @@ func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain
 			FieldID: record.FieldID, Result: record.Result,
 		}); err != nil {
 			return fmt.Errorf("insert match run: %w", err)
+		}
+		references := db.CreateRunProgramsParams{RunID: pgtype.UUID{Bytes: runID, Valid: true}}
+		// Side values are part of the persisted format: challenger=0, opponent=1.
+		const challengerSide, opponentSide int16 = 0, 1
+		teams := []struct {
+			side     int16
+			programs []domain.ProgramRef
+		}{
+			{challengerSide, record.ChallengerPrograms}, {opponentSide, record.OpponentPrograms},
+		}
+		for _, team := range teams {
+			if len(team.programs) > domain.BattleRobotCount {
+				return domain.ErrInvalidProgram
+			}
+			for index, program := range team.programs {
+				revision, err := programRevisionToDB(program)
+				if err != nil {
+					return err
+				}
+				references.Sides = append(references.Sides, team.side)
+				references.RobotIndexes = append(references.RobotIndexes, int16(index))
+				references.ProgramIds = append(references.ProgramIds, program.ID)
+				references.Revisions = append(references.Revisions, revision)
+			}
+		}
+		if err := queries.CreateRunPrograms(ctx, references); err != nil {
+			return fmt.Errorf("insert match program revisions: %w", err)
 		}
 		after, err := queries.AddUserRating(ctx, db.AddUserRatingParams{
 			GoogleSubject: record.GoogleSubject, Delta: int64(record.RatingDelta),

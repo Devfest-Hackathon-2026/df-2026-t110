@@ -118,6 +118,7 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 	}
 	outcome := domain.OutcomeFromScores(result.ChallengerScore, result.OpponentScore)
 	match, err := m.deps.Matches.Create(ctx, domain.MatchRecord{
+		ChallengerPrograms: programReferences(programs), OpponentPrograms: programReferences(opponent.Programs),
 		GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject,
 		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, Result: result.Replay,
 		Outcome: outcome, ChallengerRating: rating, OpponentRating: opponent.Rating,
@@ -127,4 +128,12 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 		return domain.Match{}, fmt.Errorf("save match: %w", err)
 	}
 	return match, nil
+}
+
+func programReferences(programs []domain.Program) []domain.ProgramRef {
+	refs := make([]domain.ProgramRef, len(programs))
+	for i, program := range programs {
+		refs[i] = program.Ref()
+	}
+	return refs
 }
