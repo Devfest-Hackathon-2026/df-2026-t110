@@ -24,7 +24,7 @@ type Config struct {
 	Tutorials         TutorialService
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
-	Matches           MatchCreator
+	Matches           MatchService
 	Rankings          RankingLister
 }
 
@@ -54,7 +54,7 @@ type BattleProgramService interface {
 	Set(ctx context.Context, subject string, ids []string) error
 }
 
-type MatchCreator interface {
+type MatchService interface {
 	Create(ctx context.Context, subject string, ids []string) (domain.Match, error)
 }
 
