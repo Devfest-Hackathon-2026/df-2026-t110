@@ -82,8 +82,12 @@ document.title = tutorialId
           岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
         </p>
         <div class="hero-actions">
-          <a class="action-primary" href="/tutorials">教材を始める</a>
-          <a class="text-link" href="/rooms">対戦について</a>
+          <a class="action-primary" href="/tutorials">
+            <Icon :icon="bookOpenIcon" aria-hidden="true" />教材を始める</a
+          >
+          <a class="action-primary" href="/rooms">
+            <Icon :icon="swordsIcon" aria-hidden="true" />対戦を始める</a
+          >
         </div>
       </section>
 

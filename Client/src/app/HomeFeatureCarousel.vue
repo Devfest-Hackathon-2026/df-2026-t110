@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Icon } from '@iconify/vue'
-import arrowLeftIcon from '@iconify-icons/lucide/arrow-left'
-import arrowRightIcon from '@iconify-icons/lucide/arrow-right'
 import { Carousel, Slide } from 'vue3-carousel'
 import 'vue3-carousel/carousel.css'
 
