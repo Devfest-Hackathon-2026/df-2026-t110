@@ -4,29 +4,48 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
-	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/memory"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 )
 
 // Union slots not supported by the generator remain interfaces, but each event
 // and action is constructed with a generated struct rather than a string map.
-func historyEvent(event gameevent.GameEvent) (any, error) {
-	switch event := event.(type) {
-	case gameevent.FieldEvent:
-		if event.Event.Tick > uint64(math.MaxInt) {
-			return nil, fmt.Errorf("history tick exceeds integer range")
+func encodeHistory(events []gameevent.GameEvent) (wire.GameHistory, error) {
+	history := make(wire.GameHistory, 0, len(events))
+	interpreters := make(map[protocol.RobotID]*debugHistory)
+	for _, event := range events {
+		switch event := event.(type) {
+		case gameevent.FieldEvent:
+			if event.Event.Tick > uint64(math.MaxInt) {
+				return nil, fmt.Errorf("history tick exceeds integer range")
+			}
+			state, err := fieldState(event.Event.State)
+			if err != nil {
+				return nil, err
+			}
+			history = append(history, wire.FieldEvent{Type: "field", Tick: int(event.Event.Tick), State: state})
+		case gameevent.RobotEvent:
+			encoder := interpreters[event.InterpreterID]
+			if encoder == nil {
+				encoder = &debugHistory{variables: make(map[protocol.HintID][]memory.ID)}
+				interpreters[event.InterpreterID] = encoder
+			}
+			debug, err := encoder.encode(event.Event)
+			if err != nil {
+				return nil, err
+			}
+			for _, entry := range debug {
+				history = append(history, wire.PicolangEvent{Type: "picolang", InterpreterId: string(event.InterpreterID), Event: entry})
+			}
+		default:
+			return nil, fmt.Errorf("unsupported history event %T", event)
 		}
-		state, err := fieldState(event.Event.State)
-		return wire.FieldEvent{Type: "field", Tick: int(event.Event.Tick), State: state}, err
-	case gameevent.RobotEvent:
-		debug, err := debugEvent(event.Event)
-		return wire.PicolangEvent{Type: "picolang", InterpreterId: string(event.InterpreterID), Event: debug}, err
-	default:
-		return nil, fmt.Errorf("unsupported history event %T", event)
 	}
+	return history, nil
 }
 
 func ptr[T any](value T) *T { return &value }
@@ -124,37 +143,12 @@ func actionResult(action fieldevent.ActionResult) (any, error) {
 		return nil, fmt.Errorf("unsupported action result %T", action)
 	}
 }
-func debugEvent(event robotevent.PicolangEvent) (wire.PicolangDebugEvent, error) {
-	switch e := event.(type) {
-	case robotevent.CurrentNodeEvent:
-		return wire.PicolangDebugEvent{CurrentNode: &wire.PicolangCurrentNodeEvent{Kind: "current_node", HintId: wire.HintId(e.HintID)}}, nil
-	case robotevent.VariableInitEvent:
-		value, err := recordValue(e.Value)
-		return wire.PicolangDebugEvent{VariableInit: &wire.PicolangVariableInitEvent{Kind: "variable_init", HintId: wire.HintId(e.HintID), Value: value}}, err
-	case robotevent.VariableDropEvent:
-		return wire.PicolangDebugEvent{VariableDrop: &wire.PicolangVariableDropEvent{Kind: "variable_drop", HintId: wire.HintId(e.HintID)}}, nil
-	case robotevent.ExecutionFinishedEvent:
-		return wire.PicolangDebugEvent{ExecutionFinished: &wire.PicolangExecutionFinishedEvent{Kind: "execution_finished", HintId: wire.HintId(e.HintID), Reason: wire.PicolangExecutionFinishedEventReason(e.Reason), Message: e.Message}}, nil
-	case robotevent.VariableUpdateEvent:
-		diff := make([]wire.Update, 0, len(e.Diff))
-		for _, update := range e.Diff {
-			value, err := valueUpdate(update)
-			if err != nil {
-				return wire.PicolangDebugEvent{}, err
-			}
-			diff = append(diff, value)
-		}
-		return wire.PicolangDebugEvent{VariableUpdate: &wire.PicolangVariableUpdateEvent{Kind: "variable_update", HintId: wire.HintId(e.HintID), Diff: diff}}, nil
-	default:
-		return wire.PicolangDebugEvent{}, fmt.Errorf("unsupported debug event %T", event)
-	}
-}
-func terrainValue(value values.TerrainValue) (wire.Terrain_1, error) {
+func terrainValue(value values.TerrainValue) (wire.PicolangTerrain, error) {
 	switch value := value.(type) {
 	case values.RockTerrain:
-		return wire.Terrain_1{Rock: &wire.Rock{Type: "rock"}}, nil
+		return wire.PicolangTerrain{Rock: &wire.Rock{Type: "rock"}}, nil
 	case values.SeaTerrain:
-		return wire.Terrain_1{Sea: &wire.Sea{Type: "sea"}}, nil
+		return wire.PicolangTerrain{Sea: &wire.Sea{Type: "sea"}}, nil
 	case values.LandTerrain:
 		out := wire.Land{Type: "land"}
 		switch land := value.Kind.(type) {
@@ -165,7 +159,7 @@ func terrainValue(value values.TerrainValue) (wire.Terrain_1, error) {
 		case values.CheckpointLand:
 			out.Kind.Checkpoint = &wire.CheckpointLand{Type: "checkpoint", Order: int(land.Order)}
 		default:
-			return wire.Terrain_1{}, fmt.Errorf("unsupported land kind %T", value.Kind)
+			return wire.PicolangTerrain{}, fmt.Errorf("unsupported land kind %T", value.Kind)
 		}
 		if value.HasLuggage {
 			out.HasLuggage = ptr(true)
@@ -173,80 +167,8 @@ func terrainValue(value values.TerrainValue) (wire.Terrain_1, error) {
 		if value.Territory != values.NoTerritory {
 			out.Territory = ptr(wire.LandTerritory(value.Territory))
 		}
-		return wire.Terrain_1{Land: &out}, nil
+		return wire.PicolangTerrain{Land: &out}, nil
 	default:
-		return wire.Terrain_1{}, fmt.Errorf("unsupported terrain %T", value)
-	}
-}
-func recordValue(value values.RecordValue) (wire.Value, error) {
-	switch value := value.(type) {
-	case values.BoolValue:
-		return value.Bool, nil
-	case values.IntegerValue:
-		return value.Integer, nil
-	case values.UnitValue:
-		return nil, nil
-	case values.RotationRecordValue:
-		return string(value.Rotation), nil
-	case values.DistanceTarget:
-		return string(value), nil
-	case values.TerrainValue:
-		return terrainValue(value)
-	case values.StackRecordValue:
-		out := make([]wire.Value, 0, len(value.Elements))
-		for _, element := range value.Elements {
-			entry, err := recordValue(element)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, entry)
-		}
-		return out, nil
-	default:
-		return nil, fmt.Errorf("unsupported recorded value %T", value)
-	}
-}
-func valueUpdate(update robotevent.ValueUpdate) (wire.Update, error) {
-	switch u := update.(type) {
-	case robotevent.BoolUpdate:
-		return wire.BoolUpdate{Type: "bool", Value: u.Value}, nil
-	case robotevent.IntegerUpdate:
-		return wire.IntegerUpdate{Type: "integer", Value: int(u.Value)}, nil
-	case robotevent.UnitUpdate:
-		return wire.UnitUpdate{Type: "unit", Value: nil}, nil
-	case robotevent.RotationUpdate:
-		return wire.RotationUpdate{Type: "rotation", Value: wire.RotationUpdateValue(u.Value)}, nil
-	case robotevent.DistanceTargetUpdate:
-		return wire.DistanceTargetUpdate{Type: "distance_target", Value: wire.DistanceTarget_1(u.Value)}, nil
-	case robotevent.TerrainUpdate:
-		terrain, err := terrainValue(u.Value)
-		return wire.TerrainUpdate{Type: "terrain", Value: terrain}, err
-	case robotevent.StackUpdate:
-		var operation wire.StackUpdateUpdate
-		switch op := u.Update.(type) {
-		case robotevent.StackReplace:
-			values := make([]wire.Value, 0, len(op.Value))
-			for _, value := range op.Value {
-				entry, err := recordValue(value)
-				if err != nil {
-					return nil, err
-				}
-				values = append(values, entry)
-			}
-			operation.Replace = &wire.StackReplace{Op: "replace", Value: values}
-		case robotevent.PushBack:
-			value, err := recordValue(op.Value)
-			if err != nil {
-				return nil, err
-			}
-			operation.PushBack = &wire.PushBack{Op: "push_back", Value: value}
-		case robotevent.PopBack:
-			operation.PopBack = &wire.PopBack{Op: "pop_back"}
-		default:
-			return nil, fmt.Errorf("unsupported stack operation %T", op)
-		}
-		return wire.StackUpdate{Type: "stack", Update: operation}, nil
-	default:
-		return nil, fmt.Errorf("unsupported value update %T", update)
+		return wire.PicolangTerrain{}, fmt.Errorf("unsupported terrain %T", value)
 	}
 }

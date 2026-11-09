@@ -61,14 +61,9 @@ func TestHistoryMatchesSchema(t *testing.T) {
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableDropEvent{HintID: hint}},
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.ExecutionFinishedEvent{HintID: hint, Reason: robotevent.EndCompleted, Message: "program completed"}},
 	}
-	history := make([]any, 0, len(events))
-	for _, event := range events {
-		value, err := historyEvent(event)
-		if err != nil {
-			t.Errorf("encode %T: %v", event, err)
-			return
-		}
-		history = append(history, value)
+	history, err := encodeHistory(events)
+	if err != nil {
+		t.Fatalf("encode history: %v", err)
 	}
 	raw, err := json.Marshal(history)
 	if err != nil {
