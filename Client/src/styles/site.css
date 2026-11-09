@@ -475,6 +475,15 @@ body,
   }
 }
 @media (max-width: 640px) {
+  .site-nav {
+    flex-wrap: wrap;
+    padding-block: 8px;
+  }
+  .site-nav nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
   .home-entry-grid {
     grid-template-columns: minmax(0, 1fr);
   }
