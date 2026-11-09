@@ -198,8 +198,6 @@ export function replayFrameToStage(frame: ReplayFrame): StageLayout {
     })),
   )
   const first = frame.robots[0]
-  const start = cells.find((cell) => cell.x === first?.position.x && cell.y === first?.position.y)
-  if (start) start.start = true
   const width = frame.terrain[0]?.length ?? 0
   return {
     id: `replay-${frame.tick}`,
