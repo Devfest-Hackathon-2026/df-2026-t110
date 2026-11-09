@@ -43,7 +43,7 @@ onBeforeUnmount(() => request?.abort())
   >
     <span>{{ String(index + 1).padStart(2, '0') }}</span>
     <span
-      ><strong>{{ tutorial.title }}</strong></span
+      ><strong class="furigana-heading">{{ tutorial.title }}</strong></span
     >
     <span aria-hidden="true">↗</span>
   </a>

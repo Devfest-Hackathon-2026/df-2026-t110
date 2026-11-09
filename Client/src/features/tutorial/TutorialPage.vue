@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
       :inert="compactScreen && compactPane !== 'work'"
     >
       <div class="tutorial-editor-heading">
-        <h2 id="tutorial-editor-title">コード</h2>
+        <h2 id="tutorial-editor-title" class="furigana-heading">コード</h2>
         <span>Picolang v0</span>
       </div>
       <div class="tutorial-editor-body">
@@ -517,7 +517,7 @@ onBeforeUnmount(() => {
             チュートリアルを読み込んでいます。
           </div>
           <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-            <h1>チュートリアルが見つかりません。</h1>
+            <h1 class="furigana-heading">チュートリアルが見つかりません。</h1>
             <a href="/tutorials">チュートリアルを見る</a>
           </div>
           <template v-else-if="loadState === 'ready' && tutorial">
@@ -526,21 +526,21 @@ onBeforeUnmount(() => {
                 {{ String(lessonPosition + 1).padStart(2, '0') }} /
                 {{ String(catalog.length).padStart(2, '0') }}
               </p>
-              <h1>{{ tutorial.title }}</h1>
-              <p v-if="tutorial.goal">
+              <h1 class="furigana-heading">{{ tutorial.title }}</h1>
+              <p v-if="tutorial.goal" class="furigana-text">
                 この課題の目標:
                 {{ tutorial.goal }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
-              <h2 id="tutorial-note-title">この課題で考えること</h2>
-              <p>{{ tutorial.lesson ?? tutorial.description }}</p>
+              <h2 id="tutorial-note-title" class="furigana-heading">この課題で考えること</h2>
+              <p class="furigana-text">{{ tutorial.lesson ?? tutorial.description }}</p>
             </section>
             <div v-if="guideLines.length" class="tutor-conversation">
               <TutorAvatar />
               <div class="tutor-speech">
                 <span>案内役のロボット</span>
-                <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+                <p class="furigana-text" aria-live="polite">{{ guideLines[guideIndex] }}</p>
               </div>
             </div>
             <div v-if="guideLines.length" class="tutor-stepper" aria-label="説明を切り替える">

@@ -55,9 +55,17 @@ jobs:
         if: env.DEPLOY_ENABLED == 'true'
       # index.html goes last so it never references assets that are not uploaded yet.
       # Old hashed assets are kept for pages that are still open with the previous index.html.
+      # Match Server/infra/static: Vite's hashed assets (including fonts) are immutable for a year.
       - name: Upload assets
         if: env.DEPLOY_ENABLED == 'true'
-        run: gcloud storage rsync Client/dist "$BUCKET" --recursive --exclude='^index\.html$'
+        run: >-
+          gcloud storage rsync Client/dist/assets "$BUCKET/assets" --recursive
+          --cache-control='public, max-age=31536000, immutable'
+      - name: Upload public files
+        if: env.DEPLOY_ENABLED == 'true'
+        run: >-
+          gcloud storage rsync Client/dist "$BUCKET" --recursive
+          --exclude='^(index\.html$|assets/)' --cache-control='no-cache'
       - name: Upload index.html
         if: env.DEPLOY_ENABLED == 'true'
-        run: gcloud storage cp Client/dist/index.html "$BUCKET/index.html"
+        run: gcloud storage cp Client/dist/index.html "$BUCKET/index.html" --cache-control='no-cache'

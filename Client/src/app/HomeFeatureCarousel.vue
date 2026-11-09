@@ -42,7 +42,7 @@ function goTo(index: number) {
         </button>
       </Slide>
     </Carousel>
-    <p class="home-carousel-caption" aria-live="polite">{{ slides[active]?.caption }}</p>
+    <p class="home-carousel-caption furigana-text" aria-live="polite">{{ slides[active]?.caption }}</p>
     <div class="home-carousel-controls">
       <div class="home-carousel-dots" aria-label="画像を選ぶ">
         <button
