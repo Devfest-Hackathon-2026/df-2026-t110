@@ -1,5 +1,4 @@
-import type { PicoValue } from '../picolang/language/executePicolang.ts'
-import type { PicoTerrain } from '../picolang/language/picolang.ts'
+import type { PicoTerrain, PicoValue } from '../picolang/language/picolang.ts'
 import { formatPicoValue } from '../picolang/language/formatPicoValue.ts'
 
 export interface TutorialSpeech {

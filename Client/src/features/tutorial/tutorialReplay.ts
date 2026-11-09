@@ -1,6 +1,6 @@
 import { toRaw } from 'vue'
 import type { ReplayAction, ReplayFrame } from '../match/matchReplay.ts'
-import type { PicoValue } from '../picolang/language/executePicolang.ts'
+import type { PicoValue } from '../picolang/language/picolang.ts'
 import type { AnimationEvent } from '../stage/robotAnimator.ts'
 import type { StageLayout, StageObject } from '../stage/stage.ts'
 import { speechForValue, type TutorialSpeech } from './tutorialSpeech.ts'

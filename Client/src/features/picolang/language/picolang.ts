@@ -16,6 +16,8 @@ export interface PicoTerrain {
   hasLuggage?: boolean
   territory?: 'own' | 'enemy'
 }
+export type PicoValue =
+  boolean | number | null | 'left' | 'right' | PicoDistanceTarget | PicoValue[] | PicoTerrain
 export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
 interface NodeBase {
   hintId: string
