@@ -12,19 +12,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// googleLoginConfig is read from the environment. Google sign-in stays disabled
-// (the login endpoints answer 501) unless every field is set.
+// Google remains the default issuer. Local development can inject an OIDC test
+// issuer through the same Google login configuration.
 type googleLoginConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	IssuerURL         string
+	ClientID          string
+	ClientSecret      string
+	RedirectURL       string
+	AllowInsecureHTTP bool
 }
 
-func googleLoginConfigFromEnv() googleLoginConfig {
+func googleLoginConfigFromEnv() googleLoginConfig { return readGoogleLoginConfig(os.Getenv) }
+
+func readGoogleLoginConfig(getenv func(string) string) googleLoginConfig {
+	issuer := getenv("GOOGLE_ISSUER_URL")
+	if issuer == "" {
+		issuer = googleauth.GoogleIssuer
+	}
 	return googleLoginConfig{
-		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+		IssuerURL:         issuer,
+		ClientID:          getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret:      getenv("GOOGLE_CLIENT_SECRET"),
+		RedirectURL:       getenv("GOOGLE_REDIRECT_URL"),
+		AllowInsecureHTTP: getenv("APP_ENV") == "development" && getenv("K_SERVICE") == "",
 	}
 }
 
@@ -45,15 +55,19 @@ func (c googleLoginConfig) validate(hasDatabase bool) error {
 	return nil
 }
 
-// secureCookies reports whether auth cookies must be Secure. googleauth.New
-// only accepts plain HTTP for localhost, so this follows the redirect scheme.
 func (c googleLoginConfig) secureCookies() bool {
 	u, err := url.Parse(c.RedirectURL)
 	return err == nil && u.Scheme == "https"
 }
 
 func newGoogleAuth(ctx context.Context, cfg googleLoginConfig, pool *pgxpool.Pool, users usecase.AuthUsers, sessions usecase.AuthSessions) (*usecase.Auth, error) {
-	client, err := googleauth.New(ctx, googleauth.Config{ClientID: cfg.ClientID, ClientSecret: cfg.ClientSecret, RedirectURL: cfg.RedirectURL})
+	client, err := googleauth.New(ctx, googleauth.Config{
+		IssuerURL:         cfg.IssuerURL,
+		ClientID:          cfg.ClientID,
+		ClientSecret:      cfg.ClientSecret,
+		RedirectURL:       cfg.RedirectURL,
+		AllowInsecureHTTP: cfg.AllowInsecureHTTP,
+	})
 	if err != nil {
 		return nil, err
 	}

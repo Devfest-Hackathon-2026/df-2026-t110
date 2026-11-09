@@ -51,3 +51,28 @@ func TestGoogleLoginConfigSecureCookies(t *testing.T) {
 		})
 	}
 }
+
+func TestReadGoogleLoginConfig(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name                               string
+		env                                map[string]string
+		issuer, clientID, secret, redirect string
+		enabled, insecure                  bool
+	}{
+		{name: "Google remains the default", issuer: "https://accounts.google.com"},
+		{name: "existing Google parameters", env: map[string]string{"GOOGLE_CLIENT_ID": "google-id", "GOOGLE_CLIENT_SECRET": "google-secret", "GOOGLE_REDIRECT_URL": "https://app.example/api/login/callback"}, issuer: "https://accounts.google.com", clientID: "google-id", secret: "google-secret", redirect: "https://app.example/api/login/callback", enabled: true},
+		{name: "Dex parameters injected through Google settings", env: map[string]string{"GOOGLE_ISSUER_URL": "http://dex.localhost:5556/dex", "GOOGLE_CLIENT_ID": "dex-id", "GOOGLE_CLIENT_SECRET": "dex-secret", "GOOGLE_REDIRECT_URL": "http://localhost:8080/api/login/callback", "APP_ENV": "development"}, issuer: "http://dex.localhost:5556/dex", clientID: "dex-id", secret: "dex-secret", redirect: "http://localhost:8080/api/login/callback", enabled: true, insecure: true},
+		{name: "Cloud Run forbids insecure issuer", env: map[string]string{"APP_ENV": "development", "K_SERVICE": "server"}, issuer: "https://accounts.google.com"},
+		{name: "production forbids insecure issuer", env: map[string]string{"APP_ENV": "production"}, issuer: "https://accounts.google.com"},
+		{name: "no separate provider selector", env: map[string]string{"AUTH_PROVIDER": "oidc", "OIDC_ISSUER_URL": "https://unused.example", "OIDC_CLIENT_ID": "unused"}, issuer: "https://accounts.google.com"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cfg := readGoogleLoginConfig(func(k string) string { return tt.env[k] })
+			if cfg.IssuerURL != tt.issuer || cfg.ClientID != tt.clientID || cfg.ClientSecret != tt.secret || cfg.RedirectURL != tt.redirect || cfg.enabled() != tt.enabled || cfg.AllowInsecureHTTP != tt.insecure {
+				t.Errorf("config=%+v", cfg)
+			}
+		})
+	}
+}

@@ -2,6 +2,7 @@ package googleauth
 
 import (
 	"context"
+	"encoding/base64"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
@@ -26,5 +27,11 @@ func (p Provider) Complete(ctx context.Context, request usecase.AuthorizationReq
 	if err != nil {
 		return usecase.Identity{}, err
 	}
-	return usecase.Identity{Subject: user.Subject}, nil
+	subject := user.Subject
+	if p.Client.issuer != GoogleIssuer {
+		// Subjects are unique within an issuer. Preserve existing Google IDs
+		// while keeping identities from other providers in separate namespaces.
+		subject = "oidc:" + base64.RawURLEncoding.EncodeToString([]byte(p.Client.issuer)) + ":" + subject
+	}
+	return usecase.Identity{Subject: subject}, nil
 }
