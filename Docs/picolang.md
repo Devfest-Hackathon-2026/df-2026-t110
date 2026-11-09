@@ -3,7 +3,7 @@
 ## 仕様
 ### 型
 
-bool、integer、unit、terrain、rotation、distance_target は primitive type、stack は compound type とする。
+bool、integer、unit、terrain、rotation、distance_target は primitive type、stack、option は compound type とする。
 
 - bool
     - true/false
@@ -21,6 +21,9 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - 型Tの要素を持つ連結リスト
     - 同じstackの要素はすべて同じ型
     - 内部的にはノードに参照カウンタのついた根付き木として表現し、コピーのコストはO(1)とする。
+- option\<T>
+    - 型Tの値を持つsome、または値を持たないnoneを表す
+    - リテラルなし。組み込み関数some、noneで生成する
 
 ### 組み込み関数
 
@@ -45,11 +48,6 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - lt: (integer, integer) -> bool
     - geq: (integer, integer) -> bool
     - leq: (integer, integer) -> bool
-- cast
-    - bool_to_integer: bool -> integer
-        - 0 or 1
-    - integer_to_bool: integer -> bool
-        - fst == 1
 - random
     - random_bool: () -> bool
     - random_integer: (integer, integer) -> integer
@@ -66,6 +64,17 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
         - 末尾の要素を独立した値として返す。元のstackの要素数は変わらない
         - 要素数が0の場合はパニック
     - size: stack\<T> -> integer
+- option
+    - some: T -> option\<T>
+        - 引数の値を持つsomeを返す
+    - none: () -> option\<T>
+        - 値を持たないnoneを返す
+        - 型Tは使用箇所の制約から推論する。型を確定できない場合は実行前の型エラー
+    - unwrap: option\<T> -> T
+        - someが持つ値を返す
+        - noneの場合はパニック
+    - is_some: option\<T> -> bool
+        - someの場合true、noneの場合false
 - terrain
     - is_land: terrain -> bool
     - is_goal: terrain -> bool
@@ -95,6 +104,14 @@ bool、integer、unit、terrain、rotation、distance_target は primitive type�
     - search_now: () -> terrain
     - print_integer: integer -> ()
     - print_bool: bool -> ()
+    - print_unit: unit -> ()
+        - `()` と表示する
+    - print_terrain: terrain -> ()
+        - 観測時点の地形をJSONで表示する。陸の種類・チェックポイントの順序・荷物・相対的な領地情報を保持する
+    - print_rotation: rotation -> ()
+        - `left` または `right` と表示する
+    - print_distance_target: distance_target -> ()
+        - 探索対象の名前を表示する
 
 ### 制御構文
 - if <expr> <block>

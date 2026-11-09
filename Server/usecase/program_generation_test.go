@@ -2,7 +2,7 @@ package usecase_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"testing"
@@ -21,7 +21,8 @@ const (
 // rejects badDraft with ErrInvalidGeneratedProgram and accepts everything else.
 type generationFixture struct {
 	// outputs are returned by successive GenerateProgram calls.
-	outputs []json.RawMessage
+	outputs         []jsontext.Value
+	validatedOutput jsontext.Value
 
 	quotaErr, generatorErr, validatorErr, fieldErr error
 
@@ -35,16 +36,16 @@ type generationFixture struct {
 	deadlines []time.Time
 }
 
-func draftOutputs(drafts ...string) []json.RawMessage {
-	outputs := make([]json.RawMessage, len(drafts))
+func draftOutputs(drafts ...string) []jsontext.Value {
+	outputs := make([]jsontext.Value, len(drafts))
 	for i, d := range drafts {
-		outputs[i] = json.RawMessage(d)
+		outputs[i] = jsontext.Value(d)
 	}
 	return outputs
 }
 
-func (f *generationFixture) GetGenerationField(_ context.Context, _, _ string) (json.RawMessage, error) {
-	return json.RawMessage(`{"stage":1}`), f.fieldErr
+func (f *generationFixture) GetGenerationField(_ context.Context, _, _ string) (jsontext.Value, error) {
+	return jsontext.Value(`{"stage":1}`), f.fieldErr
 }
 
 func (f *generationFixture) Reserve(_ context.Context, subject string, _ int) error {
@@ -52,7 +53,7 @@ func (f *generationFixture) Reserve(_ context.Context, subject string, _ int) er
 	return f.quotaErr
 }
 
-func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.ProgramGenerationInput) (json.RawMessage, error) {
+func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.ProgramGenerationInput) (jsontext.Value, error) {
 	f.inputs = append(f.inputs, in)
 	if deadline, ok := ctx.Deadline(); ok {
 		f.deadlines = append(f.deadlines, deadline)
@@ -69,17 +70,20 @@ func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.Prog
 	return f.outputs[len(f.inputs)-1], nil
 }
 
-func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p json.RawMessage) error {
+func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p jsontext.Value) (jsontext.Value, error) {
 	if f.onValidate != nil {
 		f.onValidate(ctx)
 	}
 	if f.validatorErr != nil {
-		return f.validatorErr
+		return nil, f.validatorErr
 	}
 	if string(p) == badDraft {
-		return fmt.Errorf("%w: missing main", usecase.ErrInvalidGeneratedProgram)
+		return nil, fmt.Errorf("%w: missing main", usecase.ErrInvalidGeneratedProgram)
 	}
-	return nil
+	if f.validatedOutput != nil {
+		return f.validatedOutput, nil
+	}
+	return p, nil
 }
 
 func (f *generationFixture) deps() usecase.ProgramGenerationDeps {
@@ -108,6 +112,29 @@ func TestProgramGenerationRetriesInvalidDraft(t *testing.T) {
 	}
 	if string(f.inputs[1].PreviousOutput) != badDraft || f.inputs[1].ValidationError == "" || string(f.inputs[1].Field) != `{"stage":1}` {
 		t.Errorf("retry input: %+v", f.inputs[1])
+	}
+}
+
+func TestProgramGenerationWithoutFieldPreservesBattleMode(t *testing.T) {
+	t.Parallel()
+	f := &generationFixture{outputs: draftOutputs(goodDraft)}
+	got, err := f.service().GenerateWithOptions(context.Background(), "google-sub", usecase.ProgramGenerationRequest{
+		Prompt: "collect luggage", IsBattle: true,
+	})
+	if err != nil || string(got) != goodDraft {
+		t.Errorf("GenerateWithOptions = %s, %v", got, err)
+	}
+	if len(f.inputs) != 1 || !f.inputs[0].IsBattle || string(f.inputs[0].Field) != `{}` {
+		t.Errorf("generation input = %+v", f.inputs)
+	}
+}
+
+func TestProgramGenerationReturnsPreparedProgram(t *testing.T) {
+	t.Parallel()
+	f := &generationFixture{outputs: draftOutputs(goodDraft), validatedOutput: jsontext.Value(`{"serverAssignedHintIds":true}`)}
+	got, err := f.service().Generate(context.Background(), "sub", "field", "go")
+	if err != nil || string(got) != string(f.validatedOutput) {
+		t.Errorf("Generate = %s, %v; want validator output %s", got, err, f.validatedOutput)
 	}
 }
 

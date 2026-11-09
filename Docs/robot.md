@@ -31,6 +31,6 @@
 - 残り掘削回数を調べる (drill_durability)
   - 自機の残り掘削回数を返す
 - しゃべる
-  - int や bool の値を吹き出しで表示する
+  - bool、integer、unit、terrain、rotation、distance_target の値を吹き出しで表示する
 
 距離、地形、残り掘削回数の観測はターンを消費しない。

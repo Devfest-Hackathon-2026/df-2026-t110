@@ -3,18 +3,19 @@ import { PICO_BUILTINS, type PicoBuiltin, type PicoBuiltinName, type PicoType } 
 export interface PicoFunctionOption extends PicoBuiltin {
   label: string
   category: string
+  blockMessage?: string
 }
 
 export interface PicoVariableOption {
   name: string
-  type: PicoType
+  type?: PicoType
 }
 
 const builtinLabels = {
-  forward: { label: '前進する', category: '動き' },
-  back: { label: '後退する', category: '動き' },
-  rotate: { label: '回転する', category: '動き' },
-  wait: { label: '待つ', category: '動き' },
+  forward: { label: '前に進む', category: '動き' },
+  back: { label: '後ろに進む', category: '動き' },
+  rotate: { label: '回転する', category: '動き', blockMessage: '%1 向きに回転する' },
+  wait: { label: '待つ', category: '動き', blockMessage: '%1 ターン待つ' },
   pick_up: { label: '拾う', category: '操作' },
   release: { label: '置く', category: '操作' },
   drill: { label: '岩を壊す', category: '操作' },
@@ -22,42 +23,76 @@ const builtinLabels = {
   distance: { label: '距離を返す', category: '調べる' },
   search_front: { label: '前のマスを調べて返す', category: '調べる' },
   search_now: { label: '今いるマスを調べて返す', category: '調べる' },
-  is_land: { label: '陸なら「はい」を返す', category: '調べる' },
-  is_goal: { label: 'ゴールなら「はい」を返す', category: '調べる' },
-  is_checkpoint: { label: 'チェックポイントなら「はい」を返す', category: '調べる' },
-  is_laggage: { label: '荷物なら「はい」を返す', category: '調べる' },
-  is_sea: { label: '海なら「はい」を返す', category: '調べる' },
-  is_rock: { label: '岩なら「はい」を返す', category: '調べる' },
-  not: { label: '答えを反対にして返す', category: '論理' },
-  and: { label: '両方「はい」か返す', category: '論理' },
-  or: { label: 'どちらかが「はい」か返す', category: '論理' },
-  bool_eq: { label: '2つの答えが同じか返す', category: '論理' },
-  bool_neq: { label: '2つの答えが違うか返す', category: '論理' },
-  add: { label: '足した数を返す', category: '計算' },
-  minus: { label: '符号を反対にした数を返す', category: '計算' },
-  sub: { label: '引いた数を返す', category: '計算' },
-  mul: { label: '掛けた数を返す', category: '計算' },
-  div: { label: '割った数を返す', category: '計算' },
-  integer_eq: { label: '2つの数が同じか返す', category: '計算' },
-  integer_neq: { label: '2つの数が違うか返す', category: '計算' },
-  gt: { label: '左の数が大きいか返す', category: '計算' },
-  lt: { label: '左の数が小さいか返す', category: '計算' },
-  geq: { label: '左の数が右以上か返す', category: '計算' },
-  leq: { label: '左の数が右以下か返す', category: '計算' },
-  bool_to_integer: { label: 'はい・いいえを数にして返す', category: '変換' },
-  integer_to_bool: { label: '数をはい・いいえにして返す', category: '変換' },
-  random_bool: { label: 'ランダムなはい・いいえを返す', category: '乱数' },
-  random_integer: { label: 'ランダムな数を返す', category: '乱数' },
-  new: { label: '空のスタックを作って返す', category: 'スタック' },
-  push_back: { label: '値を足したスタックを返す', category: 'スタック' },
-  pop_back: { label: '最後を除いたスタックを返す', category: 'スタック' },
-  get_back: { label: '最後の値を返す', category: 'スタック' },
-  size: { label: 'スタックの個数を返す', category: 'スタック' },
-  print_integer: { label: '整数を表示', category: '表示' },
-  print_bool: { label: '真理値を表示', category: '表示' },
-} satisfies Record<PicoBuiltinName, { label: string; category: string }>
+  is_land: { label: '陸なら「はい」を返す', category: '調べる', blockMessage: '%1 は陸' },
+  is_goal: { label: 'ゴールなら「はい」を返す', category: '調べる', blockMessage: '%1 はゴール' },
+  is_own_territory: {
+    label: '自分の領地なら「はい」を返す',
+    category: '調べる',
+    blockMessage: '%1 は自分の領地',
+  },
+  is_enemy_territory: {
+    label: '相手の領地なら「はい」を返す',
+    category: '調べる',
+    blockMessage: '%1 は相手の領地',
+  },
+  is_checkpoint: {
+    label: 'チェックポイントなら「はい」を返す',
+    category: '調べる',
+    blockMessage: '%1 はチェックポイント',
+  },
+  is_luggage: { label: '荷物なら「はい」を返す', category: '調べる', blockMessage: '%1 は荷物' },
+  is_sea: { label: '海なら「はい」を返す', category: '調べる', blockMessage: '%1 は海' },
+  is_rock: { label: '岩なら「はい」を返す', category: '調べる', blockMessage: '%1 は岩' },
+  not: { label: '答えを反対にして返す', category: '論理', blockMessage: '%1 ではない' },
+  and: { label: '両方「はい」か返す', category: '論理', blockMessage: '%1 かつ %2' },
+  or: { label: 'どちらかが「はい」か返す', category: '論理', blockMessage: '%1 または %2' },
+  bool_eq: { label: '2つの答えが同じか返す', category: '論理', blockMessage: '%1 と %2 は等しい' },
+  bool_neq: { label: '2つの答えが違うか返す', category: '論理', blockMessage: '%1 と %2 は等しくない' },
+  add: { label: '足した数を返す', category: '計算', blockMessage: '%1 + %2' },
+  minus: { label: '符号を反対にした数を返す', category: '計算', blockMessage: '- %1' },
+  sub: { label: '引いた数を返す', category: '計算', blockMessage: '%1 - %2' },
+  mul: { label: '掛けた数を返す', category: '計算', blockMessage: '%1 x %2' },
+  div: { label: '割った数を返す', category: '計算', blockMessage: '%1 / %2' },
+  integer_eq: { label: '2つの数が同じか返す', category: '計算', blockMessage: '%1 は %2 と等しい' },
+  integer_neq: { label: '2つの数が違うか返す', category: '計算', blockMessage: '%1 は %2 と等しくない' },
+  gt: { label: '左の数が大きいか返す', category: '計算', blockMessage: '%1 は %2 より大きい' },
+  lt: { label: '左の数が小さいか返す', category: '計算', blockMessage: '%1 は %2 より小さい' },
+  geq: { label: '左の数が右以上か返す', category: '計算', blockMessage: '%1 は %2 と等しいか大きい' },
+  leq: { label: '左の数が右以下か返す', category: '計算', blockMessage: '%1 は %2 と等しいか小さい' },
+  random_bool: { label: '「はい・いいえ」からランダムに選ぶ', category: '乱数' },
+  random_integer: {
+    label: 'ランダムな数を返す',
+    category: '乱数',
+    blockMessage: '%1 から %2 までの数をランダムに選ぶ',
+  },
+  new: { label: '空のスタック', category: 'スタック' },
+  push_back: {
+    label: '値を足したスタックを返す',
+    category: 'スタック',
+    blockMessage: '%1 の一番うしろに %2 を追加したスタック',
+  },
+  pop_back: {
+    label: '最後を除いたスタックを返す',
+    category: 'スタック',
+    blockMessage: '%1 の一番うしろを取り除いたスタック',
+  },
+  get_back: { label: '最後の値を返す', category: 'スタック', blockMessage: '%1 の一番うしろ' },
+  size: { label: 'スタックの個数を返す', category: 'スタック', blockMessage: '%1 の長さ' },
+  some: { label: '値ありのオプションを作る', category: 'オプション', blockMessage: '%1 を入れたオプション' },
+  none: { label: '値なしのオプションを作る', category: 'オプション' },
+  unwrap: { label: '値を取り出す', category: 'オプション', blockMessage: '%1 の値を取り出す' },
+  is_some: { label: '値があるか調べる', category: 'オプション', blockMessage: '%1 に値がある' },
+  print_integer: { label: '整数を表示', category: '表示', blockMessage: '%1 と言う' },
+  print_bool: { label: '真理値を表示', category: '表示', blockMessage: '%1 と言う' },
+  print_unit: { label: '値なしを表示', category: '表示', blockMessage: '%1 と言う' },
+  print_terrain: { label: 'マスの種類を表示', category: '表示', blockMessage: '%1 と言う' },
+  print_rotation: { label: '向きを表示', category: '表示', blockMessage: '%1 と言う' },
+  print_distance_target: { label: '探索対象を表示', category: '表示', blockMessage: '%1 と言う' },
+} satisfies Record<PicoBuiltinName, { label: string; category: string; blockMessage?: string }>
 
-export const PICO_BUILTIN_OPTIONS: PicoFunctionOption[] = PICO_BUILTINS.map((builtin) => ({
-  ...builtin,
-  ...builtinLabels[builtin.name],
+export const PICO_BUILTIN_OPTIONS: PicoFunctionOption[] = (
+  Object.keys(builtinLabels) as PicoBuiltinName[]
+).map((name) => ({
+  ...PICO_BUILTINS.find((builtin) => builtin.name === name)!,
+  ...builtinLabels[name],
 }))

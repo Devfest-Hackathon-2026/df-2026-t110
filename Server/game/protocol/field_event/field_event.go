@@ -2,9 +2,6 @@
 package field_event
 
 import (
-	json "encoding/json/v2"
-	"fmt"
-
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
@@ -18,46 +15,46 @@ type FieldState interface{ fieldState() }
 
 // InitialState contains the full board at tick zero. Terrain is indexed by [y][x].
 type InitialState struct {
-	Terrain [][]Cell     `json:"terrain"`
-	Robots  []RobotState `json:"robots"`
+	Terrain [][]Cell
+	Robots  []RobotState
 
-	FieldState `json:"-"`
+	FieldState
 }
 
 // UpdateState records the results of one committed turn or removals after the last turn.
 type UpdateState struct {
-	Actions         []ActionResult     `json:"actions,omitempty"`
-	RemovedRobotIDs []protocol.RobotID `json:"removedRobotIds,omitempty"`
+	Actions         []ActionResult
+	RemovedRobotIDs []protocol.RobotID
 
-	FieldState `json:"-"`
+	FieldState
 }
 
-// Cell is the JSON representation of one terrain cell and its land attributes.
+// Cell records one terrain cell and its land attributes.
 // The engine's Terrain types keep these values private and enforce board invariants.
 type Cell struct {
-	Type           string    `json:"type"`
-	Kind           *LandKind `json:"kind,omitempty"`
-	HasLuggage     bool      `json:"hasLuggage,omitzero"`
-	TerritoryOwner int       `json:"territoryOwner,omitzero"`
+	Type           string
+	Kind           *LandKind
+	HasLuggage     bool
+	TerritoryOwner int
 }
 
 type LandKind struct {
-	Type  string `json:"type"`
-	Order *int64 `json:"order,omitempty"`
+	Type  string
+	Order *int64
 }
 
 type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X int
+	Y int
 }
 
 type RobotState struct {
-	ID              protocol.RobotID `json:"id"`
-	Position        Position         `json:"position"`
-	Direction       string           `json:"direction"`
-	DrillDurability int64            `json:"drillDurability"`
-	TeamID          int              `json:"teamId,omitzero"`
-	CarryingLuggage bool             `json:"carryingLuggage,omitzero"`
+	ID              protocol.RobotID
+	Position        Position
+	Direction       string
+	DrillDurability int64
+	TeamID          int
+	CarryingLuggage bool
 }
 
 type ActionResult interface{ actionResult() }
@@ -70,144 +67,65 @@ const (
 )
 
 type MoveResult struct {
-	Kind    MoveKind         `json:"kind"`
-	RobotID protocol.RobotID `json:"robotId"`
-	Success bool             `json:"success"`
-	To      *Position        `json:"to,omitempty"`
+	Kind    MoveKind
+	RobotID protocol.RobotID
+	Success bool
+	To      *Position
 
-	ActionResult `json:"-"`
+	ActionResult
 }
 
 type RotateResult struct {
-	RobotID   protocol.RobotID `json:"robotId"`
-	Rotation  values.Rotation  `json:"rotation"`
-	Direction string           `json:"direction"`
+	RobotID   protocol.RobotID
+	Rotation  values.Rotation
+	Direction string
 
-	ActionResult `json:"-"`
-}
-
-func (r RotateResult) MarshalJSON() ([]byte, error) {
-	type payload RotateResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "rotate", payload: payload(r)})
+	ActionResult
 }
 
 type PrintIntegerResult struct {
-	RobotID protocol.RobotID `json:"robotId"`
-	Integer int64            `json:"integer"`
+	RobotID protocol.RobotID
+	Integer int64
 
-	ActionResult `json:"-"`
-}
-
-func (r PrintIntegerResult) MarshalJSON() ([]byte, error) {
-	type payload PrintIntegerResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "print_integer", payload: payload(r)})
+	ActionResult
 }
 
 type PrintBoolResult struct {
-	RobotID protocol.RobotID `json:"robotId"`
-	Bool    bool             `json:"bool"`
+	RobotID protocol.RobotID
+	Bool    bool
 
-	ActionResult `json:"-"`
-}
-
-func (r PrintBoolResult) MarshalJSON() ([]byte, error) {
-	type payload PrintBoolResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "print_bool", payload: payload(r)})
+	ActionResult
 }
 
 type DrillResult struct {
-	RobotID         protocol.RobotID `json:"robotId"`
-	Success         bool             `json:"success"`
-	Target          *Position        `json:"target,omitempty"`
-	DrillDurability int64            `json:"drillDurability"`
+	RobotID         protocol.RobotID
+	Success         bool
+	Target          *Position
+	DrillDurability int64
 
-	ActionResult `json:"-"`
-}
-
-func (r DrillResult) MarshalJSON() ([]byte, error) {
-	type payload DrillResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "drill", payload: payload(r)})
+	ActionResult
 }
 
 type PickUpResult struct {
-	RobotID protocol.RobotID `json:"robotId"`
-	Success bool             `json:"success"`
-	Target  *Position        `json:"target,omitempty"`
+	RobotID protocol.RobotID
+	Success bool
+	Target  *Position
 
-	ActionResult `json:"-"`
-}
-
-func (r PickUpResult) MarshalJSON() ([]byte, error) {
-	type payload PickUpResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "pick_up", payload: payload(r)})
+	ActionResult
 }
 
 type ReleaseResult struct {
-	RobotID   protocol.RobotID `json:"robotId"`
-	Success   bool             `json:"success"`
-	Target    *Position        `json:"target,omitempty"`
-	Discarded bool             `json:"discarded,omitzero"`
+	RobotID   protocol.RobotID
+	Success   bool
+	Target    *Position
+	Discarded bool
 
-	ActionResult `json:"-"`
-}
-
-func (r ReleaseResult) MarshalJSON() ([]byte, error) {
-	type payload ReleaseResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "release", payload: payload(r)})
+	ActionResult
 }
 
 type WaitResult struct {
-	RobotID protocol.RobotID `json:"robotId"`
-	Ticks   int64            `json:"ticks"`
+	RobotID protocol.RobotID
+	Ticks   int64
 
-	ActionResult `json:"-"`
-}
-
-func (r WaitResult) MarshalJSON() ([]byte, error) {
-	type payload WaitResult
-	return json.Marshal(struct {
-		Kind string `json:"kind"`
-		payload
-	}{Kind: "wait", payload: payload(r)})
-}
-
-func (e FieldEvent) MarshalJSON() ([]byte, error) {
-	var payload any
-	switch state := e.State.(type) {
-	case InitialState:
-		payload = struct {
-			Kind string `json:"kind"`
-			InitialState
-		}{Kind: "initial", InitialState: state}
-	case UpdateState:
-		payload = struct {
-			Kind string `json:"kind"`
-			UpdateState
-		}{Kind: "update", UpdateState: state}
-	default:
-		return nil, fmt.Errorf("invalid field state %T", e.State)
-	}
-	return json.Marshal(struct {
-		Type  string `json:"type"`
-		Tick  uint64 `json:"tick"`
-		State any    `json:"state"`
-	}{Type: "field", Tick: e.Tick, State: payload})
+	ActionResult
 }

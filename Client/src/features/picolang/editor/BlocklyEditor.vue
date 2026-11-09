@@ -14,29 +14,34 @@ import variableIcon from '@iconify-icons/lucide/variable'
 import searchIcon from '@iconify-icons/lucide/search'
 import bracesIcon from '@iconify-icons/lucide/braces'
 import calculatorIcon from '@iconify-icons/lucide/calculator'
-import repeatIcon from '@iconify-icons/lucide/repeat-2'
 import shuffleIcon from '@iconify-icons/lucide/shuffle'
 import listIcon from '@iconify-icons/lucide/list'
 import typeIcon from '@iconify-icons/lucide/type'
 import squareFunctionIcon from '@iconify-icons/lucide/square-function'
+import boxIcon from '@iconify-icons/lucide/box'
 import focusIcon from '@iconify-icons/lucide/focus'
 import zoomInIcon from '@iconify-icons/lucide/zoom-in'
 import zoomOutIcon from '@iconify-icons/lucide/zoom-out'
 import {
-  keyType,
+  diagnosticBlock,
   loadFunction,
   picoToolbox,
   readFunction,
   refreshVariableBlocks,
   registerPicoBlocks,
-  typeKey,
+  updatePicoDiagnostics,
 } from './blocklyPico.ts'
+import PicoDiagnostics from './PicoDiagnostics.vue'
+import PicoExecutionTrace from './PicoExecutionTrace.vue'
+import type { PicolangTrace, TraceNode } from '../language/picolangTrace.ts'
+import { inferPicolang, type PicoDiagnostic } from '../language/analyzePicolang.ts'
 import {
   block,
   defaultExpr,
   id,
   ident,
-  isPicoProgram,
+  isPicoDraft,
+  picoDraft,
   newProgram,
   programFunctions,
   type PicoExpr,
@@ -46,37 +51,48 @@ import {
 import { typeLabel } from './picoGuidance.ts'
 import './blocklyEditor.css'
 
-const props = defineProps<{ tutorialId: string }>()
-const emit = defineEmits<{ 'update:program': [program: PicoProgram] }>()
+const props = defineProps<{
+  tutorialId: string
+  execution?: PicolangTrace | null
+  running?: boolean
+  playbackReady?: boolean
+  paused?: boolean
+  nodeInterval?: number
+}>()
+const emit = defineEmits<{
+  'update:program': [program: PicoProgram | null]
+  pause: []
+  step: []
+  interval: [value: number]
+}>()
 const host = ref<HTMLElement | null>(null)
-const program = ref<PicoProgram>(newProgram())
+const program = ref<PicoProgram>(picoDraft(newProgram()))
 const activeName = ref('main')
 const showAddFunction = ref(false)
 const newName = ref('')
 const showJson = ref(false)
 const jsonInput = ref('')
 const message = ref('')
+const messageSeverity = ref<'error' | 'success'>('error')
+function showMessage(text: string, severity: 'error' | 'success' = 'error'): void {
+  message.value = text
+  messageSeverity.value = severity
+}
 const history = ref<string[]>([])
 const historyIndex = ref(0)
 const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 const functions = computed(() => programFunctions(program.value))
-const activeFunction = computed(() => functions.value[activeName.value] ?? functions.value.main)
-const signature = computed(
-  () =>
-    `${activeName.value}(${activeFunction.value.params.map((param) => `${param.ident.name}: ${typeLabel(param.type)}`).join(', ')}) → ${typeLabel(activeFunction.value.returnType)}`,
+const analysis = computed(() => inferPicolang(program.value))
+const diagnostics = computed(() => analysis.value.diagnostics)
+const executionJson = computed(() =>
+  analysis.value.program ? JSON.stringify(analysis.value.program, null, 2) : null,
 )
-const typeOptions: [string, string][] = [
-  ['整数', 'integer'],
-  ['真理値', 'bool'],
-  ['値なし', 'unit'],
-  ['マスの種類', 'terrain'],
-  ['向き', 'rotation'],
-  ['整数のスタック', 'stack:integer'],
-  ['真理値のスタック', 'stack:bool'],
-  ['マスのスタック', 'stack:terrain'],
-  ['向きのスタック', 'stack:rotation'],
-]
+const activeFunction = computed(() => functions.value[activeName.value] ?? functions.value.main)
+const signature = computed(() => {
+  const inferred = analysis.value.signatures[activeName.value]
+  return `${activeName.value}(${activeFunction.value.params.map((param, index) => `${param.ident.name}: ${typeLabel(inferred?.params[index])}`).join(', ')}) → ${typeLabel(inferred?.returns)}`
+})
 let workspace: Blockly.WorkspaceSvg | null = null
 let observer: ResizeObserver | null = null
 let loading = false
@@ -89,11 +105,12 @@ const categoryIcons = {
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  変換: repeatIcon,
   乱数: shuffleIcon,
   スタック: listIcon,
+  オプション: boxIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
+  値: boxIcon,
 }
 
 function decorateToolboxCategories(): void {
@@ -154,7 +171,7 @@ function save(): void {
     if (history.value.length > 101) history.value.shift()
     historyIndex.value = history.value.length - 1
   }
-  emit('update:program', program.value)
+  emit('update:program', analysis.value.program)
   try {
     localStorage.setItem(`picolang:draft:${props.tutorialId}`, snapshot)
   } catch {
@@ -162,10 +179,10 @@ function save(): void {
   }
 }
 function readWorkspace(): void {
-  if (!workspace || loading) return
+  if (!workspace || loading || props.running) return
   loading = true
   try {
-    refreshVariableBlocks(workspace, activeFunction.value.params)
+    refreshVariableBlocks(workspace)
     functions.value[activeName.value] = readFunction(workspace, activeFunction.value, functions.value)
     save()
   } finally {
@@ -173,7 +190,7 @@ function readWorkspace(): void {
   }
 }
 function onWorkspaceChange(event: Blockly.Events.Abstract): void {
-  if (loading || event.isUiEvent || scheduled) return
+  if (loading || props.running || event.isUiEvent || scheduled) return
   scheduled = true
   queueMicrotask(() => {
     scheduled = false
@@ -188,17 +205,74 @@ function loadActive(): void {
     workspace.updateToolbox(picoToolbox(functions.value))
     decorateToolboxCategories()
     loadFunction(workspace, activeFunction.value, functions.value)
-    refreshVariableBlocks(workspace, activeFunction.value.params)
+    refreshVariableBlocks(workspace)
+    updatePicoDiagnostics(
+      workspace,
+      diagnostics.value.filter((item) => item.functionName === activeName.value),
+      analysis.value.types,
+    )
     Blockly.svgResize(workspace)
     decorateWorkspaceControls()
+    lockWorkspace()
+    highlightExecution()
   } finally {
     loading = false
   }
 }
+function lockWorkspace(): void {
+  if (!workspace) return
+  Blockly.Events.disable()
+  try {
+    workspace.setIsReadOnly(Boolean(props.running))
+    workspace.getToolbox()?.setVisible(!props.running)
+    if (props.running) {
+      Blockly.hideChaff()
+      workspace.getFlyout()?.hide()
+    }
+  } finally {
+    Blockly.Events.enable()
+  }
+}
+function highlightExecution(): void {
+  if (!workspace) return
+  const node = props.execution?.current
+  const target = node?.functionName === activeName.value ? diagnosticBlock(workspace, node.hintId) : null
+  workspace.highlightBlock(target?.id ?? null)
+  if (props.running && target instanceof Blockly.BlockSvg)
+    workspace.scrollBoundsIntoView(target.getBoundingRectangleWithoutChildren())
+}
+function locateExecution(node: TraceNode): void {
+  if (activeName.value !== node.functionName && functions.value[node.functionName])
+    selectFunction(node.functionName)
+  if (!workspace) return
+  const target = diagnosticBlock(workspace, node.hintId)
+  if (target) workspace.centerOnBlock(target.id)
+}
+watch(
+  () => props.running,
+  () => lockWorkspace(),
+)
+watch(
+  () => props.execution,
+  (trace) => {
+    const name = trace?.current?.functionName
+    if (props.running && name && activeName.value !== name && functions.value[name]) selectFunction(name)
+    highlightExecution()
+  },
+)
 function selectFunction(name: string): void {
   readWorkspace()
   activeName.value = name
   loadActive()
+}
+function selectDiagnostic(diagnostic: PicoDiagnostic): void {
+  if (activeName.value !== diagnostic.functionName) selectFunction(diagnostic.functionName)
+  if (!workspace) return
+  const target = diagnosticBlock(workspace, diagnostic.hintId)
+  if (target instanceof Blockly.BlockSvg) {
+    workspace.centerOnBlock(target.id)
+    target.select()
+  }
 }
 function restore(index: number): void {
   const snapshot = history.value[index]
@@ -221,6 +295,7 @@ function redo(): void {
   if (canRedo.value) restore(historyIndex.value + 1)
 }
 function onKey(event: KeyboardEvent): void {
+  if (props.running) return
   if (!(event.ctrlKey || event.metaKey) || event.altKey) return
   if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]')) return
   if (event.key.toLowerCase() === 'z') {
@@ -235,7 +310,7 @@ function onKey(event: KeyboardEvent): void {
 function addFunction(): void {
   const name = newName.value.trim()
   if (!name || functions.value[name] || name === 'main') {
-    message.value = '別の関数名を入力してください。'
+    showMessage('別の関数名を入力してください。')
     return
   }
   readWorkspace()
@@ -243,7 +318,6 @@ function addFunction(): void {
     kind: 'function',
     hintId: id(),
     params: [],
-    returnType: 'unit',
     body: block([{ kind: 'return', hintId: id(), value: defaultExpr('unit') }]),
   }
   showAddFunction.value = false
@@ -256,7 +330,7 @@ function removeFunction(): void {
   if (activeName.value === 'main') return
   const name = activeName.value
   if (JSON.stringify(program.value).includes(`"func":"${name}"`)) {
-    message.value = 'この関数を使っているブロックがあります。先に外してください。'
+    showMessage('この関数を使っているブロックがあります。先に外してください。')
     return
   }
   delete functions.value[name]
@@ -292,7 +366,7 @@ function updateFunctionCalls(name: string): void {
       visitStatement(stmt, (expr) => {
         if (expr.kind !== 'call' || expr.func !== name) return
         expr.args.splice(params.length)
-        while (expr.args.length < params.length) expr.args.push(defaultExpr(params[expr.args.length]!.type))
+        while (expr.args.length < params.length) expr.args.push(defaultExpr())
       }),
     ),
   )
@@ -302,7 +376,7 @@ function addParam(): void {
   const fn = activeFunction.value
   let name = `arg${fn.params.length + 1}`
   while (fn.params.some((param) => param.ident.name === name)) name += '_'
-  fn.params.push({ kind: 'param', hintId: id(), ident: ident(name), type: 'integer' })
+  fn.params.push({ kind: 'param', hintId: id(), ident: ident(name) })
   updateFunctionCalls(activeName.value)
   save()
   loadActive()
@@ -314,34 +388,11 @@ function removeParam(index: number): void {
   save()
   loadActive()
 }
-function changeParamType(index: number, key: string): void {
-  readWorkspace()
-  activeFunction.value.params[index]!.type = keyType(key)
-  Object.values(functions.value).forEach((definition) =>
-    definition.body.stmts.forEach((stmt) =>
-      visitStatement(stmt, (expr) => {
-        if (expr.kind === 'call' && expr.func === activeName.value && expr.args[index])
-          expr.args[index] = defaultExpr(activeFunction.value.params[index]!.type)
-      }),
-    ),
-  )
-  save()
-  loadActive()
-}
-function changeReturnType(key: string): void {
-  readWorkspace()
-  const fn = activeFunction.value
-  fn.returnType = keyType(key)
-  const last = fn.body.stmts.at(-1)
-  if (last?.kind === 'return') last.value = defaultExpr(fn.returnType)
-  save()
-  loadActive()
-}
 function renameParam(index: number, value: string): void {
   const name = value.trim()
   const params = activeFunction.value.params
   if (!name || params.some((param, i) => i !== index && param.ident.name === name)) {
-    message.value = '受け取る値には重ならない名前を付けてください。'
+    showMessage('受け取る値には重ならない名前を付けてください。')
     return
   }
   readWorkspace()
@@ -358,34 +409,47 @@ function renameParam(index: number, value: string): void {
 }
 async function copyJson(): Promise<void> {
   try {
-    await navigator.clipboard.writeText(JSON.stringify(program.value, null, 2))
-    message.value = 'JSONをコピーしました。'
+    if (!executionJson.value) {
+      showMessage('エラーを解消するとJSONを出力できます。')
+      return
+    }
+    await navigator.clipboard.writeText(executionJson.value)
+    showMessage('JSONをコピーしました。', 'success')
   } catch {
-    message.value = 'コピーできませんでした。'
+    showMessage('コピーできませんでした。')
   }
 }
 function importJson(): void {
   try {
     const parsed: unknown = JSON.parse(jsonInput.value)
-    if (!isPicoProgram(parsed)) throw new Error('Picolang v0 の正しいJSONを入力してください。')
-    program.value = parsed
+    if (!isPicoDraft(parsed)) throw new Error('Picolang v0 の正しいJSONを入力してください。')
+    program.value = picoDraft(parsed)
     activeName.value = 'main'
     save()
     loadActive()
-    message.value = 'JSONを読み込みました。'
+    showMessage('JSONを読み込みました。', 'success')
   } catch (error) {
-    message.value = error instanceof Error ? error.message : '読み込めませんでした。'
+    showMessage(error instanceof Error ? error.message : '読み込めませんでした。')
   }
 }
+
+watch(analysis, (result) => {
+  if (!workspace) return
+  updatePicoDiagnostics(
+    workspace,
+    result.diagnostics.filter((item) => item.functionName === activeName.value),
+    result.types,
+  )
+})
 
 watch(
   () => props.tutorialId,
   (tutorialId) => {
-    let loaded: PicoProgram = newProgram()
+    let loaded: PicoProgram = picoDraft(newProgram())
     try {
       const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
       const parsed: unknown = saved ? JSON.parse(saved) : null
-      if (isPicoProgram(parsed)) loaded = parsed
+      if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
     } catch {
       /* Use an empty program. */
     }
@@ -421,7 +485,10 @@ onMounted(() => {
   loadActive()
   save()
   observer = new ResizeObserver(() => {
-    if (workspace) Blockly.svgResize(workspace)
+    if (workspace) {
+      Blockly.svgResize(workspace)
+      highlightExecution()
+    }
   })
   observer.observe(host.value)
   document.addEventListener('keydown', onKey)
@@ -447,81 +514,98 @@ onBeforeUnmount(() => {
         >
           {{ name }}
         </button>
-        <button v-if="!showAddFunction" type="button" aria-label="関数を追加" @click="showAddFunction = true">
+        <button
+          v-if="!showAddFunction"
+          type="button"
+          aria-label="関数を追加"
+          :disabled="running"
+          @click="showAddFunction = true"
+        >
           <Icon :icon="plusIcon" />
         </button>
         <form v-else @submit.prevent="addFunction">
-          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" data-1p-ignore /><button
-            type="submit"
-          >
-            追加
-          </button>
+          <input
+            v-model="newName"
+            :disabled="running"
+            aria-label="新しい関数名"
+            placeholder="関数名"
+            data-1p-ignore
+          /><button type="submit" :disabled="running">追加</button>
         </form>
       </nav>
       <div class="blockly-history">
-        <button type="button" aria-label="元に戻す" :disabled="!canUndo" @click="undo">
+        <button type="button" aria-label="元に戻す" :disabled="running || !canUndo" @click="undo">
           <Icon :icon="undoIcon" />
         </button>
-        <button type="button" aria-label="やり直す" :disabled="!canRedo" @click="redo">
+        <button type="button" aria-label="やり直す" :disabled="running || !canRedo" @click="redo">
           <Icon :icon="redoIcon" />
         </button>
       </div>
     </div>
     <div class="blockly-signature">
       <strong>{{ signature }}</strong>
-      <label v-if="activeName !== 'main'"
-        >返す値の種類
-        <select
-          :value="typeKey(activeFunction.returnType)"
-          @change="changeReturnType(($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="[label, key] in typeOptions" :key="key" :value="key">{{ label }}</option>
-        </select></label
-      >
-      <button v-if="activeName !== 'main'" type="button" @click="removeFunction">
+      <button v-if="activeName !== 'main' && !running" type="button" @click="removeFunction">
         <Icon :icon="trashIcon" />関数を削除
       </button>
     </div>
-    <div v-if="activeName !== 'main'" class="blockly-params">
+    <div v-if="activeName !== 'main' && !running" class="blockly-params">
       <span>受け取る値</span>
       <div v-for="(param, index) in activeFunction.params" :key="param.hintId">
         <input
           :value="param.ident.name"
+          :disabled="running"
           :aria-label="`受け取る値 ${index + 1} の名前`"
           data-1p-ignore
           @change="renameParam(index, ($event.target as HTMLInputElement).value)"
         />
-        <select
-          :value="typeKey(param.type)"
-          :aria-label="`受け取る値 ${index + 1} の種類`"
-          @change="changeParamType(index, ($event.target as HTMLSelectElement).value)"
+        <span>{{ typeLabel(analysis.signatures[activeName]?.params[index]) }}</span>
+        <button
+          type="button"
+          :disabled="running"
+          :aria-label="`受け取る値 ${index + 1} を削除`"
+          @click="removeParam(index)"
         >
-          <option v-for="[label, key] in typeOptions" :key="key" :value="key">{{ label }}</option>
-        </select>
-        <button type="button" :aria-label="`受け取る値 ${index + 1} を削除`" @click="removeParam(index)">
           <Icon :icon="trashIcon" />
         </button>
       </div>
-      <button type="button" @click="addParam"><Icon :icon="plusIcon" />受け取る値を追加</button>
+      <button type="button" :disabled="running" @click="addParam">
+        <Icon :icon="plusIcon" />受け取る値を追加
+      </button>
     </div>
     <div ref="host" class="blockly-canvas" aria-label="Picolangのブロックエディタ"></div>
+    <PicoExecutionTrace
+      v-if="running || execution"
+      :trace="execution ?? null"
+      :running="Boolean(running)"
+      :ready="Boolean(playbackReady)"
+      :paused="Boolean(paused)"
+      :interval="nodeInterval ?? 300"
+      @pause="emit('pause')"
+      @step="emit('step')"
+      @interval="emit('interval', $event)"
+      @locate="locateExecution"
+    />
+    <PicoDiagnostics :diagnostics="diagnostics" @select="selectDiagnostic" />
     <details
       class="blockly-json"
       :open="showJson"
       @toggle="showJson = ($event.target as HTMLDetailsElement).open"
     >
-      <summary>Schema形式のJSON</summary>
-      <button type="button" @click="copyJson">JSONをコピー</button>
-      <pre>{{ JSON.stringify(program, null, 2) }}</pre>
+      <summary>プログラムのJSON</summary>
+      <button type="button" :disabled="!executionJson" @click="copyJson">JSONをコピー</button>
+      <pre>{{ executionJson ?? 'エラーを直すと、プログラムのJSONを表示できます。' }}</pre>
       <label for="blockly-json-input">JSONを読み込む</label>
       <textarea
         id="blockly-json-input"
         v-model="jsonInput"
+        :disabled="running"
         placeholder="Picolang v0のJSONを貼り付け"
         data-1p-ignore
       ></textarea>
-      <button type="button" @click="importJson">読み込む</button>
+      <button type="button" :disabled="running" @click="importJson">読み込む</button>
     </details>
-    <p v-if="message" class="blockly-message" role="status">{{ message }}</p>
+    <p v-if="message && !running" class="blockly-message" :data-severity="messageSeverity" role="status">
+      {{ message }}
+    </p>
   </div>
 </template>

@@ -29,10 +29,12 @@ func builtinCases() []builtinCase {
 		{"mul", []bot.Type{i, i}, i}, {"div", []bot.Type{i, i}, i},
 		{"integer_eq", []bot.Type{i, i}, b}, {"integer_neq", []bot.Type{i, i}, b},
 		{"gt", []bot.Type{i, i}, b}, {"lt", []bot.Type{i, i}, b}, {"geq", []bot.Type{i, i}, b}, {"leq", []bot.Type{i, i}, b},
-		{"bool_to_integer", []bot.Type{b}, i}, {"integer_to_bool", []bot.Type{i}, b},
 		{"random_bool", nil, b}, {"random_integer", []bot.Type{i, i}, i},
 		{"new", nil, stack}, {"push_back", []bot.Type{stack, i}, stack}, {"pop_back", []bot.Type{stack}, stack},
 		{"get_back", []bot.Type{stack}, i}, {"size", []bot.Type{stack}, i},
+		{"unwrap", []bot.Type{bot.OptionType{ElementType: i}}, i},
+		{"none", nil, bot.OptionType{ElementType: i}},
+		{"is_some", []bot.Type{bot.OptionType{ElementType: i}}, b},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
 		{"is_own_territory", []bot.Type{terrain}, b}, {"is_enemy_territory", []bot.Type{terrain}, b},
 		{"is_luggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},
@@ -40,6 +42,8 @@ func builtinCases() []builtinCase {
 		{"pick_up", nil, b}, {"release", nil, b}, {"drill", nil, b}, {"drill_durability", nil, i},
 		{"distance", []bot.Type{bot.DistanceTargetType{}}, i}, {"search_front", nil, terrain}, {"search_now", nil, terrain},
 		{"print_integer", []bot.Type{i}, u}, {"print_bool", []bot.Type{b}, u},
+		{"print_unit", []bot.Type{u}, u}, {"print_terrain", []bot.Type{terrain}, u},
+		{"print_rotation", []bot.Type{rotation}, u}, {"print_distance_target", []bot.Type{bot.DistanceTargetType{}}, u},
 	}
 }
 
@@ -105,6 +109,9 @@ func TestTypeCheckBuiltinArgumentErrors(t *testing.T) {
 			if len(tc.params) > 0 {
 				wrongTypes := slices.Clone(tc.params)
 				wrongTypes[0] = bot.UnitType{}
+				if _, unit := tc.params[0].(bot.UnitType); unit {
+					wrongTypes[0] = bot.BoolType{}
+				}
 				_, err = typecheck.TypeCheck(builtinProgram(tc, wrongTypes))
 				ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
 				if len(ds) != 1 {
@@ -137,6 +144,24 @@ func TestTypeCheckRemovedStackBuiltins(t *testing.T) {
 				t.Errorf("expected one undefined-function error, got %v", ds)
 			}
 			testutil.RequireDiagnostic(t, ds, bot.CodeUndefinedFunction, "main", "removed")
+		})
+	}
+}
+
+func TestTypeCheckRemovedCastBuiltins(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []builtinCase{
+		{"bool_to_integer", []bot.Type{bot.BoolType{}}, bot.IntegerType{}},
+		{"integer_to_bool", []bot.Type{bot.IntegerType{}}, bot.BoolType{}},
+	} {
+		t.Run(string(tc.name), func(t *testing.T) {
+			t.Parallel()
+			_, err := typecheck.TypeCheck(builtinProgram(tc, tc.params))
+			ds := testutil.Diagnostics(t, err, bot.TypeCheckStage)
+			if len(ds) != 1 {
+				t.Errorf("expected one undefined-function error, got %v", ds)
+			}
+			testutil.RequireDiagnostic(t, ds, bot.CodeUndefinedFunction, "probe", "call")
 		})
 	}
 }

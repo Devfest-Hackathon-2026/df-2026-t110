@@ -65,6 +65,8 @@
     summary: チュートリアルでプログラムを実行
     description: |
       チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+      選ばれたフィールドのIDを fieldId として返す。
+      実行と結果の保存が完了してからレスポンスを返す。
       結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
     operationId: runTutorial
     security:
@@ -85,11 +87,11 @@
                 description: このチュートリアル用に保存したプログラムのID
     responses:
       "201":
-        description: 実行を開始した
+        description: 実行を完了し、結果を保存した
         content:
           application/json:
             schema:
-              $ref: "../../openapi.yaml#/components/schemas/RunCreated"
+              $ref: "../../openapi.yaml#/components/schemas/TutorialRunCreated"
       "400":
         $ref: "../../openapi.yaml#/components/responses/BadRequest"
       "401":

@@ -45,8 +45,22 @@ const material = (
 ) => new THREE.MeshStandardMaterial({ color, metalness, roughness, emissive, emissiveIntensity: 0.2 })
 
 const floorMaterial = material(0x638b82, 0.32)
+const teamFloorColors = { 1: '#54ed65', 2: '#b077ed' } as const
+type TerritoryTeam = keyof typeof teamFloorColors
+const teamFloorMaterials = {
+  1: material(teamFloorColors[1], 0.32),
+  2: material(teamFloorColors[2], 0.32),
+}
+const tintedAssetMaterials = new WeakMap<
+  THREE.MeshStandardMaterial,
+  Map<TerritoryTeam, THREE.MeshStandardMaterial>
+>()
 const edgeMaterial = material(0x183d47, 0.55)
 const circuitMaterial = material(0x8ce9c3, 0.25, 0.22, 0x4cae91)
+const teamCircuitMaterials = {
+  1: material(0x7cff82, 0.25, 0.22, 0x54ed65),
+  2: material(0xd39cff, 0.25, 0.22, 0xb077ed),
+}
 const rockMaterial = material(0x8298a3, 0.36, 0.36)
 const rockShade = material(0x455f70, 0.46, 0.42)
 const waterMaterial = new THREE.ShaderMaterial({
@@ -93,12 +107,57 @@ function label(parent: THREE.Group, letter: string, color: string, position: [nu
   parent.add(sign)
 }
 
-function addFloor(group: THREE.Group): void {
+function territoryTeam(owner?: number): TerritoryTeam | undefined {
+  return owner === 1 || owner === 2 ? owner : undefined
+}
+
+function tintedFloorAssetMaterial(
+  source: THREE.MeshStandardMaterial,
+  team: TerritoryTeam,
+): THREE.MeshStandardMaterial {
+  let variants = tintedAssetMaterials.get(source)
+  if (!variants) {
+    variants = new Map()
+    tintedAssetMaterials.set(source, variants)
+  }
+  let tinted = variants.get(team)
+  if (!tinted) {
+    tinted = source.clone()
+    const color = teamFloorColors[team]
+    tinted.color.set(color)
+    tinted.emissive.set(color)
+    tinted.emissiveIntensity = source.name === 'RF_ceramic-deck' ? 0.1 : source.emissiveIntensity
+    variants.set(team, tinted)
+  }
+  return tinted
+}
+
+function addFloorAsset(group: THREE.Group, assets: StageAssets, team?: TerritoryTeam): void {
+  const instance = placeAsset(group, assets, 'floor')
+  if (!team) return
+  instance.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
+    const tint = (surface: THREE.Material): THREE.Material =>
+      surface instanceof THREE.MeshStandardMaterial &&
+      (surface.name === 'RF_ceramic-deck' || surface.name === 'RF_mint-light')
+        ? tintedFloorAssetMaterial(surface, team)
+        : surface
+    object.material = Array.isArray(object.material) ? object.material.map(tint) : tint(object.material)
+  })
+}
+
+function addFloor(group: THREE.Group, team?: TerritoryTeam): void {
   mesh(group, new THREE.BoxGeometry(0.96, 0.2, 0.96), edgeMaterial, [0, -0.1, 0])
-  mesh(group, new THREE.BoxGeometry(0.88, 0.055, 0.88), floorMaterial, [0, 0.025, 0])
+  mesh(
+    group,
+    new THREE.BoxGeometry(0.88, 0.055, 0.88),
+    team ? teamFloorMaterials[team] : floorMaterial,
+    [0, 0.025, 0],
+  )
   for (const offset of [-0.36, 0.36]) {
-    mesh(group, new THREE.BoxGeometry(0.03, 0.008, 0.52), circuitMaterial, [offset, 0.057, 0])
-    mesh(group, new THREE.BoxGeometry(0.52, 0.008, 0.03), circuitMaterial, [0, 0.057, offset])
+    const circuit = team ? teamCircuitMaterials[team] : circuitMaterial
+    mesh(group, new THREE.BoxGeometry(0.03, 0.008, 0.52), circuit, [offset, 0.057, 0])
+    mesh(group, new THREE.BoxGeometry(0.52, 0.008, 0.03), circuit, [0, 0.057, offset])
   }
 }
 
@@ -146,6 +205,7 @@ function addSchemaObject(
 ): void {
   const model = placeAsset(group, assets, object.type === 'dock' ? 'dock' : object.type)
   if (object.type === 'luggage') {
+    model.name = 'stage-luggage'
     animated.push({ object: model, kind: 'hover', baseY: model.position.y })
   } else if (object.type === 'checkpoint') {
     const core = model.getObjectByName('RF_checkpoint-core')
@@ -168,6 +228,7 @@ function addMarker(group: THREE.Group, symbol: string, animated: THREE.Mesh[]): 
     label(group, 'G', '#fff3bb', [0, 0.85, 0])
   } else if (symbol === 'O') {
     const parcel = mesh(group, new THREE.OctahedronGeometry(0.27), parcelMaterial, [0, 0.39, 0])
+    parcel.name = 'stage-luggage'
     parcel.rotation.y = 0.4
     animated.push(parcel)
   } else if (symbol === 'X') {
@@ -195,13 +256,16 @@ export function createStageVisuals(
   const fallbackAnimated: THREE.Mesh[] = []
   for (const cell of stage.cells) {
     const tile = new THREE.Group()
+    tile.userData.cellX = cell.x
+    tile.userData.cellY = cell.y
     tile.position.set(cell.x - (stage.width - 1) / 2, 0, cell.y - (stage.height - 1) / 2)
     if (cell.terrain === 'sea') {
       if (assets) placeAsset(tile, assets, 'sea-frame')
       addSea(tile, Boolean(assets))
     } else {
-      if (assets) placeAsset(tile, assets, 'floor')
-      else addFloor(tile)
+      const team = territoryTeam(cell.territoryOwner)
+      if (assets) addFloorAsset(tile, assets, team)
+      else addFloor(tile, team)
       if (cell.terrain === 'rock') {
         const rock = new THREE.Group()
         rock.name = 'stage-rock'

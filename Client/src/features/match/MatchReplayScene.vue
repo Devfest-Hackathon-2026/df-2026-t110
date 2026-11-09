@@ -1,8 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { Icon } from '@iconify/vue'
+import circlePlayIcon from '@iconify-icons/lucide/circle-play'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createArmPivots } from '../stage/armController.ts'
+import {
+  CARRIED_LUGGAGE_HEIGHT,
+  createCarriedLuggage,
+  disposeCarriedLuggage,
+} from '../stage/carriedLuggage.ts'
 import { createRobotAnimator, type AnimationEvent } from '../stage/robotAnimator.ts'
 import { createRockBreakEffect } from '../stage/rockBreakEffect.ts'
 import { loadStageAssets, type StageAssets } from '../stage/stageAssets.ts'
@@ -12,7 +19,13 @@ import {
   disposeStageVisuals,
   type StageAnimationTarget,
 } from '../stage/stageVisuals.ts'
-import { replayFrameToStage, type ReplayAction, type ReplayFrame, type ReplayRobot } from './matchReplay.ts'
+import {
+  replayFrameToStage,
+  replayPrintMessage,
+  type ReplayAction,
+  type ReplayFrame,
+  type ReplayRobot,
+} from './matchReplay.ts'
 
 const props = defineProps<{ frames: ReplayFrame[] }>()
 const host = ref<HTMLElement | null>(null)
@@ -25,6 +38,11 @@ const error = ref('')
 const bubbles = ref<Array<{ id: string; text: string; x: number; y: number }>>([])
 const current = computed(() => props.frames[index.value])
 const actions = computed(() => current.value?.actions ?? [])
+const printActions = computed(() =>
+  actions.value
+    .map((action) => ({ ...action, message: replayPrintMessage(action) }))
+    .filter((action) => action.message !== undefined),
+)
 const actionLabel: Record<ReplayAction['kind'], string> = {
   forward: '前進',
   back: '後退',
@@ -35,11 +53,22 @@ const actionLabel: Record<ReplayAction['kind'], string> = {
   release: '荷物を置く',
   print_integer: '整数を表示',
   print_bool: '真理値を表示',
+  print_unit: '値なしを表示',
+  print_terrain: 'マスの種類を表示',
+  print_rotation: '向きを表示',
+  print_distance_target: '探索対象を表示',
 }
 
-type Rig = { group: THREE.Group; model: THREE.Object3D; animator: ReturnType<typeof createRobotAnimator> }
+type Rig = {
+  group: THREE.Group
+  model: THREE.Object3D
+  animator: ReturnType<typeof createRobotAnimator>
+  cargo: THREE.Group | null
+  cargoFromAssets: boolean
+}
 function disposeRig(rig: Rig): void {
   rig.animator.stop()
+  if (rig.cargo) disposeCarriedLuggage(rig.cargo)
   rig.model.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
@@ -56,6 +85,12 @@ let assets: StageAssets | undefined
 let animated: StageAnimationTarget[] = []
 const rigs = new Map<string, Rig>()
 let effects: Array<{ effect: ReturnType<typeof createRockBreakEffect>; start: number | null }> = []
+let cargoTransitions: Array<{
+  cargo: THREE.Group
+  from: THREE.Vector3
+  to: THREE.Vector3
+  start: number | null
+}> = []
 let raf = 0
 let timer: ReturnType<typeof setTimeout> | null = null
 let observer: ResizeObserver | null = null
@@ -118,8 +153,11 @@ function makeRig(teamId?: number): Rig | null {
     const material = object.material
     if (!(material instanceof THREE.MeshStandardMaterial)) return
     const copy = material.clone()
-    if (teamId === 2 && copy.color.g > copy.color.r * 1.2 && copy.color.g > copy.color.b * 1.2)
-      copy.color.set(0xff9838)
+    if (teamId === 2 && /^(Body|left_arm|right_arm)$/.test(object.name)) {
+      copy.color.set('#9860d7')
+      copy.emissive.set('#492471')
+      copy.emissiveIntensity = 0.12
+    }
     object.material = copy
   })
   const { pivots } = createArmPivots(model, THREE)
@@ -132,10 +170,39 @@ function makeRig(teamId?: number): Rig | null {
   const group = new THREE.Group()
   group.position.y = 0.07
   group.add(model)
-  return { group, model, animator: createRobotAnimator(group, model, pivots) }
+  return {
+    group,
+    model,
+    animator: createRobotAnimator(group, model, pivots),
+    cargo: null,
+    cargoFromAssets: false,
+  }
+}
+function syncCargo(rig: Rig, carrying: boolean): void {
+  if (!carrying) {
+    if (rig.cargo) disposeCarriedLuggage(rig.cargo)
+    rig.cargo = null
+    return
+  }
+  if (rig.cargo && rig.cargoFromAssets === Boolean(assets)) return
+  if (rig.cargo) disposeCarriedLuggage(rig.cargo)
+  rig.cargo = createCarriedLuggage(assets)
+  rig.cargoFromAssets = Boolean(assets)
+  rig.group.add(rig.cargo)
+}
+function luggagePoint(rig: Rig, target?: { x: number; y: number }): THREE.Vector3 {
+  board?.updateMatrixWorld(true)
+  const tile = board?.children.find(
+    (child) => child.userData.cellX === target?.x && child.userData.cellY === target?.y,
+  )
+  const world = tile
+    ? tile.localToWorld(new THREE.Vector3(0, 0.39, 0))
+    : rig.group.localToWorld(new THREE.Vector3(0, 0.39, -0.9))
+  return rig.group.worldToLocal(world)
 }
 function renderFrame(): void {
   if (!scene || !current.value) return
+  cargoTransitions = []
   for (const item of effects) item.effect.dispose()
   effects = []
   if (board) {
@@ -170,6 +237,8 @@ function renderFrame(): void {
       robot.position.y - (stage.height - 1) / 2,
     )
     rig.group.rotation.y = directionYaw[robot.direction]
+    rig.animator.setCarrying(Boolean(robot.carryingLuggage))
+    syncCargo(rig, Boolean(robot.carryingLuggage))
   }
   setView()
 }
@@ -178,6 +247,12 @@ function animate(time: number): void {
   raf = requestAnimationFrame(animate)
   advanceWater(time)
   for (const rig of rigs.values()) rig.animator.update(time)
+  for (const entry of cargoTransitions) {
+    entry.start ??= time
+    const progress = Math.min(1, (time - entry.start) / 900)
+    const eased = progress * progress * (3 - 2 * progress)
+    entry.cargo.position.lerpVectors(entry.from, entry.to, eased)
+  }
   for (const entry of effects) {
     entry.start ??= time
     entry.effect.update(Math.min(1, (time - entry.start) / 1000))
@@ -214,7 +289,15 @@ function animate(time: number): void {
 function animateAction(action: ReplayAction): void {
   const rig = rigs.get(action.robotId)
   if (!rig || !board || !current.value) return
-  if (action.kind === 'print_integer' || action.kind === 'print_bool') return
+  if (
+    action.kind === 'print_integer' ||
+    action.kind === 'print_bool' ||
+    action.kind === 'print_unit' ||
+    action.kind === 'print_terrain' ||
+    action.kind === 'print_rotation' ||
+    action.kind === 'print_distance_target'
+  )
+    return
   const event: AnimationEvent = {
     id: ++eventId,
     type: action.kind,
@@ -243,6 +326,25 @@ function animateAction(action: ReplayAction): void {
       )
         effects.push({ effect: createRockBreakEffect(object), start: null })
     })
+  }
+  if (action.kind === 'pick_up' && action.success && action.target) {
+    syncCargo(rig, true)
+    if (rig.cargo) {
+      const tile = board.children.find(
+        (child) => child.userData.cellX === action.target?.x && child.userData.cellY === action.target?.y,
+      )
+      const groundLuggage = tile?.getObjectByName('stage-luggage')
+      if (groundLuggage) groundLuggage.visible = false
+      const from = luggagePoint(rig, action.target)
+      const to = new THREE.Vector3(0, CARRIED_LUGGAGE_HEIGHT, 0)
+      rig.cargo.position.copy(from)
+      cargoTransitions.push({ cargo: rig.cargo, from, to, start: null })
+    }
+  }
+  if (action.kind === 'release' && action.success && rig.cargo) {
+    const from = rig.cargo.position.clone()
+    const to = action.target ? luggagePoint(rig, action.target) : new THREE.Vector3(0, -0.2, -0.6)
+    cargoTransitions.push({ cargo: rig.cargo, from, to, start: null })
   }
   rig.animator.play(event, destination, targetYaw)
 }
@@ -314,7 +416,11 @@ async function setMode(next: 'preview' | 'camera'): Promise<void> {
         await video.value.play()
       }
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'カメラを開けませんでした'
+      console.error('再生用カメラの起動に失敗しました', cause)
+      error.value =
+        cause instanceof Error && cause.name === 'NotAllowedError'
+          ? 'カメラへのアクセスを許可して、もう一度お試しください。'
+          : 'カメラを開けませんでした。接続とブラウザのカメラ設定を確認してください。'
       mode.value = 'preview'
     }
   }
@@ -394,7 +500,8 @@ onMounted(() => {
       },
     )
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '3D再生を開始できませんでした'
+    console.error('3D再生を開始できませんでした', cause)
+    error.value = 'ロボットの動きを再生できませんでした。ページを再読み込みしてください。'
   }
 })
 onBeforeUnmount(() => {
@@ -415,8 +522,7 @@ onBeforeUnmount(() => {
   <section class="match-replay" aria-labelledby="match-replay-title">
     <div class="match-replay-heading">
       <div>
-        <p class="match-eyebrow">REPLAY</p>
-        <h2 id="match-replay-title">対戦を再生</h2>
+        <h2 id="match-replay-title"><Icon :icon="circlePlayIcon" aria-hidden="true" />対戦を再生</h2>
       </div>
       <span>ターン {{ current?.tick ?? 0 }} · {{ index + 1 }} / {{ frames.length }}</span>
     </div>
@@ -447,18 +553,10 @@ onBeforeUnmount(() => {
     </div>
     <p v-if="error" class="match-error" role="alert">{{ error }}</p>
     <p class="match-replay-action" aria-live="polite">{{ current ? heading(current) : '' }}</p>
-    <div
-      v-if="actions.some((action) => action.kind === 'print_integer' || action.kind === 'print_bool')"
-      class="match-replay-speech"
-    >
-      <span
-        v-for="(action, actionIndex) in actions.filter(
-          (item) => item.kind === 'print_integer' || item.kind === 'print_bool',
-        )"
-        :key="actionIndex"
-      >
+    <div v-if="printActions.length" class="match-replay-speech">
+      <span v-for="(action, actionIndex) in printActions" :key="actionIndex">
         {{ action.robotId }}:
-        {{ action.kind === 'print_integer' ? action.integer : action.bool ? 'true' : 'false' }}
+        {{ action.message }}
       </span>
     </div>
     <input

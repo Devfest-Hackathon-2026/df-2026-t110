@@ -1,179 +1,20 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangVariableUpdateEvent
 description: |
-  初期化時に紐づけた hintId をキーに変数の値の差分を報告する。
-  差分は picolang の型と同様に primitive と compound に分け、compound の内側に stack の更新を置く。
-  diff の更新を先頭から順に、直前の更新を反映した値に適用する。
-  primitive は型ごとの値全体で更新し、stack は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
-  差分は hintId が示す変数の現在値そのものに適用する。入れ子の stack を直接変更する操作は持たない。
-  push_back と pop_back は独立した stack を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
-  更新結果を変数へ代入したときに、その代入先の更新を報告する。get_back や size の戻り値を代入する場合も同様とする。
-  生成側は差分を代入先の現在値に適用すると代入後の値を再現できることを保証する。別の値からの再代入など、末尾の操作で表さない更新は replace で値全体を記録する。
-  new で生成した stack は初期値または全体置換の値として記録する。
-  更新が変数の型に対応すること、pop_back の対象が空でないこと、要素の型との一致は生成側で保証する。
-  記録時点の値を保持する。後の実行で過去の記録内容は変わらない。
+  定義の hintId に対応する最上位の変数の紐づけを、既存の値 ID に更新する。
+  値全体や差分は保持せず、代入先の値は仮想メモリから解決する。
+  参照カウントは変更しない。古い値の参照解放は後続の memory_release で報告する。
 
 type: object
 additionalProperties: false
-required: [kind, hintId, diff]
+required: [kind, hintId, valueId]
 properties:
   kind:
     type: string
     const: variable_update
   hintId:
-    description: 更新する変数に初期化時に紐づけた hintId。代入などの処理中のノードの hintId とは区別する
+    description: 対象の変数の定義の hintId。処理中のノードの hintId とは区別する
     $ref: '../../picolang/v0/hint-id.yaml'
-  diff:
-    description: 変数の値に順に適用する、型ごとの更新
-    type: array
-    minItems: 1
-    items:
-      $ref: '#/$defs/Update'
-
-$defs:
-  Update:
-    description: primitive または compound の更新
-    oneOf:
-      - $ref: '#/$defs/PrimitiveUpdate'
-      - $ref: '#/$defs/CompoundUpdate'
-
-  PrimitiveUpdate:
-    description: 基本型の値全体の更新
-    oneOf:
-      - $ref: '#/$defs/BoolUpdate'
-      - $ref: '#/$defs/IntegerUpdate'
-      - $ref: '#/$defs/UnitUpdate'
-      - $ref: '#/$defs/TerrainUpdate'
-      - $ref: '#/$defs/RotationUpdate'
-      - $ref: '#/$defs/DistanceTargetUpdate'
-
-  CompoundUpdate:
-    description: 複合型の更新。現在は stack のみ
-    $ref: '#/$defs/StackUpdate'
-
-  BoolUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: bool
-      value:
-        type: boolean
-
-  IntegerUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: integer
-      value:
-        description: i64 の範囲外の値の扱いは picolang の仕様に従い未定義
-        type: integer
-
-  UnitUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: unit
-      value:
-        type: 'null'
-
-  TerrainUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: terrain
-      value:
-        $ref: '#/$defs/Terrain'
-
-  RotationUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: rotation
-      value:
-        type: string
-        enum: [left, right]
-
-  DistanceTargetUpdate:
-    type: object
-    additionalProperties: false
-    required: [type, value]
-    properties:
-      type:
-        type: string
-        const: distance_target
-      value:
-        $ref: '../../picolang/v0/distance-target.yaml'
-
-  StackUpdate:
-    description: 代入先の stack の現在値に対する更新。操作内容は update の内側に格納する
-    type: object
-    additionalProperties: false
-    required: [type, update]
-    properties:
-      type:
-        type: string
-        const: stack
-      update:
-        oneOf:
-          - $ref: '#/$defs/StackReplace'
-          - $ref: '#/$defs/PushBack'
-          - $ref: '#/$defs/PopBack'
-
-  StackReplace:
-    description: 代入先の値全体を独立した stack の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う
-    type: object
-    additionalProperties: false
-    required: [op, value]
-    properties:
-      op:
-        type: string
-        const: replace
-      value:
-        description: 再代入する stack の値全体
-        type: array
-        items:
-          $ref: '#/$defs/Value'
-
-  PushBack:
-    description: 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の stack の末尾に要素を一つ追加する
-    type: object
-    additionalProperties: false
-    required: [op, value]
-    properties:
-      op:
-        type: string
-        const: push_back
-      value:
-        description: 末尾に追加する要素の値
-        $ref: '#/$defs/Value'
-
-  PopBack:
-    description: 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の stack の末尾の要素を一つ取り除く。変数自体の drop は variable_drop イベントで表す
-    type: object
-    additionalProperties: false
-    required: [op]
-    properties:
-      op:
-        type: string
-        const: pop_back
-
-  Value:
-    $ref: './variable-init.schema.yaml#/$defs/Value'
-
-  Terrain:
-    $ref: './variable-init.schema.yaml#/$defs/Terrain'
+  valueId:
+    description: 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID
+    $ref: './memory-id.schema.yaml'

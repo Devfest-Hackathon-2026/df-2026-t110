@@ -152,19 +152,19 @@
   --category-color: #549641;
 }
 .blockly-canvas .blocklyToolboxCategoryContainer:nth-child(8) {
-  --category-color: #a97737;
-}
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(9) {
   --category-color: #6476ad;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(10) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(9) {
   --category-color: #8a67ab;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(11) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(10) {
   --category-color: #60866a;
 }
-.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(11) {
   --category-color: #875c98;
+}
+.blockly-canvas .blocklyToolboxCategoryContainer:nth-child(12) {
+  --category-color: #65758b;
 }
 .blockly-canvas .blocklyToolboxCategory {
   display: flex;
@@ -194,8 +194,8 @@
 .blockly-canvas .blocklyToolboxCategoryLabel {
   font: 10px/1.2 var(--font-body);
 }
-.blockly-canvas .blocklyToolboxSelected .blocklyToolboxCategory {
-  background: #dae9e2;
+.blockly-canvas .blocklyToolboxCategory.blocklyToolboxSelected {
+  background: #dae9e2 !important;
   font-weight: 700;
 }
 .blockly-canvas .blocklyMainBackground {
@@ -227,6 +227,21 @@
 }
 .blockly-canvas .blocklyText {
   font-family: var(--font-body);
+}
+.blockly-canvas [data-pico-diagnostic] > .blocklyWarningIcon {
+  opacity: 1;
+}
+.blockly-canvas [data-pico-diagnostic='error'] > .blocklyWarningIcon .blocklyIconShape {
+  fill: var(--color-error);
+}
+.blockly-canvas [data-pico-diagnostic='error'] > .blocklyWarningIcon .blocklyIconSymbol {
+  fill: #fff;
+}
+.blockly-canvas [data-pico-diagnostic='warning'] > .blocklyWarningIcon .blocklyIconShape {
+  fill: var(--color-warning);
+}
+.blockly-canvas [data-pico-diagnostic='warning'] > .blocklyWarningIcon .blocklyIconSymbol {
+  fill: var(--color-warning-ink);
 }
 .blockly-json {
   max-height: 32%;
@@ -260,8 +275,12 @@
 .blockly-message {
   margin: 0;
   padding: 5px 12px;
-  color: #8b4b2d;
-  background: #fff1dc;
+  color: var(--color-success);
+  background: #f0fdf4;
+}
+.blockly-message[data-severity='error'] {
+  color: var(--color-error);
+  background: var(--color-error-bg);
 }
 .blockly-editor :is(button, input, select, summary, textarea):focus-visible {
   outline: 2px solid #126d88;
@@ -279,6 +298,12 @@
     padding: 4px 8px;
   }
   .blockly-params > div {
-    width: 100%;
+    max-width: 100%;
+  }
+  .blockly-params input {
+    width: 90px;
+  }
+  .blockly-params select {
+    max-width: 130px;
   }
 }

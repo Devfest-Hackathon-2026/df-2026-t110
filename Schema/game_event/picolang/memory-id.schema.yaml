@@ -1,0 +1,11 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangMemoryId
+description: |
+  一つの interpreter の仮想メモリ内で値を識別する uint64 の ID。
+  JavaScript の整数精度に依存せず保持できるよう、先頭の 0 のない十進文字列で表す。
+  "0" は共通の空リスト root を表す。新しく確保する値には正の ID を使い、解放後も再利用しない。
+  18446744073709551615 以下であることは生成側で保証する。
+
+type: string
+pattern: '^(0|[1-9][0-9]*)$'
+maxLength: 20

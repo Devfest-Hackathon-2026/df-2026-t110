@@ -53,14 +53,6 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 		result = memory.Bool{Value: integer(0) >= integer(1)}
 	case "leq":
 		result = memory.Bool{Value: integer(0) <= integer(1)}
-	case "bool_to_integer":
-		value := int64(0)
-		if boolean(0) {
-			value = 1
-		}
-		result = memory.Integer{Value: value}
-	case "integer_to_bool":
-		result = memory.Bool{Value: integer(0) == 1}
 	case "random_bool":
 		result = memory.Bool{Value: e.random.Uint64()&1 == 1}
 	case "random_integer":
@@ -78,6 +70,19 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 		}
 	case "new":
 		result = memory.ListRoot{}
+	case "some":
+		result = memory.Some{Element: ids[0]}
+	case "none":
+		result = memory.None{}
+	case "unwrap":
+		some, ok := args[0].(memory.Some)
+		if !ok {
+			return 0, ErrUnwrapNone
+		}
+		return some.Element, e.memory.Retain(some.Element)
+	case "is_some":
+		_, present := args[0].(memory.Some)
+		result = memory.Bool{Value: present}
 	case "push_back":
 		result = memory.ListNode{Prev: ids[0], Value: ids[1]}
 	case "pop_back", "get_back":

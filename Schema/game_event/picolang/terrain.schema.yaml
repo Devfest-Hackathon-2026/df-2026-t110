@@ -1,0 +1,86 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangTerrain
+description: 観測時点の地形種別と属性
+oneOf:
+  - $ref: '#/$defs/Land'
+  - $ref: '#/$defs/Rock'
+  - $ref: '#/$defs/Sea'
+
+$defs:
+  Land:
+    description: 陸の種別と、荷物・テリトリーの観測値
+    type: object
+    additionalProperties: false
+    required: [type, kind]
+    properties:
+      type:
+        type: string
+        const: land
+      kind:
+        oneOf:
+          - $ref: '#/$defs/PlainLand'
+          - $ref: '#/$defs/GoalLand'
+          - $ref: '#/$defs/CheckpointLand'
+      hasLuggage:
+        type: boolean
+      territory:
+        description: 観測したロボットから見たテリトリーの所属
+        type: string
+        enum: [own, enemy]
+    if:
+      required: [territory]
+    then:
+      properties:
+        kind:
+          $ref: '#/$defs/PlainLand'
+
+  PlainLand:
+    description: 通常の陸
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: plain
+
+  GoalLand:
+    description: ゴールを表す特殊な陸
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: goal
+
+  CheckpointLand:
+    description: 通過順を表す番号を持つ特殊な陸
+    type: object
+    additionalProperties: false
+    required: [type, order]
+    properties:
+      type:
+        type: string
+        const: checkpoint
+      order:
+        description: チェックポイントを通過する順序
+        type: integer
+
+  Rock:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: rock
+
+  Sea:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: sea

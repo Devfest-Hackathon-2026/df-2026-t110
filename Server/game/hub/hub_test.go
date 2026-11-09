@@ -332,6 +332,10 @@ func TestRoutesAllActionBuiltins(t *testing.T) {
 		{action: actions.SearchNowAction{}, result: observation},
 		{action: actions.PrintIntegerAction{Integer: -42}, result: unit},
 		{action: actions.PrintBoolAction{Bool: true}, result: unit},
+		{action: actions.PrintUnitAction{}, result: unit},
+		{action: actions.PrintTerrainAction{Terrain: values.SeaTerrain{}}, result: unit},
+		{action: actions.PrintRotationAction{Rotation: values.Left}, result: unit},
+		{action: actions.PrintDistanceTargetAction{DistanceTarget: values.DistanceGoal}, result: unit},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%T", tt.action), func(t *testing.T) {

@@ -4,26 +4,6 @@
  */
 
 export interface paths {
-    "/picolang/v0/builtins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * picolang v0 の組み込み関数一覧を取得
-         * @description 各組み込み関数の名前、シグネチャ、UI 上の表示先を表すタグを返す。
-         */
-        get: operations["listPicolangV0Builtins"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/field/{fieldId}": {
         parameters: {
             query?: never;
@@ -51,9 +31,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** プログラムを取得 */
+        /**
+         * プログラムを取得
+         * @description 有効なセッションの所有者だけが保存済みプログラムを取得できる。
+         *     他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+         *     ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+         */
         get: operations["getProgram"];
-        /** プログラムを更新 */
+        /**
+         * プログラムを更新
+         * @description 所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
+         *     成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
+         *     ソースは文法・名前解決・型検査を行い、不正なプログラムは400で拒否する。更新に失敗した場合は既存の内容とrevisionを変更しない。
+         */
         put: operations["updateProgram"];
         post?: never;
         delete?: never;
@@ -92,7 +82,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** プログラムを作成 */
+        /**
+         * プログラムを作成
+         * @description セッションのユーザーを所有者として新規保存する。id を指定しても新しいIDを発行する。name は空白のみ不可。ソースは文法を検証するが、保存時には型検査を要求しない。
+         */
         post: operations["createProgram"];
         delete?: never;
         options?: never;
@@ -111,12 +104,14 @@ export interface paths {
         put?: never;
         /**
          * ランク対戦を作成し、シミュレーションを開始
-         * @description 自分のプログラムで対戦を申し込む。ロボットが複数あるので、それぞれに対戦用のプログラムのidを指定する。
+         * @description 自分の対戦用プログラムのIDをロボット順に3つ指定する。同じIDの重複を許す。
          *     サーバーは候補配置を1つ選び、自分以外のユーザーからランダムに相手を1人選んで、
-         *     そのユーザーが登録している対戦用プログラムと対戦させる。
-         *     シミュレーションはサーバーで実行し、結果はレスポンスの runId を使って runEvents で受け取る。
+         *     表示名と3台分の対戦用プログラムを登録しているユーザーを候補とする。
+         *     シミュレーションはサーバーアプリ内で同期実行し、結果を保存してから返す。
+         *     結果は両参加者がレスポンスの runId を使って runEvents で繰り返し受け取れる。
+         *     申込時のプログラム指定で、自分の保存済み対戦用プログラム設定は変更しない。
          *     抽選結果を取得・変更する独立したAPIは設けない。
-         *     レートは対戦を申し込んだ側だけ変動する。
+         *     結果に応じて申込側のレートだけを更新する。変動量はマッチング時点のレートで計算し、結果の保存時に最新のレートへ加算する。
          */
         post: operations["createMatch"];
         delete?: never;
@@ -140,6 +135,7 @@ export interface paths {
          *     副作用を持たないため、切断後に再接続して結果を取り直せる。
          *     チュートリアルでは run の作成者、対戦では match の参加者だけが購読できる。
          *     チュートリアルの結果にはデバッグ情報を含み、対戦の結果には含まない。
+         *     チュートリアルの result は TutorialResult、対戦の result は MatchResult 形式。
          */
         get: operations["runEvents"];
         put?: never;
@@ -219,7 +215,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ランキングを取得 */
+        /**
+         * ランキングを取得
+         * @description 表示名を設定し、1回以上対戦を申し込んだユーザーをレート降順に返す。
+         *     同じレートのユーザーは同じ順位とし、表示名順に並べる。
+         */
         get: operations["getRanking"];
         put?: never;
         post?: never;
@@ -326,6 +326,8 @@ export interface paths {
         /**
          * チュートリアルでプログラムを実行
          * @description チュートリアルのステージの variant から 1 つをランダムに選び、指定したプログラムを単体で実行する。
+         *     選ばれたフィールドのIDを fieldId として返す。
+         *     実行と結果の保存が完了してからレスポンスを返す。
          *     結果は返却した runId を使って runEvents で受け取る。デバッグ情報を含む。
          */
         post: operations["runTutorial"];
@@ -349,7 +351,7 @@ export interface paths {
         get: operations["getBattlePrograms"];
         /**
          * 対戦用のプログラムを設定
-         * @description 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを設定する。
+         * @description 自分の対戦用プログラムのIDをロボット順に必ず3つ指定する。同じIDの重複を許す。
          */
         put: operations["setBattlePrograms"];
         post?: never;
@@ -370,25 +372,54 @@ export interface components {
              */
             runId: string;
         };
+        TutorialRunCreated: {
+            /**
+             * Format: uuid
+             * @description 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+             */
+            runId: string;
+            /** @description 実行用にランダムに選ばれた variant のフィールドID */
+            fieldId: string;
+        };
         /** @description 対戦の再生履歴と結果の要約 */
         MatchResult: {
             history: components["schemas"]["history.schema"];
             summary: components["schemas"]["MatchSummary"];
         };
+        GameHistory: components["schemas"]["history.schema"];
+        TutorialResult: {
+            history: components["schemas"]["history.schema"];
+            summary: {
+                /** @description クリア条件を満たしたか */
+                cleared: boolean;
+                /** @description 実行終了時のゲーム内時刻 */
+                tick: number;
+                /**
+                 * @description 全機停止、ターン上限、クリア条件達成のいずれか
+                 * @enum {string}
+                 */
+                reason: "all_stopped" | "turn_limit" | "condition_met";
+            };
+        };
         /** @description 対戦を申し込んだプレイヤーから見た対戦結果の要約 */
         MatchSummary: {
             /** @description 両プレイヤーの最終得点。同点の場合は引き分け */
             score: {
-                /** @description 対戦を申し込んだプレイヤーの最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦を申し込んだプレイヤーの最終得点
+                 */
                 player: number;
-                /** @description 対戦相手の最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦相手の最終得点
+                 */
                 opponent: number;
             };
         };
         Field: components["schemas"]["field.schema"];
         Stage: components["schemas"]["stage.schema"];
         PicolangProgram: components["schemas"]["toplevel.schema"];
-        PicolangV0Header: components["schemas"]["header.schema"];
         /**
          * @description プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
          * @example {
@@ -453,13 +484,17 @@ export interface components {
             /** @description チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。 */
             tutorialID?: string;
         };
+        UpdateProgramRequest: {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description 保存済みのプログラム */
         SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
             id: string;
+            /** @description 対戦作成時にサーバーが選んだ具体的な盤面のID。 */
             fieldId: string;
-            /** @description 対戦作成時にサーバーが選んだ配置候補のID。 */
-            selectedLayoutId: string;
             /** @enum {string} */
             status?: "ready" | "running" | "finished";
             opponentName: string;
@@ -468,6 +503,16 @@ export interface components {
              * @description この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
              */
             runId: string;
+        };
+        RankingEntry: {
+            /** @description 同じレートは同順位。次の順位は同順位の人数分だけ飛ぶ */
+            rank: number;
+            name: string;
+            rating: number;
+            /** @description 申込側として勝利した回数。挑戦回数は wins + losses + draws */
+            wins: number;
+            losses: number;
+            draws: number;
         };
         User: {
             id?: string;
@@ -483,114 +528,10 @@ export interface components {
         };
         TutorialDetail: components["schemas"]["tutorial-detail.schema"];
         ApiError: {
-            code: string;
+            /** @description 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。 */
+            code?: string;
             message: string;
         };
-        /**
-         * Name
-         * @description 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
-         */
-        name: string;
-        /**
-         * PicolangV0SignatureType
-         * @description シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
-         */
-        "signature-type": {} & (components["schemas"]["primitive-type"] | components["schemas"]["StackType"] | components["schemas"]["TypeParameter"]);
-        /**
-         * PrimitiveType
-         * @description picolang の基本型。unit は () を表す
-         * @enum {string}
-         */
-        "primitive-type": "bool" | "integer" | "unit" | "terrain" | "rotation" | "distance_target";
-        StackType: {
-            /** @constant */
-            kind: "stack";
-            elementType: components["schemas"]["signature-type"];
-        };
-        TypeParameter: {
-            /** @constant */
-            kind: "type_parameter";
-            /** @description 同じシグネチャの typeParameters で宣言した名前。同名の参照は同じ型を表す */
-            name: components["schemas"]["name"];
-        };
-        /**
-         * PicolangV0BuiltinSignature
-         * @description 組み込み関数の引数型と戻り値型。型パラメータのスコープはこのシグネチャ内とし、呼び出しごとに具体的な型を推論する
-         */
-        "signature.schema": {
-            /** @description このシグネチャで宣言する型パラメータ名。省略時は型パラメータなし。シグネチャ内で参照する型パラメータはすべてここで宣言しなければならない */
-            typeParameters?: components["schemas"]["name"][];
-            /** @description 呼び出し時の引数順に並べた型の一覧。引数なしの場合は空配列 */
-            params: components["schemas"]["signature-type"][];
-            /** @description 戻り値の型。値を返さない関数は unit */
-            returnType: components["schemas"]["signature-type"];
-        };
-        /**
-         * PicolangV0Header
-         * @description picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
-         * @example [
-         *       {
-         *         "name": "forward",
-         *         "signature": {
-         *           "params": [],
-         *           "returnType": "bool"
-         *         },
-         *         "tags": [
-         *           "movement"
-         *         ]
-         *       },
-         *       {
-         *         "name": "distance",
-         *         "signature": {
-         *           "params": [
-         *             "distance_target"
-         *           ],
-         *           "returnType": "integer"
-         *         },
-         *         "tags": [
-         *           "sensing"
-         *         ]
-         *       },
-         *       {
-         *         "name": "push_back",
-         *         "signature": {
-         *           "typeParameters": [
-         *             "T"
-         *           ],
-         *           "params": [
-         *             {
-         *               "kind": "stack",
-         *               "elementType": {
-         *                 "kind": "type_parameter",
-         *                 "name": "T"
-         *               }
-         *             },
-         *             {
-         *               "kind": "type_parameter",
-         *               "name": "T"
-         *             }
-         *           ],
-         *           "returnType": {
-         *             "kind": "stack",
-         *             "elementType": {
-         *               "kind": "type_parameter",
-         *               "name": "T"
-         *             }
-         *           }
-         *         },
-         *         "tags": [
-         *           "stack"
-         *         ]
-         *       }
-         *     ]
-         */
-        "header.schema": {
-            /** @description プログラムの call.func に指定する組み込み関数名 */
-            name: components["schemas"]["name"];
-            signature: components["schemas"]["signature.schema"];
-            /** @description UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する */
-            tags: string[];
-        }[];
         /** @description フィールド上のマスの座標 */
         Position: {
             /** @description 横方向の座標。最初の列を 0 とする */
@@ -632,13 +573,23 @@ export interface components {
             /** @description 荷物の初期位置 */
             position: components["schemas"]["Position"];
         };
+        /** @description 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない */
+        Territory: {
+            /**
+             * @description オブジェクトが陣地であることを示す種別
+             * @constant
+             */
+            type: "territory";
+            /** @description 陣地を配置するマスの座標 */
+            position: components["schemas"]["Position"];
+        };
         /**
          * @description マスの地形。land は陸地、rock は岩、sea は海を表す
          * @enum {string}
          */
         Terrain: "land" | "rock" | "sea";
-        /** @description フィールドに配置するゴール、チェックポイント、荷物のいずれか */
-        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"];
+        /** @description フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか */
+        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"] | components["schemas"]["Territory"];
         /**
          * @description 向いている方向。north は上、south は下、west は左、east は右を表す
          * @enum {string}
@@ -657,7 +608,7 @@ export interface components {
             height: number;
             /** @description 地形を行、列の順に並べた二次元配列。terrain[y][x] で各マスを参照する */
             terrain: components["schemas"]["Terrain"][][];
-            /** @description フィールド上に配置するゴール、チェックポイント、荷物の一覧 */
+            /** @description フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧 */
             objects: components["schemas"]["FieldObject"][];
             /** @description ロボットの初期位置と初期方向 */
             robot: {
@@ -669,6 +620,11 @@ export interface components {
             /** @description ドリルを使用できる回数の上限 */
             drillLimit: number;
         };
+        /**
+         * Name
+         * @description 変数や関数の名前。使用できる文字の制限は未定義のため、空でない文字列とする
+         */
+        name: string;
         /**
          * HintId
          * Format: uuid
@@ -686,10 +642,16 @@ export interface components {
             name: components["schemas"]["name"];
         };
         /**
+         * PrimitiveType
+         * @description picolang の基本型。unit は () を表す
+         * @enum {string}
+         */
+        "primitive-type": "bool" | "integer" | "unit" | "terrain" | "rotation" | "distance_target";
+        /**
          * Type
          * @description picolang の値の型。基本型または複合型
          */
-        type: components["schemas"]["primitive-type"] | components["schemas"]["stack-type"];
+        type: components["schemas"]["primitive-type"] | components["schemas"]["compound-type"];
         /**
          * StackType
          * @description 同じ型の要素を持つ連結リストで表現するスタックの型
@@ -700,6 +662,21 @@ export interface components {
             /** @description 要素の型。基本型と複合型のどちらも指定できる */
             elementType: components["schemas"]["type"];
         };
+        /**
+         * OptionType
+         * @description 型Tの値を持つsome、または値を持たないnoneを表す型
+         */
+        "option-type": {
+            /** @constant */
+            kind: "option";
+            /** @description someが持つ値の型。基本型と複合型のどちらも指定できる */
+            elementType: components["schemas"]["type"];
+        };
+        /**
+         * CompoundType
+         * @description 他の型を組み合わせて構成する picolang の複合型
+         */
+        "compound-type": components["schemas"]["stack-type"] | components["schemas"]["option-type"];
         /**
          * Param
          * @description 関数の仮引数の名前と型
@@ -929,6 +906,11 @@ export interface components {
          * @description 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
          */
         "toplevel.schema": {} & components["schemas"]["Version0"];
+        "schemas-UpdateProgramRequest": {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description ロボットがゴールに到達するとクリアする条件 */
         ReachGoal: {
             /**
@@ -945,8 +927,18 @@ export interface components {
              */
             type: "visit_checkpoints";
         };
+        /** @description 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要 */
+        DeliverLuggage: {
+            /**
+             * @description 荷物の配達を求めるクリア条件の種別
+             * @constant
+             */
+            type: "deliver_luggage";
+            /** @description 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける */
+            requiredCount: number;
+        };
         /** @description ステージのクリアに必要な条件 */
-        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"];
+        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"] | components["schemas"]["DeliverLuggage"];
         /**
          * StageDefinition
          * @description 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
@@ -980,7 +972,7 @@ export interface components {
             stage: components["schemas"]["stage.schema"];
         };
         LandKind: {
-            /** @enum {unknown} */
+            /** @enum {string} */
             type: "plain" | "goal" | "checkpoint";
             /** @description チェックポイントの通過順 */
             order?: number;
@@ -1009,7 +1001,7 @@ export interface components {
             carryingLuggage?: boolean;
         };
         MoveResult: {
-            /** @enum {unknown} */
+            /** @enum {string} */
             kind: "forward" | "back";
             robotId: components["schemas"]["RobotId"];
             success: boolean;
@@ -1077,44 +1069,11 @@ export interface components {
             robotId: components["schemas"]["RobotId"];
             bool: boolean;
         };
-        InitialState: {
+        /** @description 1ターンを消費して unit を () として吹き出しに表示する */
+        PrintUnitResult: {
             /** @constant */
-            kind: "initial";
-            /** @description 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する */
-            terrain: components["schemas"]["Cell"][][];
-            robots: components["schemas"]["RobotState"][];
-        };
-        /** @description 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する */
-        UpdateState: {
-            /** @constant */
-            kind: "update";
-            actions?: (components["schemas"]["MoveResult"] | components["schemas"]["RotateResult"] | components["schemas"]["WaitResult"] | components["schemas"]["DrillResult"] | components["schemas"]["PickUpResult"] | components["schemas"]["ReleaseResult"] | components["schemas"]["PrintIntegerResult"] | components["schemas"]["PrintBoolResult"])[];
-            /** @description 盤面から除去した機体の ID */
-            removedRobotIds?: components["schemas"]["RobotId"][];
-        };
-        /**
-         * FieldEvent
-         * @description フィールドの初期状態または確定した状態の変化を表すイベント
-         */
-        "field-event.schema": {
-            /**
-             * @description フィールドのイベントを表す種別
-             * @constant
-             */
-            type: "field";
-            /** @description このイベントが発生したゲーム内の論理時刻。初期状態は 0 */
-            tick: number;
-            state: components["schemas"]["InitialState"] | components["schemas"]["UpdateState"];
-        };
-        /**
-         * PicolangCurrentNodeEvent
-         * @description 現在処理中の構文ノードを報告する
-         */
-        "current-node.schema": {
-            /** @constant */
-            kind: "current_node";
-            /** @description 現在処理中の構文ノードの hintId */
-            hintId: components["schemas"]["hint-id"];
+            kind: "print_unit";
+            robotId: components["schemas"]["RobotId"];
         };
         /** @description 通常の陸 */
         PlainLand: {
@@ -1153,121 +1112,222 @@ export interface components {
             /** @constant */
             type: "sea";
         };
-        /** @description 観測時点の地形種別 */
-        "$defs-Terrain": components["schemas"]["Land"] | components["schemas"]["Rock"] | components["schemas"]["Sea"];
-        /** @description 初期値全体 */
-        Value: RecursiveSchema0;
         /**
-         * PicolangVariableInitEvent
-         * @description 変数の初期化と、その変数に紐づける hintId および初期値全体を報告する。
-         *     変数の型との一致および stack の要素の型の統一は生成側で保証する。
-         *     入れ子の stack を含む、記録時点の値全体を保持する。後の実行で過去の記録内容は変わらない。
+         * PicolangTerrain
+         * @description 観測時点の地形種別と属性
          */
-        "variable-init.schema": {
+        "terrain.schema": {} & (components["schemas"]["Land"] | components["schemas"]["Rock"] | components["schemas"]["Sea"]);
+        /** @description 1ターンを消費して地形の観測値をJSONとして吹き出しに表示する */
+        PrintTerrainResult: {
             /** @constant */
-            kind: "variable_init";
-            /** @description 初期化した変数に紐づける hintId。以後の更新・drop でこの値をキーとして使う */
-            hintId: components["schemas"]["hint-id"];
-            /** @description 初期化された変数の値 */
-            value: components["schemas"]["Value"];
+            kind: "print_terrain";
+            robotId: components["schemas"]["RobotId"];
+            terrain: components["schemas"]["terrain.schema"];
         };
-        BoolUpdate: {
+        /** @description 1ターンを消費して回転方向を吹き出しに表示する */
+        PrintRotationResult: {
+            /** @constant */
+            kind: "print_rotation";
+            robotId: components["schemas"]["RobotId"];
+            /** @enum {string} */
+            rotation: "left" | "right";
+        };
+        /** @description 1ターンを消費して距離の探索対象を吹き出しに表示する */
+        PrintDistanceTargetResult: {
+            /** @constant */
+            kind: "print_distance_target";
+            robotId: components["schemas"]["RobotId"];
+            distanceTarget: components["schemas"]["distance-target"];
+        };
+        InitialState: {
+            /** @constant */
+            kind: "initial";
+            /** @description 盤面を行、列の順に並べた二次元配列。terrain[y][x] でマスを参照する */
+            terrain: components["schemas"]["Cell"][][];
+            robots: components["schemas"]["RobotState"][];
+        };
+        /** @description 1ターンの行動結果と機体の除去を同時に適用する。全機停止時の除去は直前と同じ tick で記録する */
+        UpdateState: {
+            /** @constant */
+            kind: "update";
+            actions?: (components["schemas"]["MoveResult"] | components["schemas"]["RotateResult"] | components["schemas"]["WaitResult"] | components["schemas"]["DrillResult"] | components["schemas"]["PickUpResult"] | components["schemas"]["ReleaseResult"] | components["schemas"]["PrintIntegerResult"] | components["schemas"]["PrintBoolResult"] | components["schemas"]["PrintUnitResult"] | components["schemas"]["PrintTerrainResult"] | components["schemas"]["PrintRotationResult"] | components["schemas"]["PrintDistanceTargetResult"])[];
+            /** @description 盤面から除去した機体の ID */
+            removedRobotIds?: components["schemas"]["RobotId"][];
+        };
+        /**
+         * FieldEvent
+         * @description フィールドの初期状態または確定した状態の変化を表すイベント
+         */
+        "field-event.schema": {
+            /**
+             * @description フィールドのイベントを表す種別
+             * @constant
+             */
+            type: "field";
+            /** @description このイベントが発生したゲーム内の論理時刻。初期状態は 0 */
+            tick: number;
+            state: components["schemas"]["InitialState"] | components["schemas"]["UpdateState"];
+        };
+        /**
+         * PicolangCurrentNodeEvent
+         * @description 現在処理中の構文ノードを報告する
+         */
+        "current-node.schema": {
+            /** @constant */
+            kind: "current_node";
+            /** @description 現在処理中の構文ノードの hintId */
+            hintId: components["schemas"]["hint-id"];
+        };
+        /**
+         * PicolangMemoryId
+         * @description 一つの interpreter の仮想メモリ内で値を識別する uint64 の ID。
+         *     JavaScript の整数精度に依存せず保持できるよう、先頭の 0 のない十進文字列で表す。
+         *     "0" は共通の空リスト root を表す。新しく確保する値には正の ID を使い、解放後も再利用しない。
+         *     18446744073709551615 以下であることは生成側で保証する。
+         */
+        "memory-id.schema": string;
+        BoolValue: {
             /** @constant */
             type: "bool";
             value: boolean;
         };
-        IntegerUpdate: {
+        IntegerValue: {
             /** @constant */
             type: "integer";
             /** @description i64 の範囲外の値の扱いは picolang の仕様に従い未定義 */
             value: number;
         };
-        UnitUpdate: {
+        UnitValue: {
             /** @constant */
             type: "unit";
             value: null;
         };
-        TerrainUpdate: {
+        TerrainValue: {
             /** @constant */
             type: "terrain";
-            value: components["schemas"]["$defs-Terrain"];
+            value: components["schemas"]["terrain.schema"];
         };
-        RotationUpdate: {
+        RotationValue: {
             /** @constant */
             type: "rotation";
             /** @enum {string} */
             value: "left" | "right";
         };
-        DistanceTargetUpdate: {
+        DistanceTargetValue: {
             /** @constant */
             type: "distance_target";
             value: components["schemas"]["distance-target"];
         };
-        /** @description 基本型の値全体の更新 */
-        PrimitiveUpdate: components["schemas"]["BoolUpdate"] | components["schemas"]["IntegerUpdate"] | components["schemas"]["UnitUpdate"] | components["schemas"]["TerrainUpdate"] | components["schemas"]["RotationUpdate"] | components["schemas"]["DistanceTargetUpdate"];
-        /** @description 代入先の値全体を独立した stack の値で置き換える。別の変数の値や get_back の戻り値を代入する場合も使う */
-        StackReplace: {
+        ListNode: {
             /** @constant */
-            op: "replace";
-            /** @description 再代入する stack の値全体 */
-            value: components["schemas"]["Value"][];
+            type: "list_node";
+            /** @description 末尾の要素を除いた stack を表す、既存の空リスト root または list node の ID */
+            prev: components["schemas"]["memory-id.schema"];
+            /** @description 末尾の要素を表す既存の値の ID。入れ子の stack も指定できる */
+            value: components["schemas"]["memory-id.schema"];
         };
-        /** @description 代入先の現在値を入力とした push_back の結果の代入を表す差分。代入先の stack の末尾に要素を一つ追加する */
-        PushBack: {
+        SomeValue: {
             /** @constant */
-            op: "push_back";
-            /** @description 末尾に追加する要素の値 */
-            value: components["schemas"]["Value"];
+            type: "some";
+            /** @description someが持つ既存の値のID */
+            value: components["schemas"]["memory-id.schema"];
         };
-        /** @description 代入先の現在値を入力とした pop_back の結果の代入を表す差分。代入先の stack の末尾の要素を一つ取り除く。変数自体の drop は variable_drop イベントで表す */
-        PopBack: {
+        NoneValue: {
             /** @constant */
-            op: "pop_back";
+            type: "none";
         };
-        /** @description 代入先の stack の現在値に対する更新。操作内容は update の内側に格納する */
-        StackUpdate: {
+        /**
+         * PicolangMemoryValue
+         * @description 仮想メモリに確保する不変の値。primitive は型と値を、list node は既存の値への ID を保持する。
+         *     stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot は保持しない。
+         *     list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
+         *     同じ stack の要素の型が統一されることは生成側で保証する。
+         *     option の some は既存の値への ID を1つ保持し、none は値への参照を持たない。
+         */
+        "memory-value.schema": {} & (components["schemas"]["BoolValue"] | components["schemas"]["IntegerValue"] | components["schemas"]["UnitValue"] | components["schemas"]["TerrainValue"] | components["schemas"]["RotationValue"] | components["schemas"]["DistanceTargetValue"] | components["schemas"]["ListNode"] | components["schemas"]["SomeValue"] | components["schemas"]["NoneValue"]);
+        /**
+         * PicolangMemoryAllocateEvent
+         * @description 指定した未使用の ID に不変の値を確保し、呼び出し元が所有する参照を一つ作る。
+         *     list node の確保では prev と value が指す値の参照数をそれぞれ一つ増やす。同じ ID なら二つ増やす。
+         *     参照先はこのイベントより前に存在し、prev は空リスト root または list node を指す。
+         *     空リストの取得は ID "0" の memory_retain で報告するため、root の確保イベントは出力しない。
+         */
+        "memory-allocate.schema": {
             /** @constant */
-            type: "stack";
-            update: components["schemas"]["StackReplace"] | components["schemas"]["PushBack"] | components["schemas"]["PopBack"];
+            kind: "memory_allocate";
+            /** @description 新しく確保する値の ID。"0" は指定できない */
+            id: components["schemas"]["memory-id.schema"];
+            value: components["schemas"]["memory-value.schema"];
         };
-        /** @description primitive または compound の更新 */
-        Update: components["schemas"]["PrimitiveUpdate"] | components["schemas"]["StackUpdate"];
+        /**
+         * PicolangMemoryRetainEvent
+         * @description 既存の値の参照数を一つ増やす。
+         *     空リストの取得、変数の読み取り、引数・戻り値の受け渡し、pop_back や get_back による既存値の取得などで使う。
+         *     list node の辺の参照取得は memory_allocate の適用時に行うため、別の retain イベントにしない。
+         */
+        "memory-retain.schema": {
+            /** @constant */
+            kind: "memory_retain";
+            /** @description 参照を取得する、同じ interpreter の仮想メモリ内の有効な ID */
+            id: components["schemas"]["memory-id.schema"];
+        };
+        /**
+         * PicolangMemoryReleaseEvent
+         * @description 既存の値の所有参照を一つ解放する。
+         *     参照数が 0 になった値を削除し、list node なら prev と value の参照もそれぞれ一つ再帰的に解放する。
+         *     再帰的な解放はこのイベントの適用に含め、削除された値ごとの release イベントは出力しない。
+         *     ID "0" のメモリ自身が保持する最後の一参照は解放できない。
+         */
+        "memory-release.schema": {
+            /** @constant */
+            kind: "memory_release";
+            /** @description 所有参照を解放する、同じ interpreter の仮想メモリ内の有効な ID */
+            id: components["schemas"]["memory-id.schema"];
+        };
+        /**
+         * PicolangVariableInitEvent
+         * @description 変数の定義の hintId に、既存の値 ID の紐づけを積む。
+         *     再帰呼び出しでは同じ hintId に複数の紐づけを持ち、最上位を現在の変数とする。
+         *     値全体は保持せず、仮想メモリから解決する。参照カウントは変更しない。
+         */
+        "variable-init.schema": {
+            /** @constant */
+            kind: "variable_init";
+            /** @description 対象の変数の定義の hintId。処理中のノードの hintId とは区別する */
+            hintId: components["schemas"]["hint-id"];
+            /** @description 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID */
+            valueId: components["schemas"]["memory-id.schema"];
+        };
         /**
          * PicolangVariableUpdateEvent
-         * @description 初期化時に紐づけた hintId をキーに変数の値の差分を報告する。
-         *     差分は picolang の型と同様に primitive と compound に分け、compound の内側に stack の更新を置く。
-         *     diff の更新を先頭から順に、直前の更新を反映した値に適用する。
-         *     primitive は型ごとの値全体で更新し、stack は内側の update で全体置換、末尾への追加、末尾の除去を報告する。
-         *     差分は hintId が示す変数の現在値そのものに適用する。入れ子の stack を直接変更する操作は持たない。
-         *     push_back と pop_back は独立した stack を返すため、関数の呼び出しだけでは入力元の変数の更新を報告しない。
-         *     更新結果を変数へ代入したときに、その代入先の更新を報告する。get_back や size の戻り値を代入する場合も同様とする。
-         *     生成側は差分を代入先の現在値に適用すると代入後の値を再現できることを保証する。別の値からの再代入など、末尾の操作で表さない更新は replace で値全体を記録する。
-         *     new で生成した stack は初期値または全体置換の値として記録する。
-         *     更新が変数の型に対応すること、pop_back の対象が空でないこと、要素の型との一致は生成側で保証する。
-         *     記録時点の値を保持する。後の実行で過去の記録内容は変わらない。
+         * @description 定義の hintId に対応する最上位の変数の紐づけを、既存の値 ID に更新する。
+         *     値全体や差分は保持せず、代入先の値は仮想メモリから解決する。
+         *     参照カウントは変更しない。古い値の参照解放は後続の memory_release で報告する。
          */
         "variable-update.schema": {
             /** @constant */
             kind: "variable_update";
-            /** @description 更新する変数に初期化時に紐づけた hintId。代入などの処理中のノードの hintId とは区別する */
+            /** @description 対象の変数の定義の hintId。処理中のノードの hintId とは区別する */
             hintId: components["schemas"]["hint-id"];
-            /** @description 変数の値に順に適用する、型ごとの更新 */
-            diff: components["schemas"]["Update"][];
+            /** @description 紐づける値を保持する、同じ interpreter の仮想メモリ内の有効な ID */
+            valueId: components["schemas"]["memory-id.schema"];
         };
         /**
          * PicolangVariableDropEvent
-         * @description 初期化時に紐づけた hintId をキーに変数の drop を報告する
+         * @description 定義の hintId に対応する最上位の変数の紐づけを取り除く。
+         *     呼び出し元に同じ hintId の変数があれば、その紐づけが再び最上位になる。
+         *     参照カウントは変更しない。値の参照解放は後続の memory_release で報告する。
          */
         "variable-drop.schema": {
             /** @constant */
             kind: "variable_drop";
-            /** @description drop する変数に初期化時に紐づけた hintId */
+            /** @description drop する変数の定義の hintId */
             hintId: components["schemas"]["hint-id"];
         };
         /**
          * PicolangExecutionFinishedEvent
          * @description VMの実行が終了したことと、その理由を報告する。
-         *     変数のdropなどの後処理イベントの後に一度だけ出力する。
+         *     変数の drop と仮想メモリの参照解放などの後処理イベントの後に一度だけ出力する。
          *     mainの正常終了、実行時エラー、リソース制限超過、開始済みVMのCloseによる打ち切りを対象とする。
          *     actionによる一時中断、開始前のClose、再試行できる不正な再開入力では出力しない。
          */
@@ -1287,11 +1347,20 @@ export interface components {
         /**
          * PicolangDebugEvent
          * @description 1台の picolang interpreter が出力するデバッグイベント一件。
-         *     処理中のノード、変数の初期化、変数の値の更新、変数の drop、VMの実行終了のいずれかを報告する。
-         *     変数は初期化時に紐づけた hintId をキーとし、更新・drop でも同じ hintId を使う。
-         *     初期化・更新・drop の対応は生成側で保証する。
+         *     処理中のノード、仮想メモリの操作、変数と値 ID の紐づけ、VMの実行終了を報告する。
+         *     再生側は interpreter ごとに独立した仮想メモリを持ち、履歴の順にイベントを適用する。
+         *     仮想メモリは不変の値と参照カウントを保持する。値全体の snapshot や stack の差分は記録しない。
+         *     初期状態では ID "0" の共通の空リスト root だけが存在し、メモリ自身が参照を一つ保持する。
+         *     memory_allocate は新しい値を作り、memory_retain は参照を一つ取得し、memory_release は参照を一つ解放する。
+         *     list node の辺による参照取得と、参照数が 0 になった値の再帰的な解放は再生側が行い、重複するイベントは出力しない。
+         *     一時値や関数の引数・戻り値も含め、成功したメモリ操作だけを記録する。Get などの読み取りはイベントにしない。
+         *     変数イベントは表示用の紐づけのみを変更し、メモリの参照カウントを変更しない。
+         *     値を確保・参照取得してから変数に紐づけ、紐づけを更新・drop してから古い参照を解放する。
+         *     変数は定義の hintId ごとに紐づけのスタックを持つ。variable_init は積み、variable_update は最上位を更新し、variable_drop は最上位を取り除く。
+         *     これにより再帰呼び出しで同じ hintId が同時に使われても、呼び出し元の紐づけを保持する。
+         *     ID の有効性、参照カウント、変数の初期化・更新・drop の対応と型の一致は生成側で保証する。
          */
-        "event.schema": components["schemas"]["current-node.schema"] | components["schemas"]["variable-init.schema"] | components["schemas"]["variable-update.schema"] | components["schemas"]["variable-drop.schema"] | components["schemas"]["execution-finished.schema"];
+        "event.schema": components["schemas"]["current-node.schema"] | components["schemas"]["memory-allocate.schema"] | components["schemas"]["memory-retain.schema"] | components["schemas"]["memory-release.schema"] | components["schemas"]["variable-init.schema"] | components["schemas"]["variable-update.schema"] | components["schemas"]["variable-drop.schema"] | components["schemas"]["execution-finished.schema"];
         /**
          * PicolangEvent
          * @description 複数台の実行を扱う history 上の picolang イベント。イベント種別と出力元の interpreter を指定し、1台分のデバッグ情報を event に格納する
@@ -1304,7 +1373,7 @@ export interface components {
             type: "picolang";
             /** @description この実行内で interpreter を一意に識別する ID。異なる interpreter が同じプログラムを実行する場合も別の ID を使う */
             interpreterId: string;
-            /** @description 指定した interpreter が出力したデバッグ情報。hintId は interpreterId が示すプログラム内のノードを指す */
+            /** @description 指定した interpreter が出力したデバッグ情報。hintId はそのプログラム内のノード、メモリ ID はその interpreter 専用の仮想メモリ内の値を指す */
             event: components["schemas"]["event.schema"];
         };
         /**
@@ -1376,26 +1445,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    listPicolangV0Builtins: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description picolang v0 の組み込み関数一覧 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["header.schema"];
-                };
-            };
-        };
-    };
     getField: {
         parameters: {
             query?: never;
@@ -1433,13 +1482,42 @@ export interface operations {
             /** @description プログラム */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     updateProgram: {
@@ -1453,7 +1531,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Program"];
+                "application/json": components["schemas"]["schemas-UpdateProgramRequest"];
             };
         };
         responses: {
@@ -1466,7 +1544,46 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: components["responses"]["BadRequest"];
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     createProgramWithVibe: {
@@ -1480,9 +1597,9 @@ export interface operations {
             content: {
                 "application/json": {
                     prompt: string;
-                    /** @description Field IDを指定すると、LLM にフィールドの情報を渡すことができる */
+                    /** @description 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。 */
                     fieldId?: string;
-                    /** @description 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す */
+                    /** @description trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。 */
                     isBattle?: boolean;
                 };
             };
@@ -1496,6 +1613,63 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["toplevel.schema"];
                 };
+            };
+            /** @description 本文または生成依頼が不正 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが16 KiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 再試行後も有効なPicolangを生成できなかった */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成の利用枠を超過 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成サービスまたは保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成が時間切れ */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1521,6 +1695,27 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     createMatch: {
@@ -1538,7 +1733,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 作成した対戦と抽選結果。シミュレーション中のため status は running */
+            /** @description 作成した対戦と抽選結果。結果保存済みのため status は finished */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1547,6 +1742,13 @@ export interface operations {
                     "application/json": components["schemas"]["Match"];
                 };
             };
+            /** @description 指定数が3つではない、対戦用プログラムではない、または実行できないプログラム */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description 認証されていない */
             401: {
                 headers: {
@@ -1554,10 +1756,10 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description DisplayName が設定されていないためランク対戦に参加できない */
+            /** @description 表示名が未設定、または他のユーザーのプログラムを指定している */
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description このフィールドに対戦相手の候補がいない */
+            /** @description 対戦相手の候補がいない */
             409: components["responses"]["Conflict"];
         };
     };
@@ -1572,7 +1774,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description SSEストリーム。result イベントの data は MatchResult 形式の JSON。 */
+            /** @description SSEストリーム。result イベントの data は TutorialResult または MatchResult 形式の JSON。 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1678,9 +1880,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["RankingEntry"][];
                 };
             };
         };
@@ -1855,13 +2055,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 実行を開始した */
+            /** @description 実行を完了し、結果を保存した */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RunCreated"];
+                    "application/json": components["schemas"]["TutorialRunCreated"];
                 };
             };
             400: components["responses"]["BadRequest"];
@@ -1894,6 +2094,20 @@ export interface operations {
                     "application/json": string[];
                 };
             };
+            /** @description 認証されていない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 対戦用プログラムが未設定 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     setBattlePrograms: {
@@ -1916,8 +2130,29 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 指定数が3つではない、または対戦用プログラムではない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description 認証されていない */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 他のユーザーのプログラム */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description プログラムが存在しない */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1926,4 +2161,3 @@ export interface operations {
         };
     };
 }
-type RecursiveSchema0 = boolean | number | null | ("left" | "right") | components["schemas"]["distance-target"] | components["schemas"]["$defs-Terrain"] | RecursiveSchema0[];

@@ -1,5 +1,29 @@
-export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation'
-export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
+import { PICO_BUILTIN_SIGNATURES, type PicoBuiltinName } from './builtins.gen.ts'
+import type { PicoBuiltinSignature, PicoSignatureType } from './picoSignatures.ts'
+export { PICO_BUILTIN_SIGNATURES, type PicoBuiltinName } from './builtins.gen.ts'
+export type { PicoSignatureType } from './picoSignatures.ts'
+
+export type PicoPrimitive = 'bool' | 'integer' | 'unit' | 'terrain' | 'rotation' | 'distance_target'
+export const PICO_DISTANCE_TARGETS = [
+  'robot',
+  'ally',
+  'enemy',
+  'rock',
+  'luggage',
+  'sea',
+  'goal',
+  'territory',
+] as const
+export type PicoDistanceTarget = (typeof PICO_DISTANCE_TARGETS)[number]
+export interface PicoTerrain {
+  type: 'land' | 'rock' | 'sea'
+  kind?: { type: 'plain' | 'goal' | 'checkpoint'; order?: number }
+  hasLuggage?: boolean
+  territory?: 'own' | 'enemy'
+}
+export type PicoValue =
+  boolean | number | null | 'left' | 'right' | PicoDistanceTarget | PicoValue[] | PicoTerrain
+export type PicoType = PicoPrimitive | { kind: 'stack' | 'option'; elementType: PicoType }
 interface NodeBase {
   hintId: string
 }
@@ -9,22 +33,26 @@ export interface PicoIdent extends NodeBase {
 }
 export interface PicoLiteral extends NodeBase {
   kind: 'literal'
-  type: 'bool' | 'integer' | 'unit' | 'rotation'
-  value: boolean | number | null | 'left' | 'right'
+  type: 'bool' | 'integer' | 'unit' | 'rotation' | 'distance_target'
+  value: boolean | number | null | 'left' | 'right' | PicoDistanceTarget
 }
 export interface PicoCall extends NodeBase {
   kind: 'call'
   func: string
   args: PicoExpr[]
 }
-export type PicoExpr = PicoIdent | PicoLiteral | PicoCall
+/** An empty editor input, preserved in drafts and rejected for execution. */
+export interface PicoMissing extends NodeBase {
+  kind: 'missing'
+}
+export type PicoExpr = PicoIdent | PicoLiteral | PicoCall | PicoMissing
 export interface PicoBlock extends NodeBase {
   kind: 'block'
   stmts: PicoStatement[]
 }
 export type PicoStatement =
   | PicoExpr
-  | (NodeBase & { kind: 'declare'; type: PicoType; ident: PicoIdent; value: PicoExpr })
+  | (NodeBase & { kind: 'declare'; type?: PicoType; ident: PicoIdent; value: PicoExpr })
   | (NodeBase & { kind: 'assign'; ident: PicoIdent; value: PicoExpr })
   | (NodeBase & { kind: 'if'; condition: PicoExpr; then: PicoBlock; else?: PicoBlock })
   | (NodeBase & { kind: 'while'; condition: PicoExpr; body: PicoBlock })
@@ -33,91 +61,67 @@ export type PicoStatement =
   | (NodeBase & { kind: 'break' | 'continue' })
 export interface PicoFunction extends NodeBase {
   kind: 'function'
-  params: Array<NodeBase & { kind: 'param'; ident: PicoIdent; type: PicoType }>
-  returnType: PicoType
+  params: Array<NodeBase & { kind: 'param'; ident: PicoIdent; type?: PicoType }>
+  returnType?: PicoType
   body: PicoBlock
 }
 export interface PicoProgram {
   picolangVersion: 0
   picolang: { v0: { program: Record<string, PicoFunction> } }
 }
-export interface PicoBuiltin {
-  name: string
-  args: PicoType[]
-  returns: PicoType
+export type PicoTypedStatement =
+  | Exclude<PicoStatement, { kind: 'declare' | 'if' | 'while' | 'for' }>
+  | (Extract<PicoStatement, { kind: 'declare' }> & { type: PicoType })
+  | (Extract<PicoStatement, { kind: 'if' }> & { then: PicoTypedBlock; else?: PicoTypedBlock })
+  | (Extract<PicoStatement, { kind: 'while' | 'for' }> & { body: PicoTypedBlock })
+export interface PicoTypedBlock extends PicoBlock {
+  stmts: PicoTypedStatement[]
 }
-const stackInteger: PicoType = { kind: 'stack', elementType: 'integer' }
-const builtin = <Name extends string>(
-  name: Name,
-  args: PicoType[],
-  returns: PicoType,
-): PicoBuiltin & { name: Name } => ({
-  name,
-  args,
-  returns,
-})
-export const PICO_BUILTINS = [
-  builtin('forward', [], 'bool'),
-  builtin('back', [], 'bool'),
-  builtin('rotate', ['rotation'], 'unit'),
-  builtin('wait', ['integer'], 'unit'),
-  builtin('pick_up', [], 'bool'),
-  builtin('release', [], 'bool'),
-  builtin('drill', [], 'bool'),
-  builtin('drill_durability', [], 'integer'),
-  builtin('distance', [], 'integer'),
-  builtin('search_front', [], 'terrain'),
-  builtin('search_now', [], 'terrain'),
-  builtin('is_land', ['terrain'], 'bool'),
-  builtin('is_goal', ['terrain'], 'bool'),
-  builtin('is_checkpoint', ['terrain'], 'bool'),
-  builtin('is_laggage', ['terrain'], 'bool'),
-  builtin('is_sea', ['terrain'], 'bool'),
-  builtin('is_rock', ['terrain'], 'bool'),
-  builtin('not', ['bool'], 'bool'),
-  builtin('and', ['bool', 'bool'], 'bool'),
-  builtin('or', ['bool', 'bool'], 'bool'),
-  builtin('bool_eq', ['bool', 'bool'], 'bool'),
-  builtin('bool_neq', ['bool', 'bool'], 'bool'),
-  builtin('add', ['integer', 'integer'], 'integer'),
-  builtin('minus', ['integer'], 'integer'),
-  builtin('sub', ['integer', 'integer'], 'integer'),
-  builtin('mul', ['integer', 'integer'], 'integer'),
-  builtin('div', ['integer', 'integer'], 'integer'),
-  builtin('integer_eq', ['integer', 'integer'], 'bool'),
-  builtin('integer_neq', ['integer', 'integer'], 'bool'),
-  builtin('gt', ['integer', 'integer'], 'bool'),
-  builtin('lt', ['integer', 'integer'], 'bool'),
-  builtin('geq', ['integer', 'integer'], 'bool'),
-  builtin('leq', ['integer', 'integer'], 'bool'),
-  builtin('bool_to_integer', ['bool'], 'integer'),
-  builtin('integer_to_bool', ['integer'], 'bool'),
-  builtin('random_bool', [], 'bool'),
-  builtin('random_integer', ['integer', 'integer'], 'integer'),
-  builtin('new', [], stackInteger),
-  builtin('push_back', [stackInteger, 'integer'], stackInteger),
-  builtin('pop_back', [stackInteger], stackInteger),
-  builtin('get_back', [stackInteger], 'integer'),
-  builtin('size', [stackInteger], 'integer'),
-  builtin('print_integer', ['integer'], 'unit'),
-  builtin('print_bool', ['bool'], 'unit'),
-]
-export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
+/** Execution JSON always carries concrete types required by the server schema. */
+export interface PicoTypedFunction extends PicoFunction {
+  params: Array<PicoFunction['params'][number] & { type: PicoType }>
+  returnType: PicoType
+  body: PicoTypedBlock
+}
+export interface PicoTypedProgram extends PicoProgram {
+  picolang: { v0: { program: Record<string, PicoTypedFunction> } }
+}
+export interface PicoBuiltin {
+  name: PicoBuiltinName
+  args: readonly PicoSignatureType[]
+  returns: PicoSignatureType
+}
+export const PICO_BUILTINS: PicoBuiltin[] = (Object.keys(PICO_BUILTIN_SIGNATURES) as PicoBuiltinName[]).map(
+  (name) => ({
+    name,
+    args: PICO_BUILTIN_SIGNATURES[name].params,
+    returns: PICO_BUILTIN_SIGNATURES[name].returnType,
+  }),
+)
+export function builtinSignature(name: string): PicoBuiltinSignature | undefined {
+  return Object.hasOwn(PICO_BUILTIN_SIGNATURES, name)
+    ? PICO_BUILTIN_SIGNATURES[name as PicoBuiltinName]
+    : undefined
+}
 
-export function samePicoType(left: PicoType | undefined, right: PicoType): boolean {
-  if (!left) return true
+export function samePicoType(left: PicoType | undefined, right: PicoType | undefined): boolean {
+  if (!left || !right) return true
   if (typeof left === 'string' || typeof right === 'string') return left === right
-  return samePicoType(left.elementType, right.elementType)
+  return left.kind === right.kind && samePicoType(left.elementType, right.elementType)
 }
 
 export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
-export function defaultExpr(type: PicoType = 'integer'): PicoExpr {
+export function defaultExpr(type: PicoSignatureType = 'integer'): PicoLiteral | PicoCall {
+  if (typeof type !== 'string' && type.kind === 'type_parameter') return defaultExpr('integer')
+  if (typeof type !== 'string' && type.kind === 'option')
+    return { kind: 'call', hintId: id(), func: 'some', args: [defaultExpr(type.elementType)] }
   if (typeof type !== 'string') return { kind: 'call', hintId: id(), func: 'new', args: [] }
   if (type === 'bool') return { kind: 'literal', hintId: id(), type, value: false }
   if (type === 'unit') return { kind: 'literal', hintId: id(), type, value: null }
   if (type === 'rotation') return { kind: 'literal', hintId: id(), type, value: 'left' }
+  if (type === 'distance_target') return { kind: 'literal', hintId: id(), type, value: 'goal' }
   if (type === 'terrain') return makeCall('search_front')
   return { kind: 'literal', hintId: id(), type: 'integer', value: 0 }
 }
@@ -135,7 +139,7 @@ export function makeStatement(
 ): PicoStatement {
   switch (choice) {
     case 'declare':
-      return { kind: 'declare', hintId: id(), type: 'integer', ident: ident(), value: defaultExpr() }
+      return { kind: 'declare', hintId: id(), ident: ident(), value: defaultExpr() }
     case 'assign':
       return { kind: 'assign', hintId: id(), ident: ident(), value: defaultExpr() }
     case 'if':
@@ -186,7 +190,7 @@ export function programFunctions(program: PicoProgram): Record<string, PicoFunct
 }
 type JsonObject = Record<string, unknown>
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const primitiveTypes: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation']
+const primitiveTypes: PicoPrimitive[] = ['bool', 'integer', 'unit', 'terrain', 'rotation', 'distance_target']
 const object = (value: unknown): value is JsonObject =>
   !!value && typeof value === 'object' && !Array.isArray(value)
 const exact = (value: JsonObject, keys: string[]): boolean =>
@@ -197,7 +201,7 @@ function type(value: unknown): boolean {
     ? primitiveTypes.includes(value as PicoPrimitive)
     : object(value) &&
         exact(value, ['kind', 'elementType']) &&
-        value.kind === 'stack' &&
+        (value.kind === 'stack' || value.kind === 'option') &&
         type(value.elementType)
 }
 function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>): boolean {
@@ -210,15 +214,16 @@ function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>
 function validIdent(value: unknown, seen: Set<string>): boolean {
   return object(value) && node(value, 'ident', ['name'], seen) && name(value.name)
 }
-function validExpr(value: unknown, seen: Set<string>): boolean {
+function validExpr(value: unknown, seen: Set<string>, draft: boolean): boolean {
   if (!object(value)) return false
+  if (value.kind === 'missing') return draft && node(value, 'missing', [], seen)
   if (value.kind === 'ident') return validIdent(value, seen)
   if (value.kind === 'call')
     return (
       node(value, 'call', ['func', 'args'], seen) &&
       name(value.func) &&
       Array.isArray(value.args) &&
-      value.args.every((arg) => validExpr(arg, seen))
+      value.args.every((arg) => validExpr(arg, seen, draft))
     )
   if (value.kind !== 'literal' || !node(value, 'literal', ['type', 'value'], seen)) return false
   switch (value.type) {
@@ -230,37 +235,40 @@ function validExpr(value: unknown, seen: Set<string>): boolean {
       return value.value === null
     case 'rotation':
       return value.value === 'left' || value.value === 'right'
+    case 'distance_target':
+      return PICO_DISTANCE_TARGETS.includes(value.value as PicoDistanceTarget)
     default:
       return false
   }
 }
-function validBlock(value: unknown, seen: Set<string>): value is PicoBlock {
+function validBlock(value: unknown, seen: Set<string>, draft: boolean): value is PicoBlock {
   return (
     object(value) &&
     node(value, 'block', ['stmts'], seen) &&
     Array.isArray(value.stmts) &&
-    value.stmts.every((stmt) => validStmt(stmt, seen))
+    value.stmts.every((stmt) => validStmt(stmt, seen, draft))
   )
 }
-function validStmt(value: unknown, seen: Set<string>): boolean {
+function validStmt(value: unknown, seen: Set<string>, draft: boolean): boolean {
   if (!object(value)) return false
   switch (value.kind) {
     case 'literal':
     case 'ident':
     case 'call':
-      return validExpr(value, seen)
+    case 'missing':
+      return validExpr(value, seen, draft)
     case 'declare':
       return (
-        node(value, 'declare', ['type', 'ident', 'value'], seen) &&
-        type(value.type) &&
+        node(value, 'declare', [...('type' in value ? ['type'] : []), 'ident', 'value'], seen) &&
+        ((draft && !('type' in value)) || type(value.type)) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.value, seen)
+        validExpr(value.value, seen, draft)
       )
     case 'assign':
       return (
         node(value, 'assign', ['ident', 'value'], seen) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.value, seen)
+        validExpr(value.value, seen, draft)
       )
     case 'if':
       return (
@@ -270,26 +278,26 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
           value.else === undefined ? ['condition', 'then'] : ['condition', 'then', 'else'],
           seen,
         ) &&
-        validExpr(value.condition, seen) &&
-        validBlock(value.then, seen) &&
-        (value.else === undefined || validBlock(value.else, seen))
+        validExpr(value.condition, seen, draft) &&
+        validBlock(value.then, seen, draft) &&
+        (value.else === undefined || validBlock(value.else, seen, draft))
       )
     case 'while':
       return (
         node(value, 'while', ['condition', 'body'], seen) &&
-        validExpr(value.condition, seen) &&
-        validBlock(value.body, seen)
+        validExpr(value.condition, seen, draft) &&
+        validBlock(value.body, seen, draft)
       )
     case 'for':
       return (
         node(value, 'for', ['ident', 'start', 'end', 'body'], seen) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.start, seen) &&
-        validExpr(value.end, seen) &&
-        validBlock(value.body, seen)
+        validExpr(value.start, seen, draft) &&
+        validExpr(value.end, seen, draft) &&
+        validBlock(value.body, seen, draft)
       )
     case 'return':
-      return node(value, 'return', ['value'], seen) && validExpr(value.value, seen)
+      return node(value, 'return', ['value'], seen) && validExpr(value.value, seen, draft)
     case 'break':
     case 'continue':
       return node(value, value.kind, [], seen)
@@ -297,7 +305,7 @@ function validStmt(value: unknown, seen: Set<string>): boolean {
       return false
   }
 }
-export function isPicoProgram(value: unknown): value is PicoProgram {
+function validProgram(value: unknown, draft: boolean): boolean {
   if (!object(value) || !exact(value, ['picolangVersion', 'picolang']) || value.picolangVersion !== 0)
     return false
   if (
@@ -314,26 +322,61 @@ export function isPicoProgram(value: unknown): value is PicoProgram {
     if (
       !name(functionName) ||
       !object(definition) ||
-      !node(definition, 'function', ['params', 'returnType', 'body'], seen) ||
+      !node(
+        definition,
+        'function',
+        ['params', ...('returnType' in definition ? ['returnType'] : []), 'body'],
+        seen,
+      ) ||
       !Array.isArray(definition.params) ||
-      !type(definition.returnType)
+      (!(draft && !('returnType' in definition)) && !type(definition.returnType))
     )
       return false
     for (const param of definition.params) {
       if (
         !object(param) ||
-        !node(param, 'param', ['ident', 'type'], seen) ||
+        !node(param, 'param', ['ident', ...('type' in param ? ['type'] : [])], seen) ||
         !validIdent(param.ident, seen) ||
-        !type(param.type)
+        (!(draft && !('type' in param)) && !type(param.type))
       )
         return false
     }
-    if (!validBlock(definition.body, seen)) return false
+    if (!validBlock(definition.body, seen, draft)) return false
     if (definition.body.stmts.at(-1)?.kind !== 'return') return false
   }
   return (
-    functions.main.returnType === 'unit' &&
+    (draft || functions.main.returnType === 'unit') &&
     Array.isArray(functions.main.params) &&
     functions.main.params.length === 0
   )
+}
+
+export function isPicoProgram(value: unknown): value is PicoTypedProgram {
+  return validProgram(value, false)
+}
+export function isPicoDraft(value: unknown): value is PicoProgram {
+  return validProgram(value, true)
+}
+/** Discard imported annotations: they are output of inference, never constraints on editing. */
+export function picoDraft(program: PicoProgram): PicoProgram {
+  const draft = JSON.parse(JSON.stringify(program)) as PicoProgram
+  for (const fn of Object.values(programFunctions(draft))) {
+    delete fn.returnType
+    for (const param of fn.params) delete param.type
+    walkPicoStatements(fn.body, (stmt) => {
+      if (stmt.kind === 'declare') delete stmt.type
+    })
+  }
+  return draft
+}
+
+/** Visit declarations in every nested lexical block as well as top-level statements. */
+export function walkPicoStatements(body: PicoBlock, visit: (stmt: PicoStatement) => void): void {
+  for (const stmt of body.stmts) {
+    visit(stmt)
+    if (stmt.kind === 'if') {
+      walkPicoStatements(stmt.then, visit)
+      if (stmt.else) walkPicoStatements(stmt.else, visit)
+    } else if (stmt.kind === 'while' || stmt.kind === 'for') walkPicoStatements(stmt.body, visit)
+  }
 }

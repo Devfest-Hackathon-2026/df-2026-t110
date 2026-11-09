@@ -2,8 +2,12 @@ name: CI (server)
 
 on:
   push:
+    branches:
+      - main
     paths:
+      - 'lang/**'
       - 'Server/**'
+      - 'Textbooks/pages/**'
       - 'infra/**'
       - '.github/workflows/server-deploy.yml'
       - 'mise.toml'
@@ -12,7 +16,9 @@ on:
       - '.github/workflows/actions.lock'
   pull_request:
     paths:
+      - 'lang/**'
       - 'Server/**'
+      - 'Textbooks/pages/**'
       - 'infra/**'
       - '.github/workflows/server-deploy.yml'
       - 'mise.toml'
@@ -23,34 +29,40 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   go:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: Server
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: go golangci-lint
+      - uses: actions/cache@v4.3.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'Server/go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'Server/go.sum') }}-
       - name: Vet
         run: go vet ./...
       - name: Test
-        run: go test ./...
-        env:
-          # Enables the PostgreSQL integration tests, which skip without it.
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+        run: go test -count=1 ./...
+      - name: Validate textbook pages
+        run: go run ./cmd/validate_textbooks ../Textbooks/pages
+      - name: Build embedded textbooks
+        run: |
+          mkdir -p cmd/textbooks
+          cp -a ../Textbooks/pages/. cmd/textbooks/
+          go build -tags textbook_embed -o /tmp/server-embed ./cmd
       - name: golangci-lint
         run: |
           golangci-lint config verify

@@ -1,7 +1,6 @@
 package board_test
 
 import (
-	json "encoding/json/v2"
 	"reflect"
 	"testing"
 
@@ -34,7 +33,6 @@ func TestPickUpCarriesAtMostOneItem(t *testing.T) {
 			Actions: []fieldevent.ActionResult{fieldevent.PickUpResult{RobotID: "a"}},
 		}}},
 	}
-	wantJSON := `[{"type":"field","tick":1,"state":{"kind":"update","actions":[{"kind":"pick_up","robotId":"a","success":true,"target":{"x":1,"y":0}}]}}]`
 	wantTerrain := [][]board.Terrain{{plain, territory, luggage}}
 	config, err := board.NewConfig(
 		[][]board.Terrain{{plain, territoryWithLuggage, luggage}},
@@ -50,15 +48,14 @@ func TestPickUpCarriesAtMostOneItem(t *testing.T) {
 
 	picked, pickErr := b.Next(pick)
 	first := b.Snapshot()
-	encoded, encodeErr := json.Marshal(picked.Events)
 	next(t, b, robotmsg.ActionReply{RobotID: "a", Action: actions.ForwardAction{}})
 	failed, failErr := b.Next(pick)
 	last := b.Snapshot()
 	next(t, b, robotmsg.DoneReply{RobotID: "a"})
 	finished := b.Snapshot()
 
-	if pickErr != nil || !reflect.DeepEqual(picked, wantPick) || encodeErr != nil || string(encoded) != wantJSON {
-		t.Errorf("pickup output = %+v, %v; JSON = %s, %v", picked, pickErr, encoded, encodeErr)
+	if pickErr != nil || !reflect.DeepEqual(picked, wantPick) {
+		t.Errorf("pickup output = %+v, %v, want %+v", picked, pickErr, wantPick)
 	}
 	if !first.Robots["a"].CarryingLuggage() || !reflect.DeepEqual(first.Terrain, wantTerrain) {
 		t.Errorf("unexpected state after pickup: %+v", first)

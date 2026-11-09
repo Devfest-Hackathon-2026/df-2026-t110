@@ -1,0 +1,413 @@
+{
+  "not": {
+    "params": [
+      "bool"
+    ],
+    "returnType": "bool"
+  },
+  "and": {
+    "params": [
+      "bool",
+      "bool"
+    ],
+    "returnType": "bool"
+  },
+  "or": {
+    "params": [
+      "bool",
+      "bool"
+    ],
+    "returnType": "bool"
+  },
+  "bool_eq": {
+    "params": [
+      "bool",
+      "bool"
+    ],
+    "returnType": "bool"
+  },
+  "bool_neq": {
+    "params": [
+      "bool",
+      "bool"
+    ],
+    "returnType": "bool"
+  },
+  "add": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "minus": {
+    "params": [
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "sub": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "mul": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "div": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "integer_eq": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "integer_neq": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "gt": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "lt": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "geq": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "leq": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "bool"
+  },
+  "random_bool": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "random_integer": {
+    "params": [
+      "integer",
+      "integer"
+    ],
+    "returnType": "integer"
+  },
+  "new": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [],
+    "returnType": {
+      "kind": "stack",
+      "elementType": {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    }
+  },
+  "push_back": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "stack",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      },
+      {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    ],
+    "returnType": {
+      "kind": "stack",
+      "elementType": {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    }
+  },
+  "pop_back": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "stack",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      }
+    ],
+    "returnType": {
+      "kind": "stack",
+      "elementType": {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    }
+  },
+  "get_back": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "stack",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      }
+    ],
+    "returnType": {
+      "kind": "type_parameter",
+      "name": "T"
+    }
+  },
+  "size": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "stack",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      }
+    ],
+    "returnType": "integer"
+  },
+  "some": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    ],
+    "returnType": {
+      "kind": "option",
+      "elementType": {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    }
+  },
+  "none": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [],
+    "returnType": {
+      "kind": "option",
+      "elementType": {
+        "kind": "type_parameter",
+        "name": "T"
+      }
+    }
+  },
+  "unwrap": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "option",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      }
+    ],
+    "returnType": {
+      "kind": "type_parameter",
+      "name": "T"
+    }
+  },
+  "is_some": {
+    "typeParameters": [
+      "T"
+    ],
+    "params": [
+      {
+        "kind": "option",
+        "elementType": {
+          "kind": "type_parameter",
+          "name": "T"
+        }
+      }
+    ],
+    "returnType": "bool"
+  },
+  "is_land": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_goal": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_own_territory": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_enemy_territory": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_checkpoint": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_luggage": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_sea": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "is_rock": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "bool"
+  },
+  "forward": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "back": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "rotate": {
+    "params": [
+      "rotation"
+    ],
+    "returnType": "unit"
+  },
+  "wait": {
+    "params": [
+      "integer"
+    ],
+    "returnType": "unit"
+  },
+  "pick_up": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "release": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "drill": {
+    "params": [],
+    "returnType": "bool"
+  },
+  "drill_durability": {
+    "params": [],
+    "returnType": "integer"
+  },
+  "distance": {
+    "params": [
+      "distance_target"
+    ],
+    "returnType": "integer"
+  },
+  "search_front": {
+    "params": [],
+    "returnType": "terrain"
+  },
+  "search_now": {
+    "params": [],
+    "returnType": "terrain"
+  },
+  "print_integer": {
+    "params": [
+      "integer"
+    ],
+    "returnType": "unit"
+  },
+  "print_bool": {
+    "params": [
+      "bool"
+    ],
+    "returnType": "unit"
+  },
+  "print_unit": {
+    "params": [
+      "unit"
+    ],
+    "returnType": "unit"
+  },
+  "print_terrain": {
+    "params": [
+      "terrain"
+    ],
+    "returnType": "unit"
+  },
+  "print_rotation": {
+    "params": [
+      "rotation"
+    ],
+    "returnType": "unit"
+  },
+  "print_distance_target": {
+    "params": [
+      "distance_target"
+    ],
+    "returnType": "unit"
+  }
+}

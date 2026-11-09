@@ -9,8 +9,22 @@ resource "google_project_iam_member" "server_cloudsql_client" {
   member  = google_service_account.server.member
 }
 
+resource "google_project_iam_member" "server_vertex_ai_user" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = google_service_account.server.member
+}
+
 resource "google_secret_manager_secret_iam_member" "server_db_app_password" {
   secret_id = google_secret_manager_secret.db_app_password.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = google_service_account.server.member
+}
+
+resource "google_secret_manager_secret_iam_member" "server_google_login_client_secret" {
+  count = local.google_login_enabled ? 1 : 0
+
+  secret_id = google_secret_manager_secret.google_login_client_secret[0].id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.server.member
 }
@@ -71,23 +85,45 @@ resource "google_cloud_run_v2_service" "server" {
         value = "/static"
       }
       env {
-        name  = "DB_HOST"
-        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
+      # The server only reads DATABASE_URL. The password stays out of it and comes from PGPASSWORD,
+      # which pgx applies to keyword/value connection strings like libpq does.
+      env {
+        name  = "DATABASE_URL"
+        value = "host=/cloudsql/${google_sql_database_instance.main.connection_name} dbname=${google_sql_database.app.name} user=${google_sql_user.app.name}"
       }
       env {
-        name  = "DB_NAME"
-        value = google_sql_database.app.name
-      }
-      env {
-        name  = "DB_USER"
-        value = google_sql_user.app.name
-      }
-      env {
-        name = "DB_PASSWORD"
+        name = "PGPASSWORD"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.db_app_password.secret_id
             version = "latest"
+          }
+        }
+      }
+
+      # Without these the server starts with Google sign-in disabled and /api/login answers 501.
+      dynamic "env" {
+        for_each = local.google_login_enabled ? {
+          GOOGLE_CLIENT_ID    = var.google_login_client_id
+          GOOGLE_REDIRECT_URL = var.google_login_redirect_url
+        } : {}
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+      dynamic "env" {
+        for_each = google_secret_manager_secret.google_login_client_secret
+        content {
+          name = "GOOGLE_CLIENT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = env.value.secret_id
+              version = "latest"
+            }
           }
         }
       }
@@ -116,8 +152,11 @@ resource "google_cloud_run_v2_service" "server" {
   depends_on = [
     google_project_service.required,
     google_project_iam_member.server_cloudsql_client,
+    google_project_iam_member.server_vertex_ai_user,
     google_secret_manager_secret_iam_member.server_db_app_password,
     google_secret_manager_secret_version.db_app_password,
+    google_secret_manager_secret_iam_member.server_google_login_client_secret,
+    google_secret_manager_secret_version.google_login_client_secret,
     google_storage_bucket_iam_member.server_client_reader,
   ]
 }

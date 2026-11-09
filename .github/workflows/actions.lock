@@ -18,6 +18,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
     '.github/workflows/server-ci.yml':
+        - 'actions/cache@v4.3.0'
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
     '.github/workflows/server-deploy.yml':
@@ -29,6 +30,11 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'jdx/mise-action@v5.2.6'
 dependencies:
+    'actions/cache@v4.3.0':
+        ref: 'v4.3.0'
+        commit: 'sha1-0057852bfaa89a56745cba8c7296529d2fc39830'
+        owner_id: 44036562
+        repo_id: 215566462
     'actions/checkout@v7.0.1':
         ref: 'v7.0.1'
         commit: 'sha1-3d3c42e5aac5ba805825da76410c181273ba90b1'

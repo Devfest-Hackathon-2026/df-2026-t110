@@ -1,11 +1,11 @@
 package interpreter
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -30,8 +30,7 @@ type stmt = bot.Stmt[bot.Name, bot.Untyped]
 type param = bot.Param[bot.Name]
 type fn = bot.Function[bot.Name, bot.Untyped]
 
-// Every source in these fixtures has a unique UUID so the returned event batches
-// can also be checked through the production history encoder.
+// Every source in these fixtures has a unique hint to identify emitted events.
 type builder struct{ next uint64 }
 
 func (b *builder) source() bot.Source {
@@ -135,8 +134,15 @@ func expectOutput(t *testing.T, output robotmsg.RobotOutput, err error, want rob
 			}
 		}
 	}
-	if _, err := json.Marshal(output.Events); err != nil {
-		t.Errorf("events cannot be recorded: %v", err)
+	expectEventTypes(t, output.Events)
+}
+
+func expectEventTypes(t *testing.T, events []robotevent.PicolangEvent) {
+	t.Helper()
+	for _, event := range events {
+		if !robotevent.ValidPicolangEvent(event) {
+			t.Errorf("invalid event type: %T", event)
+		}
 	}
 }
 
@@ -201,10 +207,8 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 		t.Errorf("depth = %d, want main + 6 invocations", depth)
 	}
 	before := snapshot(v).Time
-	frozen, err := json.Marshal(first.Events)
-	if err != nil {
-		t.Fatalf("snapshot first batch: %v", err)
-	}
+	// This batch contains only value events with scalar payloads.
+	frozen := slices.Clone(first.Events)
 	second, err := v.Next(values.UnitValue{})
 	expectOutput(t, second, err, robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: 720}})
 	if usage := snapshot(v); usage.CallDepth != 1 || usage.Time <= before {
@@ -214,13 +218,15 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 	for i, e := range second.Events {
 		if drop, ok := e.(robotevent.VariableDropEvent); ok && drop.HintID == parameterHint {
 			restored++
-			if i+1 >= len(second.Events) {
-				t.Error("callee drop has no caller restoration")
-				continue
+			var current robotevent.CurrentNodeEvent
+			for _, next := range second.Events[i+1:] {
+				if node, ok := next.(robotevent.CurrentNodeEvent); ok {
+					current = node
+					break
+				}
 			}
-			current, ok := second.Events[i+1].(robotevent.CurrentNodeEvent)
-			if !ok || current.HintID != recursiveCall && current.HintID != mainCall {
-				t.Errorf("callee returned to %#v", second.Events[i+1])
+			if current.HintID != recursiveCall && current.HintID != mainCall {
+				t.Errorf("callee returned to node %s", current.HintID)
 			}
 		}
 	}
@@ -233,8 +239,7 @@ func TestRecursiveCallsSuspendAndRestoreCallerNodes(t *testing.T) {
 	if pending := v.Collect(); len(pending) != 0 {
 		t.Errorf("events delivered twice: %#v", pending)
 	}
-	after, err := json.Marshal(first.Events)
-	if err != nil || string(after) != string(frozen) {
+	if !reflect.DeepEqual(first.Events, frozen) {
 		t.Error("later execution changed an earlier event batch")
 	}
 }
@@ -255,10 +260,12 @@ func TestStacksReturnedThroughCallsRemainIndependent(t *testing.T) {
 	base := snapshot(v).MemoryBytes
 	output, err := v.Start()
 	expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.PrintIntegerAction{Integer: 1}})
-	var snapshot values.RecordValue
+	var savedValue any
+	var replay testutil.EventReplay
 	for _, e := range output.Events {
+		replay.Apply(t, e)
 		if init, ok := e.(robotevent.VariableInitEvent); ok && init.HintID == saved.Ident.HintID {
-			snapshot = init.Value
+			savedValue = replay.Value(t, init.ValueID)
 		}
 	}
 	output, err = v.Next(values.UnitValue{})
@@ -266,9 +273,9 @@ func TestStacksReturnedThroughCallsRemainIndependent(t *testing.T) {
 	output, err = v.Next(values.UnitValue{})
 	expectOutput(t, output, err, robotmsg.DoneStep{})
 	assertClean(t, v, base)
-	want := values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}}}
-	if !reflect.DeepEqual(snapshot, want) {
-		t.Errorf("saved snapshot = %#v, want %#v", snapshot, want)
+	want := testutil.StackValue{Elements: []any{values.IntegerValue{Integer: 1}}}
+	if !reflect.DeepEqual(savedValue, want) {
+		t.Errorf("saved snapshot = %#v, want %#v", savedValue, want)
 	}
 }
 
@@ -338,9 +345,7 @@ func TestRuntimeFailureClosesAllFramesAndDeliversEvents(t *testing.T) {
 				}
 			}
 			assertClean(t, v, base)
-			if _, err := json.Marshal(output.Events); err != nil {
-				t.Errorf("failure events cannot be recorded: %v", err)
-			}
+			expectEventTypes(t, output.Events)
 			if _, err := v.Next(values.UnitValue{}); !errors.Is(err, ErrState) {
 				t.Errorf("failed VM accepted Next: %v", err)
 			}
@@ -445,31 +450,29 @@ func TestAllDistanceTargetsFlowThroughCallsStacksAndEvents(t *testing.T) {
 			output, err := v.Start()
 			expectOutput(t, output, err, robotmsg.ActionStep{Action: actions.DistanceAction{Target: target}})
 			initialized, updated, nestedUpdated := false, false, false
+			var replay testutil.EventReplay
 			for _, e := range output.Events {
+				replay.Apply(t, e)
 				switch e := e.(type) {
 				case robotevent.VariableInitEvent:
 					if e.HintID == selected.Ident.HintID {
 						initialized = true
-						if !reflect.DeepEqual(e.Value, values.DistanceRobot) {
-							t.Errorf("distance target initial value = %#v", e.Value)
+						if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, values.DistanceRobot) {
+							t.Errorf("distance target initial value = %#v", got)
 						}
 					}
 				case robotevent.VariableUpdateEvent:
 					if e.HintID == selected.Ident.HintID {
 						updated = true
-						data, err := json.Marshal(e)
-						want := fmt.Sprintf(`{"kind":"variable_update","hintId":"%s","diff":[{"type":"distance_target","value":%q}]}`, selected.Ident.HintID, target)
-						if err != nil || string(data) != want {
-							t.Errorf("distance target update = %s, %v; want %s", data, err, want)
+						if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, target) {
+							t.Errorf("distance target update = %#v, want %#v", got, target)
 						}
 					}
 					if e.HintID == nested.Ident.HintID {
 						nestedUpdated = true
-						want := []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{Value: []values.RecordValue{
-							values.StackRecordValue{Elements: []values.RecordValue{target}},
-						}}}}
-						if !reflect.DeepEqual(e.Diff, want) {
-							t.Errorf("nested distance target snapshot = %#v, want %#v", e.Diff, want)
+						want := testutil.StackValue{Elements: []any{testutil.StackValue{Elements: []any{target}}}}
+						if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, want) {
+							t.Errorf("nested distance target = %#v, want %#v", got, want)
 						}
 					}
 				}
@@ -518,27 +521,29 @@ func TestTerrainAttributesSurviveActionResumptionAndReassignment(t *testing.T) {
 	expectOutput(t, output, err, robotmsg.DoneStep{})
 	assertClean(t, v, base)
 	initialized, updated, savedUpdated := false, false, false
+	var replay testutil.EventReplay
 	for _, e := range events {
+		replay.Apply(t, e)
 		switch e := e.(type) {
 		case robotevent.VariableInitEvent:
 			if e.HintID == observed.Ident.HintID {
 				initialized = true
-				if !reflect.DeepEqual(e.Value, own) {
-					t.Errorf("initial terrain snapshot lost attributes: %#v", e.Value)
+				if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, own) {
+					t.Errorf("initial terrain lost attributes: %#v", got)
 				}
 			}
 		case robotevent.VariableUpdateEvent:
 			if e.HintID == observed.Ident.HintID {
 				updated = true
-				if !reflect.DeepEqual(e.Diff, []robotevent.ValueUpdate{robotevent.TerrainUpdate{Value: enemy}}) {
-					t.Errorf("terrain replacement lost attributes: %#v", e.Diff)
+				if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, enemy) {
+					t.Errorf("terrain replacement lost attributes: %#v", got)
 				}
 			}
 			if e.HintID == saved.Ident.HintID {
 				savedUpdated = true
-				want := []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{Value: []values.RecordValue{own}}}}
-				if !reflect.DeepEqual(e.Diff, want) {
-					t.Errorf("saved terrain snapshot changed after reassignment: %#v", e.Diff)
+				want := testutil.StackValue{Elements: []any{own}}
+				if got := replay.Value(t, e.ValueID); !reflect.DeepEqual(got, want) {
+					t.Errorf("saved terrain changed after reassignment: %#v", got)
 				}
 			}
 		}
@@ -680,13 +685,12 @@ func TestHubRunsVMAndRecordsItsEvents(t *testing.T) {
 	if robots := field.Snapshot().Robots; len(robots) != 0 {
 		t.Errorf("finished robots remained on the board: %+v", robots)
 	}
-	if _, err := json.Marshal(storage.Events); err != nil {
-		t.Errorf("history cannot be encoded: %v", err)
-	}
 	found := false
+	var replay testutil.EventReplay
 	for _, e := range storage.Events {
 		if e, ok := e.(gameevent.RobotEvent); ok {
-			if init, ok := e.Event.(robotevent.VariableInitEvent); ok && init.Value == (values.BoolValue{Bool: true}) {
+			replay.Apply(t, e.Event)
+			if init, ok := e.Event.(robotevent.VariableInitEvent); ok && replay.Value(t, init.ValueID) == (values.BoolValue{Bool: true}) {
 				found = true
 			}
 		}

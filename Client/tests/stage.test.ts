@@ -1,7 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { normalizeField, normalizeStage } from '../src/features/stage/stage.ts'
-import { SAMPLE_FIELD } from '../src/features/stage/sampleStages.ts'
 
 test('1つの盤面形状と岩の個数候補から全配置を生成する', () => {
   const field = normalizeField({ id: 'lesson', template: ['S??G', '..__'], rockCounts: [1, 2] })
@@ -20,7 +19,17 @@ test('1つの盤面形状と岩の個数候補から全配置を生成する', (
 })
 
 test('候補マップでは海・荷物・置き場も変えられる', () => {
-  const sample = normalizeField(SAMPLE_FIELD)
+  const sample = normalizeField({
+    id: 'crystal-route',
+    template: ['S?????G', '???????'],
+    rockCounts: [1, 2],
+    candidates: [
+      { id: 'layout-a', map: ['S..#..G', '._O.X..'] },
+      { id: 'layout-b', map: ['S._#..G', '..O.X..'] },
+      { id: 'layout-c', map: ['S..##.G', '.O._X..'] },
+      { id: 'layout-d', map: ['S.#..#G', '..O_.X.'] },
+    ],
+  })
   assert.equal(sample.layouts.length, 4)
   assert.deepEqual(
     sample.layouts.map((layout) => layout.rockCount),

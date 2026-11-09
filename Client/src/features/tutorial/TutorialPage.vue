@@ -10,15 +10,19 @@ import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
-import { executePicolang } from '../picolang/language/executePicolang.ts'
-import { createTutorialWorld } from './tutorialWorld.ts'
+import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlayback.ts'
+import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
-import type { AnimationEvent } from '../stage/robotAnimator.ts'
-import { LOCAL_LESSONS, lessonField, localLesson } from './tutorialLessons.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
-import type { TutorialRecord } from './tutorialApi.ts'
-import type { Lesson } from './tutorialLessons.ts'
+import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
+import {
+  receiveTutorialResult,
+  saveTutorialProgram,
+  startTutorialRun,
+  TutorialRunApiError,
+} from './tutorialRunApi.ts'
+import { selectedReplayLayout } from '../picolang/editor/playback/fieldReplay.ts'
 
 const BlocklyEditor = defineAsyncComponent({
   loader: () => import('../picolang/editor/BlocklyEditor.vue'),
@@ -36,9 +40,9 @@ const BlocklyEditor = defineAsyncComponent({
 })
 
 const props = defineProps<{ tutorialId: string }>()
-const tutorial = ref<TutorialRecord | Lesson | null>(null)
+const tutorial = ref<TutorialRecord | null>(null)
+const catalog = ref<TutorialSummary[]>([])
 const field = ref<FieldData | null>(null)
-const source = ref('')
 const loadState = ref('loading')
 const loadMessage = ref('')
 const sceneError = ref('')
@@ -46,14 +50,25 @@ const mode = ref<'preview' | 'camera'>('preview')
 const modeBeforeHide = ref<'preview' | 'camera' | null>(null)
 const layoutIndex = ref(0)
 const guideIndex = ref(0)
-const sceneRef = ref<{ reset: () => void; resetRobot: () => void; refreshVisuals: () => void } | null>(null)
+const sceneRef = ref<{
+  reset: () => void
+  resetRobot: () => void
+  refreshVisuals: () => void
+  setCarrying: (value: boolean) => void
+} | null>(null)
 const activeStage = ref<StageLayout | null>(null)
-const animationEvent = ref<AnimationEvent | null>(null)
+const playback = usePicolangPlayback()
+const { animationEvent, speech, executionTrace, playbackReady, playbackPaused, nodeInterval, stepPlayback } =
+  playback
+const previewSpeech =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has('previewSpeech')
+    ? speechForValue([1, 2, 3], 0)
+    : null
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
+const loginRequired = ref(false)
 let runController: AbortController | null = null
 let runGeneration = 0
-let animationId = 0
 const stageRef = ref<HTMLElement | null>(null)
 const workspaceRef = ref<HTMLElement | null>(null)
 const viewRef = ref<HTMLElement | null>(null)
@@ -61,45 +76,78 @@ const editorWidth = ref(56)
 const stageHeight = ref(66)
 const stageFullscreen = ref(false)
 const stageHidden = ref(false)
+const compactScreen = ref(false)
+const compactPane = ref<'work' | 'ar'>('work')
+const modeBeforeCompactWork = ref<'preview' | 'camera' | null>(null)
 const picolangProgram = ref<PicoProgram | null>(null)
 let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
+let compactMediaQuery: MediaQueryList | null = null
 
-const stage = computed(() => activeStage.value ?? field.value?.layouts[layoutIndex.value] ?? null)
-const lessonCopy = computed(() => {
-  const local = localLesson(props.tutorialId)
-  return local && (!tutorial.value || tutorial.value.fieldId === local.fieldId) ? local : null
-})
+function switchCompactPane(pane: 'work' | 'ar'): void {
+  if (compactPane.value === pane) return
+  if (pane === 'work') {
+    if (stageFullscreen.value) toggleStageFullscreen()
+    modeBeforeCompactWork.value = mode.value
+    if (mode.value === 'camera') mode.value = 'preview'
+  } else {
+    showStage()
+    if (modeBeforeCompactWork.value === 'camera') mode.value = 'camera'
+    modeBeforeCompactWork.value = null
+  }
+  compactPane.value = pane
+}
+
+function syncCompactScreen(): void {
+  const compact = compactMediaQuery?.matches ?? false
+  if (
+    !compact &&
+    compactScreen.value &&
+    compactPane.value === 'work' &&
+    modeBeforeCompactWork.value === 'camera'
+  ) {
+    mode.value = 'camera'
+    modeBeforeCompactWork.value = null
+  }
+  compactScreen.value = compact
+}
+
+const stage = computed(() =>
+  loadState.value === 'ready' ? (activeStage.value ?? field.value?.layouts[layoutIndex.value] ?? null) : null,
+)
 const guideLines = computed(() => {
   const guide = tutorial.value?.guide
   return Array.isArray(guide) && guide.every((line) => typeof line === 'string') ? guide : []
 })
-const lessonPosition = computed(() => LOCAL_LESSONS.findIndex((item) => item.id === props.tutorialId))
+const lessonPosition = computed(() => catalog.value.findIndex((item) => item.id === props.tutorialId))
 const previousLesson = computed(() => {
-  if (!lessonCopy.value || lessonPosition.value <= 0) return null
-  return LOCAL_LESSONS[lessonPosition.value - 1] ?? null
+  if (lessonPosition.value <= 0) return null
+  return catalog.value[lessonPosition.value - 1] ?? null
 })
 const nextLesson = computed(() => {
-  if (!lessonCopy.value) return null
-  return LOCAL_LESSONS[lessonPosition.value + 1] ?? null
+  if (lessonPosition.value < 0) return null
+  return catalog.value[lessonPosition.value + 1] ?? null
 })
 const previewDistance = computed(() =>
   Math.min(3.2, 2.75 + Math.max(stage.value?.width ?? 2, stage.value?.height ?? 1) * 0.05),
 )
 
+function exitStageFullscreen(): void {
+  if (!stageRef.value || document.fullscreenElement !== stageRef.value) return
+  void document.exitFullscreen?.()?.catch(() => {})
+}
+
 async function load(id: string): Promise<void> {
   stopRun()
-  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+  exitStageFullscreen()
   controller?.abort()
   controller = new AbortController()
   const signal = controller.signal
-  const local = localLesson(id)
-  tutorial.value = local ? { ...local } : null
-  if (local) document.title = `${local.title} | Robot Field`
-  field.value = local ? normalizeField(lessonField(local)) : null
-  source.value = local ? 'サンプル教材' : ''
-  loadState.value = local ? 'ready' : 'loading'
+  tutorial.value = null
+  catalog.value = []
+  field.value = null
+  loadState.value = 'loading'
   loadMessage.value = ''
   sceneError.value = ''
   mode.value = 'preview'
@@ -110,16 +158,20 @@ async function load(id: string): Promise<void> {
   stageHeight.value = 66
   stageFullscreen.value = false
   stageHidden.value = false
+  compactPane.value = 'work'
+  modeBeforeCompactWork.value = null
   activeStage.value = null
   animationEvent.value = null
+  picolangProgram.value = null
   runState.value = 'idle'
   runMessage.value = ''
+  loginRequired.value = false
 
   try {
     const remote = await getTutorial(id, signal)
     if (signal.aborted) return
     if (!remote) {
-      if (!local) loadState.value = 'not-found'
+      loadState.value = 'not-found'
       return
     }
     if (
@@ -128,27 +180,34 @@ async function load(id: string): Promise<void> {
       typeof remote.description !== 'string' ||
       (!remote.stage && typeof remote.fieldId !== 'string')
     )
-      throw new Error('教材データに id、title、description または stage / fieldId がありません')
-    tutorial.value = remote
-    source.value = 'APIから取得'
+      throw new Error('チュートリアルデータに id、title、description または stage / fieldId がありません')
     const remoteField = remote.stage ?? (await getTutorialField(remote.fieldId!, signal))
     if (signal.aborted) return
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
-      throw new Error('教材のフィールドが見つかりません')
-    field.value = normalizeField(remoteField as Record<string, unknown>)
+      throw new Error('チュートリアルのフィールドが見つかりません')
+    const nextField = normalizeField(remoteField as Record<string, unknown>)
+    tutorial.value = remote
+    field.value = nextField
     layoutIndex.value = 0
     loadState.value = 'ready'
-    document.title = `${tutorial.value.title} | Robot Field`
+    document.title = `${remote.title} | PicoBots`
+    void getTutorials(signal)
+      .then((items) => {
+        if (!signal.aborted) catalog.value = items
+      })
+      .catch(() => {})
   } catch (error) {
     if (signal.aborted) return
-    if (local && source.value === 'サンプル教材') {
-      loadState.value = 'ready'
-      return
-    }
     field.value = null
     loadState.value = 'error'
-    loadMessage.value = error instanceof Error ? error.message : String(error)
+    console.error('チュートリアルの読み込みに失敗しました', error)
+    loadMessage.value = 'チュートリアルを読み込めませんでした。'
   }
+}
+
+function handleSceneError(detail: string): void {
+  console.error('チュートリアルのフィールド表示に失敗しました', detail)
+  sceneError.value = detail
 }
 
 function changeLayout(delta: number): void {
@@ -161,30 +220,19 @@ function stopRun(): void {
   runGeneration++
   runController?.abort()
   runController = null
+  playback.reset()
 }
 
-function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException('実行を中断しました', 'AbortError'))
-      return
-    }
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener('abort', abort)
-      resolve()
-    }, duration)
-    const abort = () => {
-      clearTimeout(timer)
-      reject(new DOMException('実行を中断しました', 'AbortError'))
-    }
-    signal.addEventListener('abort', abort, { once: true })
-  })
+function updateProgram(program: PicoProgram | null): void {
+  if (runState.value === 'running') return
+  if (JSON.stringify(program) !== JSON.stringify(picolangProgram.value)) executionTrace.value = null
+  picolangProgram.value = program
 }
 
 async function runProgram(): Promise<void> {
-  if (!field.value || runState.value === 'running') return
+  if (!field.value || !tutorial.value || runState.value === 'running') return
   if (!isPicoProgram(picolangProgram.value)) {
-    sceneError.value = 'プログラムの構造を確認してください。'
+    sceneError.value = 'エディタのエラーを解消してから実行してください。'
     return
   }
   sceneError.value = ''
@@ -193,54 +241,69 @@ async function runProgram(): Promise<void> {
   const generation = runGeneration
   const controller = new AbortController()
   runController = controller
-  layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
-  activeStage.value = JSON.parse(JSON.stringify(field.value.layouts[layoutIndex.value])) as StageLayout
+  activeStage.value = null
   animationEvent.value = null
+  speech.value = null
   runState.value = 'running'
-  runMessage.value = 'プログラムを実行しています'
-  await nextTick()
-  if (generation !== runGeneration || !activeStage.value) return
-  sceneRef.value?.resetRobot()
-  window.dispatchEvent(
-    new CustomEvent('robot-field:tutorial-run', {
-      detail: {
-        tutorialId: props.tutorialId,
-        layout: activeStage.value,
-        candidateIndex: layoutIndex.value,
-        program,
-      },
-    }),
-  )
-  const world = createTutorialWorld(activeStage.value)
+  loginRequired.value = false
+  runMessage.value = 'プログラムを保存しています…'
   try {
-    await executePicolang(
+    const signal = controller.signal
+    const programId = await saveTutorialProgram(
+      props.tutorialId,
+      `チュートリアル: ${tutorial.value.title}`,
+      program,
+      signal,
+    )
+    runMessage.value = 'サーバーでプログラムを実行しています…'
+    const { runId, fieldId } = await startTutorialRun(props.tutorialId, programId, signal)
+    if (generation !== runGeneration || !field.value) return
+    const selected = selectedReplayLayout(field.value.layouts, fieldId)
+    layoutIndex.value = selected.index
+    activeStage.value = selected.stage
+    await nextTick()
+    if (generation !== runGeneration) return
+    sceneRef.value?.resetRobot()
+    window.dispatchEvent(
+      new CustomEvent('robot-field:tutorial-run', {
+        detail: {
+          tutorialId: props.tutorialId,
+          layout: selected.stage,
+          candidateIndex: selected.index,
+          program,
+          runId,
+        },
+      }),
+    )
+    runMessage.value = '実行結果を受信しています…'
+    const result = await receiveTutorialResult(runId, signal)
+    runMessage.value = 'ロボットの動きを再生しています…'
+    await playback.play(
+      result,
       program,
       {
-        call: async (name, args, signal) => {
-          const result = world.call(name, args)
-          if (result.message) runMessage.value = result.message
-          if (result.animation) {
-            animationEvent.value = { id: ++animationId, ...result.animation }
-            const duration =
-              result.animation.type === 'wait' ? Math.max(1, result.animation.ticks ?? 1) * 1000 : 1000
-            await waitForAnimation(duration + 40, signal)
-            if (result.changed) sceneRef.value?.refreshVisuals()
-          }
-          return result.value
-        },
+        stage: selected.stage,
+        refreshVisuals: () => sceneRef.value?.refreshVisuals(),
+        setCarrying: (value) => sceneRef.value?.setCarrying(value),
       },
-      controller.signal,
+      signal,
     )
     if (generation !== runGeneration) return
-    if (world.reachedGoal) {
-      animationEvent.value = { id: ++animationId, type: 'clear' }
-      runMessage.value = 'ゴールに到着しました！'
-    } else runMessage.value = '実行が終了しました。ゴールへの道を考えてみましょう。'
+    runMessage.value = result.summary.cleared
+      ? '課題をクリアしました！'
+      : result.summary.reason === 'turn_limit'
+        ? 'ターン数の上限に達しました。課題をクリアできませんでした。'
+        : 'プログラムが終了しました。課題をクリアできませんでした。'
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
     runState.value = 'error'
-    runMessage.value = error instanceof Error ? error.message : 'プログラムを実行できませんでした'
+    loginRequired.value = error instanceof TutorialRunApiError && error.status === 401
+    console.error('チュートリアルの実行に失敗しました', error)
+    runMessage.value =
+      error instanceof TutorialRunApiError
+        ? error.message
+        : 'プログラムを実行できませんでした。もう一度お試しください。'
   } finally {
     if (generation === runGeneration) runController = null
   }
@@ -252,6 +315,7 @@ function resetProgram(): void {
   activeStage.value = null
   runState.value = 'idle'
   runMessage.value = ''
+  loginRequired.value = false
   void nextTick(() => sceneRef.value?.reset())
   window.dispatchEvent(
     new CustomEvent('robot-field:tutorial-reset', {
@@ -263,7 +327,7 @@ function resetProgram(): void {
 function toggleStageFullscreen(): void {
   if (stageFullscreen.value) {
     stageFullscreen.value = false
-    if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+    exitStageFullscreen()
     return
   }
   stageFullscreen.value = true
@@ -347,24 +411,64 @@ function resizeStageWithKeyboard(event: KeyboardEvent): void {
 }
 
 watch(() => props.tutorialId, load, { immediate: true })
-onMounted(() => document.addEventListener('fullscreenchange', syncFullscreen))
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  compactMediaQuery = window.matchMedia('(max-width: 700px), (max-width: 980px) and (max-height: 500px)')
+  syncCompactScreen()
+  compactMediaQuery.addEventListener('change', syncCompactScreen)
+})
 onBeforeUnmount(() => {
   stopRun()
   controller?.abort()
   document.removeEventListener('fullscreenchange', syncFullscreen)
-  if (document.fullscreenElement === stageRef.value) void document.exitFullscreen().catch(() => {})
+  compactMediaQuery?.removeEventListener('change', syncCompactScreen)
+  exitStageFullscreen()
 })
 </script>
 
 <template>
-  <div ref="workspaceRef" class="tutorial-page" :style="{ '--editor-width': `${editorWidth}%` }">
-    <section id="tutorial-editor" class="tutorial-editor" aria-labelledby="tutorial-editor-title">
+  <div
+    ref="workspaceRef"
+    class="tutorial-page"
+    :class="{
+      'tutorial-page--compact-work': compactPane === 'work',
+      'tutorial-page--compact-ar': compactPane === 'ar',
+    }"
+    :style="{ '--editor-width': `${editorWidth}%` }"
+  >
+    <nav class="tutorial-mobile-tabs" aria-label="チュートリアル画面の切り替え">
+      <button type="button" :aria-pressed="compactPane === 'work'" @click="switchCompactPane('work')">
+        操作
+      </button>
+      <button type="button" :aria-pressed="compactPane === 'ar'" @click="switchCompactPane('ar')">AR</button>
+    </nav>
+    <section
+      id="tutorial-editor"
+      class="tutorial-editor"
+      aria-labelledby="tutorial-editor-title"
+      :inert="compactScreen && compactPane !== 'work'"
+    >
       <div class="tutorial-editor-heading">
         <h2 id="tutorial-editor-title">コード</h2>
         <span>Picolang v0</span>
       </div>
       <div class="tutorial-editor-body">
-        <BlocklyEditor :tutorial-id="tutorialId" @update:program="picolangProgram = $event" />
+        <BlocklyEditor
+          v-if="loadState === 'ready'"
+          :tutorial-id="tutorialId"
+          :execution="executionTrace"
+          :running="runState === 'running'"
+          :playback-ready="playbackReady"
+          :paused="playbackPaused"
+          :node-interval="nodeInterval"
+          @update:program="updateProgram"
+          @pause="playback.togglePause"
+          @step="stepPlayback"
+          @interval="nodeInterval = $event"
+        />
+        <p v-else-if="loadState === 'loading'" class="tutorial-editor-loading" role="status">
+          チュートリアルを読み込んでいます…
+        </p>
       </div>
     </section>
 
@@ -392,31 +496,35 @@ onBeforeUnmount(() => {
       :class="{ 'tutorial-view--resizing': resizingStage, 'tutorial-view--stage-hidden': stageHidden }"
       :style="{ '--stage-height': `${stageHeight}%` }"
     >
-      <aside id="tutorial-explanation" class="tutorial-panel">
+      <aside
+        id="tutorial-explanation"
+        class="tutorial-panel"
+        :inert="compactScreen && compactPane !== 'work'"
+      >
         <button v-if="stageHidden" type="button" class="tutorial-show-stage-button" @click="showStage">
           ARを表示
         </button>
         <div class="tutorial-panel-scroll">
           <div class="tutorial-back-row">
-            <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
+            <a href="/tutorials">チュートリアルへ戻る</a>
           </div>
           <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
-            教材を読み込んでいます。
+            チュートリアルを読み込んでいます。
           </div>
           <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-            <h1>教材が見つかりません。</h1>
-            <a href="/tutorials">教材一覧を見る</a>
+            <h1>チュートリアルが見つかりません。</h1>
+            <a href="/tutorials">チュートリアルを見る</a>
           </div>
-          <template v-else-if="tutorial">
+          <template v-else-if="loadState === 'ready' && tutorial">
             <header class="tutorial-heading">
-              <p v-if="lessonCopy" class="tutorial-count">
-                {{ String(LOCAL_LESSONS.findIndex((item) => item.id === tutorialId) + 1).padStart(2, '0') }} /
-                {{ String(LOCAL_LESSONS.length).padStart(2, '0') }}
+              <p v-if="lessonPosition >= 0" class="tutorial-count">
+                {{ String(lessonPosition + 1).padStart(2, '0') }} /
+                {{ String(catalog.length).padStart(2, '0') }}
               </p>
               <h1>{{ tutorial.title }}</h1>
-              <p>
-                この章の目標:
-                {{ tutorial.goal ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+              <p v-if="tutorial.goal">
+                この課題の目標:
+                {{ tutorial.goal }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
@@ -444,11 +552,7 @@ onBeforeUnmount(() => {
                 <button type="button" @click="changeLayout(-1)">前の配置</button
                 ><button type="button" @click="changeLayout(1)">次の配置</button>
               </div>
-              <small>個人の教材では、実行直前に候補から1つ選びます。</small>
-            </div>
-            <div v-if="loadState === 'error'" class="tutorial-error" role="alert">
-              <span>{{ loadMessage }}</span
-              ><button type="button" @click="load(tutorialId)">再読み込み</button>
+              <small>実行すると、候補の中から配置が自動で選ばれます。</small>
             </div>
             <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
             <div class="tutorial-bottom-link" aria-label="課題の移動">
@@ -459,11 +563,14 @@ onBeforeUnmount(() => {
               >
               <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
                 >次の課題を見る <Icon :icon="arrowRightIcon" aria-hidden="true" /></a
-              ><a v-else href="/tutorials">教材一覧へ <Icon :icon="arrowRightIcon" aria-hidden="true" /></a>
+              ><a v-else href="/tutorials"
+                >チュートリアルへ <Icon :icon="arrowRightIcon" aria-hidden="true"
+              /></a>
             </div>
           </template>
           <div v-else class="tutorial-load-message" role="alert">
-            {{ loadMessage }} <button type="button" @click="load(tutorialId)">再読み込み</button>
+            <p>{{ loadMessage }}</p>
+            <a :href="`/tutorials/${encodeURIComponent(tutorialId)}`">ページを開き直す</a>
           </div>
         </div>
       </aside>
@@ -490,7 +597,8 @@ onBeforeUnmount(() => {
         ref="stageRef"
         class="tutorial-stage"
         :class="{ 'tutorial-stage--fullscreen': stageFullscreen }"
-        aria-label="教材のフィールド"
+        aria-label="チュートリアルのフィールド"
+        :inert="compactScreen && compactPane !== 'ar'"
       >
         <StageScene
           v-if="stage"
@@ -498,8 +606,9 @@ onBeforeUnmount(() => {
           :stage="stage"
           :mode="mode"
           :animation-event="animationEvent"
+          :speech="speech ?? previewSpeech"
           :preview-distance="previewDistance"
-          @error="sceneError = $event"
+          @error="handleSceneError"
         />
         <div v-else class="tutorial-stage-empty">
           {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}
@@ -516,6 +625,13 @@ onBeforeUnmount(() => {
           <button type="button" class="tutorial-reset-button" @click="resetProgram">
             <Icon :icon="rotateCcwIcon" aria-hidden="true" /> リセット
           </button>
+          <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
+        </div>
+        <p v-if="runMessage" class="tutorial-run-feedback" role="status">
+          {{ runMessage }}
+          <a v-if="loginRequired" href="/account">Googleでログイン</a>
+        </p>
+        <div v-if="stage" class="tutorial-stage-toolbar">
           <button
             type="button"
             class="tutorial-fullscreen-button"
@@ -526,10 +642,6 @@ onBeforeUnmount(() => {
           >
             <Icon :icon="stageFullscreen ? minimizeIcon : maximizeIcon" aria-hidden="true" />
           </button>
-          <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
-        </div>
-        <p v-if="runMessage" class="tutorial-run-feedback" role="status">{{ runMessage }}</p>
-        <div v-if="stage" class="tutorial-stage-toolbar">
           <span v-if="field && field.layouts.length > 1"
             >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
           >

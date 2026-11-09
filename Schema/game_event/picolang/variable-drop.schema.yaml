@@ -1,6 +1,9 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangVariableDropEvent
-description: 初期化時に紐づけた hintId をキーに変数の drop を報告する
+description: |
+  定義の hintId に対応する最上位の変数の紐づけを取り除く。
+  呼び出し元に同じ hintId の変数があれば、その紐づけが再び最上位になる。
+  参照カウントは変更しない。値の参照解放は後続の memory_release で報告する。
 
 type: object
 additionalProperties: false
@@ -10,5 +13,5 @@ properties:
     type: string
     const: variable_drop
   hintId:
-    description: drop する変数に初期化時に紐づけた hintId
+    description: drop する変数の定義の hintId
     $ref: '../../picolang/v0/hint-id.yaml'

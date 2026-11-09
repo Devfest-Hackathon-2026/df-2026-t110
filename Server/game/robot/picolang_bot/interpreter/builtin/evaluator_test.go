@@ -98,7 +98,7 @@ func TestBooleanBuiltins(t *testing.T) {
 	}
 }
 
-func TestIntegerAndCastBuiltins(t *testing.T) {
+func TestIntegerBuiltins(t *testing.T) {
 	t.Parallel()
 	i := func(n int64) memory.Value { return memory.Integer{Value: n} }
 	b := func(value bool) memory.Value { return memory.Bool{Value: value} }
@@ -126,12 +126,6 @@ func TestIntegerAndCastBuiltins(t *testing.T) {
 		{"geq", []memory.Value{i(1), i(2)}, b(false)},
 		{"leq", []memory.Value{i(2), i(2)}, b(true)},
 		{"leq", []memory.Value{i(2), i(1)}, b(false)},
-		{"bool_to_integer", []memory.Value{b(false)}, i(0)},
-		{"bool_to_integer", []memory.Value{b(true)}, i(1)},
-		{"integer_to_bool", []memory.Value{i(-1)}, b(false)},
-		{"integer_to_bool", []memory.Value{i(0)}, b(false)},
-		{"integer_to_bool", []memory.Value{i(1)}, b(true)},
-		{"integer_to_bool", []memory.Value{i(2)}, b(false)},
 	} {
 		t.Run(string(tc.name), func(t *testing.T) { t.Parallel(); scalar(t, tc.name, tc.args, tc.want) })
 	}
@@ -269,6 +263,10 @@ func TestActionRequestsAndResults(t *testing.T) {
 		{"search_now", nil, actions.SearchNowAction{}, values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}},
 		{"print_integer", []memory.Value{memory.Integer{Value: -42}}, actions.PrintIntegerAction{Integer: -42}, values.UnitValue{}, memory.Unit{}},
 		{"print_bool", []memory.Value{memory.Bool{Value: true}}, actions.PrintBoolAction{Bool: true}, values.UnitValue{}, memory.Unit{}},
+		{"print_unit", []memory.Value{memory.Unit{}}, actions.PrintUnitAction{}, values.UnitValue{}, memory.Unit{}},
+		{"print_terrain", []memory.Value{memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}}, actions.PrintTerrainAction{Terrain: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}, values.UnitValue{}, memory.Unit{}},
+		{"print_rotation", []memory.Value{memory.Rotation{Value: values.Right}}, actions.PrintRotationAction{Rotation: values.Right}, values.UnitValue{}, memory.Unit{}},
+		{"print_distance_target", []memory.Value{memory.DistanceTarget{Value: values.DistanceEnemy}}, actions.PrintDistanceTargetAction{DistanceTarget: values.DistanceEnemy}, values.UnitValue{}, memory.Unit{}},
 	} {
 		t.Run(string(tc.name), func(t *testing.T) {
 			t.Parallel()
@@ -324,6 +322,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 					value = memory.Bool{Value: true}
 				case bot.IntegerType:
 					value = memory.Integer{Value: 1}
+				case bot.UnitType:
+					value = memory.Unit{}
 				case bot.RotationType:
 					value = memory.Rotation{Value: values.Left}
 				case bot.DistanceTargetType:
@@ -333,6 +333,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 				case bot.StackType:
 					args[i] = stack
 					continue
+				case bot.OptionType:
+					value = memory.Some{Element: one}
 				default:
 					args[i] = one
 					continue
@@ -346,10 +348,34 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 			}
 			switch result := result.(type) {
 			case builtin.Immediate:
+				assertSignatureValue(t, store, result.Value, signature.Result)
 				release(t, store, result.Value)
 			case builtin.Action:
 				if !actions.ValidAction(result.Action) {
 					t.Errorf("invalid action: %T", result.Action)
+				}
+				if got, want := bot.TypeName(result.ResultType), bot.TypeName(signature.Result); got != want {
+					t.Errorf("action return type = %s, want %s", got, want)
+				}
+				var reply values.Value
+				switch signature.Result.(type) {
+				case bot.BoolType:
+					reply = values.BoolValue{Bool: true}
+				case bot.IntegerType:
+					reply = values.IntegerValue{Integer: 1}
+				case bot.UnitType:
+					reply = values.UnitValue{}
+				case bot.TerrainType:
+					reply = values.SeaTerrain{}
+				default:
+					t.Errorf("unsupported action return type %T", signature.Result)
+				}
+				id, err := e.Complete(result, reply)
+				if err != nil {
+					t.Errorf("Complete: %v", err)
+				} else {
+					assertSignatureValue(t, store, id, signature.Result)
+					release(t, store, id)
 				}
 			default:
 				t.Errorf("invalid result %T", result)
@@ -362,6 +388,54 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 	}
 }
 
+// The coverage fixture instantiates each generic parameter as integer. Empty
+// containers have no element to check; nonempty ones are checked recursively.
+func assertSignatureValue(t *testing.T, store *memory.Store, id memory.ID, expected bot.Type) {
+	t.Helper()
+	value, exists := store.Get(id)
+	if !exists {
+		t.Errorf("missing result value %d", id)
+		return
+	}
+	var matches bool
+	switch typ := expected.(type) {
+	case bot.BoolType:
+		_, matches = value.(memory.Bool)
+	case bot.IntegerType:
+		_, matches = value.(memory.Integer)
+	case bot.UnitType:
+		_, matches = value.(memory.Unit)
+	case bot.TerrainType:
+		_, matches = value.(memory.Terrain)
+	case bot.RotationType:
+		_, matches = value.(memory.Rotation)
+	case bot.DistanceTargetType:
+		_, matches = value.(memory.DistanceTarget)
+	case bot.StackType:
+		switch value := value.(type) {
+		case memory.ListRoot:
+			matches = true
+		case memory.ListNode:
+			matches = true
+			assertSignatureValue(t, store, value.Value, typ.ElementType)
+			assertSignatureValue(t, store, value.Prev, expected)
+		}
+	case bot.OptionType:
+		switch value := value.(type) {
+		case memory.None:
+			matches = true
+		case memory.Some:
+			matches = true
+			assertSignatureValue(t, store, value.Element, typ.ElementType)
+		}
+	default:
+		_, matches = value.(memory.Integer)
+	}
+	if !matches {
+		t.Errorf("result %T does not match signature type %s", value, bot.TypeName(expected))
+	}
+}
+
 func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -371,6 +445,11 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 		{"div", []memory.Value{memory.Integer{Value: 1}, memory.Integer{}}},
 		{"random_integer", []memory.Value{memory.Integer{Value: 2}, memory.Integer{Value: 1}}},
 		{"pop_back", []memory.Value{memory.ListRoot{}}}, {"get_back", []memory.Value{memory.ListRoot{}}},
+		{"unwrap", []memory.Value{memory.None{}}},
+		{"some", nil},
+		{"none", []memory.Value{memory.Integer{}}},
+		{"unwrap", []memory.Value{memory.Integer{}}},
+		{"is_some", []memory.Value{memory.Unit{}}},
 		{"and", []memory.Value{memory.Bool{}, memory.Integer{Value: 1}}},
 		{"or", []memory.Value{memory.Bool{Value: true}, memory.Integer{Value: 1}}},
 		{"add", []memory.Value{memory.Integer{Value: 1}}}, {"size", []memory.Value{memory.Unit{}}},
@@ -403,6 +482,11 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 	}
 	if _, err := e.Evaluate("is_laggage", nil); !errors.Is(err, builtin.ErrUnknownFunction) {
 		t.Errorf("obsolete terrain predicate is still recognized: %v", err)
+	}
+	for _, name := range []bot.Name{"bool_to_integer", "integer_to_bool"} {
+		if _, err := e.Evaluate(name, nil); !errors.Is(err, builtin.ErrUnknownFunction) {
+			t.Errorf("removed cast %q is still recognized: %v", name, err)
+		}
 	}
 	if _, err := e.Evaluate("not", []memory.ID{999}); err == nil {
 		t.Error("unknown argument ID accepted")

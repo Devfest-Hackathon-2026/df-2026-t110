@@ -37,9 +37,14 @@ FROM users
 WHERE google_subject = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, googleSubject string) (User, error) {
+type GetUserRow struct {
+	GoogleSubject string
+	Name          pgtype.Text
+}
+
+func (q *Queries) GetUser(ctx context.Context, googleSubject string) (GetUserRow, error) {
 	row := q.db.QueryRow(ctx, getUser, googleSubject)
-	var i User
+	var i GetUserRow
 	err := row.Scan(&i.GoogleSubject, &i.Name)
 	return i, err
 }
@@ -57,12 +62,17 @@ type SetUserNameIfAbsentParams struct {
 	GoogleSubject string
 }
 
+type SetUserNameIfAbsentRow struct {
+	GoogleSubject string
+	Name          pgtype.Text
+}
+
 // Returns no row when the user is missing or already named; the caller
 // distinguishes the two with GetUser. A duplicate name fails with a unique
 // violation.
-func (q *Queries) SetUserNameIfAbsent(ctx context.Context, arg SetUserNameIfAbsentParams) (User, error) {
+func (q *Queries) SetUserNameIfAbsent(ctx context.Context, arg SetUserNameIfAbsentParams) (SetUserNameIfAbsentRow, error) {
 	row := q.db.QueryRow(ctx, setUserNameIfAbsent, arg.Name, arg.GoogleSubject)
-	var i User
+	var i SetUserNameIfAbsentRow
 	err := row.Scan(&i.GoogleSubject, &i.Name)
 	return i, err
 }

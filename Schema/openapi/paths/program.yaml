@@ -4,22 +4,59 @@
       - program
     summary: プログラムを取得
     operationId: getProgram
+    description: |
+      有効なセッションの所有者だけが保存済みプログラムを取得できる。
+      他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+      ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+    security:
+      - sessionCookie: []
     parameters:
       - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
     responses:
       "200":
         description: プログラム
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
         content:
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "401":
+        description: 有効なセッションが必要
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "500":
+        description: 認証または保存先でエラーが発生
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "501":
+        description: 保存サービスまたは認証サービスが未設定
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
   put:
     tags:
       - program
     summary: プログラムを更新
     operationId: updateProgram
+    description: |
+      所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
+      成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
+      ソースは文法・名前解決・型検査を行い、不正なプログラムは400で拒否する。更新に失敗した場合は既存の内容とrevisionを変更しない。
+    security:
+      - sessionCookie: []
     parameters:
       - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
     requestBody:
@@ -27,7 +64,7 @@
       content:
         application/json:
           schema:
-            $ref: "../../openapi.yaml#/components/schemas/Program"
+            $ref: "../../openapi.yaml#/components/schemas/UpdateProgramRequest"
     responses:
       "200":
         description: 更新したプログラム
@@ -35,8 +72,37 @@
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "400":
+        $ref: "../../openapi.yaml#/components/responses/BadRequest"
+        description: 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正
+      "401":
+        description: 有効なセッションが必要
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "413":
+        description: Content-Lengthが1 MiBを超過
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "500":
+        description: 認証または保存先でエラーが発生
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "501":
+        description: 保存サービスまたは認証サービスが未設定
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
 
 /program/create-with-vibe:
   post:
@@ -47,6 +113,8 @@
       picolang のソースだけを生成し、保存や対戦用の登録は行わない。
       生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
     operationId: createProgramWithVibe
+    security:
+      - sessionCookie: []
     requestBody:
       required: true
       content:
@@ -59,10 +127,10 @@
                 type: string
               fieldId:
                 type: string
-                description: Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+                description: 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。
               isBattle:
                 type: boolean
-                description: 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+                description: trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
     responses:
       "201":
         description: 生成した picolang のソース
@@ -70,6 +138,24 @@
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/PicolangProgram"
+      "400":
+        description: 本文または生成依頼が不正
+      "401":
+        description: 有効なセッションが必要
+      "404":
+        $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "413":
+        description: Content-Lengthが16 KiBを超過
+      "422":
+        description: 再試行後も有効なPicolangを生成できなかった
+      "429":
+        description: 生成の利用枠を超過
+      "500":
+        description: 生成サービスまたは保存先でエラーが発生
+      "501":
+        description: 生成サービスが未設定
+      "504":
+        description: 生成が時間切れ
 
 /program:
   post:
@@ -77,6 +163,9 @@
       - program
     summary: プログラムを作成
     operationId: createProgram
+    description: セッションのユーザーを所有者として新規保存する。id を指定しても新しいIDを発行する。name は空白のみ不可。ソースは文法を検証するが、保存時には型検査を要求しない。
+    security:
+      - sessionCookie: []
     requestBody:
       required: true
       content:
@@ -90,3 +179,9 @@
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "400":
+        description: 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正
+      "401":
+        description: 有効なセッションが必要
+      "413":
+        description: Content-Lengthが1 MiBを超過

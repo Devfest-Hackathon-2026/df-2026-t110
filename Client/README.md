@@ -2,19 +2,23 @@
 
 開発とテストには Node.js 24 以上を使います。依存関係の確認には pnpm 12.17.0 を使用しました。
 
-`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/tutorials/demo` は従来のステージ表示用プレビューです。`/rooms` は対戦準備画面、`/matches/:matchId` は対戦結果の受信・再生画面です。`/account` はログインの準備状況を示すページです。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
+`/` はARを読み込まないホームです。`/tutorials` から教材詳細（`/tutorials/:tutorialId`）へ進めます。`/rooms` は対戦準備画面、`/matches/:matchId` は対戦結果の受信・再生画面です。`/account` はログインの準備状況を示すページです。直接URLを開く配信環境では、各パスを `index.html` に戻す設定が必要です。
 
 ## 対戦
 
-`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。未認証またはAPI未実装の場合、対戦準備は表示せず、ローカル開発画面からはGoogle認証付きの公開版へ移動できます。認証できた場合は、フィールドIDを入力して保存済みプログラムをロボット1台に割り当てるか、Blocklyで作成して保存します。対戦開始時は `POST /api/field/{fieldId}/match` に選択した `programId` を送り、返された対戦IDの `/matches/:matchId` で `GET /api/match/{matchId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果の「計算過程を見る」ではfield履歴を3Dまたはカメラ映像に重ねて再生し、移動・回転・掘削・荷物・待機・出力を表示します。開発中は `/matches/demo` でサンプル履歴を確認できます。対戦相手を指定するAPIは現行スキーマにはありません。現在のServerリポジトリでは認証・対戦・プログラムのハンドラーが `501 Not Implemented` を返すため、サーバー対戦の結合にはサーバー側の実装が必要です。また現行の `User.name` はGoogleアカウント名ではなく別途設定するユーザー名なので、Googleの名前を表示するにはサーバーのユーザー情報への追加が必要です。
+`/account` と `/rooms` は `GET /api/me` でログイン状態を確認します。Clientのログインリンクは `GET /api/login` を開きます。`/account` ではユーザー名の初回設定とログアウトができます。認証できた場合は、Blocklyで対戦用プログラムを作成し、3台のロボットへ割り当てます。設定は `PUT /api/battle/program` で保存し、`GET /api/battle/program` で読み込みます。対戦開始時は `POST /api/match` に3台分の `programId` を送り、返された `runId` を使って `/matches/:matchId` で `GET /api/run/{runId}/events` の結果イベントを購読します。再接続とページ再読み込みでも結果を取得でき、`summary.score` を表示します。結果の「対戦を再生」ではfield履歴を3Dまたはカメラ映像に重ねて再生し、移動・回転・掘削・荷物・待機・出力を表示します。対戦相手はサーバーが選びます。`GET /api/program/{id}` は未実装なので、Clientで作成したプログラム名は同じブラウザ内に保存し、ほかの環境ではIDを表示します。`User.name` はGoogleアカウント名ではなく一度だけ設定できるユーザー名です。
 
 ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 
+Googleログインは `GET /api/login` から設定した接続先へ進み、認可コード・PKCE・state・nonce・署名を検証して通常のセッションを発行します。環境変数とクライアントの「Googleでログイン」表示は従来のままです。Composeでは接続パラメーターにDexを指定し、`docker compose up --build` または `docker compose watch` で起動できます。`http://localhost:8080/account` の「Googleでログイン」から進み、開発用アカウント `developer@example.test` / `password`（別ユーザーは `other@example.test` / `password`）を使います。Dexのissuerは `http://dex.localhost:5556/dex` で、ブラウザではループバック、Compose内ではDexコンテナへ解決されます。Dexの状態はメモリに保持するため、再起動すると認可処理中の情報は失われます。アプリのユーザー・プログラム・セッションは引き続きPostgreSQLに保存します。
+
+アプリの接続パラメーターは `GOOGLE_ISSUER_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_REDIRECT_URL` で注入します。Compose以外で `GOOGLE_ISSUER_URL` を省略するとGoogleのissuerを使い、クライアントID・シークレット・リダイレクトURLを設定していなければログインAPIは501を返します。Composeで実際のGoogleに接続する場合は `GOOGLE_ISSUER_URL=https://accounts.google.com` とGoogle用の残り3項目を指定します。HTTPのissuerは `APP_ENV=development` のローカルホスト向けに限定され、Cloud Runでは許可しません。Google以外のissuerのユーザーIDはissuerごとに分離します。Dex自体の登録情報は `DEX_ISSUER`、`DEX_CLIENT_ID`、`DEX_CLIENT_SECRET`、`DEX_REDIRECT_URL` で設定し、アプリ側の対応する `GOOGLE_*` と一致させます。
+
 ## 教材詳細
 
-`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。`first-step`、`more-steps`、`turn`、`break-rock` の4件にはローカルの案内文と盤面を用意しています。APIが使えない場合は「サンプル教材」として表示します。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
+`/tutorials` は `GET /api/tutorial` の教材一覧を表示します。`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。教材データの取得が完了するまでは盤面とエディタの描画を待ち、APIが使えない場合はエラーを表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
 
-教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex, program }` で、`program` は `Schema/picolang/toplevel.schema.yaml` に沿った Picolang v0 のソースです。続いてクライアント内の実行器が AST を評価し、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。前進・後退・回転・待機・拾う・置く・岩破壊、条件・繰り返し・関数呼び出し、算術・論理・stack演算に対応します。岩や荷物の変化は動作後に盤面へ反映し、ゴールに着くとクリア演出を再生します。「リセット」は実行を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。サーバーのVM・型チェックとはまだ接続していません。ローカル実行器には最大10000ステップ、関数呼び出し深さ64の制限があります。旧記号マップにドリル制限が無い場合は99回とします。
+教材画面の「実行」は、`POST /api/program` で Picolang v0 のソースを保存し、返された `programId` を `POST /api/tutorial/{tutorialId}/run` に送ります。サーバーが候補配置の選択・型チェック・実行を行い、`runId` と `fieldId` を返します。`window` に発行する `robot-field:tutorial-run` の `detail` は `{ tutorialId, layout, candidateIndex, program, runId }` です。`GET /api/run/{runId}/events` の SSE `result` イベントから実行履歴とクリア判定を受け取り、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。岩や荷物の変化も履歴から盤面へ反映し、クリア時は演出を再生します。実行にはサーバーのDB接続とログインが必要で、APIが使えない場合はエラーを表示します。「リセット」は結果の受信・再生を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。
 
 iPad横向きのような横長画面では、左にPicolangのカテゴリ・命令パレット・作業領域、右上にスクロールできる課題説明、右下にARを置きます。パレットをタップすると関数の末尾のreturnの手前へ命令を追加し、ドラッグすると制御構文の内側にも追加できます。各ブロックからも命令の追加・並べ替え・削除ができ、式は入れ子で編集できます。関数と引数、型（入れ子のstackを含む）も編集できます。教材ごとの下書きはブラウザのlocalStorageへ保存し、JSONの確認・コピー・読み込みもできます。JSONの読み込み時はノード形状と重複する `hintId` を検査します。サーバーの意味解析・型チェックはまだ接続していません。左右の境界はドラッグまたはフォーカス後の左右矢印キー、説明とARの境界はドラッグまたは上下矢印キーで調整できます。「全画面」はブラウザの全画面表示を試し、対応していない環境では画面全体にARを重ねます。「ARを隠す」後は説明欄の「ARを表示」から戻せます。幅980px以下で縦向きに近い画面、または幅700px以下では上下に並べます。
 
@@ -34,7 +38,7 @@ Vite 8 の標準ビルドは Rolldown と Oxc を使用します。`esbuild` は
 
 - カメラに重ねる:localhost または HTTPS とカメラ許可が必要
 
-画面をタップすると盤面の表示位置を変えられます。現時点ではカメラ映像への重ね合わせで、平面検出・空間固定は次の段階です。
+カメラ表示では AR.js が Hiro と Kanji の2枚のマーカーの位置と向きを追跡します。どちらかを認識したら「配置を確定」を押して盤面を表示します。両方を同時に認識すると相対位置を記録し、以後は基準マーカーを見失っても、もう片方が見えていれば同じ盤面位置を表示します。位置関係の記録前に基準マーカーを見失った場合、または両方を見失った場合は盤面を隠します。印刷用画像は `/markers/marker-hiro.png` と `/markers/marker-kanji.png` から開けます。2枚を記録後に動かすと位置関係がずれるため、固定して使用してください。平面検出やマーカーなしの空間固定は行いません。
 
 ## ステージデータ
 
@@ -69,7 +73,7 @@ Vite 8 の標準ビルドは Rolldown と Oxc を使用します。`esbuild` は
 
 `StageScene` の `animationEvent` prop に `{ id, type, to?, direction?, ticks?, success? }` を渡すとロボットの動作を発火できます。`id` はイベントごとに増やしてください。`type` は `forward` / `back`（現在の向きに1マス進む）、`rotate`（`direction: 'left' | 'right'` で90°回る）、`wait`（`ticks` 単位時間待つ）、`pick_up` / `release`（念動力）、`drill`（目のビーム）、`clear`（クリア演出）です。これらの基本動作は1単位時間を1秒として描画します。移動先が岩・海・盤外なら進まず、`success: false` を渡した動作も失敗として演出します。旧形式の `move`（`to: {x,y}`）、`get`、`put` も受け付けます。GLB内にはアニメーションクリップがないため、`left_arm` / `right_arm` と `left_sholder` / `right_sholder` から実行時に肩の回転軸を作り、念動力の瞬間は腕の絶対角度 Rx=-90°にします。命中や岩の破壊、箱の移動、クリア判定は今後のゲームエンジンが状態を更新します。
 
-海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用し、Blender製の立体的な枠を重ねます。カメラ表示は現時点ではカメラ映像への重ね合わせです。平面検出と空間固定は今後の作業です。
+海には前のモックと同じ波・光の回路・波紋を描くシェーダーを使用し、Blender製の立体的な枠を重ねます。カメラ表示は AR.js のマーカー追跡を使います。平面検出とマーカーなしの空間固定は今後の作業です。
 
 ## 接続時に確定する項目
 

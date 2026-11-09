@@ -524,7 +524,7 @@
 }
 .pico-expression-drop-error {
   flex-basis: 100%;
-  color: #9b3f32;
+  color: var(--color-error);
   font-size: 11px;
 }
 .pico-expression-drop-error button {

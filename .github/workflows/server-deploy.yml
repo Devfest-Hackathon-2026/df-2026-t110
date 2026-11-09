@@ -42,8 +42,7 @@ jobs:
         with:
           install: false
       - name: Build container
-        working-directory: Server
-        run: docker build --build-arg GO_VERSION="$(mise current go)" --tag server:ci .
+        run: docker build --file Server/Dockerfile --build-arg GO_VERSION="$(mise current go)" --tag server:ci .
       - name: Authenticate to Google Cloud
         if: env.DEPLOY_ENABLED == 'true'
         uses: google-github-actions/auth@v3.0.0

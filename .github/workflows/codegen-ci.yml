@@ -2,10 +2,18 @@ name: CI (codegen)
 
 on:
   push:
+    branches:
+      - main
     paths:
+      - 'lang/**'
       - 'Schema/**'
       - 'Client/package.json'
       - 'Client/scripts/generate-api.mjs'
+      - 'Client/scripts/generate-builtins.mjs'
+      - 'Client/src/features/picolang/language/builtins.gen.ts'
+      - 'Server/game/robot/picolang_bot/builtins.gen.go'
+      - 'Server/game/robot/picolang_bot/analysis.go'
+      - 'Server/game/robot/picolang_bot/internal/genbuiltins/**'
       - 'Client/src/api/schema.d.ts'
       - 'Server/infra/router/gen/**'
       - 'Server/oapi-codegen*.yaml'
@@ -21,9 +29,15 @@ on:
       - '.github/workflows/actions.lock'
   pull_request:
     paths:
+      - 'lang/**'
       - 'Schema/**'
       - 'Client/package.json'
       - 'Client/scripts/generate-api.mjs'
+      - 'Client/scripts/generate-builtins.mjs'
+      - 'Client/src/features/picolang/language/builtins.gen.ts'
+      - 'Server/game/robot/picolang_bot/builtins.gen.go'
+      - 'Server/game/robot/picolang_bot/analysis.go'
+      - 'Server/game/robot/picolang_bot/internal/genbuiltins/**'
       - 'Client/src/api/schema.d.ts'
       - 'Server/infra/router/gen/**'
       - 'Server/oapi-codegen*.yaml'
@@ -41,12 +55,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   codegen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@v5.2.6
+        with:
+          install_args: go node go:github.com/plheide/go-jsonschema oapi-codegen sqlc
       - name: Install client dependencies
         run: corepack pnpm --filter programming-learning-ar-client install --frozen-lockfile
       - name: Check generated code

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	history "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 	schema "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema"
 	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
@@ -36,27 +36,50 @@ func (e MatchStatus) Valid() bool {
 	}
 }
 
+// Defines values for TutorialResultSummaryReason.
+const (
+	AllStopped   TutorialResultSummaryReason = "all_stopped"
+	ConditionMet TutorialResultSummaryReason = "condition_met"
+	TurnLimit    TutorialResultSummaryReason = "turn_limit"
+)
+
+// Valid indicates whether the value is a known member of the TutorialResultSummaryReason enum.
+func (e TutorialResultSummaryReason) Valid() bool {
+	switch e {
+	case AllStopped:
+		return true
+	case ConditionMet:
+		return true
+	case TurnLimit:
+		return true
+	default:
+		return false
+	}
+}
+
 // ApiError defines model for ApiError.
 type ApiError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	// Code 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。
+	Code    *string `json:"code,omitempty"`
+	Message string  `json:"message"`
 }
 
 // Field defines model for Field.
 type Field = schema.FieldDefinition
 
+// GameHistory defines model for GameHistory.
+type GameHistory = history.GameHistory
+
 // Match defines model for Match.
 type Match struct {
+	// FieldId 対戦作成時にサーバーが選んだ具体的な盤面のID。
 	FieldId      string `json:"fieldId"`
 	Id           string `json:"id"`
 	OpponentName string `json:"opponentName"`
 
 	// RunId この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
-	RunId openapi_types.UUID `json:"runId"`
-
-	// SelectedLayoutId 対戦作成時にサーバーが選んだ配置候補のID。
-	SelectedLayoutId string       `json:"selectedLayoutId"`
-	Status           *MatchStatus `json:"status,omitempty"`
+	RunId  openapi_types.UUID `json:"runId"`
+	Status *MatchStatus       `json:"status,omitempty"`
 }
 
 // MatchStatus defines model for Match.Status.
@@ -64,7 +87,7 @@ type MatchStatus string
 
 // MatchResult 対戦の再生履歴と結果の要約
 type MatchResult struct {
-	History []gameevent.GameEvent `json:"history"`
+	History GameHistory `json:"history"`
 
 	// Summary 対戦を申し込んだプレイヤーから見た対戦結果の要約
 	Summary MatchSummary `json:"summary"`
@@ -75,18 +98,15 @@ type MatchSummary struct {
 	// Score 両プレイヤーの最終得点。同点の場合は引き分け
 	Score struct {
 		// Opponent 対戦相手の最終得点
-		Opponent float32 `json:"opponent"`
+		Opponent int64 `json:"opponent"`
 
 		// Player 対戦を申し込んだプレイヤーの最終得点
-		Player float32 `json:"player"`
+		Player int64 `json:"player"`
 	} `json:"score"`
 }
 
 // PicolangProgram defines model for PicolangProgram.
 type PicolangProgram = schema.PicolangProgram
-
-// PicolangV0Header defines model for PicolangV0Header.
-type PicolangV0Header = schema.PicolangV0Header
 
 // Program プログラムの保存情報と picolang のソース。作成時にも使用するため、ID は省略可能。
 //
@@ -104,6 +124,20 @@ type Program struct {
 
 	// TutorialID チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。
 	TutorialID *string `json:"tutorialID,omitempty"`
+}
+
+// RankingEntry defines model for RankingEntry.
+type RankingEntry struct {
+	Draws  int    `json:"draws"`
+	Losses int    `json:"losses"`
+	Name   string `json:"name"`
+
+	// Rank 同じレートは同順位。次の順位は同順位の人数分だけ飛ぶ
+	Rank   int `json:"rank"`
+	Rating int `json:"rating"`
+
+	// Wins 申込側として勝利した回数。挑戦回数は wins + losses + draws
+	Wins int `json:"wins"`
 }
 
 // RunCreated defines model for RunCreated.
@@ -140,6 +174,40 @@ type Tutorial struct {
 
 // TutorialDetail defines model for TutorialDetail.
 type TutorialDetail = schema.TutorialDetail
+
+// TutorialResult defines model for TutorialResult.
+type TutorialResult struct {
+	History GameHistory `json:"history"`
+	Summary struct {
+		// Cleared クリア条件を満たしたか
+		Cleared bool `json:"cleared"`
+
+		// Reason 全機停止、ターン上限、クリア条件達成のいずれか
+		Reason TutorialResultSummaryReason `json:"reason"`
+
+		// Tick 実行終了時のゲーム内時刻
+		Tick int `json:"tick"`
+	} `json:"summary"`
+}
+
+// TutorialResultSummaryReason 全機停止、ターン上限、クリア条件達成のいずれか
+type TutorialResultSummaryReason string
+
+// TutorialRunCreated defines model for TutorialRunCreated.
+type TutorialRunCreated struct {
+	// FieldId 実行用にランダムに選ばれた variant のフィールドID
+	FieldId string `json:"fieldId"`
+
+	// RunId 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
+	RunId openapi_types.UUID `json:"runId"`
+}
+
+// UpdateProgramRequest defines model for UpdateProgramRequest.
+type UpdateProgramRequest struct {
+	// Name 空白のみ不可
+	Name   string          `json:"name"`
+	Source PicolangProgram `json:"source"`
+}
 
 // User defines model for User.
 type User struct {
@@ -199,10 +267,10 @@ type SetMyUsernameJSONBody struct {
 
 // CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
 type CreateProgramWithVibeJSONBody struct {
-	// FieldId Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+	// FieldId 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。
 	FieldId *string `json:"fieldId,omitempty"`
 
-	// IsBattle 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+	// IsBattle trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
 	IsBattle *bool  `json:"isBattle,omitempty"`
 	Prompt   string `json:"prompt"`
 }
@@ -229,7 +297,7 @@ type CreateProgramJSONRequestBody = Program
 type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
-type UpdateProgramJSONRequestBody = Program
+type UpdateProgramJSONRequestBody = UpdateProgramRequest
 
 // RunTutorialJSONRequestBody defines body for RunTutorial for application/json ContentType.
 type RunTutorialJSONRequestBody RunTutorialJSONBody
@@ -429,9 +497,6 @@ type ServerInterface interface {
 	// SetMyUsername ユーザー名を一度だけ設定
 	// (POST /me/username)
 	SetMyUsername(ctx *echo.Context) error
-	// ListPicolangV0Builtins picolang v0 の組み込み関数一覧を取得
-	// (GET /picolang/v0/builtins)
-	ListPicolangV0Builtins(ctx *echo.Context) error
 	// CreateProgram プログラムを作成
 	// (POST /program)
 	CreateProgram(ctx *echo.Context) error
@@ -577,15 +642,6 @@ func (w *ServerInterfaceWrapper) SetMyUsername(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SetMyUsername(ctx)
-	return err
-}
-
-// ListPicolangV0Builtins converts echo context to params.
-func (w *ServerInterfaceWrapper) ListPicolangV0Builtins(ctx *echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.ListPicolangV0Builtins(ctx)
 	return err
 }
 
@@ -787,6 +843,5 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/tutorial/:tutorialId", wrapper.GetTutorial, options.OperationMiddlewares["getTutorial"]...)
 	router.GET(options.BaseURL+"/tutorial/:tutorialId/program", wrapper.ListTutorialPrograms, options.OperationMiddlewares["listTutorialPrograms"]...)
 	router.POST(options.BaseURL+"/tutorial/:tutorialId/run", wrapper.RunTutorial, options.OperationMiddlewares["runTutorial"]...)
-	router.GET(options.BaseURL+"/picolang/v0/builtins", wrapper.ListPicolangV0Builtins, options.OperationMiddlewares["listPicolangV0Builtins"]...)
 
 }

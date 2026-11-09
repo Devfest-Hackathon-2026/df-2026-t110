@@ -60,20 +60,20 @@ func equalSecret(a, b string) bool {
 
 // Complete checks the returned state, exchanges the code with PKCE, and verifies
 // the ID token and nonce. The caller must consume its stored Authorization before
-// calling Complete to prevent replay. Google's OAuth tokens are discarded because
+// calling Complete to prevent replay. OAuth tokens are discarded because
 // sign-in needs only the verified identity.
 func (c *Client) Complete(ctx context.Context, attempt Authorization, returnedState, code string) (User, error) {
 	if !equalSecret(attempt.State, returnedState) || attempt.Nonce == "" || attempt.CodeVerifier == "" || code == "" {
-		return User{}, errors.New("invalid Google authorization response")
+		return User{}, errors.New("invalid OIDC authorization response")
 	}
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, c.httpClient)
 	token, err := c.oauth.Exchange(ctx, code, oauth2.VerifierOption(attempt.CodeVerifier))
 	if err != nil {
-		return User{}, fmt.Errorf("exchange Google authorization code: %w", err)
+		return User{}, fmt.Errorf("exchange OIDC authorization code: %w", err)
 	}
 	raw, ok := token.Extra("id_token").(string)
 	if !ok || raw == "" {
-		return User{}, errors.New("missing Google ID token")
+		return User{}, errors.New("missing OIDC ID token")
 	}
 	return c.verifyIDToken(ctx, raw, attempt.Nonce, token.AccessToken)
 }

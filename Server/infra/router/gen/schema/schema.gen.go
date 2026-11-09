@@ -12,6 +12,20 @@ import "strconv"
 import "strings"
 import "unicode/utf8"
 
+// 関数呼び出しの実引数。空配列は引数なしを表し、先頭から順に評価する
+type Args []Expr
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Args) UnmarshalJSON(value []byte) error {
+	type Plain Args
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Args: %w", err)
+	}
+	*j = Args(plain)
+	return nil
+}
+
 // 既存の変数への代入
 type Assignment struct {
 	// HintId corresponds to the JSON schema field "hintId".
@@ -57,7 +71,7 @@ func (j *Assignment) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Assignment
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Assignment: %w", err)
 	}
 	*j = Assignment(plain)
@@ -115,7 +129,7 @@ func (j *Block) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Block
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Block: %w", err)
 	}
 	*j = Block(plain)
@@ -176,7 +190,7 @@ func (j *BoolLiteral) UnmarshalJSON(value []byte) error {
 	}
 	type Plain BoolLiteral
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal BoolLiteral: %w", err)
 	}
 	*j = BoolLiteral(plain)
@@ -216,10 +230,74 @@ func (j *Break) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Break
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Break: %w", err)
 	}
 	*j = Break(plain)
+	return nil
+}
+
+// 関数名と実引数の一覧による関数呼び出し
+type Call struct {
+	// Args corresponds to the JSON schema field "args".
+	Args Args `json:"args"`
+
+	// Func corresponds to the JSON schema field "func".
+	Func Name `json:"func"`
+
+	// HintId corresponds to the JSON schema field "hintId".
+	HintId HintId `json:"hintId"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind interface{} `json:"kind"`
+}
+
+const CallKind = "call"
+
+// MarshalJSON implements json.Marshaler. It writes a required array or object left
+// nil as an empty one, where encoding/json would write null, which the schema
+// rejects.
+func (j Call) MarshalJSON() ([]byte, error) {
+	type Plain Call
+	plain := Plain(j)
+	if plain.Args == nil {
+		plain.Args = Args{}
+	}
+	return json.Marshal(plain)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Call) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Call: %w", err)
+	}
+	if _, ok := raw["args"]; raw != nil && !ok {
+		return fmt.Errorf("field args in Call: required")
+	}
+	if _, ok := raw["func"]; raw != nil && !ok {
+		return fmt.Errorf("field func in Call: required")
+	}
+	if _, ok := raw["hintId"]; raw != nil && !ok {
+		return fmt.Errorf("field hintId in Call: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in Call: required")
+	}
+	for fieldName, fieldValue := range raw {
+		if !strings.EqualFold(fieldName, "kind") {
+			continue
+		}
+		if key, ok := uniqueItemKey_Ident(fieldValue); !ok || key != "\"call\"" {
+			return fmt.Errorf("field %s: must be equal to %s", "kind", "\"call\"")
+		}
+	}
+	type Plain Call
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Call: %w", err)
+	}
+	*j = Call(plain)
 	return nil
 }
 
@@ -254,7 +332,7 @@ func (j *Checkpoint) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Checkpoint
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		var retry Plain
 		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Checkpoint); err != nil {
 			return fmt.Errorf("unmarshal Checkpoint: %w", err)
@@ -273,6 +351,8 @@ type ClearCondition struct {
 	ReachGoal *ReachGoal `json:"-" yaml:"-"`
 
 	VisitCheckpoints *VisitCheckpoints `json:"-" yaml:"-"`
+
+	DeliverLuggage *DeliverLuggage `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -285,6 +365,9 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	if j.VisitCheckpoints != nil {
 		set++
 	}
+	if j.DeliverLuggage != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("ClearCondition: exactly one variant must be set, got %d", set)
 	}
@@ -293,6 +376,9 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	}
 	if j.VisitCheckpoints != nil {
 		return json.Marshal(j.VisitCheckpoints)
+	}
+	if j.DeliverLuggage != nil {
+		return json.Marshal(j.DeliverLuggage)
 	}
 	return nil, nil // unreachable
 }
@@ -335,8 +421,87 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("ClearCondition.VisitCheckpoints: %w", err)
 		}
 		j.VisitCheckpoints = &v
+	case "deliver_luggage":
+		var v DeliverLuggage
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("ClearCondition.DeliverLuggage: %w", err)
+		}
+		j.DeliverLuggage = &v
 	default:
 		return fmt.Errorf("ClearCondition: unknown type value %q", disc)
+	}
+	return nil
+}
+
+// 他の型を組み合わせて構成する picolang の複合型
+type CompoundType struct {
+	Stack *StackType `json:"-" yaml:"-"`
+
+	Option *OptionType `json:"-" yaml:"-"`
+}
+
+// MarshalJSON implements json.Marshaler. Exactly one variant
+// pointer must be non-nil; otherwise marshaling errors.
+func (j CompoundType) MarshalJSON() ([]byte, error) {
+	set := 0
+	if j.Stack != nil {
+		set++
+	}
+	if j.Option != nil {
+		set++
+	}
+	if set != 1 {
+		return nil, fmt.Errorf("CompoundType: exactly one variant must be set, got %d", set)
+	}
+	if j.Stack != nil {
+		return json.Marshal(j.Stack)
+	}
+	if j.Option != nil {
+		return json.Marshal(j.Option)
+	}
+	return nil, nil // unreachable
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It peeks the
+// discriminator property "kind" and dispatches the decode into the
+// matching variant.
+func (j *CompoundType) UnmarshalJSON(value []byte) error {
+	// Reset to zero value so reusing the same holder across multiple
+	// Unmarshal calls doesn't leave a previous winner set alongside the
+	// new one (which would violate the one-variant-set invariant and
+	// break the corresponding MarshalJSON).
+	*j = CompoundType{}
+	var peek struct {
+		Discriminator json.RawMessage `json:"kind"`
+	}
+	if err := json.Unmarshal(value, &peek); err != nil {
+		return fmt.Errorf("unmarshal CompoundType: %w", err)
+	}
+	if len(peek.Discriminator) == 0 {
+		return fmt.Errorf("CompoundType: missing discriminator field kind")
+	}
+	if string(peek.Discriminator) == "null" {
+		return fmt.Errorf("CompoundType: kind discriminator must be a string, got null")
+	}
+	var disc string
+	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
+		return fmt.Errorf("CompoundType: kind discriminator must be a string: %w", err)
+	}
+	switch disc {
+	case "stack":
+		var v StackType
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("CompoundType.Stack: %w", err)
+		}
+		j.Stack = &v
+	case "option":
+		var v OptionType
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("CompoundType.Option: %w", err)
+		}
+		j.Option = &v
+	default:
+		return fmt.Errorf("CompoundType: unknown kind value %q", disc)
 	}
 	return nil
 }
@@ -374,7 +539,7 @@ func (j *Continue) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Continue
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Continue: %w", err)
 	}
 	*j = Continue(plain)
@@ -432,10 +597,52 @@ func (j *Declaration) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Declaration
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Declaration: %w", err)
 	}
 	*j = Declaration(plain)
+	return nil
+}
+
+// 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要
+type DeliverLuggage struct {
+	// 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける
+	RequiredCount int `json:"requiredCount"`
+
+	// 荷物の配達を求めるクリア条件の種別
+	Type string `json:"type"`
+}
+
+const DeliverLuggageType = "deliver_luggage"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DeliverLuggage) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw DeliverLuggage: %w", err)
+	}
+	if _, ok := raw["requiredCount"]; raw != nil && !ok {
+		return fmt.Errorf("field requiredCount in DeliverLuggage: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in DeliverLuggage: required")
+	}
+	type Plain DeliverLuggage
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		var retry Plain
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_DeliverLuggage); err != nil {
+			return fmt.Errorf("unmarshal DeliverLuggage: %w", err)
+		}
+		plain = retry
+	}
+	if 1 > plain.RequiredCount {
+		return fmt.Errorf("field %s: must be >= %v", "requiredCount", 1)
+	}
+	if plain.Type != "deliver_luggage" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "deliver_luggage")
+	}
+	*j = DeliverLuggage(plain)
 	return nil
 }
 
@@ -533,7 +740,7 @@ func (j *DistanceTargetLiteral) UnmarshalJSON(value []byte) error {
 	}
 	type Plain DistanceTargetLiteral
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal DistanceTargetLiteral: %w", err)
 	}
 	*j = DistanceTargetLiteral(plain)
@@ -591,7 +798,7 @@ type FieldDefinition struct {
 	// フィールドを識別するための空でない文字列
 	Id string `json:"id"`
 
-	// フィールド上に配置するゴール、チェックポイント、荷物の一覧
+	// フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧
 	Objects []FieldObject `json:"objects"`
 
 	// ロボットの初期位置と初期方向
@@ -627,7 +834,7 @@ func (j *FieldDefinitionRobot) UnmarshalJSON(value []byte) error {
 	}
 	type Plain FieldDefinitionRobot
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal FieldDefinitionRobot: %w", err)
 	}
 	*j = FieldDefinitionRobot(plain)
@@ -678,7 +885,7 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	}
 	type Plain FieldDefinition
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		var retry Plain
 		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_FieldDefinition); err != nil {
 			return fmt.Errorf("unmarshal FieldDefinition: %w", err)
@@ -709,13 +916,15 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// フィールドに配置するゴール、チェックポイント、荷物のいずれか
+// フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか
 type FieldObject struct {
 	Goal *Goal `json:"-" yaml:"-"`
 
 	Checkpoint *Checkpoint `json:"-" yaml:"-"`
 
 	Luggage *Luggage `json:"-" yaml:"-"`
+
+	Territory *Territory `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -731,6 +940,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	if j.Luggage != nil {
 		set++
 	}
+	if j.Territory != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("FieldObject: exactly one variant must be set, got %d", set)
 	}
@@ -742,6 +954,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	}
 	if j.Luggage != nil {
 		return json.Marshal(j.Luggage)
+	}
+	if j.Territory != nil {
+		return json.Marshal(j.Territory)
 	}
 	return nil, nil // unreachable
 }
@@ -790,6 +1005,12 @@ func (j *FieldObject) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("FieldObject.Luggage: %w", err)
 		}
 		j.Luggage = &v
+	case "territory":
+		var v Territory
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("FieldObject.Territory: %w", err)
+		}
+		j.Territory = &v
 	default:
 		return fmt.Errorf("FieldObject: unknown type value %q", disc)
 	}
@@ -854,7 +1075,7 @@ func (j *For) UnmarshalJSON(value []byte) error {
 	}
 	type Plain For
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal For: %w", err)
 	}
 	*j = For(plain)
@@ -886,7 +1107,7 @@ func (j *Goal) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Goal
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Goal: %w", err)
 	}
 	if plain.Type != "goal" {
@@ -903,7 +1124,7 @@ type HintId string
 func (j *HintId) UnmarshalJSON(value []byte) error {
 	type Plain HintId
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal HintId: %w", err)
 	}
 	if matched, _ := regexp.MatchString(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`, string(plain)); !matched {
@@ -958,7 +1179,7 @@ func (j *Ident) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Ident
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Ident: %w", err)
 	}
 	*j = Ident(plain)
@@ -1013,7 +1234,7 @@ func (j *If) UnmarshalJSON(value []byte) error {
 	}
 	type Plain If
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal If: %w", err)
 	}
 	*j = If(plain)
@@ -1074,7 +1295,7 @@ func (j *IntegerLiteral) UnmarshalJSON(value []byte) error {
 	}
 	type Plain IntegerLiteral
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		var retry Plain
 		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_IntegerLiteral); err != nil {
 			return fmt.Errorf("unmarshal IntegerLiteral: %w", err)
@@ -1231,7 +1452,7 @@ func (j *Luggage) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Luggage
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Luggage: %w", err)
 	}
 	if utf8.RuneCountInString(string(plain.Id)) < 1 {
@@ -1251,13 +1472,82 @@ type Name string
 func (j *Name) UnmarshalJSON(value []byte) error {
 	type Plain Name
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Name: %w", err)
 	}
 	if utf8.RuneCountInString(string(plain)) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "Name", 1)
 	}
 	*j = Name(plain)
+	return nil
+}
+
+// 型Tの値を持つsome、または値を持たないnoneを表す型
+type OptionType struct {
+	// someが持つ値の型。基本型と複合型のどちらも指定できる
+	ElementType Type `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const OptionTypeKind = "option"
+
+type OptionType_1 struct {
+	// ElementType corresponds to the JSON schema field "elementType".
+	ElementType PicolangV0SignatureType `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const OptionType_1Kind = "option"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionType_1) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw OptionType_1: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in OptionType_1: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in OptionType_1: required")
+	}
+	type Plain OptionType_1
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal OptionType_1: %w", err)
+	}
+	if plain.Kind != "option" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "option")
+	}
+	*j = OptionType_1(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionType) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw OptionType: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in OptionType: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in OptionType: required")
+	}
+	type Plain OptionType
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal OptionType: %w", err)
+	}
+	if plain.Kind != "option" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "option")
+	}
+	*j = OptionType(plain)
 	return nil
 }
 
@@ -1306,7 +1596,7 @@ func (j *Param) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Param
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Param: %w", err)
 	}
 	*j = Param(plain)
@@ -1376,7 +1666,7 @@ func (j *PicolangFunctionDefinition) UnmarshalJSON(value []byte) error {
 	}
 	type Plain PicolangFunctionDefinition
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal PicolangFunctionDefinition: %w", err)
 	}
 	*j = PicolangFunctionDefinition(plain)
@@ -1448,29 +1738,20 @@ func (j *PicolangV0BuiltinSignature) UnmarshalJSON(value []byte) error {
 	}
 	type Plain PicolangV0BuiltinSignature
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal PicolangV0BuiltinSignature: %w", err)
 	}
 	*j = PicolangV0BuiltinSignature(plain)
 	return nil
 }
 
-// picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
-type PicolangV0Header []struct {
-	// プログラムの call.func に指定する組み込み関数名
-	Name Name `json:"name"`
-
-	// Signature corresponds to the JSON schema field "signature".
-	Signature PicolangV0BuiltinSignature `json:"signature"`
-
-	// UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する
-	Tags []string `json:"tags"`
-}
+// 関数名をキー、シグネチャを値とする picolang v0 の組み込み関数定義
+type PicolangV0Header map[string]PicolangV0BuiltinSignature
 
 // 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
 type PicolangV0Program map[string]PicolangFunctionDefinition
 
-// シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
+// シグネチャ内の型。既存の基本型、再帰的な stack と option、または型パラメータの参照
 type PicolangV0SignatureType interface{}
 
 // フィールド上のマスの座標
@@ -1496,7 +1777,7 @@ func (j *Position) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Position
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		var retry Plain
 		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Position); err != nil {
 			return fmt.Errorf("unmarshal Position: %w", err)
@@ -1608,7 +1889,7 @@ func (j *ReachGoal) UnmarshalJSON(value []byte) error {
 	}
 	type Plain ReachGoal
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal ReachGoal: %w", err)
 	}
 	if plain.Type != "reach_goal" {
@@ -1657,7 +1938,7 @@ func (j *Return) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Return
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Return: %w", err)
 	}
 	*j = Return(plain)
@@ -1748,7 +2029,7 @@ func (j *RotationLiteral) UnmarshalJSON(value []byte) error {
 	}
 	type Plain RotationLiteral
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal RotationLiteral: %w", err)
 	}
 	*j = RotationLiteral(plain)
@@ -1790,7 +2071,7 @@ func (j *StackType_1) UnmarshalJSON(value []byte) error {
 	}
 	type Plain StackType_1
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal StackType_1: %w", err)
 	}
 	if plain.Kind != "stack" {
@@ -1814,7 +2095,7 @@ func (j *StackType) UnmarshalJSON(value []byte) error {
 	}
 	type Plain StackType
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal StackType: %w", err)
 	}
 	if plain.Kind != "stack" {
@@ -1859,7 +2140,7 @@ func (j *StageDefinition) UnmarshalJSON(value []byte) error {
 	}
 	type Plain StageDefinition
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal StageDefinition: %w", err)
 	}
 	if plain.Variants != nil && len(plain.Variants) < 1 {
@@ -1874,6 +2155,17 @@ type Stmt interface{}
 
 // 実行順に並べた文の一覧。空配列は文がないことを表す
 type Stmts []Stmt
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Stmts) UnmarshalJSON(value []byte) error {
+	type Plain Stmts
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Stmts: %w", err)
+	}
+	*j = Stmts(plain)
+	return nil
+}
 
 type Terrain string
 
@@ -1904,6 +2196,41 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_Terrain, v)
 	}
 	*j = Terrain(v)
+	return nil
+}
+
+// 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+type Territory struct {
+	// 陣地を配置するマスの座標
+	Position Position `json:"position"`
+
+	// オブジェクトが陣地であることを示す種別
+	Type string `json:"type"`
+}
+
+const TerritoryType = "territory"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Territory) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Territory: %w", err)
+	}
+	if _, ok := raw["position"]; raw != nil && !ok {
+		return fmt.Errorf("field position in Territory: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in Territory: required")
+	}
+	type Plain Territory
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Territory: %w", err)
+	}
+	if plain.Type != "territory" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "territory")
+	}
+	*j = Territory(plain)
 	return nil
 }
 
@@ -1954,7 +2281,7 @@ func (j *TutorialDetail) UnmarshalJSON(value []byte) error {
 	}
 	type Plain TutorialDetail
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal TutorialDetail: %w", err)
 	}
 	*j = TutorialDetail(plain)
@@ -1988,7 +2315,7 @@ func (j *TypeParameter) UnmarshalJSON(value []byte) error {
 	}
 	type Plain TypeParameter
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal TypeParameter: %w", err)
 	}
 	if plain.Kind != "type_parameter" {
@@ -2052,7 +2379,7 @@ func (j *UnitLiteral) UnmarshalJSON(value []byte) error {
 	}
 	type Plain UnitLiteral
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal UnitLiteral: %w", err)
 	}
 	if plain.Value != nil {
@@ -2106,7 +2433,7 @@ func (j *Version0PicolangV0) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Version0PicolangV0
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Version0PicolangV0: %w", err)
 	}
 	*j = Version0PicolangV0(plain)
@@ -2126,7 +2453,7 @@ func (j *Version0Picolang) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Version0Picolang
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal Version0Picolang: %w", err)
 	}
 	*j = Version0Picolang(plain)
@@ -2147,7 +2474,7 @@ func (j *Version0) UnmarshalJSON(value []byte) error {
 	}
 	type Plain Version0
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		var retry Plain
 		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_Version0); err != nil {
 			return fmt.Errorf("unmarshal Version0: %w", err)
@@ -2180,7 +2507,7 @@ func (j *VisitCheckpoints) UnmarshalJSON(value []byte) error {
 	}
 	type Plain VisitCheckpoints
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal VisitCheckpoints: %w", err)
 	}
 	if plain.Type != "visit_checkpoints" {
@@ -2235,7 +2562,7 @@ func (j *While) UnmarshalJSON(value []byte) error {
 	}
 	type Plain While
 	var plain Plain
-	if err := json.Unmarshal(value, &plain); err != nil {
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
 		return fmt.Errorf("unmarshal While: %w", err)
 	}
 	*j = While(plain)
@@ -2244,6 +2571,10 @@ func (j *While) UnmarshalJSON(value []byte) error {
 
 var integerPaths_Checkpoint = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"order": {kind: "int"},
+}}
+
+var integerPaths_DeliverLuggage = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
+	"requiredCount": {kind: "int"},
 }}
 
 var integerPaths_FieldDefinition = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
@@ -2396,7 +2727,9 @@ func unmarshalIntegral_IntegerLiteral(data []byte, v interface{}, err error, p *
 		return err
 	}
 	written = append(written, data[copied:]...)
-	return json.Unmarshal(written, v)
+	dec = json.NewDecoder(bytes.NewReader(written))
+	dec.UseNumber()
+	return dec.Decode(v)
 }
 
 // unmarshalIntegral_IntegerLiteral_fits reports whether the Go integer type kind
@@ -2497,4 +2830,17 @@ func (p *unmarshalIntegral_IntegerLiteral_path) at(key string, fold bool) *unmar
 		}
 	}
 	return f
+}
+
+// unmarshalNumbers_HintId decodes data into v as json.Unmarshal does, but with the
+// numbers of interface{} values as json.Number, which keeps them exact. Every
+// decoder in this file calls it; it is named after the first, so that no other
+// file of the package declares it.
+func unmarshalNumbers_HintId(data []byte, v interface{}) error {
+	if !json.Valid(data) {
+		return json.Unmarshal(data, v)
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	return dec.Decode(v)
 }

@@ -8,11 +8,71 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BattleProgram struct {
+	GoogleSubject string
+	ProgramID     string
+	RobotIndex    int16
+}
+
 type GenerationUsage struct {
 	ID            int64
 	GoogleSubject string
 	Tokens        int32
 	ReservedAt    pgtype.Timestamptz
+}
+
+type LoginAttempt struct {
+	ID           string
+	State        string
+	Nonce        string
+	CodeVerifier string
+	ExpiresAt    pgtype.Timestamptz
+}
+
+type Match struct {
+	ID                    pgtype.UUID
+	RunID                 pgtype.UUID
+	OpponentGoogleSubject string
+	OpponentName          string
+	Outcome               string
+	OpponentRating        pgtype.Int4
+	RatingBefore          pgtype.Int4
+	RatingAfter           pgtype.Int4
+}
+
+type Program struct {
+	ID            string
+	GoogleSubject string
+	Name          string
+	Source        []byte
+	Revision      int32
+	IsBattle      bool
+	TutorialID    pgtype.Text
+}
+
+type ProgramRevision struct {
+	ProgramID string
+	Revision  int32
+	Name      string
+	Source    []byte
+}
+
+type Run struct {
+	ID              pgtype.UUID
+	GoogleSubject   string
+	TutorialID      pgtype.Text
+	FieldID         string
+	ProgramID       pgtype.Text
+	ProgramRevision pgtype.Int4
+	Result          []byte
+}
+
+type RunProgram struct {
+	RunID      pgtype.UUID
+	Side       int16
+	RobotIndex int16
+	ProgramID  string
+	Revision   int32
 }
 
 type Session struct {
@@ -24,4 +84,5 @@ type Session struct {
 type User struct {
 	GoogleSubject string
 	Name          pgtype.Text
+	Rating        int32
 }

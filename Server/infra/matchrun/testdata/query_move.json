@@ -1,0 +1,84 @@
+{
+  "picolangVersion": 0,
+  "picolang": {
+    "v0": {
+      "program": {
+        "main": {
+          "kind": "function",
+          "hintId": "00000000-0000-4000-8000-000000000001",
+          "params": [],
+          "returnType": "unit",
+          "body": {
+            "kind": "block",
+            "hintId": "00000000-0000-4000-8000-000000000002",
+            "stmts": [
+              {
+                "kind": "while",
+                "hintId": "00000000-0000-4000-8000-000000000003",
+                "condition": {
+                  "kind": "literal",
+                  "hintId": "00000000-0000-4000-8000-000000000004",
+                  "type": "bool",
+                  "value": true
+                },
+                "body": {
+                  "kind": "block",
+                  "hintId": "00000000-0000-4000-8000-000000000005",
+                  "stmts": [
+                    {
+                      "kind": "call",
+                      "hintId": "00000000-0000-4000-8000-000000000006",
+                      "func": "search_now",
+                      "args": []
+                    },
+                    {
+                      "kind": "call",
+                      "hintId": "00000000-0000-4000-8000-000000000007",
+                      "func": "search_front",
+                      "args": []
+                    },
+                    {
+                      "kind": "call",
+                      "hintId": "00000000-0000-4000-8000-000000000008",
+                      "func": "distance",
+                      "args": [
+                        {
+                          "kind": "literal",
+                          "hintId": "00000000-0000-4000-8000-000000000009",
+                          "type": "distance_target",
+                          "value": "sea"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "call",
+                      "hintId": "00000000-0000-4000-8000-00000000000a",
+                      "func": "drill_durability",
+                      "args": []
+                    },
+                    {
+                      "kind": "call",
+                      "hintId": "00000000-0000-4000-8000-00000000000b",
+                      "func": "forward",
+                      "args": []
+                    }
+                  ]
+                }
+              },
+              {
+                "kind": "return",
+                "hintId": "00000000-0000-4000-8000-00000000000c",
+                "value": {
+                  "kind": "literal",
+                  "hintId": "00000000-0000-4000-8000-00000000000d",
+                  "type": "unit",
+                  "value": null
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

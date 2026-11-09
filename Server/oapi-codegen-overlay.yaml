@@ -3,26 +3,24 @@ info:
   title: Use generated JSON Schema models
   version: 1.0.0
 actions:
-  # oapi-codegen cannot resolve the history schema's $defs. Reuse the recorded events.
-  - target: $.components.schemas.MatchResult.properties.history
+  # Reuse the Go models generated directly from the history JSON Schemas.
+  - target: $.components.schemas.GameHistory
     remove: true
-  - target: $.components.schemas.MatchResult.properties
+  - target: $.components.schemas
     update:
-      history:
+      GameHistory:
         type: array
         items:
           type: object
-        x-go-type: "[]gameevent.GameEvent"
+        x-go-type: history.GameHistory
         x-go-type-import:
-          name: gameevent
-          path: github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event
+          name: history
+          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history
   - target: $.components.schemas.Field
     remove: true
   - target: $.components.schemas.Stage
     remove: true
   - target: $.components.schemas.PicolangProgram
-    remove: true
-  - target: $.components.schemas.PicolangV0Header
     remove: true
   - target: $.components.schemas.TutorialDetail
     remove: true
@@ -43,12 +41,6 @@ actions:
       PicolangProgram:
         type: object
         x-go-type: schema.PicolangProgram
-        x-go-type-import:
-          name: schema
-          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
-      PicolangV0Header:
-        type: object
-        x-go-type: schema.PicolangV0Header
         x-go-type-import:
           name: schema
           path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
