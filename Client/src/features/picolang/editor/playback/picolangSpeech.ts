@@ -1,7 +1,7 @@
-import type { PicoTerrain, PicoValue } from '../picolang/language/picolang.ts'
-import { formatPicoValue } from '../picolang/language/formatPicoValue.ts'
+import type { PicoTerrain, PicoValue } from '../../language/picolang.ts'
+import { formatPicoValue } from '../../language/formatPicoValue.ts'
 
-export interface TutorialSpeech {
+export interface PicolangSpeech {
   id: number
   items: string[]
   terrain?: PicoTerrain
@@ -12,7 +12,7 @@ function isTerrain(value: PicoValue): value is PicoTerrain {
   return value !== null && typeof value === 'object' && !Array.isArray(value) && 'type' in value
 }
 
-export function speechForValue(value: PicoValue, id: number): TutorialSpeech {
+export function speechForValue(value: PicoValue, id: number): PicolangSpeech {
   if (isTerrain(value)) {
     const kind = value.type === 'land' ? value.kind?.type : value.type
     const label = {

@@ -12,6 +12,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/hub"
 	boardmsg "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/board"
+	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/recorder"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter"
@@ -39,7 +40,7 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	}
 	bot, err := robot.NewPicolangBot(program.Source, binary.LittleEndian.Uint64(seed[:]), interpreter.Limits{
 		MaxSteps: 10_000, MaxMemoryBytes: 1 << 20, MaxCallDepth: 64,
-	}, false)
+	}, true)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidProgram, err)
 	}
@@ -59,6 +60,14 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
+	}
+	// A goal or turn limit can stop the board while the VM is suspended.
+	// Record its cleanup and final status before serializing the history.
+	if err := bot.Close(); err != nil {
+		return nil, fmt.Errorf("close tutorial VM: %w", err)
+	}
+	for _, event := range bot.Collect() {
+		recording.Events = append(recording.Events, gameevent.RobotEvent{InterpreterID: robotID, Event: event})
 	}
 	outcome, ok := report.Result().(boardmsg.TutorialResult)
 	if !ok {

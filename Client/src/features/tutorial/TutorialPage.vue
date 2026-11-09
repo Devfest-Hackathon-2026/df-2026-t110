@@ -10,11 +10,9 @@ import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
-import type { TutorialSpeech } from './tutorialSpeech.ts'
-import { replayFrames } from '../match/matchReplay.ts'
+import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlayback.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
-import type { AnimationEvent } from '../stage/robotAnimator.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
 import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
 import {
@@ -23,12 +21,7 @@ import {
   startTutorialRun,
   TutorialRunApiError,
 } from './tutorialRunApi.ts'
-import {
-  applyTutorialFrame,
-  selectedTutorialLayout,
-  tutorialActionAnimation,
-  tutorialActionSpeech,
-} from './tutorialReplay.ts'
+import { selectedReplayLayout } from '../picolang/editor/playback/fieldReplay.ts'
 
 const BlocklyEditor = defineAsyncComponent({
   loader: () => import('../picolang/editor/BlocklyEditor.vue'),
@@ -64,14 +57,14 @@ const sceneRef = ref<{
   setCarrying: (value: boolean) => void
 } | null>(null)
 const activeStage = ref<StageLayout | null>(null)
-const animationEvent = ref<AnimationEvent | null>(null)
-const speech = ref<TutorialSpeech | null>(null)
+const playback = usePicolangPlayback()
+const { animationEvent, speech, executionTrace, playbackReady, playbackPaused, nodeInterval, stepPlayback } =
+  playback
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
 const loginRequired = ref(false)
 let runController: AbortController | null = null
 let runGeneration = 0
-let animationId = 0
 const stageRef = ref<HTMLElement | null>(null)
 const workspaceRef = ref<HTMLElement | null>(null)
 const viewRef = ref<HTMLElement | null>(null)
@@ -185,25 +178,13 @@ function stopRun(): void {
   runGeneration++
   runController?.abort()
   runController = null
-  speech.value = null
+  playback.reset()
 }
 
-function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException('実行を中断しました', 'AbortError'))
-      return
-    }
-    const timer = window.setTimeout(() => {
-      signal.removeEventListener('abort', abort)
-      resolve()
-    }, duration)
-    const abort = () => {
-      clearTimeout(timer)
-      reject(new DOMException('実行を中断しました', 'AbortError'))
-    }
-    signal.addEventListener('abort', abort, { once: true })
-  })
+function updateProgram(program: PicoProgram | null): void {
+  if (runState.value === 'running') return
+  if (JSON.stringify(program) !== JSON.stringify(picolangProgram.value)) executionTrace.value = null
+  picolangProgram.value = program
 }
 
 async function runProgram(): Promise<void> {
@@ -235,7 +216,7 @@ async function runProgram(): Promise<void> {
     runMessage.value = 'サーバーでプログラムを実行しています…'
     const { runId, fieldId } = await startTutorialRun(props.tutorialId, programId, signal)
     if (generation !== runGeneration || !field.value) return
-    const selected = selectedTutorialLayout(field.value.layouts, fieldId)
+    const selected = selectedReplayLayout(field.value.layouts, fieldId)
     layoutIndex.value = selected.index
     activeStage.value = selected.stage
     await nextTick()
@@ -254,37 +235,21 @@ async function runProgram(): Promise<void> {
     )
     runMessage.value = '実行結果を受信しています…'
     const result = await receiveTutorialResult(runId, signal)
-    const frames = replayFrames(result.history)
-    if (!frames.length) throw new Error('実行履歴に初期盤面がありません')
-    if (applyTutorialFrame(selected.stage, frames[0])) sceneRef.value?.refreshVisuals()
     runMessage.value = 'ロボットの動きを再生しています…'
-    for (const frame of frames.slice(1)) {
-      if (signal.aborted) return
-      for (const action of frame.actions) {
-        const id = ++animationId
-        const actionSpeech = tutorialActionSpeech(action, id)
-        if (actionSpeech) {
-          speech.value = actionSpeech
-          await waitForAnimation(1000, signal)
-          speech.value = null
-          continue
-        }
-        const animation = tutorialActionAnimation(action, id)
-        if (!animation) continue
-        animationEvent.value = animation
-        await waitForAnimation(
-          animation.type === 'wait' ? Math.max(1, animation.ticks ?? 1) * 1000 + 40 : 1040,
-          signal,
-        )
-      }
-      if (applyTutorialFrame(selected.stage, frame)) sceneRef.value?.refreshVisuals()
-      sceneRef.value?.setCarrying(Boolean(frame.robots[0]?.carryingLuggage))
-    }
+    await playback.play(
+      result,
+      program,
+      {
+        stage: selected.stage,
+        refreshVisuals: () => sceneRef.value?.refreshVisuals(),
+        setCarrying: (value) => sceneRef.value?.setCarrying(value),
+      },
+      signal,
+    )
     if (generation !== runGeneration) return
-    if (result.summary.cleared) {
-      animationEvent.value = { id: ++animationId, type: 'clear' }
-      runMessage.value = '課題をクリアしました！'
-    } else runMessage.value = '実行が終了しました。ゴールへの道を考えてみましょう。'
+    runMessage.value = result.summary.cleared
+      ? '課題をクリアしました！'
+      : '実行が終了しました。ゴールへの道を考えてみましょう。'
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
@@ -418,7 +383,15 @@ onBeforeUnmount(() => {
         <BlocklyEditor
           v-if="loadState === 'ready'"
           :tutorial-id="tutorialId"
-          @update:program="picolangProgram = $event"
+          :execution="executionTrace"
+          :running="runState === 'running'"
+          :playback-ready="playbackReady"
+          :paused="playbackPaused"
+          :node-interval="nodeInterval"
+          @update:program="updateProgram"
+          @pause="playback.togglePause"
+          @step="stepPlayback"
+          @interval="nodeInterval = $event"
         />
         <p v-else-if="loadState === 'loading'" class="tutorial-editor-loading" role="status">
           教材を読み込んでいます…

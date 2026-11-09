@@ -32,6 +32,8 @@ import {
   updatePicoDiagnostics,
 } from './blocklyPico.ts'
 import PicoDiagnostics from './PicoDiagnostics.vue'
+import PicoExecutionTrace from './PicoExecutionTrace.vue'
+import type { PicolangTrace, TraceNode } from '../language/picolangTrace.ts'
 import { inferPicolang, type PicoDiagnostic } from '../language/analyzePicolang.ts'
 import {
   block,
@@ -49,8 +51,20 @@ import {
 import { typeLabel } from './picoGuidance.ts'
 import './blocklyEditor.css'
 
-const props = defineProps<{ tutorialId: string }>()
-const emit = defineEmits<{ 'update:program': [program: PicoProgram | null] }>()
+const props = defineProps<{
+  tutorialId: string
+  execution?: PicolangTrace | null
+  running?: boolean
+  playbackReady?: boolean
+  paused?: boolean
+  nodeInterval?: number
+}>()
+const emit = defineEmits<{
+  'update:program': [program: PicoProgram | null]
+  pause: []
+  step: []
+  interval: [value: number]
+}>()
 const host = ref<HTMLElement | null>(null)
 const program = ref<PicoProgram>(picoDraft(newProgram()))
 const activeName = ref('main')
@@ -159,7 +173,7 @@ function save(): void {
   }
 }
 function readWorkspace(): void {
-  if (!workspace || loading) return
+  if (!workspace || loading || props.running) return
   loading = true
   try {
     refreshVariableBlocks(workspace)
@@ -170,7 +184,7 @@ function readWorkspace(): void {
   }
 }
 function onWorkspaceChange(event: Blockly.Events.Abstract): void {
-  if (loading || event.isUiEvent || scheduled) return
+  if (loading || props.running || event.isUiEvent || scheduled) return
   scheduled = true
   queueMicrotask(() => {
     scheduled = false
@@ -193,10 +207,53 @@ function loadActive(): void {
     )
     Blockly.svgResize(workspace)
     decorateWorkspaceControls()
+    lockWorkspace()
+    highlightExecution()
   } finally {
     loading = false
   }
 }
+function lockWorkspace(): void {
+  if (!workspace) return
+  Blockly.Events.disable()
+  try {
+    workspace.setIsReadOnly(Boolean(props.running))
+    workspace.getToolbox()?.setVisible(!props.running)
+    if (props.running) {
+      Blockly.hideChaff()
+      workspace.getFlyout()?.hide()
+    }
+  } finally {
+    Blockly.Events.enable()
+  }
+}
+function highlightExecution(): void {
+  if (!workspace) return
+  const node = props.execution?.current
+  const target = node?.functionName === activeName.value ? diagnosticBlock(workspace, node.hintId) : null
+  workspace.highlightBlock(target?.id ?? null)
+  if (props.running && target instanceof Blockly.BlockSvg)
+    workspace.scrollBoundsIntoView(target.getBoundingRectangleWithoutChildren())
+}
+function locateExecution(node: TraceNode): void {
+  if (activeName.value !== node.functionName && functions.value[node.functionName])
+    selectFunction(node.functionName)
+  if (!workspace) return
+  const target = diagnosticBlock(workspace, node.hintId)
+  if (target) workspace.centerOnBlock(target.id)
+}
+watch(
+  () => props.running,
+  () => lockWorkspace(),
+)
+watch(
+  () => props.execution,
+  (trace) => {
+    const name = trace?.current?.functionName
+    if (props.running && name && activeName.value !== name && functions.value[name]) selectFunction(name)
+    highlightExecution()
+  },
+)
 function selectFunction(name: string): void {
   readWorkspace()
   activeName.value = name
@@ -232,6 +289,7 @@ function redo(): void {
   if (canRedo.value) restore(historyIndex.value + 1)
 }
 function onKey(event: KeyboardEvent): void {
+  if (props.running) return
   if (!(event.ctrlKey || event.metaKey) || event.altKey) return
   if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]')) return
   if (event.key.toLowerCase() === 'z') {
@@ -421,7 +479,10 @@ onMounted(() => {
   loadActive()
   save()
   observer = new ResizeObserver(() => {
-    if (workspace) Blockly.svgResize(workspace)
+    if (workspace) {
+      Blockly.svgResize(workspace)
+      highlightExecution()
+    }
   })
   observer.observe(host.value)
   document.addEventListener('keydown', onKey)
@@ -447,49 +508,77 @@ onBeforeUnmount(() => {
         >
           {{ name }}
         </button>
-        <button v-if="!showAddFunction" type="button" aria-label="関数を追加" @click="showAddFunction = true">
+        <button
+          v-if="!showAddFunction"
+          type="button"
+          aria-label="関数を追加"
+          :disabled="running"
+          @click="showAddFunction = true"
+        >
           <Icon :icon="plusIcon" />
         </button>
         <form v-else @submit.prevent="addFunction">
-          <input v-model="newName" aria-label="新しい関数名" placeholder="関数名" data-1p-ignore /><button
-            type="submit"
-          >
-            追加
-          </button>
+          <input
+            v-model="newName"
+            :disabled="running"
+            aria-label="新しい関数名"
+            placeholder="関数名"
+            data-1p-ignore
+          /><button type="submit" :disabled="running">追加</button>
         </form>
       </nav>
       <div class="blockly-history">
-        <button type="button" aria-label="元に戻す" :disabled="!canUndo" @click="undo">
+        <button type="button" aria-label="元に戻す" :disabled="running || !canUndo" @click="undo">
           <Icon :icon="undoIcon" />
         </button>
-        <button type="button" aria-label="やり直す" :disabled="!canRedo" @click="redo">
+        <button type="button" aria-label="やり直す" :disabled="running || !canRedo" @click="redo">
           <Icon :icon="redoIcon" />
         </button>
       </div>
     </div>
     <div class="blockly-signature">
       <strong>{{ signature }}</strong>
-      <button v-if="activeName !== 'main'" type="button" @click="removeFunction">
+      <button v-if="activeName !== 'main' && !running" type="button" @click="removeFunction">
         <Icon :icon="trashIcon" />関数を削除
       </button>
     </div>
-    <div v-if="activeName !== 'main'" class="blockly-params">
+    <div v-if="activeName !== 'main' && !running" class="blockly-params">
       <span>受け取る値</span>
       <div v-for="(param, index) in activeFunction.params" :key="param.hintId">
         <input
           :value="param.ident.name"
+          :disabled="running"
           :aria-label="`受け取る値 ${index + 1} の名前`"
           data-1p-ignore
           @change="renameParam(index, ($event.target as HTMLInputElement).value)"
         />
         <span>{{ typeLabel(analysis.signatures[activeName]?.params[index]) }}</span>
-        <button type="button" :aria-label="`受け取る値 ${index + 1} を削除`" @click="removeParam(index)">
+        <button
+          type="button"
+          :disabled="running"
+          :aria-label="`受け取る値 ${index + 1} を削除`"
+          @click="removeParam(index)"
+        >
           <Icon :icon="trashIcon" />
         </button>
       </div>
-      <button type="button" @click="addParam"><Icon :icon="plusIcon" />受け取る値を追加</button>
+      <button type="button" :disabled="running" @click="addParam">
+        <Icon :icon="plusIcon" />受け取る値を追加
+      </button>
     </div>
     <div ref="host" class="blockly-canvas" aria-label="Picolangのブロックエディタ"></div>
+    <PicoExecutionTrace
+      v-if="running || execution"
+      :trace="execution ?? null"
+      :running="Boolean(running)"
+      :ready="Boolean(playbackReady)"
+      :paused="Boolean(paused)"
+      :interval="nodeInterval ?? 300"
+      @pause="emit('pause')"
+      @step="emit('step')"
+      @interval="emit('interval', $event)"
+      @locate="locateExecution"
+    />
     <PicoDiagnostics :diagnostics="diagnostics" @select="selectDiagnostic" />
     <details
       class="blockly-json"
@@ -503,11 +592,12 @@ onBeforeUnmount(() => {
       <textarea
         id="blockly-json-input"
         v-model="jsonInput"
+        :disabled="running"
         placeholder="Picolang v0のJSONを貼り付け"
         data-1p-ignore
       ></textarea>
-      <button type="button" @click="importJson">読み込む</button>
+      <button type="button" :disabled="running" @click="importJson">読み込む</button>
     </details>
-    <p v-if="message" class="blockly-message" role="status">{{ message }}</p>
+    <p v-if="message && !running" class="blockly-message" role="status">{{ message }}</p>
   </div>
 </template>
