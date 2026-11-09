@@ -2,9 +2,6 @@
 import { onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import userRoundIcon from '@iconify-icons/lucide/user-round'
-import bookOpenIcon from '@iconify-icons/lucide/book-open'
-import swordsIcon from '@iconify-icons/lucide/swords'
-import arrowUpRightIcon from '@iconify-icons/lucide/arrow-up-right'
 import logOutIcon from '@iconify-icons/lucide/log-out'
 import { loginUrl, logout, setMyUsername } from './matchApi.ts'
 import { useMatchStore } from './useMatchStore.ts'
@@ -96,22 +93,6 @@ async function signOut(): Promise<void> {
           <button type="button" class="account-logout" :disabled="busy" @click="signOut">
             <Icon :icon="logOutIcon" aria-hidden="true" />ログアウト
           </button>
-        </div>
-      </section>
-
-      <section class="account-next" aria-labelledby="account-next-title">
-        <h2 id="account-next-title">次にできること</h2>
-        <div class="account-destinations">
-          <a href="/tutorials">
-            <Icon :icon="bookOpenIcon" aria-hidden="true" />
-            <span><strong>教材を進める</strong><small>プログラムを組んでロボットを動かす</small></span>
-            <Icon :icon="arrowUpRightIcon" class="account-destination-arrow" aria-hidden="true" />
-          </a>
-          <a href="/rooms">
-            <Icon :icon="swordsIcon" aria-hidden="true" />
-            <span><strong>対戦の準備へ</strong><small>ロボットにプログラムを割り当てる</small></span>
-            <Icon :icon="arrowUpRightIcon" class="account-destination-arrow" aria-hidden="true" />
-          </a>
         </div>
       </section>
     </template>
