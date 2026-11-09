@@ -628,6 +628,13 @@ onBeforeUnmount(() => {
           <button type="button" class="tutorial-reset-button" @click="resetProgram">
             <Icon :icon="rotateCcwIcon" aria-hidden="true" /> リセット
           </button>
+          <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
+        </div>
+        <p v-if="runMessage" class="tutorial-run-feedback" role="status">
+          {{ runMessage }}
+          <a v-if="loginRequired" href="/account">Googleでログイン</a>
+        </p>
+        <div v-if="stage" class="tutorial-stage-toolbar">
           <button
             type="button"
             class="tutorial-fullscreen-button"
@@ -638,13 +645,6 @@ onBeforeUnmount(() => {
           >
             <Icon :icon="stageFullscreen ? minimizeIcon : maximizeIcon" aria-hidden="true" />
           </button>
-          <button type="button" class="tutorial-hide-stage-button" @click="hideStage">ARを隠す</button>
-        </div>
-        <p v-if="runMessage" class="tutorial-run-feedback" role="status">
-          {{ runMessage }}
-          <a v-if="loginRequired" href="/account">Googleでログイン</a>
-        </p>
-        <div v-if="stage" class="tutorial-stage-toolbar">
           <span v-if="field && field.layouts.length > 1"
             >候補 {{ layoutIndex + 1 }} / {{ field.layouts.length }}</span
           >
