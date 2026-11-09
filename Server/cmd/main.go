@@ -38,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fields := usecase.NewFields(textbooks)
-	cfg := router.Config{Tutorials: textbooks}
+	cfg := router.Config{Tutorials: textbooks, Fields: fields}
 	var sessions router.SessionUserLookup
 	googleLogin := googleLoginConfigFromEnv()
 	if err := googleLogin.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
