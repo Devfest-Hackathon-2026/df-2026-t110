@@ -22,8 +22,6 @@ actions:
     remove: true
   - target: $.components.schemas.PicolangProgram
     remove: true
-  - target: $.components.schemas.PicolangV0Header
-    remove: true
   - target: $.components.schemas.TutorialDetail
     remove: true
   - target: $.components.schemas
@@ -43,12 +41,6 @@ actions:
       PicolangProgram:
         type: object
         x-go-type: schema.PicolangProgram
-        x-go-type-import:
-          name: schema
-          path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema
-      PicolangV0Header:
-        type: object
-        x-go-type: schema.PicolangV0Header
         x-go-type-import:
           name: schema
           path: github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/schema

@@ -1,46 +1,26 @@
 $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangV0Header
-description: picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない
+description: 関数名をキー、シグネチャを値とする picolang v0 の組み込み関数定義
 
-type: array
-items:
-  type: object
-  additionalProperties: false
-  required: [name, signature, tags]
-  properties:
-    name:
-      description: プログラムの call.func に指定する組み込み関数名
-      $ref: '../v0/name.yaml'
-    signature:
-      $ref: './signature.schema.yaml'
-    tags:
-      description: UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する
-      type: array
-      minItems: 1
-      uniqueItems: true
-      items:
-        type: string
-        minLength: 1
+type: object
+propertyNames:
+  $ref: '../v0/name.yaml'
+additionalProperties:
+  $ref: './signature.schema.yaml'
 examples:
-  - - name: forward
-      signature:
-        params: []
-        returnType: bool
-      tags: [movement]
-    - name: distance
-      signature:
-        params: [distance_target]
-        returnType: integer
-      tags: [sensing]
-    - name: push_back
-      signature:
-        typeParameters: [T]
-        params:
-          - kind: stack
-            elementType: { kind: type_parameter, name: T }
-          - kind: type_parameter
-            name: T
-        returnType:
-          kind: stack
+  - forward:
+      params: []
+      returnType: bool
+    distance:
+      params: [distance_target]
+      returnType: integer
+    push_back:
+      typeParameters: [T]
+      params:
+        - kind: stack
           elementType: { kind: type_parameter, name: T }
-      tags: [stack]
+        - kind: type_parameter
+          name: T
+      returnType:
+        kind: stack
+        elementType: { kind: type_parameter, name: T }

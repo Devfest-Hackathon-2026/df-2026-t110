@@ -3,94 +3,54 @@
   "$defs": {
     "header_v0/header.schema.yaml": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "description": "picolang v0 の組み込み関数一覧。関数名は一覧内で一意でなければならない",
+      "additionalProperties": {
+        "$ref": "#/$defs/header_v0~1signature.schema.yaml"
+      },
+      "description": "関数名をキー、シグネチャを値とする picolang v0 の組み込み関数定義",
       "examples": [
-        [
-          {
-            "name": "forward",
-            "signature": {
-              "params": [],
-              "returnType": "bool"
-            },
-            "tags": [
-              "movement"
-            ]
+        {
+          "distance": {
+            "params": [
+              "distance_target"
+            ],
+            "returnType": "integer"
           },
-          {
-            "name": "distance",
-            "signature": {
-              "params": [
-                "distance_target"
-              ],
-              "returnType": "integer"
-            },
-            "tags": [
-              "sensing"
-            ]
+          "forward": {
+            "params": [],
+            "returnType": "bool"
           },
-          {
-            "name": "push_back",
-            "signature": {
-              "params": [
-                {
-                  "elementType": {
-                    "kind": "type_parameter",
-                    "name": "T"
-                  },
-                  "kind": "stack"
-                },
-                {
-                  "kind": "type_parameter",
-                  "name": "T"
-                }
-              ],
-              "returnType": {
+          "push_back": {
+            "params": [
+              {
                 "elementType": {
                   "kind": "type_parameter",
                   "name": "T"
                 },
                 "kind": "stack"
               },
-              "typeParameters": [
-                "T"
-              ]
+              {
+                "kind": "type_parameter",
+                "name": "T"
+              }
+            ],
+            "returnType": {
+              "elementType": {
+                "kind": "type_parameter",
+                "name": "T"
+              },
+              "kind": "stack"
             },
-            "tags": [
-              "stack"
+            "typeParameters": [
+              "T"
             ]
           }
-        ]
+        }
       ],
-      "items": {
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "$ref": "#/$defs/v0~1name.yaml",
-            "description": "プログラムの call.func に指定する組み込み関数名"
-          },
-          "signature": {
-            "$ref": "#/$defs/header_v0~1signature.schema.yaml"
-          },
-          "tags": {
-            "description": "UI 上の表示先を識別するタグ。表示文言ではなく識別子を指定し、複数の表示先に属する場合は複数指定する",
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "minItems": 1,
-            "type": "array",
-            "uniqueItems": true
-          }
-        },
-        "required": [
-          "name",
-          "signature",
-          "tags"
-        ],
-        "type": "object"
+      "propertyNames": {
+        "$ref": "#/$defs/v0~1name.yaml"
       },
       "title": "PicolangV0Header",
-      "type": "array"
+      "type": "object"
     },
     "header_v0/signature-type.yaml": {
       "$defs": {
