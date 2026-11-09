@@ -319,44 +319,6 @@
   font-size: var(--type-small);
   white-space: nowrap;
 }
-.tutorial-saved-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 8px var(--space-md);
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-paper);
-  font-size: var(--type-small);
-}
-.tutorial-saved-controls select,
-.tutorial-saved-controls input {
-  flex: 1 1 130px;
-  min-width: 0;
-  min-height: 34px;
-  padding: 4px 8px;
-  border: 1px solid var(--color-rule);
-  background: var(--color-card);
-  color: var(--color-ink);
-  font: inherit;
-}
-.tutorial-saved-controls button {
-  min-height: 34px;
-  padding: 4px 10px;
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent-deep);
-  font: inherit;
-  cursor: pointer;
-}
-.tutorial-saved-controls button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.tutorial-saved-controls span[role='status'] {
-  flex-basis: 100%;
-  color: var(--color-ink-2);
-}
 .tutorial-editor-body {
   flex: 1;
   min-height: 0;

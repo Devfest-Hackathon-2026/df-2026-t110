@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { newProgram } from '../src/features/picolang/language/picolang.ts'
 import {
   getSavedProgram,
-  listTutorialPrograms,
   SavedProgramApiError,
   updateSavedProgram,
 } from '../src/features/picolang/savedProgramApi.ts'
@@ -33,20 +32,8 @@ test('保存済みプログラムを取得・更新するとき所有者のCooki
   }
 })
 
-test('教材の保存済み一覧を受け取り、権限エラーを区別する', async () => {
+test('他人の保存済みプログラムを開けない場合の権限エラーを区別する', async () => {
   const originalFetch = globalThis.fetch
-  const source = newProgram()
-  const saved = { id: 'program-2', name: '教材用', source, isBattle: false, tutorialID: 'first-step' }
-  globalThis.fetch = async (input, init) => {
-    assert.equal(String(input), '/api/tutorial/first-step/program')
-    assert.equal(init?.credentials, 'include')
-    return Response.json([saved])
-  }
-  try {
-    assert.deepEqual(await listTutorialPrograms('first-step'), [saved])
-  } finally {
-    globalThis.fetch = originalFetch
-  }
   globalThis.fetch = async () => new Response(null, { status: 403 })
   try {
     await assert.rejects(

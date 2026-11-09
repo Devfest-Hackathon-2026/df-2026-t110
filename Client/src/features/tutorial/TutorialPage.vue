@@ -9,19 +9,12 @@ import playIcon from '@iconify-icons/lucide/play'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
-import { isPicoProgram, newProgram, type PicoProgram } from '../picolang/language/picolang.ts'
-import {
-  getSavedProgram,
-  listTutorialPrograms,
-  updateSavedProgram,
-  SavedProgramApiError,
-  type SavedProgram,
-} from '../picolang/savedProgramApi.ts'
+import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
 import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlayback.ts'
 import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
-import { getTutorial, getTutorialField } from './tutorialApi.ts'
+import { getTutorial, getTutorialField, initialTutorialProgram } from './tutorialApi.ts'
 import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
 import {
   receiveTutorialResult,
@@ -87,14 +80,7 @@ const compactScreen = ref(false)
 const compactPane = ref<'work' | 'ar'>('work')
 const modeBeforeCompactWork = ref<'preview' | 'camera' | null>(null)
 const picolangProgram = ref<PicoProgram | null>(null)
-const savedPrograms = ref<SavedProgram[]>([])
-const selectedSavedId = ref('')
-const activeSavedId = ref('')
-const savedProgramName = ref('')
-const savedProgramMessage = ref('')
-const savingProgram = ref(false)
 const editorInitialProgram = ref<PicoProgram | null>(null)
-const editorKey = ref(0)
 let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
@@ -178,13 +164,7 @@ async function load(id: string): Promise<void> {
   activeStage.value = null
   animationEvent.value = null
   picolangProgram.value = null
-  savedPrograms.value = []
-  selectedSavedId.value = ''
-  activeSavedId.value = ''
-  savedProgramName.value = ''
-  savedProgramMessage.value = ''
   editorInitialProgram.value = null
-  editorKey.value++
   runState.value = 'idle'
   runMessage.value = ''
   loginRequired.value = false
@@ -208,9 +188,10 @@ async function load(id: string): Promise<void> {
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
       throw new Error('チュートリアルのフィールドが見つかりません')
     const nextField = normalizeField(remoteField as Record<string, unknown>)
+    const initialProgram = initialTutorialProgram(remote)
     tutorial.value = remote
     field.value = nextField
-    savedProgramName.value = `チュートリアル: ${remote.title}`
+    editorInitialProgram.value = initialProgram
     layoutIndex.value = 0
     loadState.value = 'ready'
     document.title = `${remote.title} | PicoBots`
@@ -219,14 +200,6 @@ async function load(id: string): Promise<void> {
         if (!signal.aborted) catalog.value = items
       })
       .catch(() => {})
-    void listTutorialPrograms(id, signal)
-      .then((programs) => {
-        if (!signal.aborted) savedPrograms.value = programs.filter((program) => program.tutorialID === id)
-      })
-      .catch((error: unknown) => {
-        if (!signal.aborted && !(error instanceof SavedProgramApiError && [401, 501].includes(error.status)))
-          savedProgramMessage.value = '保存済みプログラムの一覧を読み込めませんでした。'
-      })
   } catch (error) {
     if (signal.aborted) return
     field.value = null
@@ -260,84 +233,6 @@ function updateProgram(program: PicoProgram | null): void {
   picolangProgram.value = program
 }
 
-async function openSavedProgram(): Promise<void> {
-  if (!selectedSavedId.value || savingProgram.value || runState.value === 'running') return
-  savedProgramMessage.value = ''
-  savingProgram.value = true
-  try {
-    const saved = await getSavedProgram(selectedSavedId.value, controller?.signal)
-    if (saved.isBattle || saved.tutorialID !== props.tutorialId)
-      throw new Error('この教材のプログラムではありません。')
-    resetProgram()
-    picolangProgram.value = null
-    activeSavedId.value = saved.id
-    savedProgramName.value = saved.name
-    editorInitialProgram.value = saved.source
-    editorKey.value++
-    savedProgramMessage.value = `「${saved.name}」を開きました。`
-  } catch (error) {
-    savedProgramMessage.value = error instanceof Error ? error.message : 'プログラムを開けませんでした。'
-  } finally {
-    savingProgram.value = false
-  }
-}
-
-function createNewProgram(): void {
-  if (runState.value === 'running') return
-  resetProgram()
-  picolangProgram.value = null
-  selectedSavedId.value = ''
-  activeSavedId.value = ''
-  savedProgramName.value = `チュートリアル: ${tutorial.value?.title ?? props.tutorialId}`
-  editorInitialProgram.value = newProgram()
-  editorKey.value++
-  savedProgramMessage.value = '新しいプログラムを作成します。'
-}
-
-async function persistProgram(program: PicoProgram, signal: AbortSignal): Promise<string> {
-  const name = savedProgramName.value.trim() || `チュートリアル: ${tutorial.value?.title ?? props.tutorialId}`
-  const id = activeSavedId.value
-  if (id) {
-    const saved = await updateSavedProgram(id, name, program, signal)
-    savedPrograms.value = savedPrograms.value.some((item) => item.id === id)
-      ? savedPrograms.value.map((item) => (item.id === id ? saved : item))
-      : [...savedPrograms.value, saved]
-    savedProgramName.value = saved.name
-    return id
-  }
-  const createdId = await saveTutorialProgram(props.tutorialId, name, program, signal)
-  activeSavedId.value = createdId
-  selectedSavedId.value = createdId
-  savedPrograms.value = [
-    ...savedPrograms.value,
-    {
-      id: createdId,
-      name,
-      source: program,
-      isBattle: false,
-      tutorialID: props.tutorialId,
-    },
-  ]
-  return createdId
-}
-
-async function saveCurrentProgram(): Promise<void> {
-  if (!isPicoProgram(picolangProgram.value) || savingProgram.value || runState.value === 'running') {
-    savedProgramMessage.value = 'エディタのエラーを解消してから保存してください。'
-    return
-  }
-  savingProgram.value = true
-  savedProgramMessage.value = ''
-  try {
-    await persistProgram(picolangProgram.value, controller?.signal ?? new AbortController().signal)
-    savedProgramMessage.value = 'プログラムを保存しました。'
-  } catch (error) {
-    savedProgramMessage.value = error instanceof Error ? error.message : '保存できませんでした。'
-  } finally {
-    savingProgram.value = false
-  }
-}
-
 async function runProgram(): Promise<void> {
   if (!field.value || !tutorial.value || runState.value === 'running') return
   if (!isPicoProgram(picolangProgram.value)) {
@@ -358,7 +253,12 @@ async function runProgram(): Promise<void> {
   runMessage.value = 'プログラムを保存しています…'
   try {
     const signal = controller.signal
-    const programId = await persistProgram(program, signal)
+    const programId = await saveTutorialProgram(
+      props.tutorialId,
+      `チュートリアル: ${tutorial.value.title}`,
+      program,
+      signal,
+    )
     runMessage.value = 'サーバーでプログラムを実行しています…'
     const { runId, fieldId } = await startTutorialRun(props.tutorialId, programId, signal)
     if (generation !== runGeneration || !field.value) return
@@ -556,41 +456,9 @@ onBeforeUnmount(() => {
         <h2 id="tutorial-editor-title">コード</h2>
         <span>Picolang v0</span>
       </div>
-      <div v-if="loadState === 'ready'" class="tutorial-saved-controls">
-        <label for="tutorial-saved-program">保存済み</label>
-        <select
-          id="tutorial-saved-program"
-          v-model="selectedSavedId"
-          :disabled="runState === 'running' || savingProgram"
-        >
-          <option value="">プログラムを選択</option>
-          <option v-for="program in savedPrograms" :key="program.id" :value="program.id">
-            {{ program.name }}
-          </option>
-        </select>
-        <button
-          type="button"
-          :disabled="!selectedSavedId || savingProgram || runState === 'running'"
-          @click="openSavedProgram"
-        >
-          開く
-        </button>
-        <button type="button" :disabled="runState === 'running'" @click="createNewProgram">新規</button>
-        <label for="tutorial-program-name">名前</label>
-        <input id="tutorial-program-name" v-model="savedProgramName" type="text" maxlength="80" />
-        <button
-          type="button"
-          :disabled="savingProgram || runState === 'running' || !picolangProgram"
-          @click="saveCurrentProgram"
-        >
-          {{ savingProgram ? '保存中…' : '保存' }}
-        </button>
-        <span v-if="savedProgramMessage" role="status">{{ savedProgramMessage }}</span>
-      </div>
       <div class="tutorial-editor-body">
         <BlocklyEditor
           v-if="loadState === 'ready'"
-          :key="editorKey"
           :tutorial-id="tutorialId"
           :initial-program="editorInitialProgram"
           :execution="executionTrace"
@@ -754,7 +622,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="tutorial-run-button"
-            :disabled="runState === 'running' || savingProgram"
+            :disabled="runState === 'running'"
             @click="runProgram"
           >
             <Icon :icon="playIcon" aria-hidden="true" /> {{ runState === 'running' ? '実行中' : '実行' }}

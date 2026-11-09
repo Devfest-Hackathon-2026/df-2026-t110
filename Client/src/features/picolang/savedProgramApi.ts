@@ -77,17 +77,3 @@ export async function updateSavedProgram(
   })
   return savedProgram(await readJson(response))
 }
-
-export async function listTutorialPrograms(
-  tutorialId: string,
-  signal?: AbortSignal,
-): Promise<SavedProgram[]> {
-  const response = await fetch(`${base}/tutorial/${encodeURIComponent(tutorialId)}/program`, {
-    credentials: 'include',
-    cache: 'no-store',
-    signal,
-  })
-  const value = await readJson(response)
-  if (!Array.isArray(value)) throw new Error('保存済みプログラム一覧の形式が不正です。')
-  return value.map(savedProgram)
-}
