@@ -7,6 +7,7 @@ export interface StageCell {
   y: number
   symbol: string
   terrain: 'land' | 'rock' | 'sea'
+  territoryOwner?: number
   objects: StageObject[]
   start: boolean
 }
