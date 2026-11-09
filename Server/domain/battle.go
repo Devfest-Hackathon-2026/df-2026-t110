@@ -48,6 +48,7 @@ type MatchResult struct {
 // the challenger's rating current at saving time, so concurrent matches of one
 // challenger never lose an update.
 type MatchRecord struct {
+	ID               string
 	GoogleSubject    string
 	OpponentSubject  string
 	OpponentName     string
@@ -57,6 +58,28 @@ type MatchRecord struct {
 	ChallengerRating int
 	OpponentRating   int
 	RatingDelta      int
+}
+
+// MatchEntry is what matching fixes before the engine runs, including the ID
+// the match is saved under.
+type MatchEntry struct {
+	ID               string
+	GoogleSubject    string
+	OpponentSubject  string
+	OpponentName     string
+	ChallengerRating int
+	OpponentRating   int
+}
+
+// Record rates the completed match from the ratings read at matching time.
+func (e MatchEntry) Record(result MatchResult) MatchRecord {
+	outcome := OutcomeFromScores(result.ChallengerScore, result.OpponentScore)
+	return MatchRecord{
+		ID: e.ID, GoogleSubject: e.GoogleSubject, OpponentSubject: e.OpponentSubject, OpponentName: e.OpponentName,
+		Result: result.Replay, Outcome: outcome,
+		ChallengerRating: e.ChallengerRating, OpponentRating: e.OpponentRating,
+		RatingDelta: RatingDelta(e.ChallengerRating, e.OpponentRating, outcome),
+	}
 }
 
 // RankingEntry is a challenger's standing. Users sharing a rating share a rank.
