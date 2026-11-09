@@ -21,7 +21,7 @@ func TestProgramRevisions(t *testing.T) {
 	}
 	got, err := programs.Get(t.Context(), "p")
 	if err != nil {
-		t.Fatal(err)
+		t.Errorf("error: %v", err)
 	}
 	if got.Revision != 3 || got.Name != "second" {
 		t.Errorf("latest = %+v", got)
