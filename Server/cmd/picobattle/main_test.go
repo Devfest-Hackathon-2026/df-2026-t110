@@ -179,8 +179,8 @@ func TestRunExplicitTeamsAndCustomLayout(t *testing.T) {
 	if err := json.Unmarshal(readTestFile(t, filepath.Join(out, "result.json")), &r); err != nil {
 		t.Fatal(err)
 	}
-	if r.Ticks != 12 || r.Layout.ID != layouts[1].ID {
-		t.Errorf("ticks=%d layout=%s", r.Ticks, r.Layout.ID)
+	if r.Ticks != 12 || r.Layout.FieldID != layouts[1].FieldID {
+		t.Errorf("ticks=%d layout=%s", r.Ticks, r.Layout.FieldID)
 	}
 	for i, robot := range r.Robots {
 		if filepath.Base(robot.Source) != files[i] {

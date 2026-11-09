@@ -211,8 +211,8 @@ func chooseLayout(ctx context.Context, id, file string) (domain.BattleLayout, er
 		if err := json.Unmarshal(data, &layout, json.RejectUnknownMembers(true)); err != nil {
 			return layout, err
 		}
-		if id != "" && layout.ID != id {
-			return layout, fmt.Errorf("layout file ID %q does not match --layout %q", layout.ID, id)
+		if id != "" && layout.FieldID != id {
+			return layout, fmt.Errorf("layout file ID %q does not match --layout %q", layout.FieldID, id)
 		}
 		return layout, nil
 	}
@@ -221,7 +221,7 @@ func chooseLayout(ctx context.Context, id, file string) (domain.BattleLayout, er
 		return domain.BattleLayout{}, err
 	}
 	for _, layout := range layouts {
-		if id == "" || layout.ID == id {
+		if id == "" || layout.FieldID == id {
 			return layout, nil
 		}
 	}

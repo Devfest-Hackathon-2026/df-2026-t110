@@ -52,17 +52,17 @@ func TestGeneratedProgramsRunProductionBattles(t *testing.T) {
 					}
 					report, err := simulate(t.Context(), team(program.Source), team(sentry.Source), layout, opts)
 					if err != nil {
-						t.Errorf("%s seed %d: %v", layout.ID, seed, err)
+						t.Errorf("%s seed %d: %v", layout.FieldID, seed, err)
 						continue
 					}
 					for _, id := range []protocol.RobotID{"team-1-robot-1", "team-1-robot-2", "team-1-robot-3", "team-2-robot-1", "team-2-robot-2", "team-2-robot-3"} {
 						if failed, ok := report.Outcome(id).(hub.FailedOutcome); ok {
-							t.Errorf("%s seed %d %s failed: %v", layout.ID, seed, id, failed.Err)
+							t.Errorf("%s seed %d %s failed: %v", layout.FieldID, seed, id, failed.Err)
 						}
 					}
 					outcome := report.Result().(boardmsg.BattleResult)
 					if profile == "courier" && outcome.Team1().Score() != 3 {
-						t.Errorf("courier %s seed %d score=%d, want 3", layout.ID, seed, outcome.Team1().Score())
+						t.Errorf("courier %s seed %d score=%d, want 3", layout.FieldID, seed, outcome.Team1().Score())
 					}
 				}
 			}

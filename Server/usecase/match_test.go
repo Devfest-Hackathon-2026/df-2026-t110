@@ -262,7 +262,7 @@ func TestCreateMatchChoosesOpponentByRating(t *testing.T) {
 				Users:     matchUserStub{&name},
 				Programs:  matchProgramsStub{map[string]domain.Program{"a": {ID: "a", GoogleSubject: "owner", IsBattle: true}}},
 				Opponents: opponent,
-				Layouts:   matchLayoutsStub{[]domain.BattleLayout{{ID: "layout", FieldID: "field"}}},
+				Layouts:   matchLayoutsStub{[]domain.BattleLayout{{FieldID: "field"}}},
 				Executor:  &matchExecutorStub{}, Matches: store,
 			})
 			service.draw = func() float64 { return tt.draw }
