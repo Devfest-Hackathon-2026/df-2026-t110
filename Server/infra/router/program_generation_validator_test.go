@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"os"
 	"testing"
@@ -16,10 +17,10 @@ func TestGeneratedProgramValidatorChecksSemantics(t *testing.T) {
 		t.Fatal(err)
 	}
 	validator := GeneratedProgramValidator{}
-	if err := validator.ValidateGeneratedProgram(context.Background(), valid); err != nil {
+	if err := validator.ValidateGeneratedProgram(context.Background(), jsontext.Value(valid)); err != nil {
 		t.Errorf("valid program: %v", err)
 	}
-	if err := validator.ValidateGeneratedProgram(context.Background(), []byte(programSource)); !errors.Is(err, usecase.ErrInvalidGeneratedProgram) {
+	if err := validator.ValidateGeneratedProgram(context.Background(), jsontext.Value(programSource)); !errors.Is(err, usecase.ErrInvalidGeneratedProgram) {
 		t.Errorf("invalid main signature: %v", err)
 	}
 }

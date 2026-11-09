@@ -4,7 +4,8 @@ package gemini
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -35,7 +36,7 @@ func NewGenerator(client *http.Client, project, location, model string) (*Genera
 	return &Generator{client: client, endpoint: fmt.Sprintf("https://%s/v1/projects/%s/locations/%s/publishers/google/models/%s", host, url.PathEscape(project), url.PathEscape(location), url.PathEscape(model))}, nil
 }
 
-func (g *Generator) GenerateProgram(ctx context.Context, input usecase.ProgramGenerationInput) (json.RawMessage, error) {
+func (g *Generator) GenerateProgram(ctx context.Context, input usecase.ProgramGenerationInput) (jsontext.Value, error) {
 	contents := []content{{Role: "user", Parts: []part{{Text: generationPrompt(input)}}}}
 	var count struct {
 		TotalTokens int `json:"totalTokens"`
@@ -84,7 +85,7 @@ func (g *Generator) GenerateProgram(ctx context.Context, input usecase.ProgramGe
 	if result.Len() == 0 {
 		return nil, errors.New("gemini returned an empty program")
 	}
-	return json.RawMessage(result.String()), nil
+	return jsontext.Value(result.String()), nil
 }
 
 type part struct {
@@ -115,7 +116,14 @@ func (g *Generator) post(ctx context.Context, method string, payload, output any
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("vertex AI %s returned HTTP %d", method, response.StatusCode)
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(output); err != nil {
+	body, err := io.ReadAll(io.LimitReader(response.Body, (2<<20)+1))
+	if err != nil {
+		return fmt.Errorf("read vertex AI response: %w", err)
+	}
+	if len(body) > 2<<20 {
+		return errors.New("vertex AI response exceeds 2 MiB")
+	}
+	if err := json.Unmarshal(body, output); err != nil {
 		return fmt.Errorf("decode Vertex AI response: %w", err)
 	}
 	return nil

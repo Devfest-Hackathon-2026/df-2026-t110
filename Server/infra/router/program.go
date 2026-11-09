@@ -91,15 +91,11 @@ func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
 	}
-	var request struct {
-		Prompt   *string `json:"prompt"`
-		FieldID  *string `json:"fieldId"`
-		IsBattle *bool   `json:"isBattle"`
-	}
+	var request api.CreateProgramWithVibeJSONBody
 	if err := json.Unmarshal(body, &request, json.RejectUnknownMembers(true)); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
 	}
-	if request.Prompt == nil {
+	if request.Prompt == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 	}
 	var members map[string]jsontext.Value
@@ -111,9 +107,9 @@ func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
 			return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 	}
-	options := usecase.ProgramGenerationRequest{Prompt: *request.Prompt}
-	if request.FieldID != nil {
-		options.FieldID = *request.FieldID
+	options := usecase.ProgramGenerationRequest{Prompt: request.Prompt}
+	if request.FieldId != nil {
+		options.FieldID = *request.FieldId
 	}
 	if request.IsBattle != nil {
 		options.IsBattle = *request.IsBattle

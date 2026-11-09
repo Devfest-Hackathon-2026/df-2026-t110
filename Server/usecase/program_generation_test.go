@@ -2,7 +2,7 @@ package usecase_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"testing"
@@ -21,7 +21,7 @@ const (
 // rejects badDraft with ErrInvalidGeneratedProgram and accepts everything else.
 type generationFixture struct {
 	// outputs are returned by successive GenerateProgram calls.
-	outputs []json.RawMessage
+	outputs []jsontext.Value
 
 	quotaErr, generatorErr, validatorErr, fieldErr error
 
@@ -35,16 +35,16 @@ type generationFixture struct {
 	deadlines []time.Time
 }
 
-func draftOutputs(drafts ...string) []json.RawMessage {
-	outputs := make([]json.RawMessage, len(drafts))
+func draftOutputs(drafts ...string) []jsontext.Value {
+	outputs := make([]jsontext.Value, len(drafts))
 	for i, d := range drafts {
-		outputs[i] = json.RawMessage(d)
+		outputs[i] = jsontext.Value(d)
 	}
 	return outputs
 }
 
-func (f *generationFixture) GetGenerationField(_ context.Context, _, _ string) (json.RawMessage, error) {
-	return json.RawMessage(`{"stage":1}`), f.fieldErr
+func (f *generationFixture) GetGenerationField(_ context.Context, _, _ string) (jsontext.Value, error) {
+	return jsontext.Value(`{"stage":1}`), f.fieldErr
 }
 
 func (f *generationFixture) Reserve(_ context.Context, subject string, _ int) error {
@@ -52,7 +52,7 @@ func (f *generationFixture) Reserve(_ context.Context, subject string, _ int) er
 	return f.quotaErr
 }
 
-func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.ProgramGenerationInput) (json.RawMessage, error) {
+func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.ProgramGenerationInput) (jsontext.Value, error) {
 	f.inputs = append(f.inputs, in)
 	if deadline, ok := ctx.Deadline(); ok {
 		f.deadlines = append(f.deadlines, deadline)
@@ -69,7 +69,7 @@ func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.Prog
 	return f.outputs[len(f.inputs)-1], nil
 }
 
-func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p json.RawMessage) error {
+func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p jsontext.Value) error {
 	if f.onValidate != nil {
 		f.onValidate(ctx)
 	}

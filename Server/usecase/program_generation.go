@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,20 +21,20 @@ const (
 
 // GenerationFields retrieves the field definition visible to the authenticated user.
 type GenerationFields interface {
-	GetGenerationField(ctx context.Context, subject, fieldID string) (json.RawMessage, error)
+	GetGenerationField(ctx context.Context, subject, fieldID string) (jsontext.Value, error)
 }
 
 // ProgramGenerator must request structured JSON output from its provider and enforce
 // MaxTokens as an upper bound on the tokens charged for the call.
 type ProgramGenerator interface {
-	GenerateProgram(ctx context.Context, request ProgramGenerationInput) (json.RawMessage, error)
+	GenerateProgram(ctx context.Context, request ProgramGenerationInput) (jsontext.Value, error)
 }
 
 type ProgramGenerationInput struct {
 	Prompt          string
-	Field           json.RawMessage
+	Field           jsontext.Value
 	IsBattle        bool
-	PreviousOutput  json.RawMessage
+	PreviousOutput  jsontext.Value
 	ValidationError string
 	MaxTokens       int
 }
@@ -47,7 +47,7 @@ type ProgramGenerationInput struct {
 // Until it is available, an implementation that only checks that the program is
 // grammatically valid is sufficient.
 type GeneratedProgramValidator interface {
-	ValidateGeneratedProgram(ctx context.Context, program json.RawMessage) error
+	ValidateGeneratedProgram(ctx context.Context, program jsontext.Value) error
 }
 
 type ProgramGenerationDeps struct {
@@ -80,7 +80,7 @@ func NewProgramGeneration(deps ProgramGenerationDeps) *ProgramGeneration {
 
 // Generate returns a validated draft without saving it. subject must come from a
 // verified Google identity, never directly from an untrusted request.
-func (g *ProgramGeneration) Generate(ctx context.Context, subject, fieldID, prompt string) (json.RawMessage, error) {
+func (g *ProgramGeneration) Generate(ctx context.Context, subject, fieldID, prompt string) (jsontext.Value, error) {
 	if strings.TrimSpace(fieldID) == "" {
 		return nil, ErrInvalidGenerationRequest
 	}
@@ -89,7 +89,7 @@ func (g *ProgramGeneration) Generate(ctx context.Context, subject, fieldID, prom
 
 // GenerateWithOptions also supports requests without a field. Such requests
 // receive no stage context, but still receive the selected tutorial/battle rules.
-func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject string, request ProgramGenerationRequest) (json.RawMessage, error) {
+func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject string, request ProgramGenerationRequest) (jsontext.Value, error) {
 	if strings.TrimSpace(subject) == "" {
 		return nil, ErrUnauthenticated
 	}
@@ -101,7 +101,7 @@ func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject str
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.deps.Timeout)
 	defer cancel()
-	field := json.RawMessage(`{}`)
+	field := jsontext.Value(`{}`)
 	if strings.TrimSpace(request.FieldID) != "" {
 		var err error
 		field, err = g.deps.Fields.GetGenerationField(ctx, subject, request.FieldID)
@@ -109,7 +109,7 @@ func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject str
 			return nil, fmt.Errorf("get generation field: %w", err)
 		}
 	}
-	if !json.Valid(field) {
+	if !field.IsValid() {
 		return nil, errors.New("invalid field data")
 	}
 	input := ProgramGenerationInput{Prompt: request.Prompt, Field: field, IsBattle: request.IsBattle, MaxTokens: g.deps.MaxTokens}
@@ -129,7 +129,7 @@ func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject str
 		}
 		// Structured output constrains the provider's response, but this output
 		// is still untrusted input; it is checked before it reaches the validator.
-		if !json.Valid(output) {
+		if !output.IsValid() {
 			err = fmt.Errorf("%w: output is not valid JSON", ErrInvalidGeneratedProgram)
 		} else {
 			err = g.deps.Validator.ValidateGeneratedProgram(ctx, output)

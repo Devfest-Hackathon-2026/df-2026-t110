@@ -2,7 +2,7 @@ package router
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,10 +22,10 @@ type generationServiceStub struct {
 	calls   int
 }
 
-func (s *generationServiceStub) GenerateWithOptions(_ context.Context, subject string, request usecase.ProgramGenerationRequest) (json.RawMessage, error) {
+func (s *generationServiceStub) GenerateWithOptions(_ context.Context, subject string, request usecase.ProgramGenerationRequest) (jsontext.Value, error) {
 	s.calls++
 	s.subject, s.request = subject, request
-	return json.RawMessage(`{"picolangVersion":0}`), s.err
+	return jsontext.Value(`{"picolangVersion":0}`), s.err
 }
 
 func TestCreateProgramWithVibe(t *testing.T) {

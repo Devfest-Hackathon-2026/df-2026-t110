@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	stdjson "encoding/json"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
@@ -89,7 +88,7 @@ func (r *Textbooks) Get(ctx context.Context, id string) (domain.Tutorial, error)
 
 // GetGenerationField exposes only the stage of a published textbook. Battle
 // fields are not available until the field repository is implemented.
-func (r *Textbooks) GetGenerationField(ctx context.Context, _ string, fieldID string) (stdjson.RawMessage, error) {
+func (r *Textbooks) GetGenerationField(ctx context.Context, _ string, fieldID string) (jsontext.Value, error) {
 	tutorial, err := r.Get(ctx, fieldID)
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func (r *Textbooks) GetGenerationField(ctx context.Context, _ string, fieldID st
 	if err != nil {
 		return nil, fmt.Errorf("encode generation field %q: %w", fieldID, err)
 	}
-	return stage, nil
+	return jsontext.Value(stage), nil
 }
 
 func parseTextbook(path string, raw []byte) (domain.Tutorial, error) {

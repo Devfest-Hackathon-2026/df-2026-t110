@@ -2,7 +2,7 @@ package router
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/index"
@@ -16,7 +16,7 @@ type GeneratedProgramValidator struct{}
 
 var _ usecase.GeneratedProgramValidator = GeneratedProgramValidator{}
 
-func (GeneratedProgramValidator) ValidateGeneratedProgram(ctx context.Context, source json.RawMessage) error {
+func (GeneratedProgramValidator) ValidateGeneratedProgram(ctx context.Context, source jsontext.Value) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

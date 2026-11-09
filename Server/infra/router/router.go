@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
 	"net/http"
 
@@ -55,7 +54,7 @@ type ProgramCreator interface {
 }
 
 type ProgramGenerationService interface {
-	GenerateWithOptions(ctx context.Context, subject string, request usecase.ProgramGenerationRequest) (json.RawMessage, error)
+	GenerateWithOptions(ctx context.Context, subject string, request usecase.ProgramGenerationRequest) (jsontext.Value, error)
 }
 
 type UsernameSetter interface {

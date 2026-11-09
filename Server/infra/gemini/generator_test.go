@@ -2,7 +2,8 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -29,7 +30,11 @@ func TestGeneratorCountsTokensAndRequestsJSON(t *testing.T) {
 			t.Errorf("unexpected request: %s %s", request.Method, request.URL)
 		}
 		var payload map[string]any
-		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Errorf("read request: %v", err)
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
 			t.Errorf("request JSON: %v", err)
 		}
 		contents, _ := payload["contents"].([]any)
@@ -63,7 +68,7 @@ func TestGeneratorCountsTokensAndRequestsJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := g.GenerateProgram(context.Background(), usecase.ProgramGenerationInput{
-		Prompt: "collect", Field: json.RawMessage(`{"terrain":[]}`), IsBattle: true, MaxTokens: 1000,
+		Prompt: "collect", Field: jsontext.Value(`{"terrain":[]}`), IsBattle: true, MaxTokens: 1000,
 	})
 	if err != nil || string(got) != `{"picolangVersion":0}` || calls != 2 {
 		t.Errorf("GenerateProgram = %s, %v; calls = %d", got, err, calls)
