@@ -33,7 +33,12 @@ export interface paths {
         };
         /** プログラムを取得 */
         get: operations["getProgram"];
-        /** プログラムを更新 */
+        /**
+         * プログラムを更新
+         * @description 所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
+         *     成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
+         *     ソースは文法を検証するが、編集中の型エラーは保存できる。
+         */
         put: operations["updateProgram"];
         post?: never;
         delete?: never;
@@ -474,6 +479,11 @@ export interface components {
             /** @description チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。 */
             tutorialID?: string;
         };
+        UpdateProgramRequest: {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description 保存済みのプログラム */
         SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
@@ -513,7 +523,8 @@ export interface components {
         };
         TutorialDetail: components["schemas"]["tutorial-detail.schema"];
         ApiError: {
-            code: string;
+            /** @description 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。 */
+            code?: string;
             message: string;
         };
         /** @description フィールド上のマスの座標 */
@@ -880,6 +891,11 @@ export interface components {
          * @description 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
          */
         "toplevel.schema": {} & components["schemas"]["Version0"];
+        "schemas-UpdateProgramRequest": {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description ロボットがゴールに到達するとクリアする条件 */
         ReachGoal: {
             /**
@@ -1461,7 +1477,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Program"];
+                "application/json": components["schemas"]["schemas-UpdateProgramRequest"];
             };
         };
         responses: {
@@ -1474,7 +1490,46 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: components["responses"]["BadRequest"];
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     createProgramWithVibe: {

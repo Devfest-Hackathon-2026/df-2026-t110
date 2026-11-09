@@ -116,6 +116,7 @@ func main() {
 			"getMe":                 {authenticate},
 			"logout":                {authenticate},
 			"createProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
+			"updateProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
 			"createProgramWithVibe": {authenticate, middleware.BodyLimit(16 << 10)},
 			"runTutorial":           {authenticate, middleware.BodyLimit(1 << 20)},
 			"listTutorialPrograms":  {authenticate},

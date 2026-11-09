@@ -59,8 +59,9 @@ func (e TutorialResultSummaryReason) Valid() bool {
 
 // ApiError defines model for ApiError.
 type ApiError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	// Code 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。
+	Code    *string `json:"code,omitempty"`
+	Message string  `json:"message"`
 }
 
 // Field defines model for Field.
@@ -201,6 +202,13 @@ type TutorialRunCreated struct {
 	RunId openapi_types.UUID `json:"runId"`
 }
 
+// UpdateProgramRequest defines model for UpdateProgramRequest.
+type UpdateProgramRequest struct {
+	// Name 空白のみ不可
+	Name   string          `json:"name"`
+	Source PicolangProgram `json:"source"`
+}
+
 // User defines model for User.
 type User struct {
 	Id                   *string                `json:"id,omitempty"`
@@ -289,7 +297,7 @@ type CreateProgramJSONRequestBody = Program
 type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
-type UpdateProgramJSONRequestBody = Program
+type UpdateProgramJSONRequestBody = UpdateProgramRequest
 
 // RunTutorialJSONRequestBody defines body for RunTutorial for application/json ContentType.
 type RunTutorialJSONRequestBody RunTutorialJSONBody

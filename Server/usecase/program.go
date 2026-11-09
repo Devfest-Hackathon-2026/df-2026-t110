@@ -9,7 +9,10 @@ import (
 )
 
 type ProgramRepository interface {
+	RunProgramRepository
 	Create(ctx context.Context, program domain.Program) error
+	// Update changes only name and source and archives a new revision atomically.
+	Update(ctx context.Context, program domain.Program) (domain.Program, error)
 	GetByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }
 
@@ -49,6 +52,34 @@ func (p *Programs) Create(ctx context.Context, subject string, draft domain.Prog
 		return domain.Program{}, fmt.Errorf("create program: %w", err)
 	}
 	return draft, nil
+}
+
+// Update uses the path ID and authenticated owner, ignoring the draft's identity.
+// Like Create, it validates syntax but permits type errors in an editable draft.
+func (p *Programs) Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error) {
+	if strings.TrimSpace(subject) == "" {
+		return domain.Program{}, ErrUnauthenticated
+	}
+	program, err := p.repo.Get(ctx, id)
+	if err != nil {
+		return domain.Program{}, fmt.Errorf("get program to update: %w", err)
+	}
+	if program.GoogleSubject != subject {
+		return domain.Program{}, ErrForbidden
+	}
+	draft.IsBattle, draft.TutorialID = program.IsBattle, program.TutorialID
+	if err := draft.Validate(); err != nil {
+		return domain.Program{}, fmt.Errorf("validate program: %w", err)
+	}
+	if err := p.validator.ValidateSource(ctx, draft.Source); err != nil {
+		return domain.Program{}, fmt.Errorf("validate program source: %w", err)
+	}
+	draft.ID, draft.GoogleSubject = id, subject
+	updated, err := p.repo.Update(ctx, draft)
+	if err != nil {
+		return domain.Program{}, fmt.Errorf("update program: %w", err)
+	}
+	return updated, nil
 }
 
 func (p *Programs) ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error) {

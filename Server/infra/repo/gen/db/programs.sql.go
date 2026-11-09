@@ -94,3 +94,36 @@ func (q *Queries) GetProgram(ctx context.Context, id string) (Program, error) {
 	)
 	return i, err
 }
+
+const updateProgram = `-- name: UpdateProgram :one
+UPDATE programs SET name=$1, source=$2
+WHERE id=$3 AND google_subject=$4
+RETURNING id, google_subject, name, source, revision, is_battle, tutorial_id
+`
+
+type UpdateProgramParams struct {
+	Name          string
+	Source        []byte
+	ID            string
+	GoogleSubject string
+}
+
+func (q *Queries) UpdateProgram(ctx context.Context, arg UpdateProgramParams) (Program, error) {
+	row := q.db.QueryRow(ctx, updateProgram,
+		arg.Name,
+		arg.Source,
+		arg.ID,
+		arg.GoogleSubject,
+	)
+	var i Program
+	err := row.Scan(
+		&i.ID,
+		&i.GoogleSubject,
+		&i.Name,
+		&i.Source,
+		&i.Revision,
+		&i.IsBattle,
+		&i.TutorialID,
+	)
+	return i, err
+}

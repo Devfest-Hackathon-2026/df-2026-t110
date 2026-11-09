@@ -12,10 +12,24 @@ import (
 
 type programRepositoryStub struct {
 	saved      []domain.Program
+	updated    []domain.Program
+	program    domain.Program
+	getID      string
+	getErr     error
 	listed     []domain.Program
 	tutorialID string
 	subject    string
 	err        error
+}
+
+func (s *programRepositoryStub) Get(_ context.Context, id string) (domain.Program, error) {
+	s.getID = id
+	return s.program, s.getErr
+}
+
+func (s *programRepositoryStub) Update(_ context.Context, p domain.Program) (domain.Program, error) {
+	s.updated = append(s.updated, p)
+	return p, s.err
 }
 
 func (s *programRepositoryStub) Create(_ context.Context, p domain.Program) error {
@@ -100,5 +114,18 @@ func TestProgramsListByTutorialID(t *testing.T) {
 				t.Errorf("programs = %+v, want %+v", got, tc.programs)
 			}
 		})
+	}
+}
+
+func TestProgramsUpdate(t *testing.T) {
+	t.Parallel()
+	store := &programRepositoryStub{program: domain.Program{ID: "p", GoogleSubject: "owner", IsBattle: true}}
+	service := NewPrograms(store, sourceValidatorStub{})
+	got, err := service.Update(t.Context(), "owner", "p", domain.Program{Name: "edited", Source: jsontext.Value(`{}`)})
+	if err != nil {
+		t.Errorf("update: %v", err)
+	}
+	if !got.IsBattle || got.ID != "p" || got.GoogleSubject != "owner" {
+		t.Errorf("changed identity: %+v", got)
 	}
 }
