@@ -63,7 +63,8 @@ func (r *TutorialRuns) Run(ctx context.Context, subject, tutorialID, programID s
 	}
 	variant := r.pick(len(tutorial.Stage.Variants))
 	fieldID := tutorial.Stage.Variants[variant].Id
-	id, err := r.runs.Create(ctx, domain.Run{GoogleSubject: subject, TutorialID: tutorialID, FieldID: fieldID, ProgramID: programID, ProgramRevision: program.Revision})
+	ref := program.Ref()
+	id, err := r.runs.Create(ctx, domain.Run{GoogleSubject: subject, TutorialID: tutorialID, FieldID: fieldID, Program: &ref})
 	if err != nil {
 		return domain.TutorialRun{}, fmt.Errorf("create tutorial run: %w", err)
 	}

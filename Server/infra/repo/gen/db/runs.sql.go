@@ -13,7 +13,7 @@ import (
 
 const createRun = `-- name: CreateRun :exec
 INSERT INTO runs (id, google_subject, tutorial_id, field_id, program_id, program_revision)
-VALUES ($1, $2, $3, $4, $5, NULLIF($6::integer, 0))
+VALUES ($1, $2, $3, $4, $5, $6::integer)
 `
 
 type CreateRunParams struct {
@@ -22,7 +22,7 @@ type CreateRunParams struct {
 	TutorialID      pgtype.Text
 	FieldID         string
 	ProgramID       pgtype.Text
-	ProgramRevision int32
+	ProgramRevision pgtype.Int4
 }
 
 func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) error {

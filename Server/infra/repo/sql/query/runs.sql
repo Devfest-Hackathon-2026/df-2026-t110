@@ -1,6 +1,6 @@
 -- name: CreateRun :exec
 INSERT INTO runs (id, google_subject, tutorial_id, field_id, program_id, program_revision)
-VALUES ($1, $2, $3, $4, $5, NULLIF(sqlc.arg(program_revision)::integer, 0));
+VALUES ($1, $2, $3, $4, $5, sqlc.narg(program_revision)::integer);
 
 -- name: SaveRunResult :execrows
 UPDATE runs SET result = $2 WHERE id = $1;

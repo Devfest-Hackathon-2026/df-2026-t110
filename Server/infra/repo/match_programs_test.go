@@ -22,13 +22,13 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 	if _, err := pool.Exec(t.Context(), `UPDATE programs SET name='edited' WHERE id='p1'`); err != nil {
 		t.Fatal(err)
 	}
-	teams := [2][]domain.Program{
+	teams := [2][]domain.ProgramRef{
 		{{ID: "p1", Revision: 2}, {ID: "p0", Revision: 1}, {ID: "p1", Revision: 1}},
 		{{ID: "p0", Revision: 1}, {ID: "p1", Revision: 2}, {ID: "p0", Revision: 1}},
 	}
-	record := domain.MatchRecord{GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: "Opponent", FieldID: "field", SelectedLayoutID: "layout", Outcome: domain.MatchOutcome("win"), Result: jsontext.Value(`{}`), Programs: teams, RatingDelta: 10}
+	record := domain.MatchRecord{GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: "Opponent", FieldID: "field", Outcome: domain.MatchOutcome("win"), Result: jsontext.Value(`{}`), ChallengerPrograms: teams[0], OpponentPrograms: teams[1], RatingDelta: 10}
 	// A failure in the last row must roll back the entire match, including the run.
-	record.Programs[1][2].Revision = 99
+	record.OpponentPrograms[2].Revision = 99
 	if _, err := NewMatches(pool).Create(t.Context(), record); err == nil {
 		t.Error("accepted nonexistent final revision")
 	}
@@ -42,7 +42,7 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 	if got := getRating(t, pool, "owner"); got != domain.InitialRating {
 		t.Errorf("failed match changed rating: %d", got)
 	}
-	record.Programs[1][2].Revision = 1
+	record.OpponentPrograms[2].Revision = 1
 	match, err := NewMatches(pool).Create(t.Context(), record)
 	if err != nil {
 		t.Fatal(err)
@@ -56,7 +56,7 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 	for rows.Next() {
 		var side, index int
 		var id string
-		var revision int32
+		var revision int
 		if err := rows.Scan(&side, &index, &id, &revision); err != nil {
 			t.Fatal(err)
 		}
@@ -65,7 +65,7 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 			t.Error("unexpected additional row")
 			continue
 		}
-		want := record.Programs[expectedSide][expectedIndex]
+		want := teams[expectedSide][expectedIndex]
 		if side != expectedSide || index != expectedIndex || id != want.ID || revision != want.Revision {
 			t.Errorf("slot %d: (%d,%d,%s,%d), want (%d,%d,%s,%d)", count, side, index, id, revision, expectedSide, expectedIndex, want.ID, want.Revision)
 		}

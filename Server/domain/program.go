@@ -11,7 +11,7 @@ var ErrInvalidProgram = errors.New("invalid program")
 // Program is a saved draft owned by a verified user. Source retains exact JSON
 // numbers, including integers that cannot be represented as float64.
 type Program struct {
-	Revision      int32
+	Revision      int
 	ID            string
 	GoogleSubject string
 	Name          string
@@ -33,3 +33,12 @@ func (p Program) Validate() error {
 	}
 	return nil
 }
+
+// ProgramRef identifies one immutable saved version of a logical program.
+type ProgramRef struct {
+	ID       string
+	Revision int
+}
+
+// Ref returns the identity of the exact version loaded for execution.
+func (p Program) Ref() ProgramRef { return ProgramRef{ID: p.ID, Revision: p.Revision} }

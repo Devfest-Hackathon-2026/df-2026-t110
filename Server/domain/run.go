@@ -10,12 +10,11 @@ type TutorialRun struct {
 
 // Run stores the selected field and the completed result. A nil result is pending.
 type Run struct {
-	ProgramRevision int32
+	Program         *ProgramRef // nil for match runs
 	ID              string
 	GoogleSubject   string
 	OpponentSubject string
 	TutorialID      string
 	FieldID         string
-	ProgramID       string
 	Result          jsontext.Value
 }

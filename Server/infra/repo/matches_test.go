@@ -202,7 +202,7 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 		t.Errorf("get persisted run: %v", err)
 		return
 	}
-	if run.GoogleSubject != "owner" || run.OpponentSubject != "opponent" || run.FieldID != match.FieldId || run.TutorialID != "" || run.ProgramID != "" || !run.Result.IsValid() {
+	if run.GoogleSubject != "owner" || run.OpponentSubject != "opponent" || run.FieldID != match.FieldId || run.TutorialID != "" || run.Program != nil || !run.Result.IsValid() {
 		t.Errorf("run=%+v", run)
 	}
 	var revisionCount int

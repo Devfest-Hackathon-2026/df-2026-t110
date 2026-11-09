@@ -60,7 +60,7 @@ func (s *runStoreStub) SaveResult(_ context.Context, _ string, result jsontext.V
 func TestTutorialRuns(t *testing.T) {
 	t.Parallel()
 	lessonID, otherLesson := "tutorial-1", "tutorial-2"
-	valid := domain.Program{ID: "program-1", GoogleSubject: "owner", TutorialID: &lessonID}
+	valid := domain.Program{ID: "program-1", Revision: 7, GoogleSubject: "owner", TutorialID: &lessonID}
 	storageErr := errors.New("database unavailable")
 	for _, tt := range []struct {
 		name                             string
@@ -111,7 +111,7 @@ func TestTutorialRuns(t *testing.T) {
 			if got.ID != "run-id" || got.FieldID != "field-b" || executor.calls != 1 || executor.variant != 1 || executor.program.ID != "program-1" {
 				t.Errorf("run = %+v, execution = %+v", got, executor)
 			}
-			if store.run.GoogleSubject != "owner" || store.run.TutorialID != lessonID || store.run.FieldID != got.FieldID || store.run.ProgramID != "program-1" || len(store.run.Result) == 0 {
+			if store.run.GoogleSubject != "owner" || store.run.TutorialID != lessonID || store.run.FieldID != got.FieldID || store.run.Program == nil || store.run.Program.ID != "program-1" || store.run.Program.Revision != 7 || len(store.run.Result) == 0 {
 				t.Errorf("run returned before storing its result: %+v", store.run)
 			}
 
