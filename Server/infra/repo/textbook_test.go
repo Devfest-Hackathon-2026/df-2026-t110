@@ -3,10 +3,13 @@ package repo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
@@ -32,6 +35,44 @@ stage:
   clearCondition:
     type: reach_goal
 `
+
+func TestTextbooksListInFileOrder(t *testing.T) {
+	t.Parallel()
+	// IDs from the 22-page curriculum deliberately differ from filename order.
+	want := []string{
+		"first-step", "turn", "command-order", "break-rock", "choose-rock",
+		"look-ahead", "if-rock", "choose-path", "repeat-count", "repeat-group",
+		"after-repeat", "while-land", "pick-and-place", "deliver-luggage",
+		"remember-number", "replace-number", "call-function", "function-argument",
+		"function-result", "measure-distance", "use-distance", "solve-new-path",
+	}
+	pages := fstest.MapFS{}
+	for i, id := range want {
+		pages[fmt.Sprintf("%02d.yaml", i+1)] = &fstest.MapFile{
+			Data: []byte(strings.ReplaceAll(textbookPage, "first-step", id)),
+		}
+	}
+	textbooks, err := NewTextbooks(context.Background(), pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := textbooks.List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(list))
+	for _, tutorial := range list {
+		got = append(got, tutorial.ID)
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("List() IDs = %v, want file order %v", got, want)
+	}
+	for _, id := range want {
+		if tutorial, err := textbooks.Get(context.Background(), id); err != nil || tutorial.ID != id {
+			t.Errorf("Get(%q) = %+v, %v", id, tutorial, err)
+		}
+	}
+}
 
 func TestTextbooksLoadAndIndex(t *testing.T) {
 	t.Parallel()
