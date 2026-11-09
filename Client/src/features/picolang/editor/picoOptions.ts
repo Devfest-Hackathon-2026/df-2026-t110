@@ -25,12 +25,22 @@ const builtinLabels = {
   search_now: { label: '今いるマスを調べて返す', category: '調べる' },
   is_land: { label: '陸なら「はい」を返す', category: '調べる', blockMessage: '%1 は陸' },
   is_goal: { label: 'ゴールなら「はい」を返す', category: '調べる', blockMessage: '%1 はゴール' },
+  is_own_territory: {
+    label: '自分の領地なら「はい」を返す',
+    category: '調べる',
+    blockMessage: '%1 は自分の領地',
+  },
+  is_enemy_territory: {
+    label: '相手の領地なら「はい」を返す',
+    category: '調べる',
+    blockMessage: '%1 は相手の領地',
+  },
   is_checkpoint: {
     label: 'チェックポイントなら「はい」を返す',
     category: '調べる',
     blockMessage: '%1 はチェックポイント',
   },
-  is_laggage: { label: '荷物なら「はい」を返す', category: '調べる', blockMessage: '%1 は荷物' },
+  is_luggage: { label: '荷物なら「はい」を返す', category: '調べる', blockMessage: '%1 は荷物' },
   is_sea: { label: '海なら「はい」を返す', category: '調べる', blockMessage: '%1 は海' },
   is_rock: { label: '岩なら「はい」を返す', category: '調べる', blockMessage: '%1 は岩' },
   not: { label: '答えを反対にして返す', category: '論理', blockMessage: '%1 ではない' },
@@ -80,7 +90,9 @@ const builtinLabels = {
   print_distance_target: { label: '探索対象を表示', category: '表示', blockMessage: '%1 と言う' },
 } satisfies Record<PicoBuiltinName, { label: string; category: string; blockMessage?: string }>
 
-export const PICO_BUILTIN_OPTIONS: PicoFunctionOption[] = PICO_BUILTINS.map((builtin) => ({
-  ...builtin,
-  ...builtinLabels[builtin.name],
+export const PICO_BUILTIN_OPTIONS: PicoFunctionOption[] = (
+  Object.keys(builtinLabels) as PicoBuiltinName[]
+).map((name) => ({
+  ...PICO_BUILTINS.find((builtin) => builtin.name === name)!,
+  ...builtinLabels[name],
 }))

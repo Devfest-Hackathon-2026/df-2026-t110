@@ -15,10 +15,14 @@ dir = "{{config_root}}/Server"
 run = "go test -count=1 ./..."
 
 [tasks.generate]
-description = "Generate frontend API types, server API models, Echo server and database queries"
+description = "Generate builtin signatures, frontend API types, server API models, Echo server and database queries"
 dir = "{{config_root}}/Server"
 sources = [
   "../Schema/**/*.yaml",
+  "../lang/*.picoheader.json",
+  "../Client/scripts/generate-builtins.mjs",
+  "game/robot/picolang_bot/analysis.go",
+  "game/robot/picolang_bot/internal/genbuiltins/**/*.go",
   "../Client/scripts/generate-api.mjs",
   "../Client/package.json",
   "../package.json",
@@ -32,6 +36,8 @@ sources = [
 ]
 outputs = [
   "../Client/src/api/schema.d.ts",
+  "../Client/src/features/picolang/language/builtins.gen.ts",
+  "game/robot/picolang_bot/builtins.gen.go",
   "infra/router/gen/api/api.gen.go",
   "infra/router/gen/schema/schema.gen.go",
   "infra/router/gen/history/history.gen.go",
@@ -39,6 +45,8 @@ outputs = [
   "game/robot/picolang_bot/parse/schema.gen.json",
 ]
 run = [
+  "go generate ./game/robot/picolang_bot",
+  "corepack pnpm -C ../Client generate:builtins",
   "corepack pnpm -C ../Client generate:api",
   "go-jsonschema --struct-name-from-title --tags json --package schema --output infra/router/gen/schema/schema.gen.go ../Schema/tutorial/tutorial-detail.schema.yaml ../Schema/picolang/toplevel.schema.yaml ../Schema/picolang/header_v0/header.schema.yaml",
   "go-jsonschema --struct-name-from-title --tags json --use-number --package history --output infra/router/gen/history/history.gen.go ../Schema/game_event/history.schema.yaml ../Schema/game_event/field-event.schema.yaml ../Schema/game_event/picolang-event.schema.yaml",

@@ -25,26 +25,28 @@ type Inference struct {
 }
 
 func (inference *Inference) Instantiate(sig Signature, source Source) Signature {
-	var variable *inferenceVariable
+	variables := make(map[string]*inferenceVariable)
 	params := make([]Type, len(sig.Params))
 	for i, param := range sig.Params {
-		params[i] = inference.instantiate(param, source, &variable)
+		params[i] = inference.instantiate(param, source, variables)
 	}
-	return Signature{Params: params, Result: inference.instantiate(sig.Result, source, &variable)}
+	return Signature{Params: params, Result: inference.instantiate(sig.Result, source, variables)}
 }
 
-func (inference *Inference) instantiate(t Type, source Source, variable **inferenceVariable) Type {
+func (inference *Inference) instantiate(t Type, source Source, variables map[string]*inferenceVariable) Type {
 	switch t := t.(type) {
 	case typeParameter:
-		if *variable == nil {
-			*variable = &inferenceVariable{source: source}
-			inference.variables = append(inference.variables, *variable)
+		variable := variables[t.Name]
+		if variable == nil {
+			variable = &inferenceVariable{source: source}
+			variables[t.Name] = variable
+			inference.variables = append(inference.variables, variable)
 		}
-		return *variable
+		return variable
 	case StackType:
-		return StackType{ElementType: inference.instantiate(t.ElementType, source, variable)}
+		return StackType{ElementType: inference.instantiate(t.ElementType, source, variables)}
 	case OptionType:
-		return OptionType{ElementType: inference.instantiate(t.ElementType, source, variable)}
+		return OptionType{ElementType: inference.instantiate(t.ElementType, source, variables)}
 	default:
 		return t
 	}

@@ -1,12 +1,12 @@
+import { compatibleSignatureTypes } from '../language/picoSignatures.ts'
 import type { PicoVariableOption } from './picoOptions.ts'
 import {
   PICO_BUILTINS,
   ident,
   makeCall,
-  samePicoType,
   type PicoExpr,
   type PicoFunction,
-  type PicoType,
+  type PicoSignatureType,
 } from '../language/picolang.ts'
 
 export const PICO_VARIABLE_MIME = 'application/x-picolang-variable'
@@ -28,7 +28,7 @@ export function dragVariable(event: DragEvent, name: string): void {
 
 export function expressionFromDrop(
   transfer: DataTransfer | null,
-  expectedType: PicoType | undefined,
+  expectedType: PicoSignatureType | undefined,
   functions: Record<string, PicoFunction>,
   variables: PicoVariableOption[],
 ): PicoExpr | null {
@@ -36,17 +36,12 @@ export function expressionFromDrop(
   const variableName = transfer.getData(PICO_VARIABLE_MIME)
   if (variableName) {
     const variable = variables.find((item) => item.name === variableName)
-    return variable && samePicoType(expectedType, variable.type) ? ident(variableName) : null
+    return variable && compatibleSignatureTypes(expectedType, variable.type) ? ident(variableName) : null
   }
   const name = transfer.getData('application/x-picolang-choice')
   if (!name) return null
   const builtin = PICO_BUILTINS.find((item) => item.name === name)
   const returnType = builtin?.returns ?? functions[name]?.returnType
   if (!returnType && Object.hasOwn(functions, name)) return makeCall(name, functions)
-  return returnType &&
-    (samePicoType(expectedType, returnType) ||
-      (name === 'new' && typeof expectedType === 'object' && expectedType.kind === 'stack') ||
-      (['some', 'none'].includes(name) && typeof expectedType === 'object' && expectedType.kind === 'option'))
-    ? makeCall(name, functions)
-    : null
+  return returnType && compatibleSignatureTypes(expectedType, returnType) ? makeCall(name, functions) : null
 }

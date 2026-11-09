@@ -1,12 +1,24 @@
-import type { PicoFunction, PicoType } from '../language/picolang.ts'
+import { PICO_BUILTIN_SIGNATURES } from '../language/builtins.gen.ts'
+import type { PicoBuiltinName, PicoFunction, PicoSignatureType } from '../language/picolang.ts'
 
-const builtinArguments: Record<string, string[]> = {
+type BuiltinArgumentLabels = {
+  [
+    Name in PicoBuiltinName as (typeof PICO_BUILTIN_SIGNATURES)[Name]['params']['length'] extends 0
+      ? never
+      : Name
+  ]: readonly string[] & { readonly length: (typeof PICO_BUILTIN_SIGNATURES)[Name]['params']['length'] }
+}
+
+export const builtinArguments: Partial<Record<PicoBuiltinName, readonly string[]>> = {
+  distance: ['探索対象'],
+  is_own_territory: ['調べるマス'],
+  is_enemy_territory: ['調べるマス'],
   rotate: ['回す向き'],
   wait: ['待つ時間'],
   is_land: ['調べるマス'],
   is_goal: ['調べるマス'],
   is_checkpoint: ['調べるマス'],
-  is_laggage: ['調べるマス'],
+  is_luggage: ['調べるマス'],
   is_sea: ['調べるマス'],
   is_rock: ['調べるマス'],
   not: ['反対にする答え'],
@@ -39,14 +51,18 @@ const builtinArguments: Record<string, string[]> = {
   print_terrain: ['表示するマス'],
   print_rotation: ['表示する向き'],
   print_distance_target: ['表示する探索対象'],
-}
+} satisfies BuiltinArgumentLabels
 
 export function argumentLabel(name: string, index: number, functions: Record<string, PicoFunction>): string {
-  return builtinArguments[name]?.[index] ?? functions[name]?.params[index]?.ident.name ?? `引数 ${index + 1}`
+  return (
+    builtinArguments[name as PicoBuiltinName]?.[index] ??
+    functions[name]?.params[index]?.ident.name ??
+    `引数 ${index + 1}`
+  )
 }
 
-export function typeLabel(type: PicoType | undefined): string {
-  if (!type) return '未確定'
+export function typeLabel(type: PicoSignatureType | undefined): string {
+  if (!type || (typeof type !== 'string' && type.kind === 'type_parameter')) return '未確定'
   if (typeof type !== 'string')
     return `${typeLabel(type.elementType)}の${type.kind === 'option' ? 'オプション' : 'スタック'}`
   return {
