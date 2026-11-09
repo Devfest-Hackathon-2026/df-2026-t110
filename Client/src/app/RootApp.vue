@@ -67,14 +67,14 @@ const page = computed(() => {
 })
 
 document.title = tutorialId
-  ? '教材 | Robot Field'
+  ? '教材 | PicoBots'
   : matchId
-    ? '対戦結果 | Robot Field'
+    ? '対戦結果 | PicoBots'
     : path === '/rooms'
-      ? '対戦 | Robot Field'
+      ? '対戦 | PicoBots'
       : rankingRoute
-        ? 'ランキング | Robot Field'
-        : 'Robot Field'
+        ? 'ランキング | PicoBots'
+        : 'PicoBots'
 </script>
 
 <template>

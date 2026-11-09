@@ -185,7 +185,7 @@ async function load(id: string): Promise<void> {
     field.value = nextField
     layoutIndex.value = 0
     loadState.value = 'ready'
-    document.title = `${remote.title} | Robot Field`
+    document.title = `${remote.title} | PicoBots`
     void getTutorials(signal)
       .then((items) => {
         if (!signal.aborted) catalog.value = items

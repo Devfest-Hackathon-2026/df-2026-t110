@@ -27,7 +27,7 @@ const accountLabel = computed(() => {
 
 <template>
   <header class="site-nav container">
-    <a class="site-logo" href="/" aria-label="Robot Field ホーム">Robot <span>Field</span></a>
+    <a class="site-logo" href="/" aria-label="PicoBots ホーム">Pico<span>Bots</span></a>
     <nav aria-label="メインナビゲーション">
       <a href="/" :aria-current="activePage === 'home' ? 'page' : undefined"
         ><Icon :icon="houseIcon" aria-hidden="true" /><span>ホーム</span></a
