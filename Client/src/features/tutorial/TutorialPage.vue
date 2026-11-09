@@ -14,7 +14,7 @@ import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlay
 import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
-import { getTutorial, getTutorialField } from './tutorialApi.ts'
+import { getTutorial, getTutorialField, initialTutorialProgram } from './tutorialApi.ts'
 import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
 import {
   receiveTutorialResult,
@@ -80,6 +80,7 @@ const compactScreen = ref(false)
 const compactPane = ref<'work' | 'ar'>('work')
 const modeBeforeCompactWork = ref<'preview' | 'camera' | null>(null)
 const picolangProgram = ref<PicoProgram | null>(null)
+const editorInitialProgram = ref<PicoProgram | null>(null)
 let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
@@ -163,6 +164,7 @@ async function load(id: string): Promise<void> {
   activeStage.value = null
   animationEvent.value = null
   picolangProgram.value = null
+  editorInitialProgram.value = null
   runState.value = 'idle'
   runMessage.value = ''
   loginRequired.value = false
@@ -186,8 +188,10 @@ async function load(id: string): Promise<void> {
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
       throw new Error('チュートリアルのフィールドが見つかりません')
     const nextField = normalizeField(remoteField as Record<string, unknown>)
+    const initialProgram = initialTutorialProgram(remote)
     tutorial.value = remote
     field.value = nextField
+    editorInitialProgram.value = initialProgram
     layoutIndex.value = 0
     loadState.value = 'ready'
     document.title = `${remote.title} | PicoBots`
@@ -456,6 +460,7 @@ onBeforeUnmount(() => {
         <BlocklyEditor
           v-if="loadState === 'ready'"
           :tutorial-id="tutorialId"
+          :initial-program="editorInitialProgram"
           :execution="executionTrace"
           :running="runState === 'running'"
           :playback-ready="playbackReady"
