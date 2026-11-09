@@ -69,7 +69,33 @@ func (r *Router) GetTutorial(ctx *echo.Context, tutorialID string) error {
 }
 
 func (r *Router) ListTutorialPrograms(ctx *echo.Context, tutorialID api.TutorialId) error {
-	return errNotImplemented()
+	if r.cfg.Programs == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	programs, err := r.cfg.Programs.ListByTutorialID(ctx.Request().Context(), user.GoogleSubject, tutorialID)
+	if errors.Is(err, usecase.ErrUnauthenticated) {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(err)
+	}
+	if err != nil {
+		return fmt.Errorf("list by tutorial id: %w", err)
+	}
+
+	res := make([]api.SavedProgram, 0, len(programs))
+	for _, program := range programs {
+		res = append(res, api.SavedProgram{
+			Id:         program.ID,
+			Name:       program.Name,
+			IsBattle:   program.IsBattle,
+			Source:     program.Source,
+			TutorialID: program.TutorialID,
+		})
+	}
+
+	return ctx.JSON(http.StatusOK, res)
 }
 
 func (r *Router) RunTutorial(ctx *echo.Context, tutorialID api.TutorialId) error {

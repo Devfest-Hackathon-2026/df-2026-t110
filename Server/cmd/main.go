@@ -57,12 +57,13 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
-			"getMe":         {authenticate},
-			"logout":        {authenticate},
-			"createProgram": {authenticate, middleware.BodyLimit(1 << 20)},
-			"runTutorial":   {authenticate, middleware.BodyLimit(1 << 20)},
-			"runEvents":     {authenticate},
-			"setMyUsername": {authenticate},
+			"getMe":                {authenticate},
+			"logout":               {authenticate},
+			"createProgram":        {authenticate, middleware.BodyLimit(1 << 20)},
+			"runTutorial":          {authenticate, middleware.BodyLimit(1 << 20)},
+			"listTutorialPrograms": {authenticate},
+			"runEvents":            {authenticate},
+			"setMyUsername":        {authenticate},
 		},
 	})
 

@@ -19,7 +19,7 @@ type Config struct {
 	Sessions      SessionService
 	SecureCookies bool
 	Users         UsernameSetter
-	Programs      ProgramCreator
+	Programs      ProgramService
 	Tutorials     TutorialService
 	TutorialRuns  TutorialRunner
 	RunResults    RunResultGetter
@@ -48,8 +48,9 @@ type TutorialRunner interface {
 	Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error)
 }
 
-type ProgramCreator interface {
+type ProgramService interface {
 	Create(ctx context.Context, subject string, draft domain.Program) (domain.Program, error)
+	ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }
 
 type UsernameSetter interface {
