@@ -7,7 +7,7 @@ const props = withDefaults(defineProps<{ fieldId?: string; isBattle?: boolean }>
   fieldId: undefined,
   isBattle: false,
 })
-const emit = defineEmits<{ generated: [program: PicoTypedProgram] }>()
+const emit = defineEmits<{ started: []; generated: [program: PicoTypedProgram] }>()
 const prompt = ref('')
 const promptId = useId()
 const pending = ref(false)
@@ -23,6 +23,7 @@ async function submit() {
   pending.value = true
   error.value = ''
   generated.value = ''
+  emit('started')
   try {
     const program = await generateProgram(
       {
