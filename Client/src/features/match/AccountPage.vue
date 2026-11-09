@@ -74,7 +74,7 @@ async function signOut(): Promise<void> {
           </div>
           <div class="account-identity">
             <h2 id="account-profile-title">{{ store.user?.name || '名前を設定してください' }}</h2>
-            <p>教材の実行と対戦に、このアカウントを使用します。</p>
+            <p>チュートリアルの実行と対戦に、このアカウントを使用します。</p>
           </div>
         </div>
 
@@ -110,12 +110,12 @@ async function signOut(): Promise<void> {
         </div>
         <div class="account-identity">
           <h2 id="account-guest-title">ログイン</h2>
-          <p>Googleアカウントでログインすると、教材のプログラム保存・実行と対戦ができます。</p>
+          <p>Googleアカウントでログインすると、チュートリアルのプログラム保存・実行と対戦ができます。</p>
         </div>
       </div>
       <div class="account-guest-actions">
         <a class="action-primary" :href="loginUrl">Googleでログイン</a>
-        <a class="text-link" href="/tutorials">教材を見る</a>
+        <a class="text-link" href="/tutorials">チュートリアルを見る</a>
       </div>
     </section>
   </main>

@@ -32,7 +32,7 @@ async function postJson(path: string, body: unknown, signal: AbortSignal, action
   })
   if (!response.ok) throw new TutorialRunApiError(response.status, action)
   if (!response.headers.get('content-type')?.includes('json'))
-    throw new Error('教材APIからJSONが返されませんでした')
+    throw new Error('チュートリアルAPIからJSONが返されませんでした')
   return response.json()
 }
 
@@ -51,7 +51,7 @@ export function parseTutorialResult(json: string): TutorialResult {
     !Number.isInteger(result.summary.tick) ||
     !['all_stopped', 'turn_limit', 'condition_met'].includes(String(result.summary.reason))
   )
-    throw new Error('教材の実行結果の形式が不正です')
+    throw new Error('チュートリアルの実行結果の形式が不正です')
   return result as unknown as TutorialResult
 }
 
@@ -129,7 +129,9 @@ export function receiveTutorialResult(runId: string, signal: AbortSignal): Promi
     })
     source.onerror = () => {
       cleanup()
-      reject(new Error('教材の実行結果を受信できませんでした。接続とログイン状態を確認してください。'))
+      reject(
+        new Error('チュートリアルの実行結果を受信できませんでした。接続とログイン状態を確認してください。'),
+      )
     }
   })
 }
