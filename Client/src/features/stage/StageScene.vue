@@ -33,6 +33,13 @@ const props = withDefaults(
   { animationEvent: null, speech: null, previewDistance: 4.8 },
 )
 const emit = defineEmits<{ error: [message: string] }>()
+function cameraErrorMessage(error: unknown): string {
+  const name = error instanceof Error ? error.name : ''
+  if (name === 'NotAllowedError') return 'カメラへのアクセスを許可して、もう一度お試しください。'
+  if (name === 'NotFoundError') return 'カメラが見つかりません。接続を確認してください。'
+  return 'カメラを起動できませんでした。接続とブラウザのカメラ設定を確認してください。'
+}
+
 const host = ref<HTMLElement | null>(null)
 let renderer!: THREE.WebGLRenderer
 let scene!: THREE.Scene
@@ -223,18 +230,17 @@ function loadRobot() {
       board.add(robotRig)
       positionRobot(robotCell.value)
       robotAnimator = createRobotAnimator(robotRig, robotModel, pivots)
-      if (!found.every(Boolean)) emit('error', 'GLBの left_arm / right_arm を検出できませんでした')
+      if (!found.every(Boolean)) emit('error', 'ロボットの動きを表示できませんでした。')
       if (pendingEvent) {
         playAnimationEvent(pendingEvent)
         pendingEvent = null
       }
     },
     undefined,
-    (error) =>
-      emit(
-        'error',
-        `ロボットGLBを読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`,
-      ),
+    (error) => {
+      console.error('ロボットモデルの読み込みに失敗しました', error)
+      emit('error', 'ロボットを表示できませんでした。ページを再読み込みしてください。')
+    },
   )
 }
 
@@ -482,7 +488,10 @@ async function startCamera() {
       onCameraReady: () => {
         if (generation === markerGeneration) cameraReady.value = true
       },
-      onCameraError: (error) => emit('error', `マーカー追跡のカメラを開けませんでした: ${String(error)}`),
+      onCameraError: (error) => {
+        console.error('カメラの起動に失敗しました', error)
+        emit('error', cameraErrorMessage(error))
+      },
     })
     if (generation !== markerGeneration || props.mode !== 'camera') {
       tracker.stop()
@@ -511,10 +520,8 @@ async function startCamera() {
   } catch (error) {
     if (generation !== markerGeneration || props.mode !== 'camera') return
     markerLoading.value = false
-    emit(
-      'error',
-      `マーカー追跡を開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    console.error('マーカー追跡を開始できませんでした', error)
+    emit('error', cameraErrorMessage(error))
   }
 }
 
@@ -587,11 +594,10 @@ onMounted(() => {
         stageAssets = loaded
         refreshVisuals()
       },
-      (error) =>
-        emit(
-          'error',
-          `ステージのGLBを読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`,
-        ),
+      (error) => {
+        console.error('フィールド素材の読み込みに失敗しました', error)
+        emit('error', 'フィールドを表示できませんでした。ページを再読み込みしてください。')
+      },
     )
     loadRobot()
     resizeObserver = new ResizeObserver(resizeImmediately)
@@ -600,10 +606,8 @@ onMounted(() => {
     frame = requestAnimationFrame(animate)
     startCamera()
   } catch (error) {
-    emit(
-      'error',
-      `3Dステージを開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    console.error('3Dフィールドの起動に失敗しました', error)
+    emit('error', 'フィールドを表示できませんでした。ページを再読み込みしてください。')
   }
 })
 
@@ -694,7 +698,7 @@ onBeforeUnmount(() => {
           配置を確定
         </button>
         <p v-else-if="!trackingPoseAvailable" role="status">
-          基準マーカーを映し、2枚を一度同時に映してください。
+          配置を決めたときのマーカーを映してください。そのまま、もう1枚も一緒に映してください。
         </p>
         <p v-else role="status">もう1枚のマーカーも一度同時に映すと、見失ったときに切り替えられます。</p>
       </div>
