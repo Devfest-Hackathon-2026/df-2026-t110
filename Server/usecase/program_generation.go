@@ -39,15 +39,11 @@ type ProgramGenerationInput struct {
 	MaxTokens       int
 }
 
-// GeneratedProgramValidator validates the complete program, including its syntax
-// and semantics. Invalid output must wrap ErrInvalidGeneratedProgram; operational
-// failures must be returned separately and are not sent to the generator.
-//
-// TODO: Back this with the language engine so semantics are checked as well.
-// Until it is available, an implementation that only checks that the program is
-// grammatically valid is sufficient.
+// GeneratedProgramValidator returns the complete program with server-assigned
+// hint IDs after checking syntax and semantics. Invalid output must wrap
+// ErrInvalidGeneratedProgram; operational failures are not sent to the generator.
 type GeneratedProgramValidator interface {
-	ValidateGeneratedProgram(ctx context.Context, program jsontext.Value) error
+	ValidateGeneratedProgram(ctx context.Context, program jsontext.Value) (jsontext.Value, error)
 }
 
 type ProgramGenerationDeps struct {
@@ -132,7 +128,11 @@ func (g *ProgramGeneration) GenerateWithOptions(ctx context.Context, subject str
 		if !output.IsValid() {
 			err = fmt.Errorf("%w: output is not valid JSON", ErrInvalidGeneratedProgram)
 		} else {
-			err = g.deps.Validator.ValidateGeneratedProgram(ctx, output)
+			var validated jsontext.Value
+			validated, err = g.deps.Validator.ValidateGeneratedProgram(ctx, output)
+			if err == nil {
+				output = validated
+			}
 		}
 		if err == nil {
 			if err := ctx.Err(); err != nil {
