@@ -22,6 +22,7 @@ export type PicoDiagnosticCode =
   | 'out_of_scope_reference'
   | 'type_mismatch'
   | 'argument_count'
+  | 'missing_argument'
   | 'cannot_infer_type'
   | 'function_conflict'
   | 'function_name_conflict'
@@ -263,6 +264,10 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       return functionType(instantiated.params, instantiated.result)
     }
     function expression(expr: PicoExpr, scope: Scope): Term {
+      if (expr.kind === 'missing') {
+        report('missing_argument', 'error', expr.hintId, '入力欄が空です。値や式のブロックを入れてください。')
+        return invalid
+      }
       if (expr.kind === 'literal') return expr.type
       if (expr.kind === 'ident') return reference(expr, scope, true)
       const args = expr.args.map((arg) => expression(arg, scope))
@@ -301,6 +306,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
         case 'literal':
         case 'ident':
         case 'call':
+        case 'missing':
           expression(stmt, scope)
           break
         case 'declare': {

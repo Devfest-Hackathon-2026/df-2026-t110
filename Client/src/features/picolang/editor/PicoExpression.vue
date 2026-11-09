@@ -69,6 +69,7 @@ const literalTypes = computed(() =>
   ),
 )
 const invalidType = computed(() => {
+  if (props.node.kind === 'missing') return true
   if (!props.expectedType) return false
   const node = props.node
   if (node.kind === 'literal') return !compatibleSignatureTypes(props.expectedType, node.type)
@@ -177,6 +178,7 @@ function dropExpression(event: DragEvent): void {
       aria-label="値の作り方"
       @change="changeMode"
     >
+      <option v-if="node.kind === 'missing'" value="missing" disabled>値を入れてください</option>
       <option v-if="literalTypes.includes('integer')" value="integer">数</option>
       <option v-if="literalTypes.includes('bool')" value="bool">はい／いいえ</option>
       <option v-if="literalTypes.includes('unit')" value="unit">値なし</option>
@@ -243,7 +245,7 @@ function dropExpression(event: DragEvent): void {
     <span v-else-if="node.kind === 'ident'" class="pico-expression-invalid"
       >{{ node.name }}（この位置では使えません）</span
     >
-    <template v-else>
+    <template v-else-if="node.kind === 'call'">
       <strong v-if="statement" class="pico-command-label">{{ callLabel }}</strong>
       <select v-else :value="node.func" :aria-label="`答えを使う命令: ${callLabel}`" @change="changeFunction">
         <optgroup

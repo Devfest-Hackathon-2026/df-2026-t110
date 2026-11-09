@@ -99,17 +99,10 @@ function metaId(block: Block, key = 'hintId'): string {
 function field(block: Block, name: string, fallback = ''): string {
   return String(block.getFieldValue(name) ?? fallback)
 }
-function value(
-  block: Block,
-  input: string,
-  fallback: PicoSignatureType | undefined,
-  functions: Record<string, PicoFunction>,
-): PicoExpr {
+function value(block: Block, input: string, functions: Record<string, PicoFunction>): PicoExpr {
   const child = block.getInputTargetBlock(input)
   if (child) return readExpr(child, functions)
-  const expression = defaultExpr(fallback)
-  expression.hintId = metaId(block, `empty_${input}`)
-  return expression
+  return { kind: 'missing', hintId: metaId(block, `empty_${input}`) }
 }
 
 export function callType(name: string, statement: boolean): string {
@@ -394,22 +387,39 @@ function callState(expr: PicoCall, statement: boolean, functions: Record<string,
   const missing =
     !PICO_BUILTIN_OPTIONS.some((item) => item.name === expr.func) && !Object.hasOwn(functions, expr.func)
   defineCall(expr.func, functions)
-  return {
-    type: callType(expr.func, statement),
-    data: nodeData(expr.hintId),
-    ...(missing ? { extraState: { argumentCount: expr.args.length } } : {}),
-    inputs: Object.fromEntries(
-      expr.args.map((arg, i) => [
-        `ARG${i}`,
-        {
-          block: exprState(arg, functions),
-        },
-      ]),
-    ),
-  }
+  return withValueInputs(
+    {
+      type: callType(expr.func, statement),
+      data: nodeData(expr.hintId),
+      ...(missing ? { extraState: { argumentCount: expr.args.length } } : {}),
+    },
+    Object.fromEntries(expr.args.map((arg, i) => [`ARG${i}`, arg])),
+    functions,
+  )
 }
 
-function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): State {
+/** Empty value inputs keep their diagnostic IDs without creating a value block. */
+function withValueInputs(
+  state: State,
+  expressions: Record<string, PicoExpr>,
+  functions: Record<string, PicoFunction>,
+): State {
+  const data = JSON.parse(state.data ?? '{}') as Record<string, string>
+  state.inputs ??= {}
+  for (const [input, expr] of Object.entries(expressions)) {
+    if (expr.kind === 'missing') {
+      data[`empty_${input}`] = expr.hintId
+      state.inputs[input] = {}
+    } else state.inputs[input] = { block: exprState(expr, functions) }
+  }
+  state.data = JSON.stringify(data)
+  return state
+}
+
+function exprState(
+  expr: Exclude<PicoExpr, { kind: 'missing' }>,
+  functions: Record<string, PicoFunction>,
+): State {
   if (expr.kind === 'ident')
     return { type: 'pico_ident', data: nodeData(expr.hintId), fields: { NAME: expr.name } }
   if (expr.kind === 'literal') {
@@ -430,77 +440,69 @@ function exprState(expr: PicoExpr, functions: Record<string, PicoFunction>): Sta
 }
 function stmtState(stmt: PicoStatement, functions: Record<string, PicoFunction>): State {
   if (stmt.kind === 'call') return callState(stmt, true, functions)
-  if (stmt.kind === 'literal' || stmt.kind === 'ident')
-    return {
-      type: 'pico_expr_statement',
-      data: nodeData(stmt.hintId),
-      inputs: { VALUE: { block: exprState(stmt, functions) } },
-    }
+  if (stmt.kind === 'literal' || stmt.kind === 'ident' || stmt.kind === 'missing')
+    return withValueInputs(
+      { type: 'pico_expr_statement', data: nodeData(stmt.hintId) },
+      { VALUE: stmt },
+      functions,
+    )
   if (stmt.kind === 'declare')
-    return {
-      type: 'pico_declare',
-      data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
-      fields: { NAME: stmt.ident.name },
-      inputs: {
-        VALUE: {
-          block: exprState(stmt.value, functions),
-        },
-        TOKEN: { shadow: exprState(ident(stmt.ident.name), functions) },
+    return withValueInputs(
+      {
+        type: 'pico_declare',
+        data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
+        fields: { NAME: stmt.ident.name },
+        inputs: { TOKEN: { shadow: exprState(ident(stmt.ident.name), functions) } },
       },
-    }
+      { VALUE: stmt.value },
+      functions,
+    )
   if (stmt.kind === 'assign')
-    return {
-      type: 'pico_assign',
-      data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
-      fields: { NAME: stmt.ident.name },
-      inputs: { VALUE: { block: exprState(stmt.value, functions) } },
-    }
-  if (stmt.kind === 'if')
-    return {
-      type: stmt.else ? 'pico_if_else' : 'pico_if',
-      data: nodeData(stmt.hintId, {
-        thenId: stmt.then.hintId,
-        ...(stmt.else ? { elseId: stmt.else.hintId } : {}),
-      }),
-      inputs: {
-        CONDITION: {
-          block: exprState(stmt.condition, functions),
-        },
-        ...(stmt.then.stmts.length ? { THEN: { block: chainState(stmt.then.stmts, functions)! } } : {}),
-        ...(stmt.else?.stmts.length ? { ELSE: { block: chainState(stmt.else.stmts, functions)! } } : {}),
+    return withValueInputs(
+      {
+        type: 'pico_assign',
+        data: nodeData(stmt.hintId, { identId: stmt.ident.hintId }),
+        fields: { NAME: stmt.ident.name },
       },
-    }
-  if (stmt.kind === 'while' || stmt.kind === 'for') {
-    const inputs: Record<string, Blockly.serialization.blocks.ConnectionState> = {}
-    if (stmt.kind === 'while')
-      inputs.CONDITION = {
-        block: exprState(stmt.condition, functions),
-      }
-    else {
-      inputs.START = {
-        block: exprState(stmt.start, functions),
-      }
-      inputs.END = {
-        block: exprState(stmt.end, functions),
-      }
-    }
-    if (stmt.body.stmts.length) inputs.BODY = { block: chainState(stmt.body.stmts, functions)! }
-    return {
-      type: stmt.kind === 'for' ? 'pico_for' : 'pico_while',
-      data: nodeData(stmt.hintId, {
-        bodyId: stmt.body.hintId,
-        ...(stmt.kind === 'for' ? { identId: stmt.ident.hintId } : {}),
-      }),
-      fields: stmt.kind === 'for' ? { NAME: stmt.ident.name } : {},
-      inputs,
-    }
-  }
+      { VALUE: stmt.value },
+      functions,
+    )
+  if (stmt.kind === 'if')
+    return withValueInputs(
+      {
+        type: stmt.else ? 'pico_if_else' : 'pico_if',
+        data: nodeData(stmt.hintId, {
+          thenId: stmt.then.hintId,
+          ...(stmt.else ? { elseId: stmt.else.hintId } : {}),
+        }),
+        inputs: {
+          ...(stmt.then.stmts.length ? { THEN: { block: chainState(stmt.then.stmts, functions)! } } : {}),
+          ...(stmt.else?.stmts.length ? { ELSE: { block: chainState(stmt.else.stmts, functions)! } } : {}),
+        },
+      },
+      { CONDITION: stmt.condition },
+      functions,
+    )
+  if (stmt.kind === 'while' || stmt.kind === 'for')
+    return withValueInputs(
+      {
+        type: stmt.kind === 'for' ? 'pico_for' : 'pico_while',
+        data: nodeData(stmt.hintId, {
+          bodyId: stmt.body.hintId,
+          ...(stmt.kind === 'for' ? { identId: stmt.ident.hintId } : {}),
+        }),
+        fields: stmt.kind === 'for' ? { NAME: stmt.ident.name } : {},
+        inputs: stmt.body.stmts.length ? { BODY: { block: chainState(stmt.body.stmts, functions)! } } : {},
+      },
+      stmt.kind === 'while' ? { CONDITION: stmt.condition } : { START: stmt.start, END: stmt.end },
+      functions,
+    )
   if (stmt.kind === 'return')
-    return {
-      type: 'pico_return',
-      data: nodeData(stmt.hintId),
-      inputs: { VALUE: { block: exprState(stmt.value, functions) } },
-    }
+    return withValueInputs(
+      { type: 'pico_return', data: nodeData(stmt.hintId) },
+      { VALUE: stmt.value },
+      functions,
+    )
   return { type: `pico_${stmt.kind}`, data: nodeData(stmt.hintId) }
 }
 function chainState(stmts: PicoStatement[], functions: Record<string, PicoFunction>): State | null {
@@ -550,14 +552,13 @@ function readExpr(block: Block, functions: Record<string, PicoFunction>): PicoEx
       value: field(block, 'VALUE') as (typeof PICO_DISTANCE_TARGETS)[number],
     }
   const name = callName(block)
-  const signature = callSignature(name, functions)
   return {
     kind: 'call',
     hintId: metaId(block),
     func: name,
     args: block.inputList
       .filter((input) => /^ARG\d+$/.test(input.name))
-      .map((input, index) => value(block, input.name, signature.args[index] ?? 'integer', functions)),
+      .map((input) => value(block, input.name, functions)),
   }
 }
 function readStack(first: Block | null, functions: Record<string, PicoFunction>): PicoStatement[] {
@@ -569,14 +570,14 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
         kind: 'declare',
         hintId,
         ident: { kind: 'ident', hintId: metaId(current, 'identId'), name: field(current, 'NAME', 'x') },
-        value: value(current, 'VALUE', 'integer', functions),
+        value: value(current, 'VALUE', functions),
       })
     } else if (current.type === 'pico_assign') {
       statements.push({
         kind: 'assign',
         hintId,
         ident: { kind: 'ident', hintId: metaId(current, 'identId'), name: field(current, 'NAME', 'x') },
-        value: value(current, 'VALUE', 'integer', functions),
+        value: value(current, 'VALUE', functions),
       })
     } else if (current.type === 'pico_if' || current.type === 'pico_if_else') {
       const then = picoBlock(readStack(current.getInputTargetBlock('THEN'), functions))
@@ -589,7 +590,7 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
       statements.push({
         kind: 'if',
         hintId,
-        condition: value(current, 'CONDITION', 'bool', functions),
+        condition: value(current, 'CONDITION', functions),
         then,
         ...(otherwise ? { else: otherwise } : {}),
       })
@@ -600,7 +601,7 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
         statements.push({
           kind: 'while',
           hintId,
-          condition: value(current, 'CONDITION', 'bool', functions),
+          condition: value(current, 'CONDITION', functions),
           body,
         })
       else
@@ -608,19 +609,19 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
           kind: 'for',
           hintId,
           ident: { kind: 'ident', hintId: metaId(current, 'identId'), name: field(current, 'NAME', 'i') },
-          start: value(current, 'START', 'integer', functions),
-          end: value(current, 'END', 'integer', functions),
+          start: value(current, 'START', functions),
+          end: value(current, 'END', functions),
           body,
         })
     } else if (current.type === 'pico_return')
-      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', 'unit', functions) })
+      statements.push({ kind: 'return', hintId, value: value(current, 'VALUE', functions) })
     else if (current.type === 'pico_break' || current.type === 'pico_continue')
       statements.push({ kind: current.type === 'pico_break' ? 'break' : 'continue', hintId })
     else if (current.type === 'pico_expr_statement')
       statements.push(
         current.getInputTargetBlock('VALUE')
           ? readExpr(current.getInputTargetBlock('VALUE')!, functions)
-          : value(current, 'VALUE', 'unit', functions),
+          : value(current, 'VALUE', functions),
       )
     else if (current.type.startsWith('pico_stmt_')) statements.push(readExpr(current, functions))
   }
