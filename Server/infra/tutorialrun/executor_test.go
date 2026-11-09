@@ -33,15 +33,14 @@ func TestExecuteTutorial(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tt := range []struct {
-		name     string
-		source   []byte
-		cleared  bool
-		finished string
-		wantErr  error
+		name    string
+		source  []byte
+		cleared bool
+		wantErr error
 	}{
-		{name: "goal and debug recording", source: source, cleared: true, finished: "interrupted"},
-		{name: "finished without reaching goal", source: []byte(strings.Replace(string(source), `"forward"`, `"pick_up"`, 1)), finished: "completed"},
-		{name: "step limit", source: loop, finished: "step_limit"},
+		{name: "goal and replay recording", source: source, cleared: true},
+		{name: "finished without reaching goal", source: []byte(strings.Replace(string(source), `"forward"`, `"pick_up"`, 1))},
+		{name: "step limit", source: loop},
 		{name: "invalid program", source: []byte(`{}`), wantErr: domain.ErrInvalidProgram},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,13 +66,11 @@ func TestExecuteTutorial(t *testing.T) {
 			if decoded.Summary.Cleared != tt.cleared || decoded.Summary.Reason == "" || len(decoded.History) == 0 {
 				t.Errorf("result = %s", result)
 			}
-			if !strings.Contains(string(result), `"reason":"`+tt.finished+`"`) {
-				t.Errorf("missing execution end reason %s", tt.finished)
+			if !strings.Contains(string(result), `"type":"field"`) {
+				t.Error("recording missing field events")
 			}
-			for _, required := range []string{`"type":"field"`, `"type":"picolang"`, `"kind":"execution_finished"`, `"kind":"variable_drop"`, `"integer":9223372036854775807`} {
-				if !strings.Contains(string(result), required) {
-					t.Errorf("recording missing %s", required)
-				}
+			if strings.Contains(string(result), `"type":"picolang"`) {
+				t.Error("recording contains disabled execution logs")
 			}
 		})
 	}
