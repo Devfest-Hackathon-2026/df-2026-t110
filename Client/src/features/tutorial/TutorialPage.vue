@@ -79,10 +79,42 @@ const editorWidth = ref(56)
 const stageHeight = ref(66)
 const stageFullscreen = ref(false)
 const stageHidden = ref(false)
+const compactScreen = ref(false)
+const compactPane = ref<'work' | 'ar'>('work')
+const modeBeforeCompactWork = ref<'preview' | 'camera' | null>(null)
 const picolangProgram = ref<PicoProgram | null>(null)
 let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
+let compactMediaQuery: MediaQueryList | null = null
+
+function switchCompactPane(pane: 'work' | 'ar'): void {
+  if (compactPane.value === pane) return
+  if (pane === 'work') {
+    if (stageFullscreen.value) toggleStageFullscreen()
+    modeBeforeCompactWork.value = mode.value
+    if (mode.value === 'camera') mode.value = 'preview'
+  } else {
+    showStage()
+    if (modeBeforeCompactWork.value === 'camera') mode.value = 'camera'
+    modeBeforeCompactWork.value = null
+  }
+  compactPane.value = pane
+}
+
+function syncCompactScreen(): void {
+  const compact = compactMediaQuery?.matches ?? false
+  if (
+    !compact &&
+    compactScreen.value &&
+    compactPane.value === 'work' &&
+    modeBeforeCompactWork.value === 'camera'
+  ) {
+    mode.value = 'camera'
+    modeBeforeCompactWork.value = null
+  }
+  compactScreen.value = compact
+}
 
 const stage = computed(() =>
   loadState.value === 'ready' ? (activeStage.value ?? field.value?.layouts[layoutIndex.value] ?? null) : null,
@@ -130,6 +162,8 @@ async function load(id: string): Promise<void> {
   stageHeight.value = 66
   stageFullscreen.value = false
   stageHidden.value = false
+  compactPane.value = 'work'
+  modeBeforeCompactWork.value = null
   activeStage.value = null
   animationEvent.value = null
   picolangProgram.value = null
@@ -398,18 +432,43 @@ function resizeStageWithKeyboard(event: KeyboardEvent): void {
 }
 
 watch(() => props.tutorialId, load, { immediate: true })
-onMounted(() => document.addEventListener('fullscreenchange', syncFullscreen))
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  compactMediaQuery = window.matchMedia('(max-width: 700px), (max-width: 980px) and (max-height: 500px)')
+  syncCompactScreen()
+  compactMediaQuery.addEventListener('change', syncCompactScreen)
+})
 onBeforeUnmount(() => {
   stopRun()
   controller?.abort()
   document.removeEventListener('fullscreenchange', syncFullscreen)
+  compactMediaQuery?.removeEventListener('change', syncCompactScreen)
   exitStageFullscreen()
 })
 </script>
 
 <template>
-  <div ref="workspaceRef" class="tutorial-page" :style="{ '--editor-width': `${editorWidth}%` }">
-    <section id="tutorial-editor" class="tutorial-editor" aria-labelledby="tutorial-editor-title">
+  <div
+    ref="workspaceRef"
+    class="tutorial-page"
+    :class="{
+      'tutorial-page--compact-work': compactPane === 'work',
+      'tutorial-page--compact-ar': compactPane === 'ar',
+    }"
+    :style="{ '--editor-width': `${editorWidth}%` }"
+  >
+    <nav class="tutorial-mobile-tabs" aria-label="教材画面の切り替え">
+      <button type="button" :aria-pressed="compactPane === 'work'" @click="switchCompactPane('work')">
+        操作
+      </button>
+      <button type="button" :aria-pressed="compactPane === 'ar'" @click="switchCompactPane('ar')">AR</button>
+    </nav>
+    <section
+      id="tutorial-editor"
+      class="tutorial-editor"
+      aria-labelledby="tutorial-editor-title"
+      :inert="compactScreen && compactPane !== 'work'"
+    >
       <div class="tutorial-editor-heading">
         <h2 id="tutorial-editor-title">コード</h2>
         <span>Picolang v0</span>
@@ -450,7 +509,11 @@ onBeforeUnmount(() => {
       :class="{ 'tutorial-view--resizing': resizingStage, 'tutorial-view--stage-hidden': stageHidden }"
       :style="{ '--stage-height': `${stageHeight}%` }"
     >
-      <aside id="tutorial-explanation" class="tutorial-panel">
+      <aside
+        id="tutorial-explanation"
+        class="tutorial-panel"
+        :inert="compactScreen && compactPane !== 'work'"
+      >
         <button v-if="stageHidden" type="button" class="tutorial-show-stage-button" @click="showStage">
           ARを表示
         </button>
@@ -547,6 +610,7 @@ onBeforeUnmount(() => {
         class="tutorial-stage"
         :class="{ 'tutorial-stage--fullscreen': stageFullscreen }"
         aria-label="教材のフィールド"
+        :inert="compactScreen && compactPane !== 'ar'"
       >
         <StageScene
           v-if="stage"

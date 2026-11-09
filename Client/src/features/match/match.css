@@ -34,7 +34,6 @@
 .match-section-heading {
   display: flex;
   align-items: baseline;
-  gap: var(--space-md);
 }
 .match-step {
   color: var(--color-accent-deep);
