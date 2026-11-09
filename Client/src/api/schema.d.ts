@@ -121,7 +121,7 @@ export interface paths {
          *     結果は両参加者がレスポンスの runId を使って runEvents で繰り返し受け取れる。
          *     申込時のプログラム指定で、自分の保存済み対戦用プログラム設定は変更しない。
          *     抽選結果を取得・変更する独立したAPIは設けない。
-         *     レートの更新は未実装。
+         *     結果に応じて申込側のレートだけを更新する。変動量はマッチング時点のレートで計算し、結果の保存時に最新のレートへ加算する。
          */
         post: operations["createMatch"];
         delete?: never;
@@ -225,7 +225,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ランキングを取得 */
+        /**
+         * ランキングを取得
+         * @description 表示名を設定し、1回以上対戦を申し込んだユーザーをレート降順に返す。
+         *     同じレートのユーザーは同じ順位とし、表示名順に並べる。
+         */
         get: operations["getRanking"];
         put?: never;
         post?: never;
@@ -506,6 +510,16 @@ export interface components {
              * @description この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
              */
             runId: string;
+        };
+        RankingEntry: {
+            /** @description 同じレートは同順位。次の順位は同順位の人数分だけ飛ぶ */
+            rank: number;
+            name: string;
+            rating: number;
+            /** @description 申込側として勝利した回数。挑戦回数は wins + losses + draws */
+            wins: number;
+            losses: number;
+            draws: number;
         };
         User: {
             id?: string;
@@ -1898,9 +1912,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
+                    "application/json": components["schemas"]["RankingEntry"][];
                 };
             };
         };
