@@ -10,8 +10,6 @@ import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
-import { executePicolang } from '../picolang/language/executePicolang.ts'
-import { createTutorialWorld } from './tutorialWorld.ts'
 import type { TutorialSpeech } from './tutorialSpeech.ts'
 import { replayFrames } from '../match/matchReplay.ts'
 import { normalizeField } from '../stage/stage.ts'
@@ -27,7 +25,6 @@ import {
 } from './tutorialRunApi.ts'
 import {
   applyTutorialFrame,
-  cloneTutorialLayout,
   selectedTutorialLayout,
   tutorialActionAnimation,
   tutorialActionSpeech,
@@ -209,48 +206,6 @@ function waitForAnimation(duration: number, signal: AbortSignal): Promise<void> 
   })
 }
 
-async function runLocally(program: PicoProgram, signal: AbortSignal, generation: number): Promise<void> {
-  if (!field.value) return
-  layoutIndex.value = Math.floor(Math.random() * field.value.layouts.length)
-  activeStage.value = cloneTutorialLayout(field.value.layouts[layoutIndex.value])
-  animationEvent.value = null
-  speech.value = null
-  await nextTick()
-  if (generation !== runGeneration || !activeStage.value) return
-  sceneRef.value?.resetRobot()
-  const world = createTutorialWorld(activeStage.value)
-  runMessage.value = 'サーバー実行を利用できないため、ローカルで再生しています…'
-  await executePicolang(
-    program,
-    {
-      call: async (name, args, actionSignal) => {
-        const result = world.call(name, args)
-        if (result.speech) {
-          speech.value = result.speech
-          await waitForAnimation(1000, actionSignal)
-          speech.value = null
-        }
-        if (result.animation) {
-          animationEvent.value = { id: ++animationId, ...result.animation }
-          const duration =
-            result.animation.type === 'wait' ? Math.max(1, result.animation.ticks ?? 1) * 1000 : 1000
-          await waitForAnimation(duration + 40, actionSignal)
-          if (result.changed) sceneRef.value?.refreshVisuals()
-          sceneRef.value?.setCarrying(Boolean(world.held))
-        }
-        return result.value
-      },
-    },
-    signal,
-  )
-  if (generation !== runGeneration) return
-  if (world.reachedGoal) {
-    animationEvent.value = { id: ++animationId, type: 'clear' }
-    runMessage.value = 'ローカル実行でゴールに到着しました！'
-  } else runMessage.value = 'ローカル実行が終了しました。ゴールへの道を考えてみましょう。'
-  runState.value = 'finished'
-}
-
 async function runProgram(): Promise<void> {
   if (!field.value || !tutorial.value || runState.value === 'running') return
   if (!isPicoProgram(picolangProgram.value)) {
@@ -333,16 +288,6 @@ async function runProgram(): Promise<void> {
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
-    if (error instanceof TutorialRunApiError && error.status === 501) {
-      try {
-        await runLocally(program, controller.signal, generation)
-      } catch (localError) {
-        if (generation !== runGeneration || controller.signal.aborted) return
-        runState.value = 'error'
-        runMessage.value = localError instanceof Error ? localError.message : 'ローカル実行に失敗しました'
-      }
-      return
-    }
     runState.value = 'error'
     loginRequired.value = error instanceof TutorialRunApiError && error.status === 401
     runMessage.value = error instanceof Error ? error.message : 'プログラムを実行できませんでした'
