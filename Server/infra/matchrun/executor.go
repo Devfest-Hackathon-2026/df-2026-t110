@@ -32,6 +32,11 @@ type Executor struct{}
 func NewExecutor() *Executor { return &Executor{} }
 
 func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
+	return Simulate(ctx, player, opponent, layout)
+}
+
+// Simulate runs both teams on layout and returns the scores and the encoded replay.
+func Simulate(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
 	if err := ctx.Err(); err != nil {
 		return domain.MatchResult{}, err
 	}

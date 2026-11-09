@@ -14,7 +14,7 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/tutorialrun"
 )
 
-func TestExecuteTutorial(t *testing.T) {
+func TestSimulateTutorial(t *testing.T) {
 	t.Parallel()
 	lessons, err := repo.NewTextbooks(t.Context(), os.DirFS("../repo/testdata/tutorials"))
 	if err != nil {
@@ -62,9 +62,9 @@ func TestExecuteTutorial(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := tutorialrun.NewExecutor().Execute(t.Context(), domain.Program{Source: tt.source}, lesson, 0)
+			result, err := tutorialrun.Simulate(t.Context(), domain.Program{Source: tt.source}, lesson, 0)
 			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("Execute: %v, want %v", err, tt.wantErr)
+				t.Errorf("Simulate: %v, want %v", err, tt.wantErr)
 			}
 			if tt.wantErr != nil || err != nil {
 				return
@@ -128,7 +128,7 @@ func TestExecuteTutorial(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := tutorialrun.NewExecutor().Execute(canceled, domain.Program{Source: source}, lesson, 0); !errors.Is(err, context.Canceled) {
-		t.Errorf("canceled Execute: %v", err)
+	if _, err := tutorialrun.Simulate(canceled, domain.Program{Source: source}, lesson, 0); !errors.Is(err, context.Canceled) {
+		t.Errorf("canceled Simulate: %v", err)
 	}
 }

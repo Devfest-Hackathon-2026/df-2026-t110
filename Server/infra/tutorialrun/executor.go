@@ -37,6 +37,12 @@ var _ usecase.TutorialExecutor = (*Executor)(nil)
 func NewExecutor() *Executor { return &Executor{} }
 
 func (*Executor) Execute(ctx context.Context, program domain.Program, lesson domain.Tutorial, variant int) (jsontext.Value, error) {
+	return Simulate(ctx, program, lesson, variant)
+}
+
+// Simulate runs program on the lesson variant and returns the encoded result,
+// including the replay recording.
+func Simulate(ctx context.Context, program domain.Program, lesson domain.Tutorial, variant int) (jsontext.Value, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
