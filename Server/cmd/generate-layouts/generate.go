@@ -38,9 +38,7 @@ func generate(seed uint64) ([]domain.BattleLayout, error) {
 		}
 		seenTerrain[terrainKey] = struct{}{}
 		seenLuggage[luggageKey] = struct{}{}
-		layout.ID = fmt.Sprintf("battle-1-v2-seed-%d-layout-%02d", seed, len(layouts)+1)
-		// A field ID identifies one concrete board, just as tutorial variant IDs do.
-		layout.FieldID = layout.ID
+		layout.FieldID = fmt.Sprintf("battle-1-v2-seed-%d-layout-%02d", seed, len(layouts)+1)
 		layouts = append(layouts, layout)
 		if len(layouts) == layoutCount {
 			return layouts, nil

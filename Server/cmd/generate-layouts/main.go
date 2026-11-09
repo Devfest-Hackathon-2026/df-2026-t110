@@ -46,7 +46,7 @@ func run(args []string, stderr io.Writer) error {
 	}
 	// Finish generation before opening the destination to avoid truncating it
 	// when generation or encoding fails.
-	if err := os.MkdirAll(filepath.Dir(*output), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(*output), 0o750); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
 	if err := os.WriteFile(*output, append(data, '\n'), 0o600); err != nil {

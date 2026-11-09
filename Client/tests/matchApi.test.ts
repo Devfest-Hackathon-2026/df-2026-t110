@@ -41,7 +41,6 @@ test('3台の対戦用プログラムを登録し、同じ順序で対戦を作�
         id: 'match-1',
         runId: 'run-1',
         fieldId: 'battle-1',
-        selectedLayoutId: 'layout-1',
         opponentName: '相手',
         status: 'finished',
       },

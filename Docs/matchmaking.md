@@ -55,7 +55,7 @@ w(d)=\exp\left(-\frac{d^2}{2\sigma^2}\right)
 - (仮実装) サーバーのDBで無期限に保持する
   - `GET /run/{runId}/events` により後からも同じデータを参照できるようにすることで、エラー発生時も改めて読み込みやすく
 
-既存DBには、サーバー更新前に `Server/infra/repo/sql/migrations/20261109_matches.sql`、`20261109_ratings.sql` の順で未適用のものを適用する。新規DBでは `Server/infra/repo/sql/schema/schema.sql` を使う。
+既存DBには、サーバー更新前に `Server/infra/repo/sql/migrations/20261109_matches.sql`、`20261109_ratings.sql`、`20261110_field_id.sql` の順で未適用のものを適用する。新規DBでは `Server/infra/repo/sql/schema/schema.sql` を使う。
 
 ### DBスキーマの適用方法
 
@@ -68,20 +68,21 @@ w(d)=\exp\left(-\frac{d^2}{2\sigma^2}\right)
 | Cloud SQL | TerraformはDBインスタンス・DB・ユーザーを作成する。テーブルDDLを適用する処理はない |
 | サーバーのデプロイCI | イメージのビルド・配布・Cloud Runの更新を行う。DBマイグレーションを実行する処理はない |
 
-`20261109_matches.sql` は `matches` の追加と、対戦では使わない `runs.tutorial_id` / `runs.program_id` のNULL許可を含む。`20261109_ratings.sql` は `users.rating` と、`matches` の勝敗・レート列を追加する。レート導入前の対戦は保存済みのスコアから勝敗だけを復元し、レート列は NULL のままとする。既存DBのデータを維持してこの構造に更新するために移行SQLが必要となる。`sql/migrations` は現時点では手動適用用のSQLを置くディレクトリであり、適用履歴の管理や自動実行の仕組みはない。
+`20261109_matches.sql` は `matches` の追加と、対戦では使わない `runs.tutorial_id` / `runs.program_id` のNULL許可を含む。`20261109_ratings.sql` は `users.rating` と、`matches` の勝敗・レート列を追加する。レート導入前の対戦は保存済みのスコアから勝敗だけを復元し、レート列は NULL のままとする。既存DBのデータを維持してこの構造に更新するために移行SQLが必要となる。`20261110_field_id.sql` は、対戦の `selected_layout_id` を `runs.field_id` に移してから重複列を削除する。チュートリアルの `field_id` と保存済みリプレイは変更しない。`sql/migrations` は現時点では手動適用用のSQLを置くディレクトリであり、適用履歴の管理や自動実行の仕組みはない。
 
 Composeの既存DBでは、リポジトリルートから未適用のものを順に一度ずつ実行する。
 
 ```sh
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261109_matches.sql
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261109_ratings.sql
+docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261110_field_id.sql
 ```
 
 Cloud SQLでは接続を用意したうえで同じ移行SQLを手動適用する。新規の空DBには移行SQLではなく `schema.sql` を適用する。
 
 ## 仮の盤面設定
 
-- フィールドIDは `battle-1`、配置候補は2種類。9×7マスで、左右の端1列を各チームのテリトリーとする
+- 配置候補は2種類で、フィールドIDは `battle-1-layout-1` / `battle-1-layout-2`。9×7マスで、左右の端1列を各チームのテリトリーとする
 - 各チーム3台、掘削上限3回、規定200ターン、中央の荷物3個、荷物単価1点、投棄ペナルティ1点
 - 初期位置・向きとテリトリーは固定し、岩の配置が異なる左右対称な候補から抽選する。地形の各行・荷物・テリトリー・ロボットの座標とルールは `Server/infra/matchrun/layouts.json` で定義する
 - ステップ数・メモリ・呼び出し深度に上限を設け、実行エラーのロボットは停止する。申込側の解析・型検査に失敗した場合は `400` とし、相手側の場合は該当ロボットを停止する
@@ -104,3 +105,9 @@ Cloud SQLでは接続を用意したうえで同じ移行SQLを手動適用す�
 - 試合一覧から結果を後で見返す機能
 - エキシビションマッチ
   - 自分のプログラム同士の対戦など
+
+## 盤面の識別と配置生成
+
+対戦・チュートリアルの実行記録は、具体的な盤面を識別する `fieldId` を `runs.field_id` に保存する。対戦の配置JSONにも `fieldId` だけを持ち、別の配置IDは設けない。チュートリアルでは従来どおり `stage.variants[].id` を実行時の `fieldId` とする。対戦作成レスポンスも `fieldId` を返し、`selectedLayoutId` は返さない。
+
+`go -C Server run ./cmd/generate-layouts --output ../work/layouts.json` で、14×11マス・荷物10個・岩24個の左右対称な64盤面を生成できる。各ロボットの掘削上限は2回、規定160ターンとする。`fieldId` はシードと候補番号を含み、同じシードでは同じ盤面とIDを再現する。生成結果の対戦への採用は `Server/infra/matchrun/layouts.json` の差し替えで行う。

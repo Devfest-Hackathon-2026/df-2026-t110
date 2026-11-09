@@ -50,32 +50,27 @@ func TestGenerateLayoutConstraints(t *testing.T) {
 	if len(layouts) != 64 {
 		t.Errorf("catalog size=%d, want 64", len(layouts))
 	}
-	ids := make(map[string]struct{})
 	fieldIDs := make(map[string]struct{})
 	terrainKeys := make(map[string]struct{})
 	luggageKeys := make(map[string]struct{})
 	for _, layout := range layouts {
-		if _, exists := ids[layout.ID]; exists {
-			t.Errorf("duplicate ID %s", layout.ID)
-		}
-		ids[layout.ID] = struct{}{}
 		if _, exists := fieldIDs[layout.FieldID]; exists {
 			t.Errorf("duplicate field ID %q", layout.FieldID)
 		}
 		fieldIDs[layout.FieldID] = struct{}{}
-		if layout.FieldID == "" || layout.FieldID != layout.ID {
-			t.Errorf("field ID %q must match layout ID %q", layout.FieldID, layout.ID)
+		if layout.FieldID == "" {
+			t.Error("field ID must not be empty")
 		}
 		terrainKey, luggageKey := signatures(layout)
 		if _, exists := terrainKeys[terrainKey]; exists {
-			t.Errorf("repeated terrain in %s", layout.ID)
+			t.Errorf("repeated terrain in %s", layout.FieldID)
 		}
 		terrainKeys[terrainKey] = struct{}{}
 		if _, exists := luggageKeys[luggageKey]; exists {
-			t.Errorf("repeated luggage in %s", layout.ID)
+			t.Errorf("repeated luggage in %s", layout.FieldID)
 		}
 		luggageKeys[luggageKey] = struct{}{}
-		t.Run(layout.ID, func(t *testing.T) {
+		t.Run(layout.FieldID, func(t *testing.T) {
 			t.Parallel()
 			if len(layout.Terrain) != 11 {
 				t.Fatalf("height=%d, want 11", len(layout.Terrain))
@@ -160,7 +155,7 @@ func TestGenerateLayoutConstraints(t *testing.T) {
 func TestGeneratedLandHasAlternateRoutes(t *testing.T) {
 	t.Parallel()
 	for _, layout := range testCatalog(t, 165) {
-		t.Run(layout.ID, func(t *testing.T) {
+		t.Run(layout.FieldID, func(t *testing.T) {
 			t.Parallel()
 			land := make(map[schema.Position]struct{})
 			for y, row := range layout.Terrain {
@@ -242,7 +237,7 @@ func TestRunWritesCatalog(t *testing.T) {
 	if err := run([]string{"--output", output, "--seed", "166"}, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(output)
+	data, err := os.ReadFile(output) //nolint:gosec // The path is inside this test's temporary directory.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +251,7 @@ func TestRunWritesCatalog(t *testing.T) {
 	if err := run([]string{"--output", output, "--seed", "166"}, &bytes.Buffer{}); err != nil {
 		t.Fatal(err)
 	}
-	again, err := os.ReadFile(output)
+	again, err := os.ReadFile(output) //nolint:gosec // The path is inside this test's temporary directory.
 	if err != nil {
 		t.Fatal(err)
 	}

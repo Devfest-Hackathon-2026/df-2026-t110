@@ -276,15 +276,13 @@ components:
 
     Match:
       type: object
-      required: [id, fieldId, selectedLayoutId, opponentName, runId]
+      required: [id, fieldId, opponentName, runId]
       properties:
         id:
           type: string
         fieldId:
           type: string
-        selectedLayoutId:
-          type: string
-          description: 対戦作成時にサーバーが選んだ配置候補のID。
+          description: 対戦作成時にサーバーが選んだ具体的な盤面のID。
         status:
           type: string
           enum: [ready, running, finished]

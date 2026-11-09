@@ -40,7 +40,7 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, layout := range layouts {
-		t.Run(layout.ID, func(t *testing.T) {
+		t.Run(layout.FieldID, func(t *testing.T) {
 			t.Parallel()
 			for _, y := range []int{1, 3, 5} {
 				layout.Territories[0] = append(layout.Territories[0], schema.Position{X: 1, Y: y})

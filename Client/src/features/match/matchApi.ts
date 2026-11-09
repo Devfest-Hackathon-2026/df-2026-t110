@@ -19,7 +19,6 @@ export const loginUrl = `${base}/login`
 export interface MatchRecord {
   id: string
   fieldId: string
-  selectedLayoutId: string
   runId: string
   opponentName: string
   status?: 'ready' | 'running' | 'finished'
@@ -114,7 +113,6 @@ export function parseMatch(value: unknown): MatchRecord {
     !isObject(value) ||
     typeof value.id !== 'string' ||
     typeof value.fieldId !== 'string' ||
-    typeof value.selectedLayoutId !== 'string' ||
     typeof value.runId !== 'string' ||
     typeof value.opponentName !== 'string'
   )

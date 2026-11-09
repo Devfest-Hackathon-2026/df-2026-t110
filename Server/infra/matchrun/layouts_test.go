@@ -32,7 +32,7 @@ func TestLayoutsKeepCachedDefinitionsIndependent(t *testing.T) {
 	first[0].Territories[0][0].X++
 	first[0].Territories[1][0].Y++
 	first[0].Robots[0][0].Position.X++
-	first[0].ID = "modified"
+	first[0].FieldID = "modified"
 	got, err := repository.List(t.Context())
 	if err != nil {
 		t.Errorf("list after mutation: %v", err)
@@ -40,5 +40,23 @@ func TestLayoutsKeepCachedDefinitionsIndependent(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Error("modifying a returned layout changed the cached definitions or another result")
+	}
+}
+
+func TestLayoutsHaveDistinctFieldIDs(t *testing.T) {
+	t.Parallel()
+	layouts, err := testLayouts(t).List(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[string]struct{})
+	for _, layout := range layouts {
+		if layout.FieldID == "" {
+			t.Error("empty field ID")
+		}
+		if _, exists := seen[layout.FieldID]; exists {
+			t.Errorf("duplicate field ID %q", layout.FieldID)
+		}
+		seen[layout.FieldID] = struct{}{}
 	}
 }

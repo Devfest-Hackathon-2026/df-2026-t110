@@ -190,7 +190,7 @@ function onEditorToggle(event: Event): void {
         <p class="match-eyebrow">{{ store.phase === 'finished' ? 'MATCH COMPLETE' : 'MATCH IN PROGRESS' }}</p>
         <h2>{{ store.phase === 'finished' ? `対戦結果 · ${outcome}` : '結果を読み込んでいます' }}</h2>
         <p>対戦ID: {{ store.match?.id }}</p>
-        <p v-if="store.match?.selectedLayoutId">選ばれた配置: {{ store.match.selectedLayoutId }}</p>
+        <p v-if="store.match?.fieldId">選ばれた配置: {{ store.match.fieldId }}</p>
         <template v-if="store.phase === 'running'">
           <div v-if="!store.error" class="match-progress" aria-hidden="true"><span /></div>
           <button v-if="store.error && store.match?.runId" type="button" @click="store.reconnect">

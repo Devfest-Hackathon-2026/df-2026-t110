@@ -75,7 +75,7 @@ func (s *matchStoreStub) Rating(context.Context, string) (int, error) { return s
 func (s *matchStoreStub) Create(_ context.Context, record domain.MatchRecord) (domain.Match, error) {
 	s.calls++
 	s.record = record
-	return domain.Match{ID: "match-id", RunID: "run-id", FieldID: record.FieldID, SelectedLayoutID: record.SelectedLayoutID, OpponentName: record.OpponentName}, s.err
+	return domain.Match{ID: "match-id", RunID: "run-id", FieldID: record.FieldID, OpponentName: record.OpponentName}, s.err
 }
 
 func TestCreateMatch(t *testing.T) {
@@ -124,7 +124,7 @@ func TestCreateMatch(t *testing.T) {
 					"foreign":  {ID: "foreign", GoogleSubject: "other", IsBattle: true},
 					"tutorial": {ID: "tutorial", GoogleSubject: "owner"},
 				}}, Opponents: opponent,
-				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{ID: "layout-a", FieldID: "field"}, {ID: "layout-b", FieldID: "field"}}},
+				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{FieldID: "layout-a"}, {FieldID: "layout-b"}}},
 				Executor: executor, Matches: store,
 			})
 			service.pick = func(n int) int {
@@ -153,10 +153,10 @@ func TestCreateMatch(t *testing.T) {
 			if !reflect.DeepEqual(gotIDs, tt.ids) || !reflect.DeepEqual(executor.opponent, opponent.team.Programs) {
 				t.Errorf("engine programs=%v/%v", gotIDs, executor.opponent)
 			}
-			if opponent.challenger != "owner" || executor.layout.ID != "layout-b" || executor.calls != 1 {
+			if opponent.challenger != "owner" || executor.layout.FieldID != "layout-b" || executor.calls != 1 {
 				t.Errorf("selection=%+v, execution=%+v", opponent, executor)
 			}
-			if match.ID != "match-id" || match.RunID != "run-id" || match.OpponentName != opponentName || match.SelectedLayoutID != "layout-b" {
+			if match.ID != "match-id" || match.RunID != "run-id" || match.OpponentName != opponentName || match.FieldID != "layout-b" {
 				t.Errorf("match=%+v", match)
 			}
 			if store.record.GoogleSubject != "owner" || store.record.OpponentSubject != "opponent" || !store.record.Result.IsValid() {
@@ -196,7 +196,7 @@ func TestCreateMatchRatesChallenger(t *testing.T) {
 					Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
 					Rating:   1200,
 				}},
-				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{ID: "layout", FieldID: "field"}}},
+				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{FieldID: "field"}}},
 				Executor: &matchExecutorStub{scores: tt.scores}, Matches: store,
 			})
 

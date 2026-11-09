@@ -1,7 +1,6 @@
 [
   {
-    "id": "battle-1-layout-1",
-    "fieldId": "battle-1",
+    "fieldId": "battle-1-layout-1",
     "terrain": [
       ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
       ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
@@ -54,8 +53,7 @@
     "discardPenalty": 1
   },
   {
-    "id": "battle-1-layout-2",
-    "fieldId": "battle-1",
+    "fieldId": "battle-1-layout-2",
     "terrain": [
       ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
       ["land", "land", "land", "land", "land", "land", "land", "land", "land"],

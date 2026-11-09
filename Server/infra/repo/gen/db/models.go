@@ -34,7 +34,6 @@ type Match struct {
 	RunID                 pgtype.UUID
 	OpponentGoogleSubject string
 	OpponentName          string
-	SelectedLayoutID      string
 	Outcome               string
 	OpponentRating        pgtype.Int4
 	RatingBefore          pgtype.Int4

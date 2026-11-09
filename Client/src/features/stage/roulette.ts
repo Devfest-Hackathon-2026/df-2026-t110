@@ -15,12 +15,7 @@ export function rouletteSteps(from: number, to: number, count: number): number[]
 export type SelectionResponse = {
   candidateIndex?: number
   selectedIndex?: number
-  selectedLayoutId?: string
-  layoutId?: string
-  layout?: { id?: string }
-  selectedStageId?: string
-  stageId?: string
-  stage?: { id?: string }
+  fieldId?: string
 } | null
 
 export function resolveServerSelection(
@@ -30,14 +25,7 @@ export function resolveServerSelection(
   const index = response?.candidateIndex ?? response?.selectedIndex
   if (typeof index === 'number' && Number.isInteger(index) && index >= 0 && index < layouts.length)
     return index
-  const id =
-    response?.selectedLayoutId ??
-    response?.layoutId ??
-    response?.layout?.id ??
-    response?.selectedStageId ??
-    response?.stageId ??
-    response?.stage?.id
-  const matched = layouts.findIndex((layout) => layout.id === String(id))
+  const matched = layouts.findIndex((layout) => layout.id === response?.fieldId)
   if (matched >= 0) return matched
   throw new Error('サーバーの抽選結果に候補配置のIDまたは番号がありません')
 }

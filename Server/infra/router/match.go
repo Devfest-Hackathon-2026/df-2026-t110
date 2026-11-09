@@ -49,7 +49,7 @@ func (r *Router) CreateMatch(ctx *echo.Context) error {
 	}
 	status := api.Finished
 	body, err := json.Marshal(api.Match{
-		Id: match.ID, FieldId: match.FieldID, SelectedLayoutId: match.SelectedLayoutID,
+		Id: match.ID, FieldId: match.FieldID,
 		OpponentName: match.OpponentName, RunId: runID, Status: &status,
 	})
 	if err != nil {

@@ -64,6 +64,13 @@ func TestRatingsMigration(t *testing.T) {
 	}
 
 	fresh := newTestPool(t)
+	fieldMigration, err := os.ReadFile("sql/migrations/20261110_field_id.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := migrated.Exec(t.Context(), string(fieldMigration)); err != nil {
+		t.Fatalf("apply field ID migration: %v", err)
+	}
 	for _, table := range []string{"users", "matches"} {
 		got, want := describeTable(t, migrated, table), describeTable(t, fresh, table)
 		if len(want) == 0 {
@@ -72,6 +79,49 @@ func TestRatingsMigration(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("migrated %s differs from schema.sql:\n got %q\nwant %q", table, got, want)
 		}
+	}
+}
+
+func TestFieldIDMigration(t *testing.T) {
+	t.Parallel()
+	pool := newTestPoolWithDDL(t, "testdata/schema_before_ratings.sql")
+	if _, err := pool.Exec(t.Context(), `
+		INSERT INTO users (google_subject, name) VALUES ('owner', 'Owner'), ('opponent', 'Opponent');
+		INSERT INTO runs (id, google_subject, field_id, result) VALUES
+			('00000000-0000-7000-8000-000000000001', 'owner', 'battle-1', '{"history":["saved"]}'),
+			('00000000-0000-7000-8000-000000000002', 'owner', 'first-step-1', '{"history":["tutorial"]}');
+		INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, selected_layout_id)
+		VALUES ('00000000-0000-7000-8000-000000000003', '00000000-0000-7000-8000-000000000001', 'opponent', 'Opponent', 'battle-1-layout-2')`); err != nil {
+		t.Fatalf("insert historical records: %v", err)
+	}
+	migration, err := os.ReadFile("sql/migrations/20261110_field_id.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), string(migration)); err != nil {
+		t.Fatalf("apply migration: %v", err)
+	}
+	for _, tt := range []struct {
+		id, field, history string
+	}{
+		{"00000000-0000-7000-8000-000000000001", "battle-1-layout-2", "saved"},
+		{"00000000-0000-7000-8000-000000000002", "first-step-1", "tutorial"},
+	} {
+		var field, history string
+		if err := pool.QueryRow(t.Context(), "SELECT field_id, result->'history'->>0 FROM runs WHERE id=$1", tt.id).Scan(&field, &history); err != nil {
+			t.Errorf("read migrated run: %v", err)
+			continue
+		}
+		if field != tt.field || history != tt.history {
+			t.Errorf("run %s: field=%q history=%q, want %q/%q", tt.id, field, history, tt.field, tt.history)
+		}
+	}
+	var columnCount int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM information_schema.columns
+		WHERE table_schema=current_schema() AND table_name='matches' AND column_name='selected_layout_id'`).Scan(&columnCount); err != nil {
+		t.Errorf("check removed column: %v", err)
+	} else if columnCount != 0 {
+		t.Error("selected_layout_id still exists")
 	}
 }
 

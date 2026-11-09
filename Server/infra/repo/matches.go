@@ -83,7 +83,7 @@ func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain
 		// when another result of the challenger was applied during this match.
 		if err := queries.CreateMatch(ctx, db.CreateMatchParams{
 			ID: pgtype.UUID{Bytes: id, Valid: true}, RunID: pgtype.UUID{Bytes: runID, Valid: true},
-			OpponentGoogleSubject: record.OpponentSubject, OpponentName: record.OpponentName, SelectedLayoutID: record.SelectedLayoutID,
+			OpponentGoogleSubject: record.OpponentSubject, OpponentName: record.OpponentName,
 			Outcome:        string(record.Outcome),
 			OpponentRating: int64(record.OpponentRating),
 			RatingBefore:   int64(after) - int64(record.RatingDelta),
@@ -98,7 +98,7 @@ func (r *Matches) Create(ctx context.Context, record domain.MatchRecord) (domain
 	}
 	return domain.Match{
 		ID: id.String(), RunID: runID.String(), FieldID: record.FieldID,
-		SelectedLayoutID: record.SelectedLayoutID, OpponentName: record.OpponentName,
+		OpponentName: record.OpponentName,
 	}, nil
 }
 

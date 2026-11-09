@@ -35,12 +35,12 @@ func (q *Queries) AddUserRating(ctx context.Context, arg AddUserRatingParams) (i
 
 const createMatch = `-- name: CreateMatch :exec
 INSERT INTO matches (
-    id, run_id, opponent_google_subject, opponent_name, selected_layout_id,
+    id, run_id, opponent_google_subject, opponent_name,
     outcome, opponent_rating, rating_before, rating_after
 )
 VALUES (
-    $1, $2, $3, $4, $5, $6,
-    $7::bigint, $8::bigint, $9::bigint
+    $1, $2, $3, $4, $5,
+    $6::bigint, $7::bigint, $8::bigint
 )
 `
 
@@ -49,7 +49,6 @@ type CreateMatchParams struct {
 	RunID                 pgtype.UUID
 	OpponentGoogleSubject string
 	OpponentName          string
-	SelectedLayoutID      string
 	Outcome               string
 	OpponentRating        int64
 	RatingBefore          int64
@@ -64,7 +63,6 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 		arg.RunID,
 		arg.OpponentGoogleSubject,
 		arg.OpponentName,
-		arg.SelectedLayoutID,
 		arg.Outcome,
 		arg.OpponentRating,
 		arg.RatingBefore,

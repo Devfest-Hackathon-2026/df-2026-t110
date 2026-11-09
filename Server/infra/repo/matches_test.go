@@ -148,9 +148,9 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 	if run.GoogleSubject != "owner" || run.OpponentSubject != "opponent" || run.FieldID != match.FieldId || run.TutorialID != "" || run.ProgramID != "" || !run.Result.IsValid() {
 		t.Errorf("run=%+v", run)
 	}
-	var savedLayout string
+	var savedField string
 	var before, after int
-	if err := pool.QueryRow(t.Context(), "SELECT selected_layout_id, rating_before, rating_after FROM matches WHERE run_id=$1", match.RunId).Scan(&savedLayout, &before, &after); err != nil {
+	if err := pool.QueryRow(t.Context(), "SELECT runs.field_id, matches.rating_before, matches.rating_after FROM matches JOIN runs ON runs.id=matches.run_id WHERE run_id=$1", match.RunId).Scan(&savedField, &before, &after); err != nil {
 		t.Errorf("get persisted match: %v", err)
 	}
 	// The outcome depends on the engine, so only check that the saved result was applied
@@ -158,8 +158,8 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 	if before != domain.InitialRating || getRating(t, pool, "owner") != after || getRating(t, pool, "opponent") != domain.InitialRating {
 		t.Errorf("rating=%d->%d, owner=%d, opponent=%d", before, after, getRating(t, pool, "owner"), getRating(t, pool, "opponent"))
 	}
-	if savedLayout != match.SelectedLayoutId {
-		t.Errorf("saved layout=%s, response layout=%s", savedLayout, match.SelectedLayoutId)
+	if savedField != match.FieldId {
+		t.Errorf("saved field=%s, response field=%s", savedField, match.FieldId)
 	}
 	if _, err := NewBattlePrograms(pool).Get(t.Context(), "owner"); !errors.Is(err, usecase.ErrNotFound) {
 		t.Errorf("POST changed defense settings: %v", err)
@@ -204,7 +204,7 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 
 func ratedRecord(challenger, opponent string, outcome domain.MatchOutcome, delta int) domain.MatchRecord {
 	return domain.MatchRecord{
-		GoogleSubject: challenger, OpponentSubject: opponent, OpponentName: opponent, FieldID: "field", SelectedLayoutID: "layout",
+		GoogleSubject: challenger, OpponentSubject: opponent, OpponentName: opponent, FieldID: "field",
 		Result:  jsontext.Value(`{"history":[],"summary":{"score":{"player":0,"opponent":0}}}`),
 		Outcome: outcome, ChallengerRating: domain.InitialRating, OpponentRating: domain.InitialRating, RatingDelta: delta,
 	}
@@ -379,8 +379,8 @@ func TestRanking(t *testing.T) {
 			INSERT INTO runs (id, google_subject, field_id, result)
 			VALUES (gen_random_uuid(), 'dave', 'field', '{}') RETURNING id
 		)
-		INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, selected_layout_id, outcome)
-		SELECT gen_random_uuid(), id, 'idle', 'idle', 'layout', 'win' FROM run`); err != nil {
+		INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, outcome)
+		SELECT gen_random_uuid(), id, 'idle', 'idle', 'win' FROM run`); err != nil {
 		t.Fatalf("insert legacy match: %v", err)
 	}
 
