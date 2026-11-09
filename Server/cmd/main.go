@@ -66,8 +66,12 @@ func main() {
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})
 		cfg.BattlePrograms = usecase.NewBattlePrograms(repo.NewBattlePrograms(pool), programs)
 		matches := repo.NewMatches(pool)
+		layouts, err := matchrun.NewLayouts()
+		if err != nil {
+			log.Fatal(err)
+		}
 		cfg.Matches = usecase.NewMatches(usecase.MatchDeps{
-			Users: users, Programs: programs, Opponents: matches, Layouts: matchrun.NewLayouts(),
+			Users: users, Programs: programs, Opponents: matches, Layouts: layouts,
 			Executor: matchrun.NewExecutor(), Matches: matches,
 		})
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))

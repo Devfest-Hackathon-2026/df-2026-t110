@@ -111,9 +111,13 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 		t.Fatal(err)
 	}
 	matches := NewMatches(pool)
+	layouts, err := matchrun.NewLayouts()
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := echo.New()
 	api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{Matches: usecase.NewMatches(usecase.MatchDeps{
-		Users: NewUsers(pool), Programs: programs, Opponents: matches, Layouts: matchrun.NewLayouts(), Executor: matchrun.NewExecutor(), Matches: matches,
+		Users: NewUsers(pool), Programs: programs, Opponents: matches, Layouts: layouts, Executor: matchrun.NewExecutor(), Matches: matches,
 	})}), api.RegisterHandlersOptions{BaseURL: "/api", OperationMiddlewares: map[string][]echo.MiddlewareFunc{"createMatch": {router.Authentication(matchSession{})}}})
 	req := httptest.NewRequest(http.MethodPost, "/api/match", strings.NewReader(`[{"programId":"owner"},{"programId":"owner"},{"programId":"owner"}]`))
 	req.AddCookie(&http.Cookie{Name: "session", Value: "owner", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})

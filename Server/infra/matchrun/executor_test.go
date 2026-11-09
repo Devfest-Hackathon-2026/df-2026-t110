@@ -35,7 +35,7 @@ func team(program jsontext.Value) []domain.Program {
 
 func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 	t.Parallel()
-	layouts, err := NewLayouts().List(t.Context())
+	layouts, err := testLayouts(t).List(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 
 func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 	t.Parallel()
-	layouts, err := NewLayouts().List(t.Context())
+	layouts, err := testLayouts(t).List(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
