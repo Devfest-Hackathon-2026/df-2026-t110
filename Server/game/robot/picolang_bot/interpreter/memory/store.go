@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 
+	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 )
 
@@ -17,11 +18,22 @@ type entry struct {
 // Value payloads never change; reference counts are separate bookkeeping.
 // The common root always has one reference owned by the store itself.
 type Store struct {
+	events      EventSink
 	entries     map[ID]*entry
 	nextID      ID
 	memoryUsage uint64
 	peakUsage   uint64
 }
+
+// EventSink receives successful public operations in order. Implicit list-edge
+// retains and recursive releases are part of their initiating operation.
+type EventSink interface {
+	Add(robotevent.PicolangEvent)
+}
+
+// New enables operation recording before the store is first used. A nil sink
+// disables recording; the zero Store also remains ready for unlogged execution.
+func New(events EventSink) *Store { return &Store{events: events} }
 
 // Add stores a copy of value with one owned reference for the caller. List nodes
 // also retain both outgoing references. Repeated roots share RootID and acquire
@@ -92,6 +104,9 @@ func (s *Store) Add(value Value) (ID, error) {
 	}
 	s.nextID++
 	s.insert(s.nextID, value, size)
+	if s.events != nil {
+		s.events.Add(robotevent.MemoryAllocateEvent{ID: s.nextID, Value: allocationValue(value)})
+	}
 	return s.nextID, nil
 }
 
@@ -153,6 +168,9 @@ func (s *Store) Retain(id ID) error {
 		return err
 	}
 	s.entries[id].references++
+	if s.events != nil {
+		s.events.Add(robotevent.MemoryRetainEvent{ID: id})
+	}
 	return nil
 }
 
@@ -179,6 +197,7 @@ func (s *Store) Release(id ID) error {
 	if id == RootID && e.references == 1 {
 		return fmt.Errorf("cannot release the store-owned list root reference")
 	}
+	released := id
 	pending := []ID{id}
 	for len(pending) > 0 {
 		id := pending[len(pending)-1]
@@ -193,6 +212,9 @@ func (s *Store) Release(id ID) error {
 		if node, ok := e.value.(ListNode); ok {
 			pending = append(pending, node.Prev, node.Value)
 		}
+	}
+	if s.events != nil {
+		s.events.Add(robotevent.MemoryReleaseEvent{ID: released})
 	}
 	return nil
 }

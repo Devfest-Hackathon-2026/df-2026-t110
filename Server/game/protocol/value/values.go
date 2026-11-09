@@ -14,7 +14,6 @@ func (UnitValue) value()    {}
 // or sea. Subsequent board changes do not affect the observation.
 type TerrainValue interface {
 	Value
-	RecordValue
 	terrain()
 }
 

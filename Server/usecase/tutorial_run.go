@@ -15,7 +15,7 @@ type RunProgramRepository interface {
 	Get(ctx context.Context, id string) (domain.Program, error)
 }
 
-// TutorialExecutor executes one program synchronously, including debug recording.
+// TutorialExecutor executes one program synchronously, including replay recording.
 type TutorialExecutor interface {
 	Execute(ctx context.Context, program domain.Program, tutorial domain.Tutorial, variant int) (jsontext.Value, error)
 }

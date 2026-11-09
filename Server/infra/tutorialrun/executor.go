@@ -58,28 +58,24 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 	if err != nil {
 		return nil, fmt.Errorf("run tutorial simulation: %w", err)
 	}
-	// Reaching the goal can interrupt a suspended VM. Preserve its cleanup and
-	// execution_finished events along with the events collected by the hub.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	// A goal or turn limit can stop the board while the VM is suspended.
+	// Record its cleanup and final status before serializing the history.
 	if err := bot.Close(); err != nil {
-		return nil, fmt.Errorf("close tutorial robot: %w", err)
+		return nil, fmt.Errorf("close tutorial VM: %w", err)
 	}
 	for _, event := range bot.Collect() {
 		recording.Events = append(recording.Events, gameevent.RobotEvent{InterpreterID: robotID, Event: event})
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
 	}
 	outcome, ok := report.Result().(boardmsg.TutorialResult)
 	if !ok {
 		return nil, fmt.Errorf("unexpected tutorial result %T", report.Result())
 	}
-	history := make(wire.GameHistory, 0, len(recording.Events))
-	for _, event := range recording.Events {
-		entry, err := historyEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		history = append(history, entry)
+	history, err := encodeHistory(recording.Events)
+	if err != nil {
+		return nil, err
 	}
 	var result struct {
 		History wire.GameHistory `json:"history"`

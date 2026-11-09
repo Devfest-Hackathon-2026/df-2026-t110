@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="緑と紫のロボットにそれぞれプログラムを割り当てるイメージ">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#143b3c"/><stop offset="1" stop-color="#214d50"/></linearGradient>
+    <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#316865"/><stop offset="1" stop-color="#173f41"/></linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <path d="M0 500 600 335l600 165v140H0Z" fill="#0c3033" opacity=".5"/>
+  <rect x="128" y="91" width="425" height="464" rx="18" fill="url(#panel)" stroke="#8abbab" stroke-width="3"/>
+  <rect x="647" y="91" width="425" height="464" rx="18" fill="url(#panel)" stroke="#8abbab" stroke-width="3"/>
+  <path d="M150 169h379M669 169h379" stroke="#8abbab" stroke-width="2" opacity=".6"/>
+  <circle cx="181" cy="132" r="11" fill="#74e76b"/><circle cx="700" cy="132" r="11" fill="#b49af4"/>
+  <path d="m206 262 74-30 83 26-74 30Z" fill="#80ff55"/><path d="m206 262 83 26v80l-83-27Z" fill="#24c512"/><path d="m289 288 74-30v80l-74 30Z" fill="#0a8d0a"/>
+  <ellipse cx="316" cy="302" rx="7" ry="10" fill="#082821"/><ellipse cx="344" cy="291" rx="7" ry="10" fill="#082821"/>
+  <path d="m211 329-42 42 13 10 57-37M349 341l50 41 12-10-49-51" fill="#3bd929"/>
+  <path d="m722 262 74-30 83 26-74 30Z" fill="#c0a7f6"/><path d="m722 262 83 26v80l-83-27Z" fill="#8c67d8"/><path d="m805 288 74-30v80l-74 30Z" fill="#6744aa"/>
+  <ellipse cx="832" cy="302" rx="7" ry="10" fill="#221f39"/><ellipse cx="860" cy="291" rx="7" ry="10" fill="#221f39"/>
+  <path d="m727 329-42 42 13 10 57-37M865 341l50 41 12-10-49-51" fill="#a489e9"/>
+  <rect x="345" y="216" width="155" height="180" rx="10" fill="#0e3536" stroke="#7ec7b1" stroke-width="2"/>
+  <rect x="861" y="216" width="157" height="180" rx="10" fill="#0e3536" stroke="#a48dd8" stroke-width="2"/>
+  <g stroke-linecap="round" stroke-width="8"><path d="M365 244h51M365 273h94M365 302h67M365 331h104M365 360h76" stroke="#85edb8"/><path d="M881 244h51M881 273h94M881 302h67M881 331h104M881 360h76" stroke="#bca1ee"/></g>
+  <path d="M554 320h92" stroke="#dcf4e6" stroke-width="4" stroke-dasharray="8 9"/>
+  <path d="m588 301 21 19-21 19" fill="none" stroke="#dcf4e6" stroke-width="4"/>
+  <path d="m612 301-21 19 21 19" fill="none" stroke="#dcf4e6" stroke-width="4"/>
+  <path d="M164 467h352M683 467h352" stroke="#a7d4c5" stroke-opacity=".45" stroke-width="2"/>
+  <circle cx="186" cy="497" r="8" fill="#85edb8"/><circle cx="705" cy="497" r="8" fill="#bca1ee"/>
+</svg>

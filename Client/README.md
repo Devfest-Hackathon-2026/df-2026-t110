@@ -10,13 +10,15 @@
 
 ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 
-このブランチでは認証のrouterとClientのHTTP接続を実装しています。GoogleログインのサービスはServer起動時にまだ接続していないため、`GET /api/login` は501を返します。セッションを持つリクエストの `GET /api/me`、`POST /api/me/username`、`POST /api/logout` は既存のユーザー・セッションusecaseへ接続します。
+Googleログインは `GET /api/login` から設定した接続先へ進み、認可コード・PKCE・state・nonce・署名を検証して通常のセッションを発行します。環境変数とクライアントの「Googleでログイン」表示は従来のままです。Composeでは接続パラメーターにDexを指定し、`docker compose up --build` または `docker compose watch` で起動できます。`http://localhost:8080/account` の「Googleでログイン」から進み、開発用アカウント `developer@example.test` / `password`（別ユーザーは `other@example.test` / `password`）を使います。Dexのissuerは `http://dex.localhost:5556/dex` で、ブラウザではループバック、Compose内ではDexコンテナへ解決されます。Dexの状態はメモリに保持するため、再起動すると認可処理中の情報は失われます。アプリのユーザー・プログラム・セッションは引き続きPostgreSQLに保存します。
+
+アプリの接続パラメーターは `GOOGLE_ISSUER_URL`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_REDIRECT_URL` で注入します。Compose以外で `GOOGLE_ISSUER_URL` を省略するとGoogleのissuerを使い、クライアントID・シークレット・リダイレクトURLを設定していなければログインAPIは501を返します。Composeで実際のGoogleに接続する場合は `GOOGLE_ISSUER_URL=https://accounts.google.com` とGoogle用の残り3項目を指定します。HTTPのissuerは `APP_ENV=development` のローカルホスト向けに限定され、Cloud Runでは許可しません。Google以外のissuerのユーザーIDはissuerごとに分離します。Dex自体の登録情報は `DEX_ISSUER`、`DEX_CLIENT_ID`、`DEX_CLIENT_SECRET`、`DEX_REDIRECT_URL` で設定し、アプリ側の対応する `GOOGLE_*` と一致させます。
 
 ## 教材詳細
 
 `/tutorials` は `GET /api/tutorial` の教材一覧を表示します。`/tutorials/:tutorialId` は OpenAPI の `GET /api/tutorial/{tutorialId}` が返す `stage.variants` を3D・カメラ表示します。旧APIの `fieldId` が返る場合は `GET /api/field/{fieldId}` も読みます。教材データの取得が完了するまでは盤面とエディタの描画を待ち、APIが使えない場合はエラーを表示します。別のAPIオリジンを使う場合は `VITE_API_BASE_URL` を設定してください。案内役は同じ `robot.glb` の胴体と腕を実行時にオレンジへ変えたものです。
 
-教材画面の「実行」は、実行直前に候補配置を選び、`window` に `robot-field:tutorial-run` を発行します。`detail` は `{ tutorialId, layout, candidateIndex, program }` で、`program` は `Schema/picolang/toplevel.schema.yaml` に沿った Picolang v0 のソースです。続いてクライアント内の実行器が AST を評価し、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。前進・後退・回転・待機・拾う・置く・岩破壊、条件・繰り返し・関数呼び出し、算術・論理・stack演算に対応します。岩や荷物の変化は動作後に盤面へ反映し、ゴールに着くとクリア演出を再生します。「リセット」は実行を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。サーバーのVM・型チェックとはまだ接続していません。ローカル実行器には最大10000ステップ、関数呼び出し深さ64の制限があります。旧記号マップにドリル制限が無い場合は99回とします。
+教材画面の「実行」は、`POST /api/program` で Picolang v0 のソースを保存し、返された `programId` を `POST /api/tutorial/{tutorialId}/run` に送ります。サーバーが候補配置の選択・型チェック・実行を行い、`runId` と `fieldId` を返します。`window` に発行する `robot-field:tutorial-run` の `detail` は `{ tutorialId, layout, candidateIndex, program, runId }` です。`GET /api/run/{runId}/events` の SSE `result` イベントから実行履歴とクリア判定を受け取り、ロボットの動作を1秒単位で `StageScene` のアニメーションへ渡します。岩や荷物の変化も履歴から盤面へ反映し、クリア時は演出を再生します。実行にはサーバーのDB接続とログインが必要で、APIが使えない場合はエラーを表示します。「リセット」は結果の受信・再生を中断して盤面・ロボットを初期状態に戻し、`robot-field:tutorial-reset` を `{ tutorialId }` とともに発行します。
 
 iPad横向きのような横長画面では、左にPicolangのカテゴリ・命令パレット・作業領域、右上にスクロールできる課題説明、右下にARを置きます。パレットをタップすると関数の末尾のreturnの手前へ命令を追加し、ドラッグすると制御構文の内側にも追加できます。各ブロックからも命令の追加・並べ替え・削除ができ、式は入れ子で編集できます。関数と引数、型（入れ子のstackを含む）も編集できます。教材ごとの下書きはブラウザのlocalStorageへ保存し、JSONの確認・コピー・読み込みもできます。JSONの読み込み時はノード形状と重複する `hintId` を検査します。サーバーの意味解析・型チェックはまだ接続していません。左右の境界はドラッグまたはフォーカス後の左右矢印キー、説明とARの境界はドラッグまたは上下矢印キーで調整できます。「全画面」はブラウザの全画面表示を試し、対応していない環境では画面全体にARを重ねます。「ARを隠す」後は説明欄の「ARを表示」から戻せます。幅980px以下で縦向きに近い画面、または幅700px以下では上下に並べます。
 

@@ -2,7 +2,6 @@ package tutorialrun_test
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"os"
@@ -33,15 +32,15 @@ func TestExecuteTutorial(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, tt := range []struct {
-		name     string
-		source   []byte
-		cleared  bool
-		finished string
-		wantErr  error
+		name      string
+		source    []byte
+		cleared   bool
+		wantErr   error
+		endReason string
 	}{
-		{name: "goal and debug recording", source: source, cleared: true, finished: "interrupted"},
-		{name: "finished without reaching goal", source: []byte(strings.Replace(string(source), `"forward"`, `"pick_up"`, 1)), finished: "completed"},
-		{name: "step limit", source: loop, finished: "step_limit"},
+		{name: "goal and replay recording", source: source, cleared: true, endReason: "interrupted"},
+		{name: "finished without reaching goal", source: []byte(strings.Replace(string(source), `"forward"`, `"pick_up"`, 1)), endReason: "completed"},
+		{name: "step limit", source: loop, endReason: "step_limit"},
 		{name: "invalid program", source: []byte(`{}`), wantErr: domain.ErrInvalidProgram},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -54,7 +53,13 @@ func TestExecuteTutorial(t *testing.T) {
 				return
 			}
 			var decoded struct {
-				History []jsontext.Value `json:"history"`
+				History []struct {
+					Type  string `json:"type"`
+					Event struct {
+						Kind   string `json:"kind"`
+						Reason string `json:"reason"`
+					} `json:"event"`
+				} `json:"history"`
 				Summary struct {
 					Cleared bool   `json:"cleared"`
 					Reason  string `json:"reason"`
@@ -67,13 +72,25 @@ func TestExecuteTutorial(t *testing.T) {
 			if decoded.Summary.Cleared != tt.cleared || decoded.Summary.Reason == "" || len(decoded.History) == 0 {
 				t.Errorf("result = %s", result)
 			}
-			if !strings.Contains(string(result), `"reason":"`+tt.finished+`"`) {
-				t.Errorf("missing execution end reason %s", tt.finished)
+			if !strings.Contains(string(result), `"type":"field"`) {
+				t.Error("recording missing field events")
 			}
-			for _, required := range []string{`"type":"field"`, `"type":"picolang"`, `"kind":"execution_finished"`, `"kind":"variable_drop"`, `"integer":9223372036854775807`} {
-				if !strings.Contains(string(result), required) {
-					t.Errorf("recording missing %s", required)
+			for _, kind := range []string{"current_node", "memory_allocate", "variable_init", "variable_drop", "execution_finished"} {
+				if !strings.Contains(string(result), `"kind":"`+kind+`"`) {
+					t.Errorf("recording missing %s events", kind)
 				}
+			}
+			endings := 0
+			for _, event := range decoded.History {
+				if event.Type == "picolang" && event.Event.Kind == "execution_finished" {
+					endings++
+					if event.Event.Reason != tt.endReason {
+						t.Errorf("execution end reason = %s, want %s", event.Event.Reason, tt.endReason)
+					}
+				}
+			}
+			if endings != 1 {
+				t.Errorf("execution_finished count = %d, want 1", endings)
 			}
 		})
 	}

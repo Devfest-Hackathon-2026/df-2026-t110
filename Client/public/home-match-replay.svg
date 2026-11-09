@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="対戦結果と行動を見返す再生画面のイメージ">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#1b4847"/><stop offset="1" stop-color="#103538"/></linearGradient>
+    <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#2e6761"/><stop offset="1" stop-color="#153c3d"/></linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <rect x="100" y="65" width="1000" height="475" rx="14" fill="url(#panel)" stroke="#8fc3b0" stroke-width="3"/>
+  <path d="M100 147h1000" stroke="#8fc3b0" stroke-opacity=".6" stroke-width="2"/>
+  <circle cx="147" cy="106" r="11" fill="#7ff46c"/><circle cx="1053" cy="106" r="11" fill="#bca1ed"/>
+  <path d="M482 108h236" stroke="#d9f1e4" stroke-opacity=".8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M178 325 462 209 998 339 714 464Z" fill="#123d40" stroke="#8bd1b8" stroke-width="4"/>
+  <path d="M178 325v25l536 133v-19ZM714 464v19l284-126v-18Z" fill="#092b2e"/>
+  <path d="M320 268 856 401M461 209 998 339M178 325 714 464M604 244 320 387M748 279 462 423M891 315 606 459" fill="none" stroke="#8bd1b8" stroke-opacity=".6" stroke-width="3"/>
+  <path d="m302 275 53-20 58 17-54 22Z" fill="#79f64e"/><path d="m302 275 57 19v52l-57-17Z" fill="#23c713"/><path d="m359 294 54-22v52l-54 22Z" fill="#0d950a"/>
+  <ellipse cx="379" cy="303" rx="5" ry="7" fill="#052b20"/><ellipse cx="401" cy="295" rx="5" ry="7" fill="#052b20"/>
+  <path d="m786 338 52-20 57 17-54 22Z" fill="#c2aafa"/><path d="m786 338 55 19v52l-55-17Z" fill="#8d69d9"/><path d="m841 357 54-22v52l-54 22Z" fill="#6548aa"/>
+  <ellipse cx="860" cy="365" rx="5" ry="7" fill="#24203c"/><ellipse cx="882" cy="357" rx="5" ry="7" fill="#24203c"/>
+  <path d="m570 319 32-13 37 11-33 13Z" fill="#ffe7ad"/><path d="m570 319 36 11v27l-36-9Z" fill="#cfa95e"/><path d="m606 330 33-13v28l-33 12Z" fill="#aa8045"/>
+  <circle cx="600" cy="357" r="45" fill="#bdfff1" opacity=".18"/><circle cx="600" cy="357" r="23" fill="none" stroke="#c8fff2" stroke-width="4"/>
+  <path d="M127 510h946" stroke="#779f98" stroke-width="8" stroke-linecap="round"/>
+  <path d="M127 510h624" stroke="#a6edc7" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="751" cy="510" r="17" fill="#e9fff0"/>
+  <circle cx="602" cy="102" r="38" fill="#d2efe1" opacity=".12"/>
+  <path d="m590 82 29 20-29 20Z" fill="#d9ffe8"/>
+  <path d="M120 575h960" stroke="#8cb5aa" stroke-opacity=".35" stroke-width="2"/>
+</svg>

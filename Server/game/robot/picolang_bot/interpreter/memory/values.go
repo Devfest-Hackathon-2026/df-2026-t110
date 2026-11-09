@@ -1,14 +1,17 @@
 // Package memory stores immutable interpreter values under reference-counted IDs.
 package memory
 
-import values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+import (
+	payload "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/memory"
+	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
+)
 
 // ID identifies a value within one Store. IDs must not be used in other stores.
-type ID uint64
+type ID = payload.ID
 
 // RootID identifies the common empty list, regardless of its element type.
 // Store owns one reference; Add(ListRoot{}) acquires a caller-owned reference.
-const RootID ID = 0
+const RootID = payload.RootID
 
 // Value is a stored primitive or list node. Add accepts only the non-pointer
 // variants below, so inputs and values returned by Get cannot mutate storage.

@@ -58,6 +58,10 @@ func TestTextbooksLoadAndIndex(t *testing.T) {
 	if len(got.Stage.Variants) != 1 || got.Goal == nil || *got.Goal != "Reach the goal" {
 		t.Errorf("Get(first-step) = %+v, want stage and goal", got)
 	}
+	field, err := repo.GetGenerationField(context.Background(), "verified-subject", "first-step")
+	if err != nil || !strings.Contains(string(field), `"variants"`) || strings.Contains(string(field), "Move forward") {
+		t.Errorf("GetGenerationField = %s, %v; want stage only", field, err)
+	}
 	if err := os.WriteFile(path, []byte(strings.Replace(textbookPage, "First step", "Updated title", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}

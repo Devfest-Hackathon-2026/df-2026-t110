@@ -14,6 +14,9 @@
   overflow: hidden;
   background: var(--color-field);
 }
+.tutorial-mobile-tabs {
+  display: none;
+}
 .tutorial-view {
   display: grid;
   grid-template-rows: minmax(0, 1fr) 10px minmax(0, var(--stage-height));
@@ -148,6 +151,14 @@
   font-size: var(--type-small);
   line-height: 1.4;
 }
+.tutorial-run-feedback a {
+  display: block;
+  width: fit-content;
+  margin-top: 6px;
+  color: #d4f4e8;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .tutorial-stage-toolbar {
   position: absolute;
   z-index: 2;
@@ -161,8 +172,33 @@
   pointer-events: none;
 }
 .tutorial-stage-toolbar > span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-field-ink);
   font-size: var(--type-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--color-field-rule);
+  border-radius: 4px;
+  background: var(--color-field);
+  color: var(--color-field-ink);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button svg {
+  width: 20px;
+  height: 20px;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .tutorial-view-switch {
   display: flex;
@@ -527,23 +563,9 @@
   color: var(--color-accent-ink);
 }
 .tutorial-reset-button,
-.tutorial-fullscreen-button,
 .tutorial-hide-stage-button {
   background: var(--color-paper);
   color: var(--color-accent-deep);
-}
-.tutorial-program-actions .tutorial-fullscreen-button {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  place-items: center;
-  background: transparent;
-  color: var(--color-field-ink);
-}
-.tutorial-fullscreen-button svg {
-  width: 18px;
-  height: 18px;
 }
 .tutorial-layout-nav {
   display: grid;
@@ -733,6 +755,69 @@
 @media (max-width: 700px) and (max-height: 600px) {
   .tutorial-page {
     grid-template-rows: minmax(0, 50%) minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px), (max-width: 980px) and (max-height: 500px) {
+  .tutorial-page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 48px minmax(0, 28%) minmax(0, 1fr);
+  }
+  .tutorial-page--compact-ar {
+    grid-template-rows: 48px minmax(0, 1fr);
+  }
+  .tutorial-mobile-tabs {
+    display: flex;
+    grid-row: 1;
+    min-width: 0;
+    background: var(--color-paper);
+    border-bottom: 1px solid var(--color-rule);
+  }
+  .tutorial-mobile-tabs button {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--color-ink-2);
+    font-size: var(--type-body);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .tutorial-mobile-tabs button[aria-pressed='true'] {
+    border-bottom-color: var(--color-accent);
+    color: var(--color-accent-deep);
+  }
+  .tutorial-mobile-tabs button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -4px;
+  }
+  .tutorial-view {
+    display: contents;
+  }
+  .tutorial-page--compact-work .tutorial-panel {
+    display: flex;
+    grid-row: 2;
+    min-height: 0;
+  }
+  .tutorial-page--compact-work .tutorial-editor {
+    grid-row: 3;
+    min-height: 0;
+  }
+  .tutorial-page--compact-work .tutorial-stage,
+  .tutorial-page--compact-ar .tutorial-panel,
+  .tutorial-page--compact-ar .tutorial-editor,
+  .tutorial-resizer,
+  .tutorial-stage-resizer {
+    display: none;
+  }
+  .tutorial-page--compact-ar .tutorial-stage {
+    display: block;
+    grid-row: 2;
+    min-height: 0;
+  }
+  .tutorial-hide-stage-button,
+  .tutorial-show-stage-button {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

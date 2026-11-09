@@ -22,5 +22,3 @@ func (target DistanceTarget) Valid() bool {
 		return false
 	}
 }
-
-func (DistanceTarget) recordValue() {}

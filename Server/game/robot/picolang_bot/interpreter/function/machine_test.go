@@ -24,7 +24,8 @@ type expr = bot.Expr[bot.Name, bot.Untyped]
 type param = bot.Param[bot.Name]
 
 func resources() function.Resources {
-	return function.Resources{Memory: &memory.Store{}, Time: &clock.Counter{}, Events: &event.Collector{}}
+	events := &event.Collector{}
+	return function.Resources{Memory: memory.New(events), Time: &clock.Counter{}, Events: events}
 }
 
 func integer(n int64) expr {
@@ -219,14 +220,15 @@ func TestParametersAssignmentsAndReturnOwnership(t *testing.T) {
 	}
 	var variableEvents []robotevent.PicolangEvent
 	for _, e := range env.Events.Collect() {
-		if _, current := e.(robotevent.CurrentNodeEvent); !current {
+		switch e.(type) {
+		case robotevent.VariableInitEvent, robotevent.VariableUpdateEvent, robotevent.VariableDropEvent:
 			variableEvents = append(variableEvents, e)
 		}
 	}
 	want := []robotevent.PicolangEvent{
-		robotevent.VariableInitEvent{HintID: "p-definition", Value: values.IntegerValue{Integer: 9}},
-		robotevent.VariableInitEvent{HintID: "saved-definition", Value: values.IntegerValue{Integer: 9}},
-		robotevent.VariableUpdateEvent{HintID: "p-definition", Diff: []robotevent.ValueUpdate{robotevent.IntegerUpdate{Value: 1}}},
+		robotevent.VariableInitEvent{HintID: "p-definition", ValueID: arg},
+		robotevent.VariableInitEvent{HintID: "saved-definition", ValueID: arg},
+		robotevent.VariableUpdateEvent{HintID: "p-definition", ValueID: arg + 1},
 		robotevent.VariableDropEvent{HintID: "saved-definition"},
 		robotevent.VariableDropEvent{HintID: "p-definition"},
 	}
@@ -309,7 +311,9 @@ func TestForLoopsUnwindScopesAndIgnoreIteratorAssignments(t *testing.T) {
 	initializations, drops := map[bot.HintID]int{}, map[bot.HintID]int{}
 	implicitUpdates := 0
 	events := env.Events.Collect()
+	var replay testutil.EventReplay
 	for i, e := range events {
+		replay.Apply(t, e)
 		switch e := e.(type) {
 		case robotevent.VariableInitEvent:
 			initializations[e.HintID]++
@@ -319,22 +323,20 @@ func TestForLoopsUnwindScopesAndIgnoreIteratorAssignments(t *testing.T) {
 			if e.HintID != "i-definition" && e.HintID != "j-definition" {
 				continue
 			}
-			if len(e.Diff) != 1 {
-				t.Errorf("unexpected iterator diff: %#v", e.Diff)
-				continue
-			}
-			update, ok := e.Diff[0].(robotevent.IntegerUpdate)
-			if !ok || update.Value == 99 { // Ignore the explicit assignment in the body.
+			update, ok := replay.Value(t, e.ValueID).(values.IntegerValue)
+			if !ok || update.Integer == 99 { // Ignore the explicit assignment in the body.
 				continue
 			}
 			implicitUpdates++
-			if i == 0 {
-				t.Error("iterator update has no preceding current-node event")
-				continue
+			var current robotevent.CurrentNodeEvent
+			for j := i - 1; j >= 0; j-- {
+				if node, ok := events[j].(robotevent.CurrentNodeEvent); ok {
+					current = node
+					break
+				}
 			}
-			current, ok := events[i-1].(robotevent.CurrentNodeEvent)
-			if !ok || current.HintID != "for" {
-				t.Errorf("iterator update follows %#v, want current node for", events[i-1])
+			if current.HintID != "for" {
+				t.Errorf("iterator update has current node %s, want for", current.HintID)
 			}
 		}
 	}
@@ -428,7 +430,7 @@ func TestIfElseReturnsFromNestedScope(t *testing.T) {
 	}
 }
 
-func TestStackSnapshotsOutliveValuesAndReassignment(t *testing.T) {
+func TestStackEventsReplayAfterValuesAreReleased(t *testing.T) {
 	t.Parallel()
 	vv := bot.StackType{ElementType: bot.StackType{ElementType: bot.IntegerType{}}}
 	p := checked(t, []param{parameter("v", vv)}, vv,
@@ -451,23 +453,26 @@ func TestStackSnapshotsOutliveValuesAndReassignment(t *testing.T) {
 	result := run(t, m, env, p)
 	release(t, env, result)
 	assertUsage(t, env, base)
-	innerValue := values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}}}
-	want := values.StackRecordValue{Elements: []values.RecordValue{innerValue, innerValue}}
+	innerValue := testutil.StackValue{Elements: []any{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}}}
+	want := testutil.StackValue{Elements: []any{innerValue, innerValue}}
 	initCount, updateCount := 0, 0
+	var replay testutil.EventReplay
 	for _, e := range env.Events.Collect() {
+		replay.Apply(t, e)
 		switch e := e.(type) {
 		case robotevent.VariableInitEvent:
 			initCount++
-			if !reflect.DeepEqual(e.Value, want) {
-				t.Errorf("snapshot changed: %#v", e.Value)
+			if e.ValueID != outer || !reflect.DeepEqual(replay.Value(t, e.ValueID), want) {
+				t.Errorf("initial binding does not share the original stack: %+v", e)
 			}
 		case robotevent.VariableUpdateEvent:
 			updateCount++
-			if !reflect.DeepEqual(e.Diff, []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.StackReplace{}}}) {
-				t.Errorf("unexpected replacement snapshot: %#v", e.Diff)
+			if e.ValueID != memory.RootID {
+				t.Errorf("empty stack ID = %d, want root", e.ValueID)
 			}
 		}
 	}
+	replay.AssertEmpty(t)
 	if initCount != 2 || updateCount != 1 {
 		t.Errorf("got %d initializations and %d updates", initCount, updateCount)
 	}
@@ -625,15 +630,14 @@ func TestPrimitiveAssignmentsProduceTypedEvents(t *testing.T) {
 		name          string
 		typ           bot.Type
 		initial, next memory.Value
-		update        robotevent.ValueUpdate
 	}{
-		{"bool", bot.BoolType{}, memory.Bool{}, memory.Bool{Value: true}, robotevent.BoolUpdate{Value: true}},
-		{"integer", bot.IntegerType{}, memory.Integer{Value: 1}, memory.Integer{Value: 3}, robotevent.IntegerUpdate{Value: 3}},
-		{"unit", bot.UnitType{}, memory.Unit{}, memory.Unit{}, robotevent.UnitUpdate{}},
-		{"terrain", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}, memory.Terrain{Value: values.SeaTerrain{}}, robotevent.TerrainUpdate{Value: values.SeaTerrain{}}},
-		{"rotation", bot.RotationType{}, memory.Rotation{Value: values.Left}, memory.Rotation{Value: values.Right}, robotevent.RotationUpdate{Value: values.Right}},
-		{"distance target", bot.DistanceTargetType{}, memory.DistanceTarget{Value: values.DistanceRobot}, memory.DistanceTarget{Value: values.DistanceTerritory}, robotevent.DistanceTargetUpdate{Value: values.DistanceTerritory}},
-		{"terrain attributes", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}, robotevent.TerrainUpdate{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}},
+		{"bool", bot.BoolType{}, memory.Bool{}, memory.Bool{Value: true}},
+		{"integer", bot.IntegerType{}, memory.Integer{Value: 1}, memory.Integer{Value: 3}},
+		{"unit", bot.UnitType{}, memory.Unit{}, memory.Unit{}},
+		{"terrain", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}, memory.Terrain{Value: values.SeaTerrain{}}},
+		{"rotation", bot.RotationType{}, memory.Rotation{Value: values.Left}, memory.Rotation{Value: values.Right}},
+		{"distance target", bot.DistanceTargetType{}, memory.DistanceTarget{Value: values.DistanceRobot}, memory.DistanceTarget{Value: values.DistanceTerritory}},
+		{"terrain attributes", bot.TerrainType{}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, HasLuggage: true, Territory: values.OwnTerritory}}, memory.Terrain{Value: values.LandTerrain{Kind: values.PlainLand{}, Territory: values.EnemyTerritory}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -654,7 +658,9 @@ func TestPrimitiveAssignmentsProduceTypedEvents(t *testing.T) {
 			release(t, env, result)
 			assertUsage(t, env, base)
 			updates := 0
+			var replay testutil.EventReplay
 			for _, e := range env.Events.Collect() {
+				replay.Apply(t, e)
 				if _, current := e.(robotevent.CurrentNodeEvent); current {
 					continue
 				}
@@ -663,11 +669,12 @@ func TestPrimitiveAssignmentsProduceTypedEvents(t *testing.T) {
 				}
 				if update, ok := e.(robotevent.VariableUpdateEvent); ok {
 					updates++
-					if update.HintID != fn.Params[0].Ident.HintID || !reflect.DeepEqual(update.Diff, []robotevent.ValueUpdate{tc.update}) {
+					if update.HintID != fn.Params[0].Ident.HintID || update.ValueID != b {
 						t.Errorf("unexpected update: %#v", update)
 					}
 				}
 			}
+			replay.AssertEmpty(t)
 			if updates != 1 {
 				t.Errorf("got %d updates, want 1", updates)
 			}
@@ -735,7 +742,7 @@ func TestBooleanBuiltinsEvaluateActionArgumentsWithoutShortCircuit(t *testing.T)
 	}
 }
 
-func TestBuiltinStackUpdatesUseReplaceEvents(t *testing.T) {
+func TestBuiltinStackUpdatesReuseNodeIDs(t *testing.T) {
 	t.Parallel()
 	v := bot.StackType{ElementType: bot.IntegerType{}}
 	p := checked(t, nil, bot.IntegerType{},
@@ -752,32 +759,26 @@ func TestBuiltinStackUpdatesUseReplaceEvents(t *testing.T) {
 	assertValue(t, env, result, memory.Integer{Value: 3})
 	release(t, env, result)
 	assertUsage(t, env, base)
-	var replacements [][]values.RecordValue
+	var updates []memory.ID
+	var replay testutil.EventReplay
+	var elements [][]any
 	for _, e := range env.Events.Collect() {
+		replay.Apply(t, e)
 		if update, ok := e.(robotevent.VariableUpdateEvent); ok && update.HintID == "v-definition" {
-			if len(update.Diff) != 1 {
-				t.Errorf("unexpected stack diff: %#v", update.Diff)
-				continue
-			}
-			stack, ok := update.Diff[0].(robotevent.StackUpdate)
-			if !ok {
-				t.Errorf("unexpected update kind: %T", update.Diff[0])
-				continue
-			}
-			replacement, ok := stack.Update.(robotevent.StackReplace)
-			if !ok {
-				t.Errorf("stack update is %T, want replace", stack.Update)
-				continue
-			}
-			replacements = append(replacements, replacement.Value)
+			updates = append(updates, update.ValueID)
+			elements = append(elements, replay.Value(t, update.ValueID).(testutil.StackValue).Elements)
 		}
 	}
-	want := [][]values.RecordValue{
+	want := [][]any{
 		{values.IntegerValue{Integer: 1}},
 		{values.IntegerValue{Integer: 1}, values.IntegerValue{Integer: 2}},
 		{values.IntegerValue{Integer: 1}},
 	}
-	if !reflect.DeepEqual(replacements, want) {
-		t.Errorf("stack snapshots = %#v, want %#v", replacements, want)
+	if !reflect.DeepEqual(elements, want) {
+		t.Errorf("replayed stacks = %#v, want %#v", elements, want)
 	}
+	if len(updates) != 3 || updates[0] != updates[2] || updates[0] == updates[1] {
+		t.Errorf("pop_back did not reuse the previous node: %v", updates)
+	}
+	replay.AssertEmpty(t)
 }

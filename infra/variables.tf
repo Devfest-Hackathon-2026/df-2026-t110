@@ -83,3 +83,33 @@ variable "github_deploy_ref" {
   type        = string
   default     = "refs/heads/main"
 }
+
+# The server cannot learn its own URL from Terraform without a cycle, so the redirect URL is given explicitly.
+variable "google_login_client_id" {
+  description = "Client ID of the OAuth client the app uses for Google sign-in. Leave null to keep sign-in disabled."
+  type        = string
+  default     = null
+}
+
+variable "google_login_client_secret" {
+  description = "Client secret of the Google sign-in OAuth client."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition     = var.google_login_client_id == null || var.google_login_client_secret != null
+    error_message = "google_login_client_secret is required when google_login_client_id is set."
+  }
+}
+
+variable "google_login_redirect_url" {
+  description = "Redirect URL registered on the Google sign-in client, e.g. https://<server host>/api/login/callback."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.google_login_client_id == null || var.google_login_redirect_url != null
+    error_message = "google_login_redirect_url is required when google_login_client_id is set."
+  }
+}

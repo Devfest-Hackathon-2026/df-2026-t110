@@ -6,24 +6,62 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// testDatabaseURLEnv names the PostgreSQL connection string used by the
-// integration tests. They are skipped when it is unset so that `go test ./...`
-// keeps working without a database.
+// testDatabaseURLEnv optionally overrides the Testcontainers-managed database.
 const testDatabaseURLEnv = "TEST_DATABASE_URL"
+
+var testPostgres *postgres.PostgresContainer
+
+// Start at most one container, only when a selected test needs a database.
+// Each test still gets its own schema so parallel tests remain isolated.
+var testDatabaseURL = sync.OnceValues(func() (string, error) {
+	if url := os.Getenv(testDatabaseURLEnv); url != "" {
+		return url, nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	var err error
+	testPostgres, err = postgres.Run(ctx, "postgres:18-alpine",
+		postgres.WithDatabase("server_test"),
+		postgres.WithUsername("server_test"),
+		postgres.WithPassword("server_test"),
+		postgres.BasicWaitStrategies(),
+	)
+	if err != nil {
+		return "", fmt.Errorf("start test PostgreSQL: %w", err)
+	}
+	return testPostgres.ConnectionString(ctx, "sslmode=disable")
+})
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if testPostgres != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		err := testPostgres.Terminate(ctx)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "terminate test PostgreSQL: %v\n", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
 
 // newTestPool returns a pool whose search_path points at a fresh schema with
 // schema.sql applied, isolating each test from the others.
 func newTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	url := os.Getenv(testDatabaseURLEnv)
-	if url == "" {
-		t.Skipf("%s is not set", testDatabaseURLEnv)
+	url, err := testDatabaseURL()
+	if err != nil {
+		t.Fatalf("prepare test database: %v", err)
 	}
 	ctx := context.Background()
 	ddl, err := os.ReadFile("sql/schema/schema.sql")
