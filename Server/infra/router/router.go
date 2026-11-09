@@ -26,6 +26,7 @@ type Config struct {
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
 	Matches           MatchCreator
+	Rankings          RankingLister
 }
 
 type AuthService interface {
@@ -58,6 +59,10 @@ type BattleProgramService interface {
 
 type MatchCreator interface {
 	Create(ctx context.Context, subject string, ids []string) (domain.Match, error)
+}
+
+type RankingLister interface {
+	List(ctx context.Context) ([]domain.RankingEntry, error)
 }
 
 type ProgramService interface {

@@ -311,6 +311,30 @@ components:
           format: uuid
           description: この対戦のシミュレーション作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
 
+    RankingEntry:
+      type: object
+      additionalProperties: false
+      required: [rank, name, rating, wins, losses, draws]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+          description: 同じレートは同順位。次の順位は同順位の人数分だけ飛ぶ
+        name:
+          type: string
+        rating:
+          type: integer
+        wins:
+          type: integer
+          minimum: 0
+          description: 申込側として勝利した回数。挑戦回数は wins + losses + draws
+        losses:
+          type: integer
+          minimum: 0
+        draws:
+          type: integer
+          minimum: 0
+
     User:
       type: object
       additionalProperties: true

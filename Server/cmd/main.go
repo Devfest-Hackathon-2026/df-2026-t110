@@ -74,6 +74,7 @@ func main() {
 			Users: users, Programs: programs, Opponents: matches, Layouts: layouts,
 			Executor: matchrun.NewExecutor(), Matches: matches,
 		})
+		cfg.Rankings = usecase.NewRankings(matches)
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
 		cfg.TutorialRuns = runs
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))

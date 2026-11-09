@@ -130,6 +130,20 @@ type Program struct {
 	TutorialID *string `json:"tutorialID,omitempty"`
 }
 
+// RankingEntry defines model for RankingEntry.
+type RankingEntry struct {
+	Draws  int    `json:"draws"`
+	Losses int    `json:"losses"`
+	Name   string `json:"name"`
+
+	// Rank 同じレートは同順位。次の順位は同順位の人数分だけ飛ぶ
+	Rank   int `json:"rank"`
+	Rating int `json:"rating"`
+
+	// Wins 申込側として勝利した回数。挑戦回数は wins + losses + draws
+	Wins int `json:"wins"`
+}
+
 // RunCreated defines model for RunCreated.
 type RunCreated struct {
 	// RunId 実行作成時に発行される UUIDv7。runEvents で結果を受け取るためのID
