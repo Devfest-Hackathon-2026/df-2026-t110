@@ -12,15 +12,7 @@ import (
 )
 
 func History(events []gameevent.GameEvent) (wire.GameHistory, error) {
-	history := make(wire.GameHistory, 0, len(events))
-	for _, event := range events {
-		entry, err := historyEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		history = append(history, entry)
-	}
-	return history, nil
+	return encodeHistory(events)
 }
 
 // Union slots not supported by the generator remain interfaces, but each event

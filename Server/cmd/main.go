@@ -109,7 +109,7 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
-			"createMatch": {authenticate, middleware.BodyLimit(1 << 20)},
+			"createMatch":           {authenticate, middleware.BodyLimit(1 << 20)},
 			"getBattlePrograms":     {authenticate},
 			"setBattlePrograms":     {authenticate, middleware.BodyLimit(1 << 20)},
 			"getMe":                 {authenticate},

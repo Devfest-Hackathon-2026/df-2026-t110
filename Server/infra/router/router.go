@@ -25,7 +25,7 @@ type Config struct {
 	TutorialRuns      TutorialRunner
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
-	Matches MatchCreator
+	Matches           MatchCreator
 }
 
 type AuthService interface {
