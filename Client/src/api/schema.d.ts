@@ -31,7 +31,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** プログラムを取得 */
+        /**
+         * プログラムを取得
+         * @description 有効なセッションの所有者だけが保存済みプログラムを取得できる。
+         *     他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+         *     ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+         */
         get: operations["getProgram"];
         /**
          * プログラムを更新
@@ -1457,13 +1462,42 @@ export interface operations {
             /** @description プログラム */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     updateProgram: {

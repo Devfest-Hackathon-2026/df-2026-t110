@@ -4,17 +4,48 @@
       - program
     summary: プログラムを取得
     operationId: getProgram
+    description: |
+      有効なセッションの所有者だけが保存済みプログラムを取得できる。
+      他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+      ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+    security:
+      - sessionCookie: []
     parameters:
       - $ref: "../../openapi.yaml#/components/parameters/ProgramId"
     responses:
       "200":
         description: プログラム
+        headers:
+          Cache-Control:
+            schema:
+              type: string
+              const: no-store
         content:
           application/json:
             schema:
               $ref: "../../openapi.yaml#/components/schemas/SavedProgram"
+      "401":
+        description: 有効なセッションが必要
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "403":
+        $ref: "../../openapi.yaml#/components/responses/Forbidden"
       "404":
         $ref: "../../openapi.yaml#/components/responses/NotFound"
+      "500":
+        description: 認証または保存先でエラーが発生
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
+      "501":
+        description: 保存サービスまたは認証サービスが未設定
+        content:
+          application/json:
+            schema:
+              $ref: "../../openapi.yaml#/components/schemas/ApiError"
   put:
     tags:
       - program

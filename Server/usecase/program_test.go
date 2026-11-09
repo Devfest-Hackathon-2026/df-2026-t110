@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -129,5 +130,43 @@ func TestProgramsUpdate(t *testing.T) {
 	}
 	if !got.IsBattle || got.ID != "p" || got.GoogleSubject != "owner" {
 		t.Errorf("changed identity: %+v", got)
+	}
+}
+
+func TestProgramsGet(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name, subject, owner string
+		getErr, wantErr      error
+	}{
+		{name: "owner", subject: "owner", owner: "owner"},
+		{name: "missing", subject: "owner", getErr: ErrNotFound, wantErr: ErrNotFound},
+		{name: "other user", subject: "other", owner: "owner", wantErr: ErrForbidden},
+		{name: "no subject", owner: "owner", wantErr: ErrUnauthenticated},
+		{name: "blank subject", subject: " \t", owner: "owner", wantErr: ErrUnauthenticated},
+		{name: "repository failure", subject: "owner", getErr: context.DeadlineExceeded, wantErr: context.DeadlineExceeded},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			want := domain.Program{ID: "saved-id", GoogleSubject: tt.owner, Name: "draft", Source: jsontext.Value(`{"integer":9223372036854775807}`), IsBattle: true}
+			store := &programRepositoryStub{program: want, getErr: tt.getErr}
+			programs := NewPrograms(store, sourceValidatorStub{})
+			got, err := programs.Get(t.Context(), tt.subject, "saved-id")
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("error = %v, want %v", err, tt.wantErr)
+			}
+			if errors.Is(tt.wantErr, ErrUnauthenticated) && store.getID != "" {
+				t.Error("unauthenticated read reached the repository")
+			}
+			if tt.wantErr != nil {
+				if !reflect.DeepEqual(got, domain.Program{}) {
+					t.Errorf("failed read returned program content: %+v", got)
+				}
+				return
+			}
+			if store.getID != "saved-id" || !reflect.DeepEqual(got, want) {
+				t.Errorf("read %q = %+v, want %+v", store.getID, got, want)
+			}
+		})
 	}
 }

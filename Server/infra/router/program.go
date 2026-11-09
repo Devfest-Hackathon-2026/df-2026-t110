@@ -149,7 +149,26 @@ func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
 }
 
 func (r *Router) GetProgram(ctx *echo.Context, programID api.ProgramId) error {
-	return errNotImplemented()
+	if r.cfg.Programs == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	ctx.Response().Header().Set("Cache-Control", "no-store")
+	program, err := r.cfg.Programs.Get(ctx.Request().Context(), user.GoogleSubject, programID)
+	switch {
+	case errors.Is(err, usecase.ErrUnauthenticated):
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(err)
+	case errors.Is(err, usecase.ErrForbidden):
+		return echo.NewHTTPError(http.StatusForbidden, http.StatusText(http.StatusForbidden)).Wrap(err)
+	case errors.Is(err, usecase.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).Wrap(err)
+	case err != nil:
+		return fmt.Errorf("get program: %w", err)
+	}
+	return sendSavedProgram(ctx, http.StatusOK, program)
 }
 
 func (r *Router) UpdateProgram(ctx *echo.Context, programID api.ProgramId) error {

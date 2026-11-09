@@ -67,6 +67,7 @@ type RankingLister interface {
 
 type ProgramService interface {
 	Create(ctx context.Context, subject string, draft domain.Program) (domain.Program, error)
+	Get(ctx context.Context, subject, id string) (domain.Program, error)
 	Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error)
 	ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }

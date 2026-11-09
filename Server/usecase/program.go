@@ -57,15 +57,9 @@ func (p *Programs) Create(ctx context.Context, subject string, draft domain.Prog
 // Update uses the path ID and authenticated owner, ignoring the draft's identity.
 // Updates must pass syntax, name resolution and type checking before persistence.
 func (p *Programs) Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error) {
-	if strings.TrimSpace(subject) == "" {
-		return domain.Program{}, ErrUnauthenticated
-	}
-	program, err := p.repo.Get(ctx, id)
+	program, err := p.Get(ctx, subject, id)
 	if err != nil {
 		return domain.Program{}, fmt.Errorf("get program to update: %w", err)
-	}
-	if program.GoogleSubject != subject {
-		return domain.Program{}, ErrForbidden
 	}
 	draft.IsBattle, draft.TutorialID = program.IsBattle, program.TutorialID
 	if err := draft.Validate(); err != nil {
@@ -80,6 +74,22 @@ func (p *Programs) Update(ctx context.Context, subject, id string, draft domain.
 		return domain.Program{}, fmt.Errorf("update program: %w", err)
 	}
 	return updated, nil
+}
+
+// Get returns a saved draft only to its authenticated owner. The repository's
+// existing Get is also used by tutorial execution and battle registration.
+func (p *Programs) Get(ctx context.Context, subject, id string) (domain.Program, error) {
+	if strings.TrimSpace(subject) == "" {
+		return domain.Program{}, ErrUnauthenticated
+	}
+	program, err := p.repo.Get(ctx, id)
+	if err != nil {
+		return domain.Program{}, fmt.Errorf("get program: %w", err)
+	}
+	if program.GoogleSubject != subject {
+		return domain.Program{}, ErrForbidden
+	}
+	return program, nil
 }
 
 func (p *Programs) ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error) {
