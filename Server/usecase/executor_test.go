@@ -71,7 +71,7 @@ func TestExecutorTutorial(t *testing.T) {
 	t.Parallel()
 
 	storageErr := errors.New("database unavailable")
-	run := domain.Run{GoogleSubject: "owner", TutorialID: "tutorial-1", FieldID: "field-a", ProgramID: "program-1"}
+	run := domain.Run{GoogleSubject: "owner", TutorialID: "tutorial-1", FieldID: "field-a", Program: &domain.ProgramRef{ID: "program-1", Revision: 1}}
 	job := domain.TutorialJob{Program: domain.Program{ID: "program-1"}, Tutorial: domain.Tutorial{ID: "tutorial-1"}, Variant: 1}
 	result := jsontext.Value(`{"history":[]}`)
 
@@ -138,8 +138,16 @@ func TestExecutorMatch(t *testing.T) {
 		ID: "match-id", GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: "Opponent",
 		ChallengerRating: 1000, OpponentRating: 1200,
 	}
-	job := domain.MatchJob{Entry: entry, Layout: domain.BattleLayout{FieldID: "layout-a"}}
+	job := domain.MatchJob{
+		Entry:    entry,
+		Player:   []domain.Program{{ID: "a", Revision: 2}, {ID: "b", Revision: 5}, {ID: "a", Revision: 2}},
+		Opponent: []domain.Program{{ID: "o", Revision: 9}, {ID: "o", Revision: 9}, {ID: "o", Revision: 9}},
+		Layout:   domain.BattleLayout{FieldID: "layout-a"},
+	}
 	result := domain.MatchResult{ChallengerScore: 2, OpponentScore: 1, Replay: jsontext.Value(`{"history":[]}`)}
+	wantRecord := entry.Record(result)
+	wantRecord.ChallengerPrograms = []domain.ProgramRef{{ID: "a", Revision: 2}, {ID: "b", Revision: 5}, {ID: "a", Revision: 2}}
+	wantRecord.OpponentPrograms = []domain.ProgramRef{{ID: "o", Revision: 9}, {ID: "o", Revision: 9}, {ID: "o", Revision: 9}}
 
 	cases := []struct {
 		name                     string
@@ -173,8 +181,8 @@ func TestExecutorMatch(t *testing.T) {
 			if completed := matches.completed != nil; completed != tt.wantCompleted {
 				t.Fatalf("match completed = %t, want %t", completed, tt.wantCompleted)
 			}
-			if tt.wantCompleted && (matches.runID != "run-id" || !reflect.DeepEqual(*matches.completed, entry.Record(result))) {
-				t.Errorf("completed run %q with %+v, want the entry rated from the result", matches.runID, matches.completed)
+			if tt.wantCompleted && (matches.runID != "run-id" || !reflect.DeepEqual(*matches.completed, wantRecord)) {
+				t.Errorf("completed run %q with %+v, want %+v", matches.runID, matches.completed, wantRecord)
 			}
 			wantID := ""
 			if tt.wantErr == nil {

@@ -477,7 +477,9 @@ function remove(index: number): void {
       <select v-model="choice" aria-label="追加する命令">
         <optgroup label="動きと操作">
           <option
-            v-for="item in PICO_BUILTIN_OPTIONS.filter((item) => ['動き', '操作'].includes(item.category))"
+            v-for="item in PICO_BUILTIN_OPTIONS.filter((item) =>
+              ['動く', 'オブジェクト'].includes(item.category),
+            )"
             :key="item.name"
             :value="item.name"
           >
@@ -491,7 +493,9 @@ function remove(index: number): void {
         </optgroup>
         <optgroup label="組み込み関数">
           <option
-            v-for="item in PICO_BUILTIN_OPTIONS.filter((item) => !['動き', '操作'].includes(item.category))"
+            v-for="item in PICO_BUILTIN_OPTIONS.filter(
+              (item) => !['動く', 'オブジェクト'].includes(item.category),
+            )"
             :key="item.name"
             :value="item.name"
           >

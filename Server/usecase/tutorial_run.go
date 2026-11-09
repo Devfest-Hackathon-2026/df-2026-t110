@@ -44,7 +44,8 @@ func (t *Tutorials) Run(ctx context.Context, subject, tutorialID, programID stri
 	}
 	variant := t.pick(len(tutorial.Stage.Variants))
 	fieldID := tutorial.Stage.Variants[variant].Id
-	run := domain.Run{GoogleSubject: subject, TutorialID: tutorialID, FieldID: fieldID, ProgramID: programID}
+	ref := program.Ref()
+	run := domain.Run{GoogleSubject: subject, TutorialID: tutorialID, FieldID: fieldID, Program: &ref}
 	id, err := t.executor.Execute(ctx, run, domain.TutorialJob{Program: program, Tutorial: tutorial, Variant: variant})
 	if err != nil {
 		return domain.TutorialRun{}, fmt.Errorf("execute tutorial: %w", err)

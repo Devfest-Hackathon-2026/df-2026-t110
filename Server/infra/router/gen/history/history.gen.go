@@ -383,7 +383,7 @@ type FieldDefinition struct {
 	// フィールドを識別するための空でない文字列
 	Id string `json:"id"`
 
-	// フィールド上に配置するゴール、チェックポイント、荷物の一覧
+	// フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧
 	Objects []FieldObject `json:"objects"`
 
 	// ロボットの初期位置と初期方向
@@ -621,13 +621,15 @@ func (j *FieldEvent) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// フィールドに配置するゴール、チェックポイント、荷物のいずれか
+// フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか
 type FieldObject struct {
 	Goal *Goal `json:"-" yaml:"-"`
 
 	Checkpoint *Checkpoint `json:"-" yaml:"-"`
 
 	Luggage *Luggage `json:"-" yaml:"-"`
+
+	Territory *Territory `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -643,6 +645,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	if j.Luggage != nil {
 		set++
 	}
+	if j.Territory != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("FieldObject: exactly one variant must be set, got %d", set)
 	}
@@ -654,6 +659,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	}
 	if j.Luggage != nil {
 		return json.Marshal(j.Luggage)
+	}
+	if j.Territory != nil {
+		return json.Marshal(j.Territory)
 	}
 	return nil, nil // unreachable
 }
@@ -702,6 +710,12 @@ func (j *FieldObject) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("FieldObject.Luggage: %w", err)
 		}
 		j.Luggage = &v
+	case "territory":
+		var v Territory
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("FieldObject.Territory: %w", err)
+		}
+		j.Territory = &v
 	default:
 		return fmt.Errorf("FieldObject: unknown type value %q", disc)
 	}
@@ -3175,6 +3189,41 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_Terrain, v)
 	}
 	*j = Terrain(v)
+	return nil
+}
+
+// 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+type Territory struct {
+	// 陣地を配置するマスの座標
+	Position Position `json:"position"`
+
+	// オブジェクトが陣地であることを示す種別
+	Type string `json:"type"`
+}
+
+const TerritoryType = "territory"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Territory) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Territory: %w", err)
+	}
+	if _, ok := raw["position"]; raw != nil && !ok {
+		return fmt.Errorf("field position in Territory: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in Territory: required")
+	}
+	type Plain Territory
+	var plain Plain
+	if err := unmarshalNumbers_LandKind(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Territory: %w", err)
+	}
+	if plain.Type != "territory" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "territory")
+	}
+	*j = Territory(plain)
 	return nil
 }
 

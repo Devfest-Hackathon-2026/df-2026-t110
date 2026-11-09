@@ -48,15 +48,17 @@ type MatchResult struct {
 // the challenger's rating current at saving time, so concurrent matches of one
 // challenger never lose an update.
 type MatchRecord struct {
-	ID               string
-	GoogleSubject    string
-	OpponentSubject  string
-	OpponentName     string
-	Result           jsontext.Value
-	Outcome          MatchOutcome
-	ChallengerRating int
-	OpponentRating   int
-	RatingDelta      int
+	ID                 string
+	ChallengerPrograms []ProgramRef
+	OpponentPrograms   []ProgramRef
+	GoogleSubject      string
+	OpponentSubject    string
+	OpponentName       string
+	Result             jsontext.Value
+	Outcome            MatchOutcome
+	ChallengerRating   int
+	OpponentRating     int
+	RatingDelta        int
 }
 
 // MatchEntry is what matching fixes before the engine runs, including the ID

@@ -351,6 +351,8 @@ type ClearCondition struct {
 	ReachGoal *ReachGoal `json:"-" yaml:"-"`
 
 	VisitCheckpoints *VisitCheckpoints `json:"-" yaml:"-"`
+
+	DeliverLuggage *DeliverLuggage `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -363,6 +365,9 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	if j.VisitCheckpoints != nil {
 		set++
 	}
+	if j.DeliverLuggage != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("ClearCondition: exactly one variant must be set, got %d", set)
 	}
@@ -371,6 +376,9 @@ func (j ClearCondition) MarshalJSON() ([]byte, error) {
 	}
 	if j.VisitCheckpoints != nil {
 		return json.Marshal(j.VisitCheckpoints)
+	}
+	if j.DeliverLuggage != nil {
+		return json.Marshal(j.DeliverLuggage)
 	}
 	return nil, nil // unreachable
 }
@@ -413,6 +421,12 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("ClearCondition.VisitCheckpoints: %w", err)
 		}
 		j.VisitCheckpoints = &v
+	case "deliver_luggage":
+		var v DeliverLuggage
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("ClearCondition.DeliverLuggage: %w", err)
+		}
+		j.DeliverLuggage = &v
 	default:
 		return fmt.Errorf("ClearCondition: unknown type value %q", disc)
 	}
@@ -590,6 +604,48 @@ func (j *Declaration) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要
+type DeliverLuggage struct {
+	// 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける
+	RequiredCount int `json:"requiredCount"`
+
+	// 荷物の配達を求めるクリア条件の種別
+	Type string `json:"type"`
+}
+
+const DeliverLuggageType = "deliver_luggage"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *DeliverLuggage) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw DeliverLuggage: %w", err)
+	}
+	if _, ok := raw["requiredCount"]; raw != nil && !ok {
+		return fmt.Errorf("field requiredCount in DeliverLuggage: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in DeliverLuggage: required")
+	}
+	type Plain DeliverLuggage
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		var retry Plain
+		if err = unmarshalIntegral_IntegerLiteral(value, &retry, err, integerPaths_DeliverLuggage); err != nil {
+			return fmt.Errorf("unmarshal DeliverLuggage: %w", err)
+		}
+		plain = retry
+	}
+	if 1 > plain.RequiredCount {
+		return fmt.Errorf("field %s: must be >= %v", "requiredCount", 1)
+	}
+	if plain.Type != "deliver_luggage" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "deliver_luggage")
+	}
+	*j = DeliverLuggage(plain)
+	return nil
+}
+
 type Direction string
 
 const DirectionEast Direction = "east"
@@ -742,7 +798,7 @@ type FieldDefinition struct {
 	// フィールドを識別するための空でない文字列
 	Id string `json:"id"`
 
-	// フィールド上に配置するゴール、チェックポイント、荷物の一覧
+	// フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧
 	Objects []FieldObject `json:"objects"`
 
 	// ロボットの初期位置と初期方向
@@ -860,13 +916,15 @@ func (j *FieldDefinition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
-// フィールドに配置するゴール、チェックポイント、荷物のいずれか
+// フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか
 type FieldObject struct {
 	Goal *Goal `json:"-" yaml:"-"`
 
 	Checkpoint *Checkpoint `json:"-" yaml:"-"`
 
 	Luggage *Luggage `json:"-" yaml:"-"`
+
+	Territory *Territory `json:"-" yaml:"-"`
 }
 
 // MarshalJSON implements json.Marshaler. Exactly one variant
@@ -882,6 +940,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	if j.Luggage != nil {
 		set++
 	}
+	if j.Territory != nil {
+		set++
+	}
 	if set != 1 {
 		return nil, fmt.Errorf("FieldObject: exactly one variant must be set, got %d", set)
 	}
@@ -893,6 +954,9 @@ func (j FieldObject) MarshalJSON() ([]byte, error) {
 	}
 	if j.Luggage != nil {
 		return json.Marshal(j.Luggage)
+	}
+	if j.Territory != nil {
+		return json.Marshal(j.Territory)
 	}
 	return nil, nil // unreachable
 }
@@ -941,6 +1005,12 @@ func (j *FieldObject) UnmarshalJSON(value []byte) error {
 			return fmt.Errorf("FieldObject.Luggage: %w", err)
 		}
 		j.Luggage = &v
+	case "territory":
+		var v Territory
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("FieldObject.Territory: %w", err)
+		}
+		j.Territory = &v
 	default:
 		return fmt.Errorf("FieldObject: unknown type value %q", disc)
 	}
@@ -2129,6 +2199,41 @@ func (j *Terrain) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+type Territory struct {
+	// 陣地を配置するマスの座標
+	Position Position `json:"position"`
+
+	// オブジェクトが陣地であることを示す種別
+	Type string `json:"type"`
+}
+
+const TerritoryType = "territory"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Territory) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw Territory: %w", err)
+	}
+	if _, ok := raw["position"]; raw != nil && !ok {
+		return fmt.Errorf("field position in Territory: required")
+	}
+	if _, ok := raw["type"]; raw != nil && !ok {
+		return fmt.Errorf("field type in Territory: required")
+	}
+	type Plain Territory
+	var plain Plain
+	if err := unmarshalNumbers_HintId(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal Territory: %w", err)
+	}
+	if plain.Type != "territory" {
+		return fmt.Errorf("field %s: must be equal to %s", "type", "territory")
+	}
+	*j = Territory(plain)
+	return nil
+}
+
 // 教材詳細ページに表示する目標、課題、案内文、ステージと初期プログラム
 type TutorialDetail struct {
 	// 課題の内容や取り組み方を説明する本文。ページではプレーンテキストとして表示する
@@ -2466,6 +2571,10 @@ func (j *While) UnmarshalJSON(value []byte) error {
 
 var integerPaths_Checkpoint = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
 	"order": {kind: "int"},
+}}
+
+var integerPaths_DeliverLuggage = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{
+	"requiredCount": {kind: "int"},
 }}
 
 var integerPaths_FieldDefinition = &unmarshalIntegral_IntegerLiteral_path{fields: map[string]*unmarshalIntegral_IntegerLiteral_path{

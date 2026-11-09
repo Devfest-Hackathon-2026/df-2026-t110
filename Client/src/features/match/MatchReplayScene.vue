@@ -522,7 +522,9 @@ onBeforeUnmount(() => {
   <section class="match-replay" aria-labelledby="match-replay-title">
     <div class="match-replay-heading">
       <div>
-        <h2 id="match-replay-title"><Icon :icon="circlePlayIcon" aria-hidden="true" />対戦を再生</h2>
+        <h2 id="match-replay-title" class="furigana-heading">
+          <Icon :icon="circlePlayIcon" aria-hidden="true" />対戦を再生
+        </h2>
       </div>
       <span>ターン {{ current?.tick ?? 0 }} · {{ index + 1 }} / {{ frames.length }}</span>
     </div>

@@ -37,7 +37,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cfg := router.Config{Tutorials: usecase.NewTutorials(textbooks, nil, nil)}
+	fields := usecase.NewFields(textbooks)
+	cfg := router.Config{Tutorials: usecase.NewTutorials(textbooks, nil, nil), Fields: fields}
 	var sessions router.SessionUserLookup
 	googleLogin := googleLoginConfigFromEnv()
 	if err := googleLogin.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
@@ -100,7 +101,7 @@ func main() {
 				log.Fatal(err)
 			}
 			cfg.ProgramGeneration = usecase.NewProgramGeneration(usecase.ProgramGenerationDeps{
-				Fields: textbooks, Quota: quota, Generator: generator,
+				Fields: fields, Quota: quota, Generator: generator,
 				Validator: router.GeneratedProgramValidator{}, MaxTokens: 8_192, Timeout: 60 * time.Second,
 			})
 		}
@@ -116,6 +117,8 @@ func main() {
 			"getMe":                 {authenticate},
 			"logout":                {authenticate},
 			"createProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
+			"getProgram":            {authenticate},
+			"updateProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
 			"createProgramWithVibe": {authenticate, middleware.BodyLimit(16 << 10)},
 			"runTutorial":           {authenticate, middleware.BodyLimit(1 << 20)},
 			"listTutorialPrograms":  {authenticate},

@@ -23,11 +23,30 @@ func (r *Router) CreateProgram(ctx *echo.Context) error {
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 	}
+	draft, err := decodeProgramRequest(ctx)
+	if err != nil {
+		return err
+	}
+	program, err := r.cfg.Programs.Create(ctx.Request().Context(), user.GoogleSubject, draft)
+	switch {
+	case errors.Is(err, domain.ErrInvalidProgram):
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("create program: %w", err))
+	case errors.Is(err, usecase.ErrUnauthenticated):
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(fmt.Errorf("create program: %w", err))
+	case err != nil:
+		return fmt.Errorf("create program: %w", err)
+	}
+	return sendSavedProgram(ctx, http.StatusCreated, program)
+}
+
+// Creation and replacement use the same required fields and decoding rules.
+// The optional body ID is checked for its type but never chooses the target.
+func decodeProgramRequest(ctx *echo.Context) (domain.Program, error) {
 	// BodyLimit middleware bounds this read. Unmarshal rejects multiple JSON
 	// values, and pointers distinguish missing required fields.
 	body, err := io.ReadAll(ctx.Request().Body)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("read program request: %w", err))
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("read program request: %w", err))
 	}
 	var request struct {
 		ID         *string        `json:"id"`
@@ -37,32 +56,27 @@ func (r *Router) CreateProgram(ctx *echo.Context) error {
 		TutorialID *string        `json:"tutorialID"`
 	}
 	if err := json.Unmarshal(body, &request, json.RejectUnknownMembers(true)); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("decode program request: %w", err))
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("decode program request: %w", err))
 	}
 	if request.Name == nil || request.IsBattle == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 	}
 	// Explicit null is not a valid string for either optional string field.
 	var members map[string]jsontext.Value
 	if err := json.Unmarshal(body, &members); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("decode program request members: %w", err))
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("decode program request members: %w", err))
 	}
 	for _, key := range []string{"id", "tutorialID"} {
 		if value, ok := members[key]; ok && string(value) == "null" {
-			return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 	}
-	program, err := r.cfg.Programs.Create(ctx.Request().Context(), user.GoogleSubject, domain.Program{
+	return domain.Program{
 		Name: *request.Name, Source: request.Source, IsBattle: *request.IsBattle, TutorialID: request.TutorialID,
-	})
-	switch {
-	case errors.Is(err, domain.ErrInvalidProgram):
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(fmt.Errorf("create program: %w", err))
-	case errors.Is(err, usecase.ErrUnauthenticated):
-		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(fmt.Errorf("create program: %w", err))
-	case err != nil:
-		return fmt.Errorf("create program: %w", err)
-	}
+	}, nil
+}
+
+func sendSavedProgram(ctx *echo.Context, status int, program domain.Program) error {
 	response, err := json.Marshal(struct {
 		ID         string         `json:"id"`
 		Name       string         `json:"name"`
@@ -71,10 +85,10 @@ func (r *Router) CreateProgram(ctx *echo.Context) error {
 		TutorialID *string        `json:"tutorialID,omitempty"`
 	}{program.ID, program.Name, program.Source, program.IsBattle, program.TutorialID})
 	if err != nil {
-		return fmt.Errorf("marshal created program response: %w", err)
+		return fmt.Errorf("marshal saved program response: %w", err)
 	}
-	if err := ctx.JSONBlob(http.StatusCreated, response); err != nil {
-		return fmt.Errorf("send created program response: %w", err)
+	if err := ctx.JSONBlob(status, response); err != nil {
+		return fmt.Errorf("send saved program response: %w", err)
 	}
 	return nil
 }
@@ -135,9 +149,66 @@ func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
 }
 
 func (r *Router) GetProgram(ctx *echo.Context, programID api.ProgramId) error {
-	return errNotImplemented()
+	if r.cfg.Programs == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	ctx.Response().Header().Set("Cache-Control", "no-store")
+	program, err := r.cfg.Programs.Get(ctx.Request().Context(), user.GoogleSubject, programID)
+	switch {
+	case errors.Is(err, usecase.ErrUnauthenticated):
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(err)
+	case errors.Is(err, usecase.ErrForbidden):
+		return echo.NewHTTPError(http.StatusForbidden, http.StatusText(http.StatusForbidden)).Wrap(err)
+	case errors.Is(err, usecase.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).Wrap(err)
+	case err != nil:
+		return fmt.Errorf("get program: %w", err)
+	}
+	return sendSavedProgram(ctx, http.StatusOK, program)
 }
 
 func (r *Router) UpdateProgram(ctx *echo.Context, programID api.ProgramId) error {
-	return errNotImplemented()
+	if r.cfg.Programs == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	draft, err := decodeProgramUpdateRequest(ctx)
+	if err != nil {
+		return err
+	}
+	program, err := r.cfg.Programs.Update(ctx.Request().Context(), user.GoogleSubject, programID, draft)
+	switch {
+	case errors.Is(err, domain.ErrInvalidProgram):
+		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	case errors.Is(err, usecase.ErrUnauthenticated):
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized)).Wrap(err)
+	case errors.Is(err, usecase.ErrForbidden):
+		return echo.NewHTTPError(http.StatusForbidden, http.StatusText(http.StatusForbidden)).Wrap(err)
+	case errors.Is(err, usecase.ErrNotFound):
+		return echo.NewHTTPError(http.StatusNotFound, http.StatusText(http.StatusNotFound)).Wrap(err)
+	case err != nil:
+		return fmt.Errorf("update program: %w", err)
+	}
+	return sendSavedProgram(ctx, http.StatusOK, program)
+}
+
+func decodeProgramUpdateRequest(ctx *echo.Context) (domain.Program, error) {
+	var request struct {
+		Name   *string        `json:"name"`
+		Source jsontext.Value `json:"source"`
+	}
+	if err := json.UnmarshalRead(ctx.Request().Body, &request, json.RejectUnknownMembers(true)); err != nil {
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
+	}
+	if request.Name == nil {
+		return domain.Program{}, echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+	}
+	return domain.Program{Name: *request.Name, Source: request.Source}, nil
 }

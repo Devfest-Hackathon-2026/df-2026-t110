@@ -53,6 +53,7 @@ import './blocklyEditor.css'
 
 const props = defineProps<{
   tutorialId: string
+  initialProgram?: PicoProgram | null
   execution?: PicolangTrace | null
   running?: boolean
   playbackReady?: boolean
@@ -98,17 +99,17 @@ let observer: ResizeObserver | null = null
 let loading = false
 let scheduled = false
 const categoryIcons = {
-  動き: moveIcon,
-  操作: mousePointerIcon,
+  動く: moveIcon,
+  オブジェクト: mousePointerIcon,
   制御: gitBranchIcon,
   変数: variableIcon,
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  乱数: shuffleIcon,
+  ランダム: shuffleIcon,
   スタック: listIcon,
-  オプション: boxIcon,
-  表示: typeIcon,
+  ヌラブル: boxIcon,
+  発言: typeIcon,
   関数: squareFunctionIcon,
   値: boxIcon,
 }
@@ -443,15 +444,17 @@ watch(analysis, (result) => {
 })
 
 watch(
-  () => props.tutorialId,
-  (tutorialId) => {
-    let loaded: PicoProgram = picoDraft(newProgram())
-    try {
-      const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
-      const parsed: unknown = saved ? JSON.parse(saved) : null
-      if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
-    } catch {
-      /* Use an empty program. */
+  () => [props.tutorialId, props.initialProgram] as const,
+  ([tutorialId, initialProgram]) => {
+    let loaded: PicoProgram = initialProgram ? picoDraft(initialProgram) : picoDraft(newProgram())
+    if (!initialProgram) {
+      try {
+        const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
+        const parsed: unknown = saved ? JSON.parse(saved) : null
+        if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
+      } catch {
+        /* Use an empty program. */
+      }
     }
     program.value = loaded
     activeName.value = 'main'

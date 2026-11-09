@@ -91,7 +91,7 @@ func TestCreateMatch(t *testing.T) {
 			}
 			opponent := &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
-				Programs: []domain.Program{{ID: "o2"}, {ID: "o1"}, {ID: "o2"}},
+				Programs: []domain.Program{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}},
 				Rating:   1200,
 			}, err: tt.selectionErr}
 			runs := &runRepositoryStub{}
@@ -99,8 +99,8 @@ func TestCreateMatch(t *testing.T) {
 			simulator := &matchSimulatorStub{err: tt.simulateErr}
 			service := NewMatches(MatchDeps{
 				Users: matchUserStub{displayName}, Programs: matchProgramsStub{map[string]domain.Program{
-					"a":        {ID: "a", GoogleSubject: "owner", IsBattle: true},
-					"b":        {ID: "b", GoogleSubject: "owner", IsBattle: true},
+					"a":        {ID: "a", Revision: 2, GoogleSubject: "owner", IsBattle: true},
+					"b":        {ID: "b", Revision: 5, GoogleSubject: "owner", IsBattle: true},
 					"foreign":  {ID: "foreign", GoogleSubject: "other", IsBattle: true},
 					"tutorial": {ID: "tutorial", GoogleSubject: "owner"},
 				}}, Opponents: opponent,
@@ -140,15 +140,18 @@ func TestCreateMatch(t *testing.T) {
 			if opponent.challenger != "owner" || job.Layout.FieldID != "layout-b" || simulator.calls != 1 {
 				t.Errorf("selection=%+v, simulated %d times on %q", opponent, simulator.calls, job.Layout.FieldID)
 			}
-			if run := runs.created; run == nil || run.GoogleSubject != "owner" || run.FieldID != "layout-b" || run.TutorialID != "" || run.ProgramID != "" {
+			if run := runs.created; run == nil || run.GoogleSubject != "owner" || run.FieldID != "layout-b" || run.TutorialID != "" || run.Program != nil {
 				t.Errorf("executed run=%+v", run)
 			}
 			if match.ID != matchID.String() || match.RunID != "run-id" || match.OpponentName != opponentName || match.FieldID != "layout-b" {
 				t.Errorf("match=%+v", match)
 			}
 			want := domain.MatchEntry{ID: matchID.String(), GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: opponentName, ChallengerRating: 1000, OpponentRating: 1200}
-			if results.completed == nil || !reflect.DeepEqual(*results.completed, want.Record(domain.MatchResult{})) {
-				t.Errorf("completed=%+v, want the entry %+v rated from the result", results.completed, want)
+			wantRecord := want.Record(domain.MatchResult{})
+			wantRecord.ChallengerPrograms = []domain.ProgramRef{{ID: "b", Revision: 5}, {ID: "a", Revision: 2}, {ID: "b", Revision: 5}}
+			wantRecord.OpponentPrograms = []domain.ProgramRef{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}}
+			if results.completed == nil || !reflect.DeepEqual(*results.completed, wantRecord) {
+				t.Errorf("completed=%+v, want %+v", results.completed, wantRecord)
 			}
 		})
 	}

@@ -21,6 +21,7 @@ type Config struct {
 	Users             UsernameSetter
 	Programs          ProgramService
 	ProgramGeneration ProgramGenerationService
+	Fields            FieldService
 	Tutorials         TutorialService
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
@@ -36,6 +37,10 @@ type AuthService interface {
 type SessionService interface {
 	SessionUserLookup
 	Logout(ctx context.Context, sessionID string) error
+}
+
+type FieldService interface {
+	Get(ctx context.Context, id string) (api.Field, error)
 }
 
 type TutorialService interface {
@@ -64,6 +69,8 @@ type RankingLister interface {
 
 type ProgramService interface {
 	Create(ctx context.Context, subject string, draft domain.Program) (domain.Program, error)
+	Get(ctx context.Context, subject, id string) (domain.Program, error)
+	Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error)
 	ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
 }
 

@@ -55,7 +55,7 @@ HAVING count(*) = sqlc.arg(robot_count)::integer
 ORDER BY users.google_subject;
 
 -- name: GetBattleTeam :many
-SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source
+SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source, programs.revision
 FROM users
 JOIN battle_programs ON battle_programs.google_subject = users.google_subject
 JOIN programs ON programs.id = battle_programs.program_id

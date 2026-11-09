@@ -99,10 +99,6 @@ func TestTextbooksLoadAndIndex(t *testing.T) {
 	if len(got.Stage.Variants) != 1 || got.Goal == nil || *got.Goal != "Reach the goal" {
 		t.Errorf("Get(first-step) = %+v, want stage and goal", got)
 	}
-	field, err := repo.GetGenerationField(context.Background(), "verified-subject", "first-step")
-	if err != nil || !strings.Contains(string(field), `"variants"`) || strings.Contains(string(field), "Move forward") {
-		t.Errorf("GetGenerationField = %s, %v; want stage only", field, err)
-	}
 	if err := os.WriteFile(path, []byte(strings.Replace(textbookPage, "First step", "Updated title", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -132,5 +128,93 @@ func TestTextbooksLoadAndIndex(t *testing.T) {
 	}
 	if _, err := repo.Get(context.Background(), "missing"); !errors.Is(err, usecase.ErrNotFound) {
 		t.Errorf("Get(missing) error = %v, want ErrNotFound", err)
+	}
+}
+
+const twoVariantPage = `id: two-variants
+title: Two variants
+description: Variants share a tutorial
+stage:
+  variants:
+    - id: two-variants-1
+      width: 2
+      height: 1
+      terrain: [[land, land]]
+      objects:
+        - type: goal
+          position: {x: 1, y: 0}
+      robot:
+        position: {x: 0, y: 0}
+        direction: east
+      drillLimit: 0
+    - id: two-variants-2
+      width: 1
+      height: 2
+      terrain: [[land], [land]]
+      objects:
+        - type: goal
+          position: {x: 0, y: 0}
+      robot:
+        position: {x: 0, y: 1}
+        direction: north
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal
+`
+
+func TestTextbooksGetField(t *testing.T) {
+	t.Parallel()
+
+	pages := fstest.MapFS{
+		"01.yaml": {Data: []byte(textbookPage)},
+		"02.yaml": {Data: []byte(twoVariantPage)},
+	}
+	repo, err := NewTextbooks(context.Background(), pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found := []struct {
+		id     string
+		width  int
+		height int
+	}{
+		{"first-step-1", 2, 1},
+		{"two-variants-1", 2, 1},
+		{"two-variants-2", 1, 2},
+	}
+	for _, tt := range found {
+		field, err := repo.GetField(context.Background(), tt.id)
+		if err != nil {
+			t.Errorf("GetField(%q) error = %v", tt.id, err)
+			continue
+		}
+		if field.Id != tt.id || field.Width != tt.width || field.Height != tt.height {
+			t.Errorf("GetField(%q) = id %q, %dx%d; want %dx%d", tt.id, field.Id, field.Width, field.Height, tt.width, tt.height)
+		}
+	}
+
+	// Tutorial IDs and field IDs are separate namespaces.
+	notFound := []string{"first-step", "two-variants", "missing"}
+	for _, id := range notFound {
+		_, err := repo.GetField(context.Background(), id)
+		if !errors.Is(err, usecase.ErrNotFound) {
+			t.Errorf("GetField(%q) error = %v, want ErrNotFound", id, err)
+		}
+	}
+}
+
+func TestNewTextbooksRejectsDuplicateFieldID(t *testing.T) {
+	t.Parallel()
+
+	otherTutorialSameVariant := strings.Replace(textbookPage, "id: first-step\n", "id: other-step\n", 1)
+	pages := fstest.MapFS{
+		"01.yaml": {Data: []byte(textbookPage)},
+		"02.yaml": {Data: []byte(otherTutorialSameVariant)},
+	}
+
+	_, err := NewTextbooks(context.Background(), pages)
+	if err == nil || !strings.Contains(err.Error(), `duplicate field id "first-step-1"`) {
+		t.Errorf("NewTextbooks() error = %v, want duplicate field id", err)
 	}
 }

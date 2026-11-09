@@ -59,8 +59,9 @@ func (e TutorialResultSummaryReason) Valid() bool {
 
 // ApiError defines model for ApiError.
 type ApiError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	// Code 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。
+	Code    *string `json:"code,omitempty"`
+	Message string  `json:"message"`
 }
 
 // Field defines model for Field.
@@ -201,6 +202,13 @@ type TutorialRunCreated struct {
 	RunId openapi_types.UUID `json:"runId"`
 }
 
+// UpdateProgramRequest defines model for UpdateProgramRequest.
+type UpdateProgramRequest struct {
+	// Name 空白のみ不可
+	Name   string          `json:"name"`
+	Source PicolangProgram `json:"source"`
+}
+
 // User defines model for User.
 type User struct {
 	Id                   *string                `json:"id,omitempty"`
@@ -259,7 +267,7 @@ type SetMyUsernameJSONBody struct {
 
 // CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
 type CreateProgramWithVibeJSONBody struct {
-	// FieldId 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。
+	// FieldId 指定すると教材の variant の fieldId に対応する盤面情報を生成時に渡す。対戦用 BattleLayout は対象外。
 	FieldId *string `json:"fieldId,omitempty"`
 
 	// IsBattle trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
@@ -289,7 +297,7 @@ type CreateProgramJSONRequestBody = Program
 type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
-type UpdateProgramJSONRequestBody = Program
+type UpdateProgramJSONRequestBody = UpdateProgramRequest
 
 // RunTutorialJSONRequestBody defines body for RunTutorial for application/json ContentType.
 type RunTutorialJSONRequestBody RunTutorialJSONBody

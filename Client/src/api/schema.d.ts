@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * フィールドを取得
-         * @description 単一のフィールドの盤面情報を返す。
+         * @description 教材の variant の fieldId から単一ロボットの盤面を返す。複数ロボットとテリトリーを含む対戦用 BattleLayout は Field で表現できないため対象外。
          */
         get: operations["getField"];
         put?: never;
@@ -31,9 +31,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** プログラムを取得 */
+        /**
+         * プログラムを取得
+         * @description 有効なセッションの所有者だけが保存済みプログラムを取得できる。
+         *     他ユーザーのプログラムは403、未存在のIDは404、未認証は401を返す。
+         *     ソースの数値精度を保持した SavedProgram を返し、応答はキャッシュしない。
+         */
         get: operations["getProgram"];
-        /** プログラムを更新 */
+        /**
+         * プログラムを更新
+         * @description 所有者だけが name と source を更新できる。ID、所有者、用途、教材IDは変更できない。
+         *     成功したPUTごとに内部revisionを増やし、名前だけの変更でも過去版を保持する。
+         *     ソースは文法・名前解決・型検査を行い、不正なプログラムは400で拒否する。更新に失敗した場合は既存の内容とrevisionを変更しない。
+         */
         put: operations["updateProgram"];
         post?: never;
         delete?: never;
@@ -474,6 +484,11 @@ export interface components {
             /** @description チュートリアルのID。isBattle が false の場合は必須、true の場合は指定不可。 */
             tutorialID?: string;
         };
+        UpdateProgramRequest: {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description 保存済みのプログラム */
         SavedProgram: components["schemas"]["Program"] & unknown;
         Match: {
@@ -513,7 +528,8 @@ export interface components {
         };
         TutorialDetail: components["schemas"]["tutorial-detail.schema"];
         ApiError: {
-            code: string;
+            /** @description 必要に応じて付与するエラーコード。標準のHTTPエラー応答では省略する。 */
+            code?: string;
             message: string;
         };
         /** @description フィールド上のマスの座標 */
@@ -557,13 +573,23 @@ export interface components {
             /** @description 荷物の初期位置 */
             position: components["schemas"]["Position"];
         };
+        /** @description 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない */
+        Territory: {
+            /**
+             * @description オブジェクトが陣地であることを示す種別
+             * @constant
+             */
+            type: "territory";
+            /** @description 陣地を配置するマスの座標 */
+            position: components["schemas"]["Position"];
+        };
         /**
          * @description マスの地形。land は陸地、rock は岩、sea は海を表す
          * @enum {string}
          */
         Terrain: "land" | "rock" | "sea";
-        /** @description フィールドに配置するゴール、チェックポイント、荷物のいずれか */
-        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"];
+        /** @description フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか */
+        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"] | components["schemas"]["Territory"];
         /**
          * @description 向いている方向。north は上、south は下、west は左、east は右を表す
          * @enum {string}
@@ -582,7 +608,7 @@ export interface components {
             height: number;
             /** @description 地形を行、列の順に並べた二次元配列。terrain[y][x] で各マスを参照する */
             terrain: components["schemas"]["Terrain"][][];
-            /** @description フィールド上に配置するゴール、チェックポイント、荷物の一覧 */
+            /** @description フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧 */
             objects: components["schemas"]["FieldObject"][];
             /** @description ロボットの初期位置と初期方向 */
             robot: {
@@ -880,6 +906,11 @@ export interface components {
          * @description 文法のバージョンと対応するプログラムを組にして、いずれか一つを指定する picolang プログラム全体のスキーマ定義
          */
         "toplevel.schema": {} & components["schemas"]["Version0"];
+        "schemas-UpdateProgramRequest": {
+            /** @description 空白のみ不可 */
+            name: string;
+            source: components["schemas"]["toplevel.schema"];
+        };
         /** @description ロボットがゴールに到達するとクリアする条件 */
         ReachGoal: {
             /**
@@ -896,8 +927,18 @@ export interface components {
              */
             type: "visit_checkpoints";
         };
+        /** @description 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要 */
+        DeliverLuggage: {
+            /**
+             * @description 荷物の配達を求めるクリア条件の種別
+             * @constant
+             */
+            type: "deliver_luggage";
+            /** @description 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける */
+            requiredCount: number;
+        };
         /** @description ステージのクリアに必要な条件 */
-        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"];
+        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"] | components["schemas"]["DeliverLuggage"];
         /**
          * StageDefinition
          * @description 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
@@ -1441,13 +1482,42 @@ export interface operations {
             /** @description プログラム */
             200: {
                 headers: {
+                    "Cache-Control"?: "no-store";
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     updateProgram: {
@@ -1461,7 +1531,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Program"];
+                "application/json": components["schemas"]["schemas-UpdateProgramRequest"];
             };
         };
         responses: {
@@ -1474,7 +1544,46 @@ export interface operations {
                     "application/json": components["schemas"]["SavedProgram"];
                 };
             };
+            /** @description 本文の読み取りエラー、または必須項目、プログラムの用途、ソースの文法が不正 */
+            400: components["responses"]["BadRequest"];
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが1 MiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 認証または保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description 保存サービスまたは認証サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     createProgramWithVibe: {
@@ -1488,7 +1597,7 @@ export interface operations {
             content: {
                 "application/json": {
                     prompt: string;
-                    /** @description 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。 */
+                    /** @description 指定すると教材の variant の fieldId に対応する盤面情報を生成時に渡す。対戦用 BattleLayout は対象外。 */
                     fieldId?: string;
                     /** @description trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。 */
                     isBattle?: boolean;

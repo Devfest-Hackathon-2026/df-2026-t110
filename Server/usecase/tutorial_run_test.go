@@ -32,7 +32,7 @@ func (s runTutorialsStub) Get(context.Context, string) (domain.Tutorial, error) 
 func TestTutorialsRun(t *testing.T) {
 	t.Parallel()
 	lessonID, otherLesson := "tutorial-1", "tutorial-2"
-	valid := domain.Program{ID: "program-1", GoogleSubject: "owner", TutorialID: &lessonID}
+	valid := domain.Program{ID: "program-1", Revision: 7, GoogleSubject: "owner", TutorialID: &lessonID}
 	storageErr := errors.New("database unavailable")
 	for _, tt := range []struct {
 		name                             string
@@ -84,7 +84,8 @@ func TestTutorialsRun(t *testing.T) {
 			if got.ID != "run-id" || got.FieldID != "field-b" || simulator.calls != 1 || job.Variant != 1 || job.Program.ID != "program-1" || job.Tutorial.ID != lessonID {
 				t.Errorf("run = %+v, simulated %d times with %+v", got, simulator.calls, job)
 			}
-			if run := runs.created; run == nil || run.GoogleSubject != "owner" || run.TutorialID != lessonID || run.FieldID != got.FieldID || run.ProgramID != "program-1" || run.Result != nil {
+			if run := runs.created; run == nil || run.GoogleSubject != "owner" || run.TutorialID != lessonID || run.FieldID != got.FieldID ||
+				run.Program == nil || *run.Program != (domain.ProgramRef{ID: "program-1", Revision: 7}) || run.Result != nil {
 				t.Errorf("created run = %+v", run)
 			}
 

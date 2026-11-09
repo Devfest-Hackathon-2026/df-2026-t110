@@ -62,11 +62,21 @@ func (e *Executor) Execute(ctx context.Context, run domain.Run, job domain.Job) 
 		if err != nil {
 			return "", fmt.Errorf("simulate match: %w", err)
 		}
-		if err := e.matchResults.Complete(ctx, id, job.Entry.Record(result)); err != nil {
+		record := job.Entry.Record(result)
+		record.ChallengerPrograms, record.OpponentPrograms = programReferences(job.Player), programReferences(job.Opponent)
+		if err := e.matchResults.Complete(ctx, id, record); err != nil {
 			return "", fmt.Errorf("save match: %w", err)
 		}
 	default:
 		return "", fmt.Errorf("unsupported job %T", job)
 	}
 	return id, nil
+}
+
+func programReferences(programs []domain.Program) []domain.ProgramRef {
+	refs := make([]domain.ProgramRef, len(programs))
+	for i, program := range programs {
+		refs[i] = program.Ref()
+	}
+	return refs
 }

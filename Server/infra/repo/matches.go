@@ -58,7 +58,7 @@ func (r *Matches) SelectOpponent(ctx context.Context, challenger string, choose 
 		}
 		for _, row := range programs {
 			team.Programs = append(team.Programs, domain.Program{
-				ID: row.ID, GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
+				ID: row.ID, Revision: int(row.Revision), GoogleSubject: row.GoogleSubject, Name: row.ProgramName, Source: row.Source, IsBattle: true,
 			})
 		}
 		return nil
@@ -100,8 +100,42 @@ func (r *Matches) Complete(ctx context.Context, runID string, record domain.Matc
 		if rows == 0 {
 			return usecase.ErrNotFound
 		}
+		if err := saveRunPrograms(ctx, queries, run, record); err != nil {
+			return err
+		}
 		return saveRatedMatch(ctx, queries, id, run, record)
 	})
+}
+
+func saveRunPrograms(ctx context.Context, queries *db.Queries, runID uuid.UUID, record domain.MatchRecord) error {
+	references := db.CreateRunProgramsParams{RunID: pgtype.UUID{Bytes: runID, Valid: true}}
+	// Side values are part of the persisted format: challenger=0, opponent=1.
+	const challengerSide, opponentSide int16 = 0, 1
+	teams := []struct {
+		side     int16
+		programs []domain.ProgramRef
+	}{
+		{challengerSide, record.ChallengerPrograms}, {opponentSide, record.OpponentPrograms},
+	}
+	for _, team := range teams {
+		if len(team.programs) > domain.BattleRobotCount {
+			return domain.ErrInvalidProgram
+		}
+		for index, program := range team.programs {
+			revision, err := programRevisionToDB(program)
+			if err != nil {
+				return err
+			}
+			references.Sides = append(references.Sides, team.side)
+			references.RobotIndexes = append(references.RobotIndexes, int16(index))
+			references.ProgramIds = append(references.ProgramIds, program.ID)
+			references.Revisions = append(references.Revisions, revision)
+		}
+	}
+	if err := queries.CreateRunPrograms(ctx, references); err != nil {
+		return fmt.Errorf("insert match program revisions: %w", err)
+	}
+	return nil
 }
 
 func saveRatedMatch(ctx context.Context, queries *db.Queries, id, runID uuid.UUID, record domain.MatchRecord) error {

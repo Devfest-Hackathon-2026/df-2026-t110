@@ -22,7 +22,7 @@ func TestRunEventsReplaysSavedResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	runs := NewRuns(pool)
-	id, err := runs.Create(t.Context(), domain.Run{GoogleSubject: "owner", TutorialID: "tutorial-test", FieldID: "field-test", ProgramID: "p"})
+	id, err := runs.Create(t.Context(), domain.Run{GoogleSubject: "owner", TutorialID: "tutorial-test", FieldID: "field-test", Program: &domain.ProgramRef{ID: "p", Revision: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}

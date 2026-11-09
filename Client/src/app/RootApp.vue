@@ -83,21 +83,25 @@ document.title = tutorialId
 
     <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
-        <h2>命令を組んで、ロボットを動かそう。</h2>
-        <p class="hero-lead">
+        <h2 id="home-title" class="furigana-heading">命令を組んで、ロボットを動かそう。</h2>
+        <p class="hero-lead furigana-text">
           岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミングチュートリアルです。
         </p>
         <div class="home-entry-grid">
           <a class="home-entry-card" href="/tutorials">
             <Icon :icon="bookOpenIcon" aria-hidden="true" />
             <span
-              ><strong>チュートリアルを始める</strong><small>プログラムを組んでロボットを動かす</small></span
+              ><strong class="furigana-heading">チュートリアルを始める</strong
+              ><small>プログラムを組んでロボットを動かす</small></span
             >
             <Icon :icon="arrowUpRightIcon" class="home-entry-arrow" aria-hidden="true" />
           </a>
           <a class="home-entry-card" href="/rooms">
             <Icon :icon="swordsIcon" aria-hidden="true" />
-            <span><strong>対戦を始める</strong><small>ロボットにプログラムを割り当てる</small></span>
+            <span
+              ><strong class="furigana-heading">対戦を始める</strong
+              ><small>ロボットにプログラムを割り当てる</small></span
+            >
             <Icon :icon="arrowUpRightIcon" class="home-entry-arrow" aria-hidden="true" />
           </a>
         </div>
@@ -105,10 +109,12 @@ document.title = tutorialId
 
       <section class="home-explainer container" aria-labelledby="learn-title">
         <div class="home-feature-copy">
-          <h2 id="learn-title" class="heading-with-icon">
+          <h2 id="learn-title" class="furigana-heading heading-with-icon">
             <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
           </h2>
-          <p>一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。</p>
+          <p class="furigana-text">
+            一つずつ命令を試しながら、条件や繰り返しへ。ロボットの動きを見て、プログラムを直せます。
+          </p>
         </div>
         <HomeFeatureCarousel label="チュートリアルの紹介" :slides="tutorialSlides" />
         <a class="home-feature-link" href="/tutorials"
@@ -119,10 +125,10 @@ document.title = tutorialId
       <section class="home-next" aria-labelledby="match-title">
         <div class="container next-inner">
           <div class="home-feature-copy">
-            <h2 id="match-title" class="heading-with-icon">
+            <h2 id="match-title" class="furigana-heading heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
             </h2>
-            <p>
+            <p class="furigana-text">
               自分のプログラムをロボットに設定して対戦。結果だけでなく、どんな行動をしたかも振り返れます。
             </p>
           </div>
@@ -142,13 +148,13 @@ document.title = tutorialId
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
-        <h1 class="heading-with-icon">
+        <h1 class="furigana-heading heading-with-icon">
           <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
         </h1>
         <TutorialCatalog />
       </template>
       <template v-else>
-        <h1 class="heading-with-icon">
+        <h1 class="furigana-heading heading-with-icon">
           <Icon :icon="circleHelpIcon" aria-hidden="true" /><span>ページが見つかりません。</span>
         </h1>
         <a class="action-primary" href="/">ホームへ戻る</a>

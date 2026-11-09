@@ -31,11 +31,11 @@ func (MatchJob) isJob()    {}
 
 // Run stores the selected field and the completed result. A nil result is pending.
 type Run struct {
+	Program         *ProgramRef // nil for match runs
 	ID              string
 	GoogleSubject   string
 	OpponentSubject string
 	TutorialID      string
 	FieldID         string
-	ProgramID       string
 	Result          jsontext.Value
 }
