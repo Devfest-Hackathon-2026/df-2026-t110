@@ -20,9 +20,9 @@ const tutorialSlides = [
     caption: '道をふさぐ岩にはビーム。地形を観察して、次の行動を選びます。',
   },
   {
-    image: '/home-tutorial-route.svg',
-    alt: 'ロボットが海を渡り、ゴールまでの道を探すイメージ',
-    caption: '海を埋めて進みます。同じ命令でも、盤面に合わせて考え方が変わります。',
+    image: '/home-tutorial-iterate.svg',
+    alt: '命令ブロックを並べ、ロボットの動きを見て組み直すイメージ',
+    caption: '命令を並べて実行し、動きを見て組み直す。試しながらゴールへの手順を考えられます。',
   },
 ]
 
@@ -85,7 +85,7 @@ document.title = tutorialId
       <section class="home-hero container" aria-labelledby="home-title">
         <h2>命令を組んで、ロボットを動かそう。</h2>
         <p class="hero-lead">
-          岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
+          岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
         </p>
         <div class="home-entry-grid">
           <a class="home-entry-card" href="/tutorials">
@@ -103,7 +103,6 @@ document.title = tutorialId
 
       <section class="home-explainer container" aria-labelledby="learn-title">
         <div class="home-feature-copy">
-          <p class="home-eyebrow">01 / LEARN</p>
           <h2 id="learn-title" class="heading-with-icon">
             <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル</span>
           </h2>
@@ -116,7 +115,6 @@ document.title = tutorialId
       <section class="home-next" aria-labelledby="match-title">
         <div class="container next-inner">
           <div class="home-feature-copy">
-            <p class="home-eyebrow">02 / MATCH</p>
             <h2 id="match-title" class="heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
             </h2>

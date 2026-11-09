@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="命令ブロックを組み直し、ロボットの動きを確かめる場面">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#102f32"/><stop offset="1" stop-color="#1d5954"/></linearGradient>
+    <linearGradient id="tile" x2="0" y2="1"><stop stop-color="#508d7d"/><stop offset="1" stop-color="#1d514d"/></linearGradient>
+    <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff1ac"/><stop offset=".4" stop-color="#bb8736"/><stop offset=".75" stop-color="#f6d87b"/><stop offset="1" stop-color="#815d29"/></linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <circle cx="1060" cy="94" r="240" fill="#68bea6" opacity=".08"/>
+  <circle cx="166" cy="560" r="230" fill="#68bea6" opacity=".08"/>
+  <rect x="72" y="98" width="430" height="414" rx="18" fill="#f3f7f3"/>
+  <rect x="72" y="98" width="430" height="55" rx="18" fill="#dbece5"/>
+  <path d="M72 135h430" stroke="#b7d2c7" stroke-width="2"/>
+  <circle cx="106" cy="126" r="7" fill="#73b9a3"/><circle cx="129" cy="126" r="7" fill="#73b9a3"/>
+  <path d="M138 206h260v58H138zM138 264h260v58H138zM138 322h216v58H138z" fill="#397fca"/>
+  <path d="M168 205h46v10h-46zM168 263h46v10h-46zM168 321h46v10h-46z" fill="#f3f7f3"/>
+  <path d="M174 230h110M174 288h110M174 346h110" stroke="#eef8ff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M156 207v175M156 382h197" fill="none" stroke="#1d5d9c" stroke-width="3" opacity=".4"/>
+  <circle cx="430" cy="443" r="34" fill="#1a7068"/>
+  <path d="m420 429 21 14-21 14Z" fill="#fff"/>
+  <path d="M552 274a80 80 0 0 1 134-42" fill="none" stroke="#b9fff1" stroke-width="10" stroke-linecap="round"/>
+  <path d="m680 207 11 36-38-4" fill="none" stroke="#b9fff1" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M683 358a80 80 0 0 1-134 42" fill="none" stroke="#b9fff1" stroke-width="10" stroke-linecap="round"/>
+  <path d="m555 426-11-36 38 4" fill="none" stroke="#b9fff1" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M698 416 884 346 1086 414 900 488Z" fill="url(#tile)" stroke="#85d8b8" stroke-width="5"/>
+  <path d="M698 416v46l202 74v-48ZM900 488v48l186-76v-46Z" fill="#12383a"/>
+  <path d="M720 420 881 359M919 468l148-55" stroke="#9df5cb" stroke-width="5" opacity=".8"/>
+  <ellipse cx="833" cy="412" rx="65" ry="18" fill="#082e29" opacity=".5"/>
+  <path d="m770 315 65-24 76 23-65 25Z" fill="#7dff51"/>
+  <path d="m770 315 76 24v75l-76-26Z" fill="#24cb13"/>
+  <path d="m846 339 65-25v74l-65 26Z" fill="#13990b"/>
+  <ellipse cx="869" cy="356" rx="7" ry="10" fill="#092a21"/><ellipse cx="893" cy="346" rx="7" ry="10" fill="#092a21"/>
+  <path d="m777 376-44 39 10 9 56-34M900 387l48 36 10-9-49-49" fill="#31dd23" stroke="#1f9f18" stroke-width="3"/>
+  <path d="m970 405 56-21 59 22-58 22Z" fill="#d8b45b"/>
+  <path d="m970 405 57 23v28l-57-25ZM1027 428l58-22v25l-58 25Z" fill="#95712f"/>
+  <ellipse cx="1027" cy="367" rx="44" ry="57" transform="rotate(-13 1027 367)" fill="none" stroke="#684e27" stroke-width="19"/>
+  <ellipse cx="1027" cy="367" rx="44" ry="57" transform="rotate(-13 1027 367)" fill="none" stroke="url(#gold)" stroke-width="14"/>
+  <path d="M57 559h1086" stroke="#7db9a9" stroke-opacity=".45" stroke-width="2"/>
+</svg>
