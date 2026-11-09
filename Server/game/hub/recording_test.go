@@ -29,8 +29,8 @@ func (r *recordingSpy) Record(event gameevent.GameEvent) error {
 func TestIndependentEventMessages(t *testing.T) {
 	t.Parallel()
 	current := robotevent.CurrentNodeEvent{HintID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"}
-	init := robotevent.VariableInitEvent{HintID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", Value: values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: 1}}}}
-	update := robotevent.VariableUpdateEvent{HintID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", Diff: []robotevent.ValueUpdate{robotevent.StackUpdate{Update: robotevent.PushBack{Value: values.IntegerValue{Integer: 2}}}}}
+	init := robotevent.VariableInitEvent{HintID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", ValueID: 1}
+	update := robotevent.VariableUpdateEvent{HintID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", ValueID: 2}
 	drop := robotevent.VariableDropEvent{HintID: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"}
 	a := robotFuncs{
 		start: func() (robotmsg.Step, error) {

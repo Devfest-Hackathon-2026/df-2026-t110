@@ -11,6 +11,7 @@ import (
 
 	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	payload "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/memory"
 	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/google/jsonschema-go/jsonschema"
@@ -47,18 +48,34 @@ func TestHistoryMatchesSchema(t *testing.T) {
 			fieldevent.PrintRotationResult{RobotID: "r", Rotation: values.Right},
 			fieldevent.PrintDistanceTargetResult{RobotID: "r", DistanceTarget: values.DistanceGoal},
 		}}}},
-		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableInitEvent{HintID: hint, Value: values.StackRecordValue{Elements: []values.RecordValue{
-			values.BoolValue{}, values.IntegerValue{Integer: math.MaxInt64}, values.UnitValue{}, values.RotationRecordValue{Rotation: values.Left}, values.DistanceGoal,
-			values.LandTerrain{Kind: values.GoalLand{}, HasLuggage: true}, values.LandTerrain{Kind: values.CheckpointLand{Order: 2}},
-			values.RockTerrain{}, values.SeaTerrain{}, values.StackRecordValue{},
-		}}}},
-		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableUpdateEvent{HintID: hint, Diff: []robotevent.ValueUpdate{
-			robotevent.BoolUpdate{}, robotevent.IntegerUpdate{Value: math.MaxInt64}, robotevent.UnitUpdate{},
-			robotevent.TerrainUpdate{Value: values.SeaTerrain{}}, robotevent.RotationUpdate{Value: values.Right}, robotevent.DistanceTargetUpdate{Value: values.DistanceSea},
-			robotevent.StackUpdate{Update: robotevent.StackReplace{}}, robotevent.StackUpdate{Update: robotevent.PushBack{Value: values.UnitValue{}}}, robotevent.StackUpdate{Update: robotevent.PopBack{}},
-		}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 1, Value: payload.Bool{}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 2, Value: payload.Integer{Integer: math.MaxInt64}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 3, Value: payload.Unit{}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 4, Value: payload.Rotation{Rotation: values.Left}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 5, Value: payload.DistanceTarget{Target: values.DistanceGoal}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 6, Value: payload.Terrain{Terrain: values.LandTerrain{Kind: values.GoalLand{}, HasLuggage: true}}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 7, Value: payload.Terrain{Terrain: values.LandTerrain{Kind: values.CheckpointLand{Order: 2}}}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 8, Value: payload.Terrain{Terrain: values.RockTerrain{}}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 9, Value: payload.Terrain{Terrain: values.SeaTerrain{}}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 10, Value: payload.ListNode{Prev: 0, Element: 2}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryAllocateEvent{ID: 11, Value: payload.ListNode{Prev: 0, Element: 10}}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableInitEvent{HintID: hint, ValueID: 10}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableUpdateEvent{HintID: hint, ValueID: 11}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 10}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryRetainEvent{ID: 0}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 0}},
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.CurrentNodeEvent{HintID: hint}},
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.VariableDropEvent{HintID: hint}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 11}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 1}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 2}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 3}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 4}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 5}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 6}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 7}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 8}},
+		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.MemoryReleaseEvent{ID: 9}},
 		gameevent.RobotEvent{InterpreterID: "r", Event: robotevent.ExecutionFinishedEvent{HintID: hint, Reason: robotevent.EndCompleted, Message: "program completed"}},
 	}
 	history, err := encodeHistory(events)

@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	fieldevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/field_event"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
-	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/memory"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 )
 
@@ -16,7 +14,6 @@ import (
 // and action is constructed with a generated struct rather than a string map.
 func encodeHistory(events []gameevent.GameEvent) (wire.GameHistory, error) {
 	history := make(wire.GameHistory, 0, len(events))
-	interpreters := make(map[protocol.RobotID]*debugHistory)
 	for _, event := range events {
 		switch event := event.(type) {
 		case gameevent.FieldEvent:
@@ -29,18 +26,11 @@ func encodeHistory(events []gameevent.GameEvent) (wire.GameHistory, error) {
 			}
 			history = append(history, wire.FieldEvent{Type: "field", Tick: int(event.Event.Tick), State: state})
 		case gameevent.RobotEvent:
-			encoder := interpreters[event.InterpreterID]
-			if encoder == nil {
-				encoder = &debugHistory{variables: make(map[protocol.HintID][]memory.ID)}
-				interpreters[event.InterpreterID] = encoder
-			}
-			debug, err := encoder.encode(event.Event)
+			debug, err := debugEvent(event.Event)
 			if err != nil {
 				return nil, err
 			}
-			for _, entry := range debug {
-				history = append(history, wire.PicolangEvent{Type: "picolang", InterpreterId: string(event.InterpreterID), Event: entry})
-			}
+			history = append(history, wire.PicolangEvent{Type: "picolang", InterpreterId: string(event.InterpreterID), Event: debug})
 		default:
 			return nil, fmt.Errorf("unsupported history event %T", event)
 		}

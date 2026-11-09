@@ -8,8 +8,8 @@ import (
 
 	"github.com/dvpico/Programming-Learning-AR/Server/game/protocol"
 	gameevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/game_event"
+	payload "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/memory"
 	robotevent "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/robot_event"
-	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	"github.com/dvpico/Programming-Learning-AR/Server/game/robot/picolang_bot/interpreter/memory"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 )
@@ -17,26 +17,34 @@ import (
 func TestDebugHistoryReplaysBindingsAndReleasesMemory(t *testing.T) {
 	t.Parallel()
 	const hint protocol.HintID = "00000000-0000-4000-8000-000000000001"
-	stack := func(n int64) values.StackRecordValue {
-		return values.StackRecordValue{Elements: []values.RecordValue{values.IntegerValue{Integer: n}}}
-	}
 	robot := func(id protocol.RobotID, event robotevent.PicolangEvent) gameevent.GameEvent {
 		return gameevent.RobotEvent{InterpreterID: id, Event: event}
 	}
 	history, err := encodeHistory([]gameevent.GameEvent{
-		robot("a", robotevent.VariableInitEvent{HintID: hint, Value: stack(1)}),
-		robot("b", robotevent.VariableInitEvent{HintID: hint, Value: stack(9)}),
-		robot("a", robotevent.VariableInitEvent{HintID: hint, Value: stack(2)}),
-		robot("a", robotevent.VariableUpdateEvent{HintID: hint, Diff: []robotevent.ValueUpdate{
-			robotevent.StackUpdate{Update: robotevent.PushBack{Value: values.IntegerValue{Integer: 3}}},
-			robotevent.StackUpdate{Update: robotevent.PopBack{}},
-		}}),
+		robot("a", robotevent.MemoryAllocateEvent{ID: 1, Value: payload.Integer{Integer: 1}}),
+		robot("a", robotevent.MemoryAllocateEvent{ID: 2, Value: payload.ListNode{Prev: 0, Element: 1}}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 1}),
+		robot("a", robotevent.VariableInitEvent{HintID: hint, ValueID: 2}),
+		robot("b", robotevent.MemoryAllocateEvent{ID: 1, Value: payload.Integer{Integer: 9}}),
+		robot("b", robotevent.MemoryAllocateEvent{ID: 2, Value: payload.ListNode{Prev: 0, Element: 1}}),
+		robot("b", robotevent.MemoryReleaseEvent{ID: 1}),
+		robot("b", robotevent.VariableInitEvent{HintID: hint, ValueID: 2}),
+		robot("a", robotevent.MemoryRetainEvent{ID: 2}),
+		robot("a", robotevent.VariableInitEvent{HintID: hint, ValueID: 2}),
+		robot("a", robotevent.MemoryAllocateEvent{ID: 3, Value: payload.Integer{Integer: 3}}),
+		robot("a", robotevent.MemoryAllocateEvent{ID: 4, Value: payload.ListNode{Prev: 2, Element: 3}}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 3}),
+		robot("a", robotevent.VariableUpdateEvent{HintID: hint, ValueID: 4}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 2}),
 		robot("a", robotevent.VariableDropEvent{HintID: hint}),
-		robot("a", robotevent.VariableUpdateEvent{HintID: hint, Diff: []robotevent.ValueUpdate{
-			robotevent.StackUpdate{Update: robotevent.StackReplace{Value: []values.RecordValue{stack(4)}}},
-		}}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 4}),
+		robot("a", robotevent.MemoryAllocateEvent{ID: 5, Value: payload.ListNode{Prev: 0, Element: 2}}),
+		robot("a", robotevent.VariableUpdateEvent{HintID: hint, ValueID: 5}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 2}),
 		robot("b", robotevent.VariableDropEvent{HintID: hint}),
+		robot("b", robotevent.MemoryReleaseEvent{ID: 2}),
 		robot("a", robotevent.VariableDropEvent{HintID: hint}),
+		robot("a", robotevent.MemoryReleaseEvent{ID: 5}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +121,7 @@ func TestDebugHistoryReplaysBindingsAndReleasesMemory(t *testing.T) {
 			}
 		}
 	}
-	want := []string{"a:[1]", "b:[9]", "a:[2]", "a:[2,3]", "a:[2]", "a:[1]", "a:[[4]]"}
+	want := []string{"a:[1]", "b:[9]", "a:[1]", "a:[1,3]", "a:[1]", "a:[[1]]"}
 	if !reflect.DeepEqual(observed, want) {
 		t.Errorf("replayed bindings = %v, want %v", observed, want)
 	}
