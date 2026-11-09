@@ -121,6 +121,25 @@
   border: 1px solid var(--color-rule);
   background: var(--color-card);
 }
+.match-assignments {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+.match-assignments .match-assignment {
+  margin-top: 0;
+}
+.match-settings {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-top: var(--space-md);
+}
+.match-settings p {
+  margin: 0;
+  font-size: var(--type-small);
+}
 .match-robot-label {
   display: flex;
   gap: 10px;
