@@ -30,6 +30,15 @@ func TestGenerateReproducibleCatalog(t *testing.T) {
 		t.Error("same seed produced different catalogs")
 	}
 	other := testCatalog(t, 166)
+	fieldIDs := make(map[string]struct{})
+	for _, layout := range first {
+		fieldIDs[layout.FieldID] = struct{}{}
+	}
+	for _, layout := range other {
+		if _, exists := fieldIDs[layout.FieldID]; exists {
+			t.Errorf("different seeds reused field ID %q", layout.FieldID)
+		}
+	}
 	if reflect.DeepEqual(first[0].Terrain, other[0].Terrain) || reflect.DeepEqual(first[0].Luggage, other[0].Luggage) {
 		t.Error("changing the seed did not change both terrain and luggage")
 	}
@@ -42,6 +51,7 @@ func TestGenerateLayoutConstraints(t *testing.T) {
 		t.Errorf("catalog size=%d, want 64", len(layouts))
 	}
 	ids := make(map[string]struct{})
+	fieldIDs := make(map[string]struct{})
 	terrainKeys := make(map[string]struct{})
 	luggageKeys := make(map[string]struct{})
 	for _, layout := range layouts {
@@ -49,6 +59,13 @@ func TestGenerateLayoutConstraints(t *testing.T) {
 			t.Errorf("duplicate ID %s", layout.ID)
 		}
 		ids[layout.ID] = struct{}{}
+		if _, exists := fieldIDs[layout.FieldID]; exists {
+			t.Errorf("duplicate field ID %q", layout.FieldID)
+		}
+		fieldIDs[layout.FieldID] = struct{}{}
+		if layout.FieldID == "" || layout.FieldID != layout.ID {
+			t.Errorf("field ID %q must match layout ID %q", layout.FieldID, layout.ID)
+		}
 		terrainKey, luggageKey := signatures(layout)
 		if _, exists := terrainKeys[terrainKey]; exists {
 			t.Errorf("repeated terrain in %s", layout.ID)
@@ -133,8 +150,8 @@ func TestGenerateLayoutConstraints(t *testing.T) {
 					}
 				}
 			}
-			if layout.FieldID != "battle-1" || layout.DrillLimit != 2 || layout.Turns != 160 || layout.LuggagePoints != 1 || layout.DiscardPenalty != 1 {
-				t.Error("incorrect field ID or battle rules")
+			if layout.DrillLimit != 2 || layout.Turns != 160 || layout.LuggagePoints != 1 || layout.DiscardPenalty != 1 {
+				t.Error("incorrect battle rules")
 			}
 		})
 	}

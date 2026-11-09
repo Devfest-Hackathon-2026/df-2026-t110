@@ -39,6 +39,8 @@ func generate(seed uint64) ([]domain.BattleLayout, error) {
 		seenTerrain[terrainKey] = struct{}{}
 		seenLuggage[luggageKey] = struct{}{}
 		layout.ID = fmt.Sprintf("battle-1-v2-seed-%d-layout-%02d", seed, len(layouts)+1)
+		// A field ID identifies one concrete board, just as tutorial variant IDs do.
+		layout.FieldID = layout.ID
 		layouts = append(layouts, layout)
 		if len(layouts) == layoutCount {
 			return layouts, nil
@@ -59,7 +61,7 @@ func signatures(layout domain.BattleLayout) (string, string) {
 }
 
 func candidate(rng *rand.Rand) domain.BattleLayout {
-	layout := domain.BattleLayout{FieldID: "battle-1", DrillLimit: 2, Turns: 160, LuggagePoints: 1, DiscardPenalty: 1}
+	layout := domain.BattleLayout{DrillLimit: 2, Turns: 160, LuggagePoints: 1, DiscardPenalty: 1}
 	var near, central []schema.Position
 	for y := range height {
 		row := make([]schema.Terrain, width)
