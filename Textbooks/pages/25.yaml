@@ -1,0 +1,154 @@
+# 学び方: 発展
+id: stack-cards
+title: 数のカードを重ねる
+goal: 数を順に入れ、最後に入れた数を使おう。
+description: カードの山の最後の数を直して、3マス先のゴールへ進もう。
+lesson: 数のカードを重ねた山を考えよう。最後に重ねたカードから使うしくみを「スタック（stack）」といいます。
+guide:
+  - 「空のスタック」から始め、1、0の順にカードを足しています。
+  - 画面の「一番うしろ」が、山の一番上です。一番上を読むと、最後に入れた0が分かります。
+  - 最後に入れる数を3に変えよう。上の数だけ前進すると、ゴールに着きます。
+  - 読むだけでは、カードはへりません。足したあとの山は、同じ名前に入れ直します。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: ed2bd307-800c-42a1-9ad0-c07e099f9f34
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: d0d3b96e-758a-408e-8363-076a8182288b
+            stmts:
+              - kind: declare
+                hintId: 2bdf0345-447c-4be4-9fba-0c2de6beca54
+                type:
+                  kind: stack
+                  elementType: integer
+                ident:
+                  kind: ident
+                  hintId: c6ec2d69-b80c-4ba8-9dd1-03e5dcbb1999
+                  name: カード
+                value:
+                  kind: call
+                  hintId: 60f304c4-f83f-43e8-8e05-dfcac86927b6
+                  func: new
+                  args: []
+              - kind: assign
+                hintId: c2f76f49-647c-4d0b-8dd3-cdfcab8d303d
+                ident:
+                  kind: ident
+                  hintId: d8aba505-9524-4b7c-ba51-9ca9fada2d76
+                  name: カード
+                value:
+                  kind: call
+                  hintId: 7a967e3b-ea05-4db5-a172-c25773505e28
+                  func: push_back
+                  args:
+                    - kind: ident
+                      hintId: fc38ebe6-3e3c-4506-9453-ad0b56d38e83
+                      name: カード
+                    - kind: literal
+                      hintId: d0741fde-8948-4bf0-94d0-e55f17bcd511
+                      type: integer
+                      value: 1
+              - kind: assign
+                hintId: 402f886a-28a9-468b-b616-8e6459f59947
+                ident:
+                  kind: ident
+                  hintId: 561647e1-7c2e-44b4-9eaf-155e624a5d2f
+                  name: カード
+                value:
+                  kind: call
+                  hintId: 55eee0bd-108a-4cf0-80f7-b468cbfcd9aa
+                  func: push_back
+                  args:
+                    - kind: ident
+                      hintId: 3e6c0d44-1e7a-446c-b95a-bf6fd2b72361
+                      name: カード
+                    - kind: literal
+                      hintId: 25d7f9c4-0f31-483a-b169-a5b189aae862
+                      type: integer
+                      value: 0
+              - kind: call
+                hintId: 4c8ec80a-c303-4a4e-8173-d694ab70bee4
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: 95a640c6-65f1-4018-8bc8-49eff2e5f606
+                    func: size
+                    args:
+                      - kind: ident
+                        hintId: a35ebc9e-67c8-47ff-b946-375b52dd5b11
+                        name: カード
+              - kind: call
+                hintId: 93203dd7-15ba-49c3-ac60-810b22afe1d6
+                func: print_integer
+                args:
+                  - kind: call
+                    hintId: 17f53f5e-be6e-4218-8159-9e6f2ebdd1f1
+                    func: get_back
+                    args:
+                      - kind: ident
+                        hintId: dd954117-f991-4e32-af82-afecf0cbb945
+                        name: カード
+              - kind: for
+                hintId: efe74f5f-93cd-49f8-883a-e8b448dc62a9
+                ident:
+                  kind: ident
+                  hintId: 5ed50e89-74c8-48e7-bdf5-329175dbf20d
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: 64fb5f55-a387-4af7-b928-396c4e17caa5
+                  type: integer
+                  value: 0
+                end:
+                  kind: call
+                  hintId: d9977c44-bc26-4fd6-a933-691cef6af239
+                  func: get_back
+                  args:
+                    - kind: ident
+                      hintId: 3323796e-7909-4618-9c70-40d5ee875d22
+                      name: カード
+                body:
+                  kind: block
+                  hintId: 876b772f-2624-4bf9-97c5-d21aef7df4c9
+                  stmts:
+                    - kind: call
+                      hintId: 305653d0-a766-4c16-8560-9aa85d283f59
+                      func: forward
+                      args: []
+              - kind: return
+                hintId: 662628f1-4ae0-4e9a-a96a-d33c61a99838
+                value:
+                  kind: literal
+                  hintId: a1774166-17bc-4cb7-b213-605485b9489a
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: stack-cards-1
+      width: 4
+      height: 1
+      terrain:
+        - - land
+          - land
+          - land
+          - land
+      objects:
+        - type: goal
+          position:
+            x: 3
+            y: 0
+      robot:
+        position:
+          x: 0
+          y: 0
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal
