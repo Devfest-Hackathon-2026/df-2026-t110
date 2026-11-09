@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, useId } from 'vue'
 import type { PicoTypedProgram } from '../picolang/language/picolang.ts'
-import { generateProgram } from './programGenerationApi.ts'
+import { generateProgram, ProgramGenerationApiError } from './programGenerationApi.ts'
 
 const props = withDefaults(
   defineProps<{ fieldId?: string; isBattle?: boolean; generate?: typeof generateProgram }>(),
@@ -39,7 +39,13 @@ async function submit() {
     generated.value = JSON.stringify(program, null, 2)
     emit('generated', program)
   } catch (cause) {
-    if (!current.signal.aborted) error.value = cause instanceof Error ? cause.message : String(cause)
+    if (!current.signal.aborted) {
+      console.error('プログラム生成に失敗しました', cause)
+      error.value =
+        cause instanceof ProgramGenerationApiError
+          ? cause.message
+          : 'プログラムを生成できませんでした。接続を確認して、もう一度お試しください。'
+    }
   } finally {
     if (controller === current) pending.value = false
   }
@@ -57,7 +63,7 @@ onBeforeUnmount(() => controller?.abort())
     </button>
     <p v-if="error" role="alert">{{ error }}</p>
     <details v-if="generated">
-      <summary>生成されたPicolang JSON</summary>
+      <summary>生成したプログラムのJSON</summary>
       <pre>{{ generated }}</pre>
     </details>
   </form>

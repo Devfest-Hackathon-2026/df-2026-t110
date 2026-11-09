@@ -190,7 +190,21 @@ function defineStaticBlocks(): void {
       this.appendDummyInput()
         .appendField('探索対象')
         .appendField(
-          new Blockly.FieldDropdown(PICO_DISTANCE_TARGETS.map((target) => [target, target])),
+          new Blockly.FieldDropdown(
+            PICO_DISTANCE_TARGETS.map((target) => [
+              {
+                robot: 'ロボット',
+                ally: '味方のロボット',
+                enemy: '相手のロボット',
+                rock: '岩',
+                luggage: '荷物',
+                sea: '海',
+                goal: 'ゴール',
+                territory: '領地',
+              }[target],
+              target,
+            ]),
+          ),
           'VALUE',
         )
       this.setOutput(true, 'distance_target')

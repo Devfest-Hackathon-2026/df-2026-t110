@@ -17,7 +17,8 @@ async function load(): Promise<void> {
     tutorials.value = await getTutorials(current.signal)
   } catch (cause) {
     if (current.signal.aborted) return
-    error.value = cause instanceof Error ? cause.message : String(cause)
+    console.error('教材一覧の読み込みに失敗しました', cause)
+    error.value = '教材一覧を読み込めませんでした。再読み込みしてください。'
   } finally {
     if (!current.signal.aborted) loading.value = false
   }
@@ -30,7 +31,7 @@ onBeforeUnmount(() => request?.abort())
 <template>
   <p v-if="loading" role="status">教材を読み込んでいます。</p>
   <div v-else-if="error" role="alert">
-    <p>教材一覧を読み込めませんでした: {{ error }}</p>
+    <p>{{ error }}</p>
     <button type="button" @click="load">再読み込み</button>
   </div>
   <p v-else-if="tutorials.length === 0">教材はまだありません。</p>

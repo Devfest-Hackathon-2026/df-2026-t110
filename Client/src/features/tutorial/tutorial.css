@@ -645,14 +645,9 @@
   font-size: var(--type-section);
   line-height: 1.45;
 }
-.tutorial-load-message button {
-  min-height: 40px;
+.tutorial-load-message > a {
+  display: inline-block;
   margin-top: 12px;
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent-deep);
-  cursor: pointer;
 }
 @media (max-width: 700px), (max-aspect-ratio: 1/1) and (max-width: 980px) {
   .tutorial-page {

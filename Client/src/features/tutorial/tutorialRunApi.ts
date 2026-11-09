@@ -15,14 +15,14 @@ export class TutorialRunApiError extends Error {
       status === 401
         ? '実行にはログインが必要です。'
         : status === 501
-          ? 'サーバーの実行機能またはDB接続が有効になっていません。'
-          : `${action}に失敗しました (HTTP ${status})`,
+          ? 'プログラムの実行は現在利用できません。'
+          : `${action}ができませんでした。もう一度お試しください。`,
     )
     this.status = status
   }
 }
 
-async function postJson(path: string, body: unknown, signal: AbortSignal): Promise<unknown> {
+async function postJson(path: string, body: unknown, signal: AbortSignal, action: string): Promise<unknown> {
   const response = await fetch(`${base}${path}`, {
     method: 'POST',
     credentials: 'include',
@@ -30,7 +30,7 @@ async function postJson(path: string, body: unknown, signal: AbortSignal): Promi
     body: JSON.stringify(body),
     signal,
   })
-  if (!response.ok) throw new TutorialRunApiError(response.status, '教材の実行')
+  if (!response.ok) throw new TutorialRunApiError(response.status, action)
   if (!response.headers.get('content-type')?.includes('json'))
     throw new Error('教材APIからJSONが返されませんでした')
   return response.json()
@@ -70,6 +70,7 @@ export async function saveTutorialProgram(
       tutorialID: tutorialId,
     },
     signal,
+    'プログラムの保存',
   )
   if (!isRecord(saved) || typeof saved.id !== 'string' || !saved.id)
     throw new Error('保存したプログラムのIDが返されませんでした')
@@ -81,7 +82,12 @@ export async function startTutorialRun(
   programId: string,
   signal: AbortSignal,
 ): Promise<{ runId: string; fieldId: string }> {
-  const started = await postJson(`/tutorial/${encodeURIComponent(tutorialId)}/run`, { programId }, signal)
+  const started = await postJson(
+    `/tutorial/${encodeURIComponent(tutorialId)}/run`,
+    { programId },
+    signal,
+    'プログラムの実行',
+  )
   if (
     !isRecord(started) ||
     typeof started.runId !== 'string' ||

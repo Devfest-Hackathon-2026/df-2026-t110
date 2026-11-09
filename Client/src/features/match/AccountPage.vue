@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import userRoundIcon from '@iconify-icons/lucide/user-round'
 import logOutIcon from '@iconify-icons/lucide/log-out'
-import { loginUrl, logout, setMyUsername } from './matchApi.ts'
+import { loginUrl, logout, MatchApiError, setMyUsername } from './matchApi.ts'
 import { useMatchStore } from './useMatchStore.ts'
 import './account.css'
 
@@ -23,7 +23,16 @@ async function saveUsername(): Promise<void> {
     await setMyUsername(username.value.trim())
     await store.loadMe(true)
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'ユーザー名を設定できませんでした'
+    console.error('表示名の設定に失敗しました', cause)
+    const status = cause instanceof MatchApiError ? cause.status : undefined
+    error.value =
+      status === 401
+        ? '表示名を設定するには、ログインし直してください。'
+        : status === 400
+          ? '表示名を確認してください。32文字以内の半角英数字・_・-を使用でき、「self」「std」は使えません。'
+          : status === 409
+            ? 'この表示名は使用済みか、このアカウントにはすでに表示名が設定されています。'
+            : '表示名を保存できませんでした。しばらくしてから再試行してください。'
   } finally {
     busy.value = false
   }
@@ -37,7 +46,8 @@ async function signOut(): Promise<void> {
     await logout()
     await store.loadMe(true)
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'ログアウトできませんでした'
+    console.error('ログアウトに失敗しました', cause)
+    error.value = 'ログアウトできませんでした。もう一度お試しください。'
   } finally {
     busy.value = false
   }
@@ -47,9 +57,7 @@ async function signOut(): Promise<void> {
 <template>
   <main class="account-page container">
     <div class="account-page-heading">
-      <p class="account-eyebrow">ROBOT FIELD / ACCOUNT</p>
       <h1>アカウント</h1>
-      <p>ロボットと学ぶための、あなたの場所。</p>
     </div>
 
     <p v-if="error" class="account-error" role="alert">{{ error }}</p>
@@ -65,7 +73,6 @@ async function signOut(): Promise<void> {
             {{ (store.user?.name || 'R').slice(0, 1).toUpperCase() }}
           </div>
           <div class="account-identity">
-            <p class="account-status"><span aria-hidden="true"></span>ログイン中</p>
             <h2 id="account-profile-title">{{ store.user?.name || '名前を設定してください' }}</h2>
             <p>教材の実行と対戦に、このアカウントを使用します。</p>
           </div>
@@ -89,7 +96,6 @@ async function signOut(): Promise<void> {
         </form>
 
         <div class="account-panel-footer">
-          <span>アカウントの操作</span>
           <button type="button" class="account-logout" :disabled="busy" @click="signOut">
             <Icon :icon="logOutIcon" aria-hidden="true" />ログアウト
           </button>
@@ -103,8 +109,7 @@ async function signOut(): Promise<void> {
           <Icon :icon="userRoundIcon" />
         </div>
         <div class="account-identity">
-          <p class="account-status account-status--guest">未ログイン</p>
-          <h2 id="account-guest-title">学びの続きを始めよう</h2>
+          <h2 id="account-guest-title">ログイン</h2>
           <p>Googleアカウントでログインすると、教材のプログラム保存・実行と対戦ができます。</p>
         </div>
       </div>

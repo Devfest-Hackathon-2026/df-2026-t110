@@ -23,7 +23,11 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 )
 
-const robotID = "robot-1"
+const (
+	robotID = "robot-1"
+	// Keep the safety stop above the normal tutorial completion limit.
+	maxTicks uint64 = 10_000
+)
 
 // Executor is stateless; recordings live only for the duration of Execute.
 type Executor struct{}
@@ -47,7 +51,7 @@ func (*Executor) Execute(ctx context.Context, program domain.Program, lesson dom
 		return nil, fmt.Errorf("%w: %w", domain.ErrInvalidProgram, err)
 	}
 	defer func() { _ = bot.Close() }()
-	board, err := tutorial.NewBoard(lesson.Stage, variant, robotID, 1_000)
+	board, err := tutorial.NewBoard(lesson.Stage, variant, robotID, maxTicks)
 	if err != nil {
 		return nil, fmt.Errorf("build tutorial board: %w", err)
 	}

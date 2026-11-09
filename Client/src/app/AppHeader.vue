@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import houseIcon from '@iconify-icons/lucide/house'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
@@ -14,6 +14,15 @@ defineProps<{
 
 const matchStore = useMatchStore()
 onMounted(() => void matchStore.loadMe())
+
+const accountLabel = computed(() => {
+  if (matchStore.authStatus === 'checking') return 'アカウント（ログイン状態を確認中）'
+  if (matchStore.authStatus === 'signed-in')
+    return matchStore.user?.name
+      ? `アカウント（${matchStore.user.name}でログイン中）`
+      : 'アカウント（ログイン中）'
+  return 'アカウント（未ログイン）'
+})
 </script>
 
 <template>
@@ -34,12 +43,12 @@ onMounted(() => void matchStore.loadMe())
       <a href="/ranking" :aria-current="activePage === 'ranking' ? 'page' : undefined"
         ><Icon :icon="trophyIcon" aria-hidden="true" /><span>ランキング</span></a
       >
-      <a href="/account" :aria-current="activePage === 'account' ? 'page' : undefined"
-        ><Icon :icon="userRoundIcon" aria-hidden="true" /><span
-          v-if="matchStore.authStatus === 'signed-in'"
-          class="site-account-name"
-          >{{ matchStore.user?.name || '認証済み' }}</span
-        ><span v-else-if="matchStore.authStatus === 'checking'">確認中</span><span v-else>未ログイン</span></a
+      <a
+        href="/account"
+        :aria-current="activePage === 'account' ? 'page' : undefined"
+        :aria-label="accountLabel"
+        :title="accountLabel"
+        ><Icon :icon="userRoundIcon" aria-hidden="true" /><span>アカウント</span></a
       >
     </nav>
   </header>
