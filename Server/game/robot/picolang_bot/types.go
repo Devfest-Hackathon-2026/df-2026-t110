@@ -32,6 +32,11 @@ type StackType struct {
 	ElementType Type
 }
 
+type OptionType struct {
+	ElementType Type
+	CompoundType
+}
+
 func (BoolType) annotation()           {}
 func (IntegerType) annotation()        {}
 func (UnitType) annotation()           {}

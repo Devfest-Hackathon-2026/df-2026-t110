@@ -70,6 +70,15 @@ func (e *Evaluator) evaluate(name bot.Name, ids []memory.ID, args []memory.Value
 		}
 	case "new":
 		result = memory.ListRoot{}
+	case "unwrap":
+		some, ok := args[0].(memory.Some)
+		if !ok {
+			return 0, ErrUnwrapNone
+		}
+		return some.Element, e.memory.Retain(some.Element)
+	case "is_some":
+		_, present := args[0].(memory.Some)
+		result = memory.Bool{Value: present}
 	case "push_back":
 		result = memory.ListNode{Prev: ids[0], Value: ids[1]}
 	case "pop_back", "get_back":

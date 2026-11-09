@@ -54,6 +54,10 @@ func memoryValue(value payload.Value) (wire.PicolangMemoryValue, error) {
 		return wire.PicolangMemoryValue{DistanceTarget: &wire.DistanceTargetValue{Type: "distance_target", Value: wire.DistanceTarget(v.Target)}}, nil
 	case payload.ListNode:
 		return wire.PicolangMemoryValue{ListNode: &wire.ListNode{Type: "list_node", Prev: memoryID(v.Prev), Value: memoryID(v.Element)}}, nil
+	case payload.Some:
+		return wire.PicolangMemoryValue{Some: &wire.SomeValue{Type: "some", Value: memoryID(v.Element)}}, nil
+	case payload.None:
+		return wire.PicolangMemoryValue{None: &wire.NoneValue{Type: "none"}}, nil
 	default:
 		return wire.PicolangMemoryValue{}, fmt.Errorf("unsupported memory value %T", value)
 	}

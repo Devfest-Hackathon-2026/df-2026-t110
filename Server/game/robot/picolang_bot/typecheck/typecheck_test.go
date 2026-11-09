@@ -32,6 +32,8 @@ func builtinCases() []builtinCase {
 		{"random_bool", nil, b}, {"random_integer", []bot.Type{i, i}, i},
 		{"new", nil, stack}, {"push_back", []bot.Type{stack, i}, stack}, {"pop_back", []bot.Type{stack}, stack},
 		{"get_back", []bot.Type{stack}, i}, {"size", []bot.Type{stack}, i},
+		{"unwrap", []bot.Type{bot.OptionType{ElementType: i}}, i},
+		{"is_some", []bot.Type{bot.OptionType{ElementType: i}}, b},
 		{"is_land", []bot.Type{terrain}, b}, {"is_goal", []bot.Type{terrain}, b}, {"is_checkpoint", []bot.Type{terrain}, b},
 		{"is_own_territory", []bot.Type{terrain}, b}, {"is_enemy_territory", []bot.Type{terrain}, b},
 		{"is_luggage", []bot.Type{terrain}, b}, {"is_sea", []bot.Type{terrain}, b}, {"is_rock", []bot.Type{terrain}, b},

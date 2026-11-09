@@ -135,8 +135,12 @@ func (p *parser) parseFunction(node map[string]any) bot.Function[bot.Name, bot.U
 }
 
 func (p *parser) parseType(value any) bot.Type {
-	if stack, ok := value.(map[string]any); ok {
-		return bot.StackType{ElementType: p.parseType(stack["elementType"])}
+	if compound, ok := value.(map[string]any); ok {
+		element := p.parseType(compound["elementType"])
+		if compound["kind"] == "option" {
+			return bot.OptionType{ElementType: element}
+		}
+		return bot.StackType{ElementType: element}
 	}
 	switch value.(string) {
 	case "bool":

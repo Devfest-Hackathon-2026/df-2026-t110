@@ -17,6 +17,9 @@ var ErrUnknownFunction = errors.New("unknown builtin function")
 // ErrDivisionByZero identifies a language failure independently of Go's panic text.
 var ErrDivisionByZero = errors.New("division by zero")
 
+// ErrUnwrapNone identifies an attempt to unwrap an absent value.
+var ErrUnwrapNone = errors.New("cannot unwrap none")
+
 var signatures = bot.BuiltinSignatures()
 
 type Result interface{ builtinResult() }
@@ -114,6 +117,13 @@ func matches(value memory.Value, typ bot.Type) bool {
 	case bot.StackType:
 		switch value.(type) {
 		case memory.ListRoot, memory.ListNode:
+			return true
+		default:
+			return false
+		}
+	case bot.OptionType:
+		switch value.(type) {
+		case memory.Some, memory.None:
 			return true
 		default:
 			return false

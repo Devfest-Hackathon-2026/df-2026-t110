@@ -341,6 +341,79 @@ func (j *ClearCondition) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 他の型を組み合わせて構成する picolang の複合型
+type CompoundType struct {
+	Stack *StackType `json:"-" yaml:"-"`
+
+	Option *OptionType `json:"-" yaml:"-"`
+}
+
+// MarshalJSON implements json.Marshaler. Exactly one variant
+// pointer must be non-nil; otherwise marshaling errors.
+func (j CompoundType) MarshalJSON() ([]byte, error) {
+	set := 0
+	if j.Stack != nil {
+		set++
+	}
+	if j.Option != nil {
+		set++
+	}
+	if set != 1 {
+		return nil, fmt.Errorf("CompoundType: exactly one variant must be set, got %d", set)
+	}
+	if j.Stack != nil {
+		return json.Marshal(j.Stack)
+	}
+	if j.Option != nil {
+		return json.Marshal(j.Option)
+	}
+	return nil, nil // unreachable
+}
+
+// UnmarshalJSON implements json.Unmarshaler. It peeks the
+// discriminator property "kind" and dispatches the decode into the
+// matching variant.
+func (j *CompoundType) UnmarshalJSON(value []byte) error {
+	// Reset to zero value so reusing the same holder across multiple
+	// Unmarshal calls doesn't leave a previous winner set alongside the
+	// new one (which would violate the one-variant-set invariant and
+	// break the corresponding MarshalJSON).
+	*j = CompoundType{}
+	var peek struct {
+		Discriminator json.RawMessage `json:"kind"`
+	}
+	if err := json.Unmarshal(value, &peek); err != nil {
+		return fmt.Errorf("unmarshal CompoundType: %w", err)
+	}
+	if len(peek.Discriminator) == 0 {
+		return fmt.Errorf("CompoundType: missing discriminator field kind")
+	}
+	if string(peek.Discriminator) == "null" {
+		return fmt.Errorf("CompoundType: kind discriminator must be a string, got null")
+	}
+	var disc string
+	if err := json.Unmarshal(peek.Discriminator, &disc); err != nil {
+		return fmt.Errorf("CompoundType: kind discriminator must be a string: %w", err)
+	}
+	switch disc {
+	case "stack":
+		var v StackType
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("CompoundType.Stack: %w", err)
+		}
+		j.Stack = &v
+	case "option":
+		var v OptionType
+		if err := json.Unmarshal(value, &v); err != nil {
+			return fmt.Errorf("CompoundType.Option: %w", err)
+		}
+		j.Option = &v
+	default:
+		return fmt.Errorf("CompoundType: unknown kind value %q", disc)
+	}
+	return nil
+}
+
 // 最も内側のループの次の反復に進む
 type Continue struct {
 	// HintId corresponds to the JSON schema field "hintId".
@@ -1261,6 +1334,75 @@ func (j *Name) UnmarshalJSON(value []byte) error {
 	return nil
 }
 
+// 型Tの値を持つsome、または値を持たないnoneを表す型
+type OptionType struct {
+	// someが持つ値の型。基本型と複合型のどちらも指定できる
+	ElementType Type `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const OptionTypeKind = "option"
+
+type OptionType_1 struct {
+	// ElementType corresponds to the JSON schema field "elementType".
+	ElementType PicolangV0SignatureType `json:"elementType"`
+
+	// Kind corresponds to the JSON schema field "kind".
+	Kind string `json:"kind"`
+}
+
+const OptionType_1Kind = "option"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionType_1) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw OptionType_1: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in OptionType_1: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in OptionType_1: required")
+	}
+	type Plain OptionType_1
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal OptionType_1: %w", err)
+	}
+	if plain.Kind != "option" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "option")
+	}
+	*j = OptionType_1(plain)
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *OptionType) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return fmt.Errorf("unmarshal raw OptionType: %w", err)
+	}
+	if _, ok := raw["elementType"]; raw != nil && !ok {
+		return fmt.Errorf("field elementType in OptionType: required")
+	}
+	if _, ok := raw["kind"]; raw != nil && !ok {
+		return fmt.Errorf("field kind in OptionType: required")
+	}
+	type Plain OptionType
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return fmt.Errorf("unmarshal OptionType: %w", err)
+	}
+	if plain.Kind != "option" {
+		return fmt.Errorf("field %s: must be equal to %s", "kind", "option")
+	}
+	*j = OptionType(plain)
+	return nil
+}
+
 // 関数の仮引数の名前と型
 type Param struct {
 	// HintId corresponds to the JSON schema field "hintId".
@@ -1470,7 +1612,7 @@ type PicolangV0Header []struct {
 // 関数名をキー、関数定義を値とする文法バージョン 0 のプログラム
 type PicolangV0Program map[string]PicolangFunctionDefinition
 
-// シグネチャ内の型。既存の基本型、再帰的な stack、または型パラメータの参照
+// シグネチャ内の型。既存の基本型、再帰的な stack と option、または型パラメータの参照
 type PicolangV0SignatureType interface{}
 
 // フィールド上のマスの座標

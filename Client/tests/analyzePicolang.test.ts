@@ -656,3 +656,56 @@ test('old annotations are stripped and inferred types are filled in every nested
   assert.equal(isPicoProgram(compiled), false)
   assert.equal(isPicoDraft(compiled), true)
 })
+
+test('option builtins infer independent element types and preserve nested constructors in execution JSON', () => {
+  const program = source()
+  const functions = programFunctions(program)
+  const cases: Array<{ name: string; use: PicoExpr; type: PicoType }> = [
+    { name: 'readBool', use: call('print_bool', call('unwrap', ident('input'))), type: 'bool' },
+    {
+      name: 'readStack',
+      use: call('print_rotation', call('get_back', call('unwrap', ident('input')))),
+      type: stack('rotation'),
+    },
+    {
+      name: 'readNested',
+      use: call('print_integer', call('unwrap', call('unwrap', ident('input')))),
+      type: { kind: 'option', elementType: 'integer' },
+    },
+  ]
+  for (const { name, use } of cases)
+    functions[name] = fn([call('is_some', ident('input')), use, ret(ident('input'))], 'unit', [
+      { kind: 'param', hintId: id(), ident: ident('input') },
+    ])
+  const analysis = inferPicolang(program)
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.equal(isPicoProgram(analysis.program), true)
+  for (const { name, type } of cases) {
+    const expected = { kind: 'option', elementType: type }
+    assert.deepEqual(analysis.signatures[name], { params: [expected], returns: expected })
+    const compiled = programFunctions(analysis.program!)[name]
+    assert.deepEqual(compiled.params[0].type, expected)
+    assert.deepEqual(compiled.returnType, expected)
+  }
+})
+
+test('option inference rejects non-options, unknown elements and infinite types', () => {
+  for (const expr of [call('unwrap', defaultExpr()), call('is_some', call('new'))]) {
+    const analysis = inferPicolang(source(expr))
+    assert.ok(analysis.diagnostics.some((d) => d.code === 'type_mismatch'))
+    assert.equal(analysis.program, null)
+  }
+  const program = source()
+  const functions = programFunctions(program)
+  functions.inspect = fn([ret(call('is_some', ident('input')))], 'bool', [
+    { kind: 'param', hintId: id(), ident: ident('input') },
+  ])
+  assert.ok(inferPicolang(program).diagnostics.some((d) => d.code === 'cannot_infer_type'))
+  functions.inspect.body.stmts.unshift({
+    kind: 'assign',
+    hintId: id(),
+    ident: ident('input'),
+    value: call('unwrap', ident('input')),
+  })
+  assert.ok(inferPicolang(program).diagnostics.some((d) => d.code === 'type_mismatch'))
+})

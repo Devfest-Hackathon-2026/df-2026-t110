@@ -14,6 +14,11 @@ import (
 // StackValue is a test-only decoded value; production events never hold arrays.
 type StackValue struct{ Elements []any }
 
+type OptionValue struct {
+	Some  bool
+	Value any
+}
+
 // EventReplay reconstructs a fresh store solely from the recorded operations.
 // It checks ID ordering, reference lifetimes and recursive variable bindings.
 type EventReplay struct {
@@ -104,6 +109,10 @@ func (r *EventReplay) Value(t *testing.T, id memory.ID) any {
 		return v.Value
 	case memory.DistanceTarget:
 		return v.Value
+	case memory.Some:
+		return OptionValue{Some: true, Value: r.Value(t, v.Element)}
+	case memory.None:
+		return OptionValue{}
 	case memory.ListRoot:
 		return StackValue{}
 	case memory.ListNode:
@@ -148,6 +157,10 @@ func MemoryValue(t *testing.T, value payload.Value) memory.Value {
 		return memory.DistanceTarget{Value: v.Target}
 	case payload.ListNode:
 		return memory.ListNode{Prev: v.Prev, Value: v.Element}
+	case payload.Some:
+		return memory.Some{Element: v.Element}
+	case payload.None:
+		return memory.None{}
 	default:
 		t.Fatalf("unexpected allocation %T", value)
 		return nil

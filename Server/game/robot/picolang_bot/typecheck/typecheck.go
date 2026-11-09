@@ -66,7 +66,7 @@ func TypeCheck(program bot.IndexedProgram) (bot.TypedProgram, error) {
 func checkedDeclaredType(r *bot.Reporter, source bot.Source, t bot.Type) bot.Type {
 	result, valid := bot.CanonicalType(t)
 	if !valid {
-		r.Report(source, bot.CodeInvalidType, "invalid declared type %T; expected a primitive type or stack with a valid element type", t)
+		r.Report(source, bot.CodeInvalidType, "invalid declared type %T; expected a primitive type, stack or option with a valid element type", t)
 	}
 	return result
 }
@@ -285,7 +285,7 @@ func (c *typeChecker) call(n bot.CallExpr[bot.VariableIndex, bot.Untyped]) (bot.
 
 func (c *typeChecker) finish() {
 	for _, source := range c.inference.Unresolved() {
-		c.Report(source, bot.CodeCannotInferType, "cannot infer stack element type; provide a declared type or a constraining argument")
+		c.Report(source, bot.CodeCannotInferType, "cannot infer element type; provide a declared type or a constraining argument")
 	}
 	for _, annotation := range c.annotations {
 		*annotation = bot.ResolveType(*annotation)

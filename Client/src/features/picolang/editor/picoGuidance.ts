@@ -30,6 +30,8 @@ const builtinArguments: Record<string, string[]> = {
   pop_back: ['最後を除くスタック'],
   get_back: ['最後を見るスタック'],
   size: ['個数を数えるスタック'],
+  unwrap: ['値を取り出すオプション'],
+  is_some: ['値の有無を調べるオプション'],
   print_integer: ['表示する数'],
   print_bool: ['表示する答え'],
   print_unit: ['表示する値なし'],
@@ -44,7 +46,8 @@ export function argumentLabel(name: string, index: number, functions: Record<str
 
 export function typeLabel(type: PicoType | undefined): string {
   if (!type) return '未確定'
-  if (typeof type !== 'string') return `${typeLabel(type.elementType)}のスタック`
+  if (typeof type !== 'string')
+    return `${typeLabel(type.elementType)}の${type.kind === 'option' ? 'オプション' : 'スタック'}`
   return {
     bool: '真理値',
     integer: '整数',
@@ -61,4 +64,6 @@ export const resultGuidance: Record<string, string> = {
   pop_back: '元のスタックは変わりません。空のスタックには使えません。',
   get_back: 'スタックは変わりません。空のスタックには使えません。',
   size: '元のスタックは変わりません。',
+  unwrap: '値がない場合はエラーで実行が止まります。先に「値があるか調べる」で確認してください。',
+  is_some: '値がある場合は「はい」、値がない場合は「いいえ」を返します。',
 }

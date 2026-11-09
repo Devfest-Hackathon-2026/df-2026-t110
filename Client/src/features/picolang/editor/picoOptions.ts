@@ -68,6 +68,8 @@ const builtinLabels = {
   },
   get_back: { label: '最後の値を返す', category: 'スタック', blockMessage: '%1 の一番うしろ' },
   size: { label: 'スタックの個数を返す', category: 'スタック', blockMessage: '%1 の長さ' },
+  unwrap: { label: '値を取り出す', category: 'オプション', blockMessage: '%1 の値を取り出す' },
+  is_some: { label: '値があるか調べる', category: 'オプション', blockMessage: '%1 に値がある' },
   print_integer: { label: '整数を表示', category: '表示', blockMessage: '%1 と言う' },
   print_bool: { label: '真理値を表示', category: '表示', blockMessage: '%1 と言う' },
   print_unit: { label: '値なしを表示', category: '表示', blockMessage: '%1 と言う' },

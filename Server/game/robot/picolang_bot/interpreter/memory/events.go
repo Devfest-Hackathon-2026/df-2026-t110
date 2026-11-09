@@ -20,6 +20,10 @@ func allocationValue(value Value) payload.Value {
 		return payload.DistanceTarget{Target: v.Value}
 	case ListNode:
 		return payload.ListNode{Prev: v.Prev, Element: v.Value}
+	case Some:
+		return payload.Some{Element: v.Element}
+	case None:
+		return payload.None{}
 	default:
 		panic("recording unsupported memory allocation")
 	}

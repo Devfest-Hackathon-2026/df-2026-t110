@@ -333,6 +333,8 @@ func TestEveryBuiltinSignatureHasAHandler(t *testing.T) {
 				case bot.StackType:
 					args[i] = stack
 					continue
+				case bot.OptionType:
+					value = memory.Some{Element: one}
 				default:
 					args[i] = one
 					continue
@@ -371,6 +373,9 @@ func TestErrorsDoNotMutateArgumentsOrAllocate(t *testing.T) {
 		{"div", []memory.Value{memory.Integer{Value: 1}, memory.Integer{}}},
 		{"random_integer", []memory.Value{memory.Integer{Value: 2}, memory.Integer{Value: 1}}},
 		{"pop_back", []memory.Value{memory.ListRoot{}}}, {"get_back", []memory.Value{memory.ListRoot{}}},
+		{"unwrap", []memory.Value{memory.None{}}},
+		{"unwrap", []memory.Value{memory.Integer{}}},
+		{"is_some", []memory.Value{memory.Unit{}}},
 		{"and", []memory.Value{memory.Bool{}, memory.Integer{Value: 1}}},
 		{"or", []memory.Value{memory.Bool{Value: true}, memory.Integer{Value: 1}}},
 		{"add", []memory.Value{memory.Integer{Value: 1}}}, {"size", []memory.Value{memory.Unit{}}},

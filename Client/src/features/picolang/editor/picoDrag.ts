@@ -44,7 +44,8 @@ export function expressionFromDrop(
   const returnType = builtin?.returns ?? functions[name]?.returnType
   if (!returnType && Object.hasOwn(functions, name)) return makeCall(name, functions)
   return returnType &&
-    (samePicoType(expectedType, returnType) || (name === 'new' && typeof expectedType === 'object'))
+    (samePicoType(expectedType, returnType) ||
+      (name === 'new' && typeof expectedType === 'object' && expectedType.kind === 'stack'))
     ? makeCall(name, functions)
     : null
 }

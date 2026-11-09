@@ -13,7 +13,7 @@ import {
   type PicoStatement,
   type PicoType,
 } from '../language/picolang.ts'
-import { argumentLabel, typeLabel } from './picoGuidance.ts'
+import { argumentLabel, resultGuidance, typeLabel } from './picoGuidance.ts'
 import type { PicoDiagnostic } from '../language/analyzePicolang.ts'
 
 type State = Blockly.serialization.blocks.State
@@ -45,6 +45,7 @@ const colours: Record<string, string> = {
   計算: '#549641',
   乱数: '#6476ad',
   スタック: '#8a67ab',
+  オプション: '#95734b',
   表示: '#60866a',
   関数: '#875c98',
   値: '#65758b',
@@ -53,19 +54,19 @@ const controlTypes = ['pico_if', 'pico_if_else', 'pico_while', 'pico_for']
 let staticRegistered = false
 
 export function typeKey(type: PicoType): string {
-  return typeof type === 'string' ? type : `stack:${typeKey(type.elementType)}`
+  return typeof type === 'string' ? type : `${type.kind}:${typeKey(type.elementType)}`
 }
 export function keyType(key: string): PicoType {
-  return key.startsWith('stack:')
-    ? { kind: 'stack', elementType: keyType(key.slice(6)) }
-    : ['bool', 'integer', 'unit', 'terrain', 'rotation', 'distance_target'].includes(key)
-      ? (key as PicoType)
-      : 'integer'
+  for (const kind of ['stack', 'option'] as const)
+    if (key.startsWith(`${kind}:`)) return { kind, elementType: keyType(key.slice(kind.length + 1)) }
+  return ['bool', 'integer', 'unit', 'terrain', 'rotation', 'distance_target'].includes(key)
+    ? (key as PicoType)
+    : 'integer'
 }
 function typeCheck(type: PicoType | undefined): string[] | null {
   if (type === undefined) return null
   const key = typeKey(type)
-  return typeof type === 'string' ? [key] : [key, 'stack']
+  return typeof type === 'string' ? [key] : [key, type.kind]
 }
 function nodeData(hintId: string, extra: Record<string, string> = {}): string {
   return JSON.stringify({ hintId, ...extra })
@@ -313,6 +314,17 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
   const signature = callSignature(name, functions)
   const userFunction = Object.hasOwn(functions, name)
   const genericStack = ['new', 'push_back', 'pop_back', 'get_back', 'size'].includes(name)
+  const genericOption = name === 'unwrap' || name === 'is_some'
+  const inputCheck = (type: PicoType | undefined, index: number): string | string[] | null =>
+    userFunction
+      ? null
+      : genericOption
+        ? 'option'
+        : genericStack
+          ? index === 0
+            ? 'stack'
+            : null
+          : typeCheck(type)
   const missing = !PICO_BUILTIN_OPTIONS.some((item) => item.name === name) && !Object.hasOwn(functions, name)
   for (const statement of [false, true]) {
     Blockly.Blocks[callType(name, statement)] = {
@@ -323,7 +335,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
             args0: signature.args.map((type, index) => ({
               type: 'input_value',
               name: `ARG${index}`,
-              check: genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type),
+              check: inputCheck(type, index),
             })),
             inputsInline: true,
           })
@@ -331,7 +343,7 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
           this.appendDummyInput().appendField(signature.label)
           signature.args.forEach((type, index) =>
             this.appendValueInput(`ARG${index}`)
-              .setCheck(userFunction ? null : genericStack ? (index === 0 ? 'stack' : null) : typeCheck(type))
+              .setCheck(inputCheck(type, index))
               .appendField(argumentLabel(name, index, functions)),
           )
         }
@@ -345,15 +357,20 @@ function defineCall(name: string, functions: Record<string, PicoFunction>): void
               ? name === 'get_back'
                 ? null
                 : 'stack'
-              : missing || userFunction
+              : missing || userFunction || name === 'unwrap'
                 ? null
                 : typeCheck(signature.returns),
           )
         this.setColour(colours[signature.category] ?? colours.関数)
         this.setTooltip(
-          statement && !['動き', '操作', '表示'].includes(signature.category)
-            ? 'この行だけでは返した値を使いません。変数や条件の入力欄で使ってください。'
-            : '',
+          [
+            resultGuidance[name],
+            statement && !['動き', '操作', '表示'].includes(signature.category)
+              ? 'この行だけでは返した値を使いません。変数や条件の入力欄で使ってください。'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' '),
         )
       },
       // Keep unresolved calls editable so imported programs can display their
@@ -678,6 +695,7 @@ export function picoToolbox(functions: Record<string, PicoFunction>): Blockly.ut
     '計算',
     '乱数',
     'スタック',
+    'オプション',
     '表示',
     '関数',
     '値',

@@ -102,6 +102,7 @@ const categoryIcons = {
   計算: calculatorIcon,
   乱数: shuffleIcon,
   スタック: listIcon,
+  オプション: boxIcon,
   表示: typeIcon,
   関数: squareFunctionIcon,
   値: boxIcon,

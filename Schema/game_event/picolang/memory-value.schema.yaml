@@ -5,6 +5,7 @@ description: |
   stack は空リスト root または list node の ID で表す。入れ子の stack も ID で共有し、配列の snapshot は保持しない。
   list node の prev を root までたどり、各 value を逆順に並べると stack の要素列になる。
   同じ stack の要素の型が統一されることは生成側で保証する。
+  option の some は既存の値への ID を1つ保持し、none は値への参照を持たない。
 
 oneOf:
   - $ref: '#/$defs/BoolValue'
@@ -14,8 +15,31 @@ oneOf:
   - $ref: '#/$defs/RotationValue'
   - $ref: '#/$defs/DistanceTargetValue'
   - $ref: '#/$defs/ListNode'
+  - $ref: '#/$defs/SomeValue'
+  - $ref: '#/$defs/NoneValue'
 
 $defs:
+  SomeValue:
+    type: object
+    additionalProperties: false
+    required: [type, value]
+    properties:
+      type:
+        type: string
+        const: some
+      value:
+        description: someが持つ既存の値のID
+        $ref: './memory-id.schema.yaml'
+
+  NoneValue:
+    type: object
+    additionalProperties: false
+    required: [type]
+    properties:
+      type:
+        type: string
+        const: none
+
   BoolValue:
     type: object
     additionalProperties: false

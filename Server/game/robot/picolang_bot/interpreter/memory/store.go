@@ -25,7 +25,7 @@ type Store struct {
 	peakUsage   uint64
 }
 
-// EventSink receives successful public operations in order. Implicit list-edge
+// EventSink receives successful public operations in order. Implicit child-edge
 // retains and recursive releases are part of their initiating operation.
 type EventSink interface {
 	Add(robotevent.PicolangEvent)
@@ -36,12 +36,19 @@ type EventSink interface {
 func New(events EventSink) *Store { return &Store{events: events} }
 
 // Add stores a copy of value with one owned reference for the caller. List nodes
-// also retain both outgoing references. Repeated roots share RootID and acquire
+// and some retain their outgoing references. Repeated roots share RootID and acquire
 // another reference. On error, storage and reference counts are unchanged.
 func (s *Store) Add(value Value) (ID, error) {
 	s.initialize()
 	switch v := value.(type) {
 	case Bool, Integer, Unit:
+	case None:
+		value = None{}
+	case Some:
+		if err := s.canRetain(v.Element, 1); err != nil {
+			return 0, err
+		}
+		value = Some{Element: v.Element}
 	case Terrain:
 		// ValidValue also rejects pointers nested inside land observations.
 		if !values.ValidValue(v.Value) {
@@ -102,6 +109,9 @@ func (s *Store) Add(value Value) (ID, error) {
 		s.entries[node.Prev].references++
 		s.entries[node.Value].references++
 	}
+	if some, ok := value.(Some); ok {
+		s.entries[some.Element].references++
+	}
 	s.nextID++
 	s.insert(s.nextID, value, size)
 	if s.events != nil {
@@ -140,7 +150,7 @@ func (s *Store) PeakMemoryUsage() uint64 {
 }
 
 // Get returns a copy of the payload without acquiring a reference. The caller
-// must own a reference for as long as it uses the ID or a list's child IDs.
+// must own a reference for as long as it uses the ID or any child IDs.
 func (s *Store) Get(id ID) (Value, bool) {
 	s.initialize()
 	e, exists := s.entries[id]
@@ -150,7 +160,7 @@ func (s *Store) Get(id ID) (Value, bool) {
 	return e.value, true
 }
 
-// RefCount includes caller-owned references, incoming list-node edges, and the
+// RefCount includes caller-owned references, incoming compound-value edges, and the
 // store-owned reference to RootID.
 func (s *Store) RefCount(id ID) (uint64, bool) {
 	s.initialize()
@@ -209,8 +219,11 @@ func (s *Store) Release(id ID) error {
 		}
 		delete(s.entries, id)
 		s.memoryUsage -= entryBytes(e.value)
-		if node, ok := e.value.(ListNode); ok {
+		switch node := e.value.(type) {
+		case ListNode:
 			pending = append(pending, node.Prev, node.Value)
+		case Some:
+			pending = append(pending, node.Element)
 		}
 	}
 	if s.events != nil {

@@ -18,7 +18,7 @@ export interface PicoTerrain {
 }
 export type PicoValue =
   boolean | number | null | 'left' | 'right' | PicoDistanceTarget | PicoValue[] | PicoTerrain
-export type PicoType = PicoPrimitive | { kind: 'stack'; elementType: PicoType }
+export type PicoType = PicoPrimitive | { kind: 'stack' | 'option'; elementType: PicoType }
 interface NodeBase {
   hintId: string
 }
@@ -83,6 +83,7 @@ export interface PicoBuiltin {
   returns: PicoType
 }
 const stackInteger: PicoType = { kind: 'stack', elementType: 'integer' }
+const optionInteger: PicoType = { kind: 'option', elementType: 'integer' }
 const builtin = <Name extends string>(
   name: Name,
   args: PicoType[],
@@ -133,6 +134,8 @@ export const PICO_BUILTINS = [
   builtin('pop_back', [stackInteger], stackInteger),
   builtin('get_back', [stackInteger], 'integer'),
   builtin('size', [stackInteger], 'integer'),
+  builtin('unwrap', [optionInteger], 'integer'),
+  builtin('is_some', [optionInteger], 'bool'),
   builtin('print_integer', ['integer'], 'unit'),
   builtin('print_bool', ['bool'], 'unit'),
   builtin('print_unit', ['unit'], 'unit'),
@@ -145,13 +148,15 @@ export type PicoBuiltinName = (typeof PICO_BUILTINS)[number]['name']
 export function samePicoType(left: PicoType | undefined, right: PicoType | undefined): boolean {
   if (!left || !right) return true
   if (typeof left === 'string' || typeof right === 'string') return left === right
-  return samePicoType(left.elementType, right.elementType)
+  return left.kind === right.kind && samePicoType(left.elementType, right.elementType)
 }
 
 export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
 export function defaultExpr(type: PicoType = 'integer'): PicoExpr {
+  // Options have no constructor yet; leave a variable for the author to supply.
+  if (typeof type !== 'string' && type.kind === 'option') return ident('option')
   if (typeof type !== 'string') return { kind: 'call', hintId: id(), func: 'new', args: [] }
   if (type === 'bool') return { kind: 'literal', hintId: id(), type, value: false }
   if (type === 'unit') return { kind: 'literal', hintId: id(), type, value: null }
@@ -236,7 +241,7 @@ function type(value: unknown): boolean {
     ? primitiveTypes.includes(value as PicoPrimitive)
     : object(value) &&
         exact(value, ['kind', 'elementType']) &&
-        value.kind === 'stack' &&
+        (value.kind === 'stack' || value.kind === 'option') &&
         type(value.elementType)
 }
 function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>): boolean {
