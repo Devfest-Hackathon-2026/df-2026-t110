@@ -54,3 +54,11 @@ CREATE TABLE generation_usages (
 
 CREATE INDEX generation_usages_google_subject_reserved_at_idx
     ON generation_usages (google_subject, reserved_at);
+
+-- Three ordered robot slots; repeated program references are allowed.
+CREATE TABLE battle_programs (
+    google_subject text PRIMARY KEY REFERENCES users (google_subject) ON DELETE CASCADE,
+    program_1 text NOT NULL REFERENCES programs (id),
+    program_2 text NOT NULL REFERENCES programs (id),
+    program_3 text NOT NULL REFERENCES programs (id)
+);

@@ -8,6 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BattleProgram struct {
+	GoogleSubject string
+	Program1      string
+	Program2      string
+	Program3      string
+}
+
 type GenerationUsage struct {
 	ID            int64
 	GoogleSubject string

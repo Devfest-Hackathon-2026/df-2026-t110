@@ -355,7 +355,7 @@ export interface paths {
         get: operations["getBattlePrograms"];
         /**
          * 対戦用のプログラムを設定
-         * @description 対戦モードで他の人から対戦を申し込まれたときに使うプログラムを設定する。
+         * @description 自分の対戦用プログラムのIDをロボット順に必ず3つ指定する。同じIDの重複を許す。
          */
         put: operations["setBattlePrograms"];
         post?: never;
@@ -2090,8 +2090,29 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 指定数が3つではない、または対戦用プログラムではない */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description 認証されていない */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 他のユーザーのプログラム */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description プログラムが存在しない */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

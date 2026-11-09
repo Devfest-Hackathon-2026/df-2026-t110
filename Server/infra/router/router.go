@@ -24,6 +24,7 @@ type Config struct {
 	Tutorials         TutorialService
 	TutorialRuns      TutorialRunner
 	RunResults        RunResultGetter
+	BattlePrograms BattleProgramService
 }
 
 type AuthService interface {
@@ -47,6 +48,10 @@ type RunResultGetter interface {
 
 type TutorialRunner interface {
 	Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error)
+}
+
+type BattleProgramService interface {
+	Set(ctx context.Context, subject string, ids []string) error
 }
 
 type ProgramService interface {
