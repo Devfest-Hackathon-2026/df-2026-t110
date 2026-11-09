@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
 	"strings"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
@@ -14,18 +13,12 @@ type ProgramGetter interface {
 	Get(ctx context.Context, id string) (domain.Program, error)
 }
 
-type TutorialRuns struct {
-	programs  ProgramGetter
-	tutorials TutorialRepository
-	executor  *Executor
-	pick      func(int) int
-}
-
-func NewTutorialRuns(programs ProgramGetter, tutorials TutorialRepository, executor *Executor) *TutorialRuns {
-	return &TutorialRuns{programs: programs, tutorials: tutorials, executor: executor, pick: rand.IntN}
-}
-
-func (t *TutorialRuns) Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error) {
+// Run executes the subject's program on a randomly chosen field of the tutorial
+// and returns the run whose result is fetched by its ID.
+func (t *Tutorials) Run(ctx context.Context, subject, tutorialID, programID string) (domain.TutorialRun, error) {
+	if t.programs == nil || t.executor == nil {
+		return domain.TutorialRun{}, ErrRunUnavailable
+	}
 	if strings.TrimSpace(subject) == "" {
 		return domain.TutorialRun{}, ErrUnauthenticated
 	}

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"math/rand/v2"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
 )
@@ -13,19 +14,24 @@ type TutorialRepository interface {
 	Get(ctx context.Context, id string) (domain.Tutorial, error)
 }
 
-// Tutorials serves tutorials to learners.
+// Tutorials serves tutorials to learners and runs their programs.
 type Tutorials struct {
-	repo TutorialRepository
+	tutorials TutorialRepository
+	programs  ProgramGetter
+	executor  *Executor
+	pick      func(int) int
 }
 
-func NewTutorials(repo TutorialRepository) *Tutorials {
-	return &Tutorials{repo: repo}
+// NewTutorials takes nil programs and executor when no database is configured;
+// tutorials can then be read but not run.
+func NewTutorials(tutorials TutorialRepository, programs ProgramGetter, executor *Executor) *Tutorials {
+	return &Tutorials{tutorials: tutorials, programs: programs, executor: executor, pick: rand.IntN}
 }
 
 func (t *Tutorials) List(ctx context.Context) ([]domain.Tutorial, error) {
-	return t.repo.List(ctx)
+	return t.tutorials.List(ctx)
 }
 
 func (t *Tutorials) Get(ctx context.Context, id string) (domain.Tutorial, error) {
-	return t.repo.Get(ctx, id)
+	return t.tutorials.Get(ctx, id)
 }

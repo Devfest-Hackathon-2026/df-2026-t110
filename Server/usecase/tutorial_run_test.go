@@ -29,7 +29,7 @@ func (s runTutorialsStub) Get(context.Context, string) (domain.Tutorial, error) 
 	return s.tutorial, s.err
 }
 
-func TestTutorialRuns(t *testing.T) {
+func TestTutorialsRun(t *testing.T) {
 	t.Parallel()
 	lessonID, otherLesson := "tutorial-1", "tutorial-2"
 	valid := domain.Program{ID: "program-1", GoogleSubject: "owner", TutorialID: &lessonID}
@@ -60,14 +60,14 @@ func TestTutorialRuns(t *testing.T) {
 				tutorial: domain.Tutorial{ID: lessonID, Stage: schema.StageDefinition{Variants: []schema.FieldDefinition{{Id: "field-a"}, {Id: "field-b"}}}},
 				err:      tt.tutorialErr,
 			}
-			service := NewTutorialRuns(runProgramsStub{tt.program, tt.programErr}, lesson, NewExecutor(runs, nil, simulator, nil))
-			service.pick = func(n int) int {
+			tutorials := NewTutorials(lesson, runProgramsStub{tt.program, tt.programErr}, NewExecutor(runs, nil, simulator, nil))
+			tutorials.pick = func(n int) int {
 				if n != 2 {
 					t.Errorf("variant count = %d, want 2", n)
 				}
 				return 1
 			}
-			got, err := service.Run(t.Context(), tt.subject, lessonID, "program-1")
+			got, err := tutorials.Run(t.Context(), tt.subject, lessonID, "program-1")
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Run error = %v, want %v", err, tt.wantErr)
 			}
@@ -89,5 +89,16 @@ func TestTutorialRuns(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestTutorialsRunWithoutExecution(t *testing.T) {
+	t.Parallel()
+
+	tutorials := NewTutorials(runTutorialsStub{}, nil, nil)
+
+	_, err := tutorials.Run(t.Context(), "owner", "tutorial-1", "program-1")
+	if !errors.Is(err, ErrRunUnavailable) {
+		t.Errorf("Run error = %v, want %v", err, ErrRunUnavailable)
 	}
 }

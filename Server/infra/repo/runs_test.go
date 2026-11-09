@@ -60,9 +60,9 @@ func TestTutorialRunPersistsResult(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			runs := usecase.NewTutorialRuns(programs, tutorials, newExecutor(pool))
+			tutorialService := usecase.NewTutorials(tutorials, programs, newExecutor(pool))
 			server := echo.New()
-			api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{TutorialRuns: runs, RunResults: usecase.NewRunResults(NewRuns(pool))}), api.RegisterHandlersOptions{
+			api.RegisterHandlersWithOptions(server, router.NewRouter(router.Config{Tutorials: tutorialService, RunResults: usecase.NewRunResults(NewRuns(pool))}), api.RegisterHandlersOptions{
 				OperationMiddlewares: map[string][]echo.MiddlewareFunc{"runTutorial": {router.Authentication(runSession{})}, "runEvents": {router.Authentication(runSession{})}},
 			})
 			req := httptest.NewRequest(http.MethodPost, "/tutorial/tutorial-test/run", strings.NewReader(`{"programId":"p"}`))
