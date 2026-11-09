@@ -135,9 +135,8 @@ document.title = tutorialId
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
         <h1 class="heading-with-icon">
-          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>最初の一歩から。</span>
+          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
         </h1>
-        <p class="inner-lead">短い道から始めて、ロボットにできることを少しずつ増やしていきます。</p>
         <TutorialCatalog />
       </template>
       <template v-else>
