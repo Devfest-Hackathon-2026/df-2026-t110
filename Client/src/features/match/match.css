@@ -395,14 +395,16 @@
   position: absolute;
   z-index: 2;
   transform: translate(-50%, -110%);
-  max-width: 160px;
+  max-width: min(80%, 280px);
   overflow-wrap: anywhere;
-  padding: 6px 10px;
+  padding: 10px 14px;
   border-radius: 9px;
   background: #fff;
   color: #183d37;
   box-shadow: 0 3px 12px #102c2940;
+  font-size: 18px;
   font-weight: 700;
+  line-height: 1.45;
   pointer-events: none;
 }
 .match-replay-mode {

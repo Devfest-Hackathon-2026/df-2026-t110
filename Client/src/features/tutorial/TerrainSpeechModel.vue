@@ -8,6 +8,8 @@ import type { StageLayout, StageObject } from '../stage/stage.ts'
 
 const props = defineProps<{ terrain: PicoTerrain }>()
 const host = ref<HTMLElement | null>(null)
+const modelWidth = 150
+const modelHeight = 120
 let renderer: THREE.WebGLRenderer | null = null
 let root: THREE.Group | null = null
 let disposed = false
@@ -17,7 +19,7 @@ onMounted(async () => {
   try {
     renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.setSize(116, 94, false)
+    renderer.setSize(modelWidth, modelHeight, false)
     host.value.append(renderer.domElement)
     const objects: StageObject[] = []
     if (props.terrain.kind?.type === 'goal') objects.push({ type: 'goal' })
@@ -49,7 +51,7 @@ onMounted(async () => {
     const light = new THREE.DirectionalLight(0xffe5b6, 2.2)
     light.position.set(2, 4, 3)
     scene.add(light)
-    const camera = new THREE.PerspectiveCamera(40, 116 / 94, 0.1, 20)
+    const camera = new THREE.PerspectiveCamera(40, modelWidth / modelHeight, 0.1, 20)
     camera.position.set(2.8, 2.4, 3.1)
     camera.lookAt(0, 0.35, 0)
     renderer.render(scene, camera)
