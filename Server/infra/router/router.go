@@ -21,6 +21,7 @@ type Config struct {
 	Users             UsernameSetter
 	Programs          ProgramService
 	ProgramGeneration ProgramGenerationService
+	Fields            FieldService
 	Tutorials         TutorialService
 	TutorialRuns      TutorialRunner
 	RunResults        RunResultGetter
@@ -37,6 +38,10 @@ type AuthService interface {
 type SessionService interface {
 	SessionUserLookup
 	Logout(ctx context.Context, sessionID string) error
+}
+
+type FieldService interface {
+	Get(ctx context.Context, id string) (api.Field, error)
 }
 
 type TutorialService interface {
