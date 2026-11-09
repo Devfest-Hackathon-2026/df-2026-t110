@@ -20,6 +20,12 @@ const draft = ref<PicoProgram | null>(null)
 const generatedDraft = ref<PicoTypedProgram | null>(null)
 const generatedName = ref('')
 const editorOpen = ref(false)
+const editSelection = ref('')
+const editingProgramId = ref('')
+const editingName = ref('')
+const editingSource = ref<PicoProgram | null>(null)
+const editDraft = ref<PicoProgram | null>(null)
+const editMessage = ref('')
 const replayOpen = ref(false)
 const score = computed(() => store.result?.summary.score)
 const outcome = computed(() => {
@@ -42,6 +48,28 @@ async function save(): Promise<void> {
 async function saveGenerated(): Promise<void> {
   if (!generatedDraft.value) return
   await store.saveProgram(generatedName.value, generatedDraft.value)
+}
+async function openSavedProgram(): Promise<void> {
+  if (!editSelection.value) return
+  editMessage.value = ''
+  const program = await store.loadEditableProgram(editSelection.value)
+  if (!program) return
+  editingProgramId.value = program.id
+  editingName.value = program.name
+  editingSource.value = program.source
+  editDraft.value = program.source
+}
+async function saveEditedProgram(): Promise<void> {
+  if (!editingProgramId.value || !editDraft.value) return
+  editMessage.value = ''
+  if (await store.updateExistingProgram(editingProgramId.value, editingName.value, editDraft.value))
+    editMessage.value = '変更を保存しました。'
+}
+function changeEditSelection(): void {
+  editingProgramId.value = ''
+  editingSource.value = null
+  editDraft.value = null
+  editMessage.value = ''
 }
 function onEditorToggle(event: Event): void {
   editorOpen.value = (event.target as HTMLDetailsElement).open
@@ -137,6 +165,46 @@ function onEditorToggle(event: Event): void {
               </button>
             </div>
           </form>
+        </details>
+        <details v-if="store.programs.length" class="match-editor-details">
+          <summary>保存済みプログラムを編集する</summary>
+          <div class="match-edit-selection">
+            <label for="match-edit-program">プログラム</label>
+            <select
+              id="match-edit-program"
+              v-model="editSelection"
+              :disabled="store.busy"
+              @change="changeEditSelection"
+            >
+              <option value="">選択してください</option>
+              <option v-for="program in store.programs" :key="program.id" :value="program.id">
+                {{ program.name }}
+              </option>
+            </select>
+            <button type="button" :disabled="!editSelection || store.busy" @click="openSavedProgram">
+              編集する
+            </button>
+          </div>
+          <template v-if="editingProgramId && editingSource">
+            <div class="match-editor">
+              <BlocklyEditor
+                :key="editingProgramId"
+                :tutorial-id="`match:edit:${editingProgramId}`"
+                :initial-program="editingSource"
+                @update:program="editDraft = $event"
+              />
+            </div>
+            <form class="match-save-form" @submit.prevent="saveEditedProgram">
+              <label for="match-edit-name">保存する名前</label>
+              <div>
+                <input id="match-edit-name" v-model="editingName" type="text" required maxlength="80" />
+                <button type="submit" :disabled="store.busy || !editDraft">
+                  <Icon :icon="saveIcon" aria-hidden="true" />変更を保存
+                </button>
+              </div>
+            </form>
+            <p v-if="editMessage" role="status">{{ editMessage }}</p>
+          </template>
         </details>
         <details class="match-editor-details">
           <summary>文章からプログラムを生成して試す</summary>

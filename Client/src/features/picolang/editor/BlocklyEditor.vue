@@ -53,6 +53,7 @@ import './blocklyEditor.css'
 
 const props = defineProps<{
   tutorialId: string
+  initialProgram?: PicoProgram | null
   execution?: PicolangTrace | null
   running?: boolean
   playbackReady?: boolean
@@ -443,15 +444,17 @@ watch(analysis, (result) => {
 })
 
 watch(
-  () => props.tutorialId,
-  (tutorialId) => {
-    let loaded: PicoProgram = picoDraft(newProgram())
-    try {
-      const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
-      const parsed: unknown = saved ? JSON.parse(saved) : null
-      if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
-    } catch {
-      /* Use an empty program. */
+  () => [props.tutorialId, props.initialProgram] as const,
+  ([tutorialId, initialProgram]) => {
+    let loaded: PicoProgram = initialProgram ? picoDraft(initialProgram) : picoDraft(newProgram())
+    if (!initialProgram) {
+      try {
+        const saved = localStorage.getItem(`picolang:draft:${tutorialId}`)
+        const parsed: unknown = saved ? JSON.parse(saved) : null
+        if (isPicoDraft(parsed)) loaded = picoDraft(parsed)
+      } catch {
+        /* Use an empty program. */
+      }
     }
     program.value = loaded
     activeName.value = 'main'
