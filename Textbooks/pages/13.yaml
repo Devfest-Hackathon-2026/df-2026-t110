@@ -1,0 +1,78 @@
+# 学び方: 操作
+id: pick-and-place
+title: 荷物をひろう・置く
+goal: 荷物をひろって、前の陸に置こう。
+description: 見本に「拾う」と「置く」を足して、荷物を自分のじん地に置こう。
+lesson: 「拾う」と「置く」は、前のとなり1マスに使います。荷物は一つ持てます。
+guide:
+  - 見本の最初に「拾う」を入れよう。荷物を持ったまま動けます。
+  - じん地の手前に来たら、「置く」を入れよう。海には落とさず、陸に置きます。
+  - じん地に荷物を置けたらクリアです。ロボットはじん地の手前にいてもかまいません。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000013-0000-4000-8000-000000000011
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000013-0000-4000-8000-000000000010
+            stmts:
+              - kind: call
+                hintId: a0000013-0000-4000-8000-000000000002
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: a0000013-0000-4000-8000-000000000001
+                    type: rotation
+                    value: right
+              - kind: call
+                hintId: a0000013-0000-4000-8000-000000000003
+                func: forward
+                args: []
+              - kind: call
+                hintId: a0000013-0000-4000-8000-000000000005
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: a0000013-0000-4000-8000-000000000004
+                    type: rotation
+                    value: left
+              - kind: call
+                hintId: a0000013-0000-4000-8000-000000000006
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000013-0000-4000-8000-000000000009
+                value:
+                  kind: literal
+                  hintId: a0000013-0000-4000-8000-000000000008
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: pick-and-place-1
+      width: 3
+      height: 2
+      terrain:
+        - [land, land, sea]
+        - [land, land, land]
+      objects:
+        - type: luggage
+          id: parcel
+          position: { x: 1, y: 0 }
+        - type: territory
+          territoryOwner: 1
+          position: { x: 2, y: 1 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: deliver_luggage
+    territoryOwner: 1
+    requiredCount: 1

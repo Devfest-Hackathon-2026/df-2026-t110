@@ -29,6 +29,26 @@ $defs:
         description: ゴールへの到達を求める条件
       - $ref: "#/$defs/VisitCheckpoints"
         description: チェックポイントの順次通過を求める条件
+      - $ref: "#/$defs/DeliverLuggage"
+        description: 指定チームの陣地への荷物の配達を求める条件
+
+  DeliverLuggage:
+    description: 指定チームの陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要
+    type: object
+    additionalProperties: false
+    required: [type, territoryOwner, requiredCount]
+    properties:
+      type:
+        description: 荷物の配達を求めるクリア条件の種別
+        type: string
+        const: deliver_luggage
+      territoryOwner:
+        description: 配送先となる陣地の所有チーム
+        $ref: "./field.schema.yaml#/$defs/TerritoryOwner"
+      requiredCount:
+        description: 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける
+        type: integer
+        minimum: 1
 
   ReachGoal:
     description: ロボットがゴールに到達するとクリアする条件

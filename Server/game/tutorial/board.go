@@ -39,12 +39,14 @@ func NewBoard(stage schema.StageDefinition, variant int, robotID protocol.RobotI
 	}
 	slices.Sort(checkpoints)
 
-	rules, err := newCompletionRules(stage.ClearCondition, robotID, checkpoints)
+	rules, err := newCompletionRules(stage.ClearCondition, robotID, checkpoints, terrain)
 	if err != nil {
 		return nil, err
 	}
 	position := field.Robot.Position
 	robot := board.NewRobotState(board.NewPosition(position.X, position.Y), board.Direction(field.Robot.Direction), int64(field.DrillLimit))
+	// Delivery tutorials use the destination team as the robot's own territory.
+	robot = robot.WithTeam(rules.territoryOwner)
 	config, err := board.NewConfig(terrain, map[protocol.RobotID]board.RobotState{robotID: robot}, maxTicks, rules)
 	if err != nil {
 		return nil, err
@@ -83,18 +85,32 @@ func buildTerrain(field schema.FieldDefinition) ([][]board.Terrain, error) {
 }
 
 func placeObject(terrain [][]board.Terrain, object schema.FieldObject) error {
+	variants := 0
+	for _, present := range []bool{object.Goal != nil, object.Checkpoint != nil, object.Luggage != nil, object.Territory != nil} {
+		if present {
+			variants++
+		}
+	}
+	if variants != 1 {
+		return fmt.Errorf("tutorial field object must have exactly one variant")
+	}
 	var position schema.Position
 	var kind board.LandKind
 	var luggage bool
+	var owner board.TeamID
 	switch {
-	case object.Goal != nil && object.Checkpoint == nil && object.Luggage == nil:
+	case object.Goal != nil:
 		position, kind = object.Goal.Position, board.GoalLand{}
-	case object.Checkpoint != nil && object.Goal == nil && object.Luggage == nil:
+	case object.Checkpoint != nil:
 		position, kind = object.Checkpoint.Position, board.NewCheckpointLand(int64(object.Checkpoint.Order))
-	case object.Luggage != nil && object.Goal == nil && object.Checkpoint == nil:
+	case object.Luggage != nil:
 		position, luggage = object.Luggage.Position, true
-	default:
-		return fmt.Errorf("tutorial field object must have exactly one variant")
+	case object.Territory != nil:
+		position, kind = object.Territory.Position, board.PlainLand{}
+		owner = board.TeamID(object.Territory.TerritoryOwner)
+		if owner != board.TeamID1 && owner != board.TeamID2 {
+			return fmt.Errorf("invalid tutorial territory owner %d", owner)
+		}
 	}
 
 	x, y := position.X, position.Y
@@ -110,9 +126,10 @@ func placeObject(terrain [][]board.Terrain, object schema.FieldObject) error {
 			return fmt.Errorf("multiple pieces of luggage at (%d, %d)", x, y)
 		}
 		kind = land.Kind()
-	} else if _, plain := land.Kind().(board.PlainLand); !plain {
-		return fmt.Errorf("overlapping goal or checkpoint at (%d, %d)", x, y)
+		owner = land.TerritoryOwner()
+	} else if _, plain := land.Kind().(board.PlainLand); !plain || land.TerritoryOwner() != board.NoTeam {
+		return fmt.Errorf("overlapping goal, checkpoint or territory at (%d, %d)", x, y)
 	}
-	terrain[y][x] = board.NewLandTerrain(kind, luggage || land.HasLuggage(), board.NoTeam)
+	terrain[y][x] = board.NewLandTerrain(kind, luggage || land.HasLuggage(), owner)
 	return nil
 }
