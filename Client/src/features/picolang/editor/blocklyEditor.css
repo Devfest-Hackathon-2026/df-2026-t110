@@ -198,6 +198,9 @@
   background: #dae9e2 !important;
   font-weight: 700;
 }
+.blockly-canvas .blocklyToolboxSelected .blocklyToolboxCategoryLabel {
+  color: #173a34;
+}
 .blockly-canvas .blocklyMainBackground {
   stroke: #cbdad3;
 }
