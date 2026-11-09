@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-label="緑と紫のロボットが荷物を運ぶフィールドのイメージ">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#12383b"/><stop offset="1" stop-color="#1e5552"/></linearGradient>
+    <linearGradient id="floor" x2="0" y2="1"><stop stop-color="#648f7c"/><stop offset="1" stop-color="#295750"/></linearGradient>
+    <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#4cb9c1"/><stop offset="1" stop-color="#177c9b"/></linearGradient>
+  </defs>
+  <rect width="1200" height="640" fill="url(#bg)"/>
+  <ellipse cx="600" cy="455" rx="493" ry="135" fill="#061e23" opacity=".45"/>
+  <path d="M123 301 440 164 1079 312 763 472Z" fill="#123134" stroke="#a0d0b8" stroke-width="5"/>
+  <path d="M123 301v54l640 166v-49ZM763 472v49l316-154v-55Z" fill="#092b30"/>
+  <path d="M145 301 441 174l294 68-297 137Z" fill="url(#floor)" stroke="#88c9b2" stroke-width="3"/>
+  <path d="M442 379 738 243l313 73-289 145Z" fill="url(#floor)" stroke="#88c9b2" stroke-width="3"/>
+  <path d="M440 174 738 243M294 238 592 311M145 301 442 379M591 208 294 344M741 245 442 379M891 279 592 416" fill="none" stroke="#9ad6c0" stroke-opacity=".7" stroke-width="3"/>
+  <path d="m442 379 149-68 152 38-152 68Z" fill="url(#sea)" stroke="#91edf1" stroke-width="3"/>
+  <path d="m620 323 38 4m-94 32 36 4m83-5 26 2" stroke="#c4fbf7" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+  <path d="m261 247 66-25 73 19-66 27Z" fill="#7aff50"/><path d="m261 247 73 21v68l-73-19Z" fill="#23c713"/><path d="m334 268 66-27v68l-66 27Z" fill="#0d920a"/>
+  <ellipse cx="357" cy="280" rx="6" ry="9" fill="#082920"/><ellipse cx="383" cy="270" rx="6" ry="9" fill="#082920"/>
+  <path d="m267 306-40 35 10 8 54-31M387 309l46 34 11-9-47-39" fill="#37db2c"/>
+  <path d="m793 306 63-23 68 17-64 25Z" fill="#bea6f8"/><path d="m793 306 67 19v64l-67-18Z" fill="#8967d7"/><path d="m860 325 64-25v63l-64 26Z" fill="#6546a8"/>
+  <ellipse cx="882" cy="335" rx="6" ry="9" fill="#231f3b"/><ellipse cx="905" cy="326" rx="6" ry="9" fill="#231f3b"/>
+  <path d="m797 364-35 34 9 7 50-30M915 365l43 31 9-9-42-35" fill="#a284eb"/>
+  <path d="m543 251 42-15 45 13-42 16Z" fill="#ffe5a1"/><path d="m543 251 45 14v39l-45-13Z" fill="#cfab5a"/><path d="m588 265 42-16v40l-42 15Z" fill="#ad8545"/>
+  <circle cx="600" cy="89" r="48" fill="#d9ffe8" opacity=".07"/><path d="M442 118h316" stroke="#bde4d2" stroke-opacity=".5" stroke-width="3"/>
+</svg>

@@ -169,8 +169,33 @@
   pointer-events: none;
 }
 .tutorial-stage-toolbar > span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-field-ink);
   font-size: var(--type-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button {
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--color-field-rule);
+  border-radius: 4px;
+  background: var(--color-field);
+  color: var(--color-field-ink);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button svg {
+  width: 20px;
+  height: 20px;
+}
+.tutorial-stage-toolbar .tutorial-fullscreen-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .tutorial-view-switch {
   display: flex;
@@ -535,23 +560,9 @@
   color: var(--color-accent-ink);
 }
 .tutorial-reset-button,
-.tutorial-fullscreen-button,
 .tutorial-hide-stage-button {
   background: var(--color-paper);
   color: var(--color-accent-deep);
-}
-.tutorial-program-actions .tutorial-fullscreen-button {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  place-items: center;
-  background: transparent;
-  color: var(--color-field-ink);
-}
-.tutorial-fullscreen-button svg {
-  width: 18px;
-  height: 18px;
 }
 .tutorial-layout-nav {
   display: grid;
