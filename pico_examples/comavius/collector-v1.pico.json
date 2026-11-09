@@ -1,0 +1,3720 @@
+{
+  "picolang": {
+    "v0": {
+      "program": {
+        "absolute": {
+          "body": {
+            "hintId": "743a6a45-b830-4000-8000-00000000001b",
+            "kind": "block",
+            "stmts": [
+              {
+                "condition": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000000f",
+                      "kind": "ident",
+                      "name": "value"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000010",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 0
+                    }
+                  ],
+                  "func": "lt",
+                  "hintId": "743a6a45-b830-4000-8000-000000000011",
+                  "kind": "call"
+                },
+                "hintId": "743a6a45-b830-4000-8000-000000000016",
+                "kind": "if",
+                "then": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000015",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000014",
+                      "kind": "return",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000012",
+                            "kind": "ident",
+                            "name": "value"
+                          }
+                        ],
+                        "func": "minus",
+                        "hintId": "743a6a45-b830-4000-8000-000000000013",
+                        "kind": "call"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-000000000018",
+                "kind": "return",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000017",
+                  "kind": "ident",
+                  "name": "value"
+                }
+              }
+            ]
+          },
+          "hintId": "743a6a45-b830-4000-8000-00000000001c",
+          "kind": "function",
+          "params": [
+            {
+              "hintId": "743a6a45-b830-4000-8000-00000000001a",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-000000000019",
+                "kind": "ident",
+                "name": "value"
+              },
+              "kind": "param",
+              "type": "integer"
+            }
+          ],
+          "returnType": "integer"
+        },
+        "face": {
+          "body": {
+            "hintId": "743a6a45-b830-4000-8000-000000000048",
+            "kind": "block",
+            "stmts": [
+              {
+                "condition": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000001d",
+                      "kind": "ident",
+                      "name": "heading"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000001e",
+                      "kind": "ident",
+                      "name": "target"
+                    }
+                  ],
+                  "func": "integer_eq",
+                  "hintId": "743a6a45-b830-4000-8000-00000000001f",
+                  "kind": "call"
+                },
+                "hintId": "743a6a45-b830-4000-8000-000000000023",
+                "kind": "if",
+                "then": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000022",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000021",
+                      "kind": "return",
+                      "value": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000020",
+                        "kind": "ident",
+                        "name": "target"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-00000000002c",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000002b",
+                  "kind": "ident",
+                  "name": "delta"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "args": [
+                        {
+                          "args": [
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-000000000024",
+                              "kind": "ident",
+                              "name": "target"
+                            },
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-000000000025",
+                              "kind": "ident",
+                              "name": "heading"
+                            }
+                          ],
+                          "func": "sub",
+                          "hintId": "743a6a45-b830-4000-8000-000000000026",
+                          "kind": "call"
+                        },
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-000000000027",
+                          "kind": "literal",
+                          "type": "integer",
+                          "value": 4
+                        }
+                      ],
+                      "func": "add",
+                      "hintId": "743a6a45-b830-4000-8000-000000000028",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000029",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 4
+                    }
+                  ],
+                  "func": "remainder",
+                  "hintId": "743a6a45-b830-4000-8000-00000000002a",
+                  "kind": "call"
+                }
+              },
+              {
+                "condition": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000002d",
+                      "kind": "ident",
+                      "name": "delta"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000002e",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 3
+                    }
+                  ],
+                  "func": "integer_eq",
+                  "hintId": "743a6a45-b830-4000-8000-00000000002f",
+                  "kind": "call"
+                },
+                "hintId": "743a6a45-b830-4000-8000-000000000035",
+                "kind": "if",
+                "then": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000034",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "args": [
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-000000000030",
+                          "kind": "literal",
+                          "type": "rotation",
+                          "value": "left"
+                        }
+                      ],
+                      "func": "rotate",
+                      "hintId": "743a6a45-b830-4000-8000-000000000031",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000033",
+                      "kind": "return",
+                      "value": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000032",
+                        "kind": "ident",
+                        "name": "target"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "body": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000040",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "args": [
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-000000000039",
+                          "kind": "literal",
+                          "type": "rotation",
+                          "value": "right"
+                        }
+                      ],
+                      "func": "rotate",
+                      "hintId": "743a6a45-b830-4000-8000-00000000003a",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000003f",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000003e",
+                        "kind": "ident",
+                        "name": "delta"
+                      },
+                      "kind": "assign",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000003b",
+                            "kind": "ident",
+                            "name": "delta"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000003c",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 1
+                          }
+                        ],
+                        "func": "sub",
+                        "hintId": "743a6a45-b830-4000-8000-00000000003d",
+                        "kind": "call"
+                      }
+                    }
+                  ]
+                },
+                "condition": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000036",
+                      "kind": "ident",
+                      "name": "delta"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000037",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 0
+                    }
+                  ],
+                  "func": "gt",
+                  "hintId": "743a6a45-b830-4000-8000-000000000038",
+                  "kind": "call"
+                },
+                "hintId": "743a6a45-b830-4000-8000-000000000041",
+                "kind": "while"
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-000000000043",
+                "kind": "return",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000042",
+                  "kind": "ident",
+                  "name": "target"
+                }
+              }
+            ]
+          },
+          "hintId": "743a6a45-b830-4000-8000-000000000049",
+          "kind": "function",
+          "params": [
+            {
+              "hintId": "743a6a45-b830-4000-8000-000000000045",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-000000000044",
+                "kind": "ident",
+                "name": "heading"
+              },
+              "kind": "param",
+              "type": "integer"
+            },
+            {
+              "hintId": "743a6a45-b830-4000-8000-000000000047",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-000000000046",
+                "kind": "ident",
+                "name": "target"
+              },
+              "kind": "param",
+              "type": "integer"
+            }
+          ],
+          "returnType": "integer"
+        },
+        "main": {
+          "body": {
+            "hintId": "743a6a45-b830-4000-8000-0000000002a2",
+            "kind": "block",
+            "stmts": [
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000b3",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000b2",
+                  "kind": "ident",
+                  "name": "width"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000b0",
+                      "kind": "literal",
+                      "type": "distance_target",
+                      "value": "sea"
+                    }
+                  ],
+                  "func": "distance",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000b1",
+                  "kind": "call"
+                }
+              },
+              {
+                "args": [
+                  {
+                    "hintId": "743a6a45-b830-4000-8000-0000000000b4",
+                    "kind": "literal",
+                    "type": "rotation",
+                    "value": "right"
+                  }
+                ],
+                "func": "rotate",
+                "hintId": "743a6a45-b830-4000-8000-0000000000b5",
+                "kind": "call"
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000b9",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000b8",
+                  "kind": "ident",
+                  "name": "below"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000b6",
+                      "kind": "literal",
+                      "type": "distance_target",
+                      "value": "sea"
+                    }
+                  ],
+                  "func": "distance",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000b7",
+                  "kind": "call"
+                }
+              },
+              {
+                "args": [
+                  {
+                    "hintId": "743a6a45-b830-4000-8000-0000000000ba",
+                    "kind": "literal",
+                    "type": "rotation",
+                    "value": "right"
+                  }
+                ],
+                "func": "rotate",
+                "hintId": "743a6a45-b830-4000-8000-0000000000bb",
+                "kind": "call"
+              },
+              {
+                "args": [
+                  {
+                    "hintId": "743a6a45-b830-4000-8000-0000000000bc",
+                    "kind": "literal",
+                    "type": "rotation",
+                    "value": "right"
+                  }
+                ],
+                "func": "rotate",
+                "hintId": "743a6a45-b830-4000-8000-0000000000bd",
+                "kind": "call"
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000c3",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000c2",
+                  "kind": "ident",
+                  "name": "y"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "args": [
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-0000000000be",
+                          "kind": "literal",
+                          "type": "distance_target",
+                          "value": "sea"
+                        }
+                      ],
+                      "func": "distance",
+                      "hintId": "743a6a45-b830-4000-8000-0000000000bf",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000c0",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 1
+                    }
+                  ],
+                  "func": "sub",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000c1",
+                  "kind": "call"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000c8",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000c7",
+                  "kind": "ident",
+                  "name": "height"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000c4",
+                      "kind": "ident",
+                      "name": "y"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000c5",
+                      "kind": "ident",
+                      "name": "below"
+                    }
+                  ],
+                  "func": "add",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000c6",
+                  "kind": "call"
+                }
+              },
+              {
+                "args": [
+                  {
+                    "hintId": "743a6a45-b830-4000-8000-0000000000c9",
+                    "kind": "literal",
+                    "type": "rotation",
+                    "value": "right"
+                  }
+                ],
+                "func": "rotate",
+                "hintId": "743a6a45-b830-4000-8000-0000000000ca",
+                "kind": "call"
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000cf",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000ce",
+                  "kind": "ident",
+                  "name": "role"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000cb",
+                      "kind": "ident",
+                      "name": "y"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000cc",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 3
+                    }
+                  ],
+                  "func": "remainder",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000cd",
+                  "kind": "call"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000d8",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000d7",
+                  "kind": "ident",
+                  "name": "sweepY"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "args": [
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-0000000000d0",
+                          "kind": "ident",
+                          "name": "role"
+                        },
+                        {
+                          "args": [
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000d1",
+                              "kind": "ident",
+                              "name": "height"
+                            },
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000d2",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 1
+                            }
+                          ],
+                          "func": "sub",
+                          "hintId": "743a6a45-b830-4000-8000-0000000000d3",
+                          "kind": "call"
+                        }
+                      ],
+                      "func": "mul",
+                      "hintId": "743a6a45-b830-4000-8000-0000000000d4",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000d5",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 2
+                    }
+                  ],
+                  "func": "div",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000d6",
+                  "kind": "call"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000dd",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000dc",
+                  "kind": "ident",
+                  "name": "sweepX"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000d9",
+                      "kind": "ident",
+                      "name": "role"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000da",
+                      "kind": "literal",
+                      "type": "integer",
+                      "value": 2
+                    }
+                  ],
+                  "func": "add",
+                  "hintId": "743a6a45-b830-4000-8000-0000000000db",
+                  "kind": "call"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000e0",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000df",
+                  "kind": "ident",
+                  "name": "x"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000de",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 0
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000e3",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e2",
+                  "kind": "ident",
+                  "name": "heading"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e1",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 0
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000e6",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e5",
+                  "kind": "ident",
+                  "name": "goalX"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e4",
+                  "kind": "ident",
+                  "name": "sweepX"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000e9",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e8",
+                  "kind": "ident",
+                  "name": "goalY"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000e7",
+                  "kind": "ident",
+                  "name": "sweepY"
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000ec",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000eb",
+                  "kind": "ident",
+                  "name": "cooldown"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000ea",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 0
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000ef",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000ee",
+                  "kind": "ident",
+                  "name": "failures"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000ed",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 0
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000f2",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f1",
+                  "kind": "ident",
+                  "name": "deliveryStep"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f0",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 1
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000f5",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f4",
+                  "kind": "ident",
+                  "name": "carrying"
+                },
+                "kind": "declare",
+                "type": "bool",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f3",
+                  "kind": "literal",
+                  "type": "bool",
+                  "value": false
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000f8",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f7",
+                  "kind": "ident",
+                  "name": "hunting"
+                },
+                "kind": "declare",
+                "type": "bool",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000f6",
+                  "kind": "literal",
+                  "type": "bool",
+                  "value": false
+                }
+              },
+              {
+                "body": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000029e",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "condition": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000000f9",
+                        "kind": "ident",
+                        "name": "carrying"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-000000000144",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000143",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000000fc",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000fb",
+                              "kind": "ident",
+                              "name": "goalX"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000fa",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 1
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000000ff",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000fe",
+                              "kind": "ident",
+                              "name": "goalY"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000000fd",
+                              "kind": "ident",
+                              "name": "y"
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000100",
+                                  "kind": "ident",
+                                  "name": "x"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000101",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 1
+                                }
+                              ],
+                              "func": "leq",
+                              "hintId": "743a6a45-b830-4000-8000-000000000102",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000142",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000141",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000103",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000104",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 2
+                                      }
+                                    ],
+                                    "func": "integer_neq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000105",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-00000000010c",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000010b",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000010a",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000109",
+                                          "kind": "ident",
+                                          "name": "heading"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000107",
+                                              "kind": "ident",
+                                              "name": "heading"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000106",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 2
+                                            }
+                                          ],
+                                          "func": "face",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000108",
+                                          "kind": "call"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000010f",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000010e",
+                                    "kind": "ident",
+                                    "name": "home"
+                                  },
+                                  "kind": "declare",
+                                  "type": "terrain",
+                                  "value": {
+                                    "args": [],
+                                    "func": "search_front",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000010d",
+                                    "kind": "call"
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "args": [
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-000000000110",
+                                            "kind": "ident",
+                                            "name": "home"
+                                          }
+                                        ],
+                                        "func": "is_own_territory",
+                                        "hintId": "743a6a45-b830-4000-8000-000000000111",
+                                        "kind": "call"
+                                      },
+                                      {
+                                        "args": [
+                                          {
+                                            "args": [
+                                              {
+                                                "hintId": "743a6a45-b830-4000-8000-000000000112",
+                                                "kind": "ident",
+                                                "name": "home"
+                                              }
+                                            ],
+                                            "func": "is_luggage",
+                                            "hintId": "743a6a45-b830-4000-8000-000000000113",
+                                            "kind": "call"
+                                          }
+                                        ],
+                                        "func": "not",
+                                        "hintId": "743a6a45-b830-4000-8000-000000000114",
+                                        "kind": "call"
+                                      }
+                                    ],
+                                    "func": "and",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000115",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-000000000129",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000128",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000119",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000118",
+                                          "kind": "ident",
+                                          "name": "carrying"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "args": [],
+                                              "func": "release",
+                                              "hintId": "743a6a45-b830-4000-8000-000000000116",
+                                              "kind": "call"
+                                            }
+                                          ],
+                                          "func": "not",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000117",
+                                          "kind": "call"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000011c",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000011b",
+                                          "kind": "ident",
+                                          "name": "cooldown"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000011a",
+                                          "kind": "literal",
+                                          "type": "integer",
+                                          "value": 0
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000011f",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000011e",
+                                          "kind": "ident",
+                                          "name": "hunting"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000011d",
+                                          "kind": "literal",
+                                          "type": "bool",
+                                          "value": false
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000120",
+                                          "kind": "ident",
+                                          "name": "carrying"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-000000000126",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000125",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "args": [
+                                                {
+                                                  "args": [
+                                                    {
+                                                      "hintId": "743a6a45-b830-4000-8000-000000000121",
+                                                      "kind": "literal",
+                                                      "type": "integer",
+                                                      "value": 1
+                                                    },
+                                                    {
+                                                      "hintId": "743a6a45-b830-4000-8000-000000000122",
+                                                      "kind": "literal",
+                                                      "type": "integer",
+                                                      "value": 3
+                                                    }
+                                                  ],
+                                                  "func": "random_integer",
+                                                  "hintId": "743a6a45-b830-4000-8000-000000000123",
+                                                  "kind": "call"
+                                                }
+                                              ],
+                                              "func": "wait",
+                                              "hintId": "743a6a45-b830-4000-8000-000000000124",
+                                              "kind": "call"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000127",
+                                        "kind": "continue"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000012a",
+                                        "kind": "ident",
+                                        "name": "y"
+                                      },
+                                      {
+                                        "args": [
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000012b",
+                                            "kind": "ident",
+                                            "name": "height"
+                                          },
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000012c",
+                                            "kind": "literal",
+                                            "type": "integer",
+                                            "value": 1
+                                          }
+                                        ],
+                                        "func": "sub",
+                                        "hintId": "743a6a45-b830-4000-8000-00000000012d",
+                                        "kind": "call"
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000012e",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-000000000133",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000132",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000131",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000130",
+                                          "kind": "ident",
+                                          "name": "deliveryStep"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000012f",
+                                          "kind": "literal",
+                                          "type": "integer",
+                                          "value": -1
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000134",
+                                        "kind": "ident",
+                                        "name": "y"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000135",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 0
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000136",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-00000000013b",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000013a",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000139",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000138",
+                                          "kind": "ident",
+                                          "name": "deliveryStep"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000137",
+                                          "kind": "literal",
+                                          "type": "integer",
+                                          "value": 1
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000140",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000013f",
+                                    "kind": "ident",
+                                    "name": "goalY"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000013c",
+                                        "kind": "ident",
+                                        "name": "y"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000013d",
+                                        "kind": "ident",
+                                        "name": "deliveryStep"
+                                      }
+                                    ],
+                                    "func": "add",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000013e",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000145",
+                            "kind": "ident",
+                            "name": "carrying"
+                          }
+                        ],
+                        "func": "not",
+                        "hintId": "743a6a45-b830-4000-8000-000000000146",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001c1",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001c0",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "args": [
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-000000000147",
+                                      "kind": "ident",
+                                      "name": "hunting"
+                                    }
+                                  ],
+                                  "func": "not",
+                                  "hintId": "743a6a45-b830-4000-8000-000000000148",
+                                  "kind": "call"
+                                },
+                                {
+                                  "args": [
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-000000000149",
+                                      "kind": "ident",
+                                      "name": "cooldown"
+                                    },
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-00000000014a",
+                                      "kind": "literal",
+                                      "type": "integer",
+                                      "value": 0
+                                    }
+                                  ],
+                                  "func": "leq",
+                                  "hintId": "743a6a45-b830-4000-8000-00000000014b",
+                                  "kind": "call"
+                                }
+                              ],
+                              "func": "and",
+                              "hintId": "743a6a45-b830-4000-8000-00000000014c",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000196",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000195",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000151",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000150",
+                                    "kind": "ident",
+                                    "name": "seen"
+                                  },
+                                  "kind": "declare",
+                                  "type": "integer",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000014d",
+                                        "kind": "ident",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000014e",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      }
+                                    ],
+                                    "func": "survey",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000014f",
+                                    "kind": "call"
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000154",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000153",
+                                    "kind": "ident",
+                                    "name": "cooldown"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000152",
+                                    "kind": "literal",
+                                    "type": "integer",
+                                    "value": 3
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000155",
+                                        "kind": "ident",
+                                        "name": "seen"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000156",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 0
+                                      }
+                                    ],
+                                    "func": "geq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000157",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-000000000194",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000193",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000015c",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000015b",
+                                          "kind": "ident",
+                                          "name": "bearing"
+                                        },
+                                        "kind": "declare",
+                                        "type": "integer",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000158",
+                                              "kind": "ident",
+                                              "name": "seen"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000159",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 256
+                                            }
+                                          ],
+                                          "func": "div",
+                                          "hintId": "743a6a45-b830-4000-8000-00000000015a",
+                                          "kind": "call"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000161",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000160",
+                                          "kind": "ident",
+                                          "name": "range"
+                                        },
+                                        "kind": "declare",
+                                        "type": "integer",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000015d",
+                                              "kind": "ident",
+                                              "name": "seen"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000015e",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 256
+                                            }
+                                          ],
+                                          "func": "remainder",
+                                          "hintId": "743a6a45-b830-4000-8000-00000000015f",
+                                          "kind": "call"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000164",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000163",
+                                          "kind": "ident",
+                                          "name": "goalX"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000162",
+                                          "kind": "ident",
+                                          "name": "x"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000167",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000166",
+                                          "kind": "ident",
+                                          "name": "goalY"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000165",
+                                          "kind": "ident",
+                                          "name": "y"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000016a",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000169",
+                                          "kind": "ident",
+                                          "name": "hunting"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000168",
+                                          "kind": "literal",
+                                          "type": "bool",
+                                          "value": true
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000016b",
+                                              "kind": "ident",
+                                              "name": "bearing"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000016c",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 0
+                                            }
+                                          ],
+                                          "func": "integer_eq",
+                                          "hintId": "743a6a45-b830-4000-8000-00000000016d",
+                                          "kind": "call"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-000000000174",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000173",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000172",
+                                              "ident": {
+                                                "hintId": "743a6a45-b830-4000-8000-000000000171",
+                                                "kind": "ident",
+                                                "name": "goalX"
+                                              },
+                                              "kind": "assign",
+                                              "value": {
+                                                "args": [
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-00000000016e",
+                                                    "kind": "ident",
+                                                    "name": "x"
+                                                  },
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-00000000016f",
+                                                    "kind": "ident",
+                                                    "name": "range"
+                                                  }
+                                                ],
+                                                "func": "add",
+                                                "hintId": "743a6a45-b830-4000-8000-000000000170",
+                                                "kind": "call"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000175",
+                                              "kind": "ident",
+                                              "name": "bearing"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000176",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "integer_eq",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000177",
+                                          "kind": "call"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-00000000017e",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000017d",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000017c",
+                                              "ident": {
+                                                "hintId": "743a6a45-b830-4000-8000-00000000017b",
+                                                "kind": "ident",
+                                                "name": "goalY"
+                                              },
+                                              "kind": "assign",
+                                              "value": {
+                                                "args": [
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-000000000178",
+                                                    "kind": "ident",
+                                                    "name": "y"
+                                                  },
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-000000000179",
+                                                    "kind": "ident",
+                                                    "name": "range"
+                                                  }
+                                                ],
+                                                "func": "add",
+                                                "hintId": "743a6a45-b830-4000-8000-00000000017a",
+                                                "kind": "call"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000017f",
+                                              "kind": "ident",
+                                              "name": "bearing"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000180",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 2
+                                            }
+                                          ],
+                                          "func": "integer_eq",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000181",
+                                          "kind": "call"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-000000000188",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000187",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000186",
+                                              "ident": {
+                                                "hintId": "743a6a45-b830-4000-8000-000000000185",
+                                                "kind": "ident",
+                                                "name": "goalX"
+                                              },
+                                              "kind": "assign",
+                                              "value": {
+                                                "args": [
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-000000000182",
+                                                    "kind": "ident",
+                                                    "name": "x"
+                                                  },
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-000000000183",
+                                                    "kind": "ident",
+                                                    "name": "range"
+                                                  }
+                                                ],
+                                                "func": "sub",
+                                                "hintId": "743a6a45-b830-4000-8000-000000000184",
+                                                "kind": "call"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000189",
+                                              "kind": "ident",
+                                              "name": "bearing"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000018a",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 3
+                                            }
+                                          ],
+                                          "func": "integer_eq",
+                                          "hintId": "743a6a45-b830-4000-8000-00000000018b",
+                                          "kind": "call"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-000000000192",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000191",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000190",
+                                              "ident": {
+                                                "hintId": "743a6a45-b830-4000-8000-00000000018f",
+                                                "kind": "ident",
+                                                "name": "goalY"
+                                              },
+                                              "kind": "assign",
+                                              "value": {
+                                                "args": [
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-00000000018c",
+                                                    "kind": "ident",
+                                                    "name": "y"
+                                                  },
+                                                  {
+                                                    "hintId": "743a6a45-b830-4000-8000-00000000018d",
+                                                    "kind": "ident",
+                                                    "name": "range"
+                                                  }
+                                                ],
+                                                "func": "sub",
+                                                "hintId": "743a6a45-b830-4000-8000-00000000018e",
+                                                "kind": "call"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000197",
+                                  "kind": "ident",
+                                  "name": "hunting"
+                                }
+                              ],
+                              "func": "not",
+                              "hintId": "743a6a45-b830-4000-8000-000000000198",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-0000000001bf",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001be",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "args": [
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-000000000199",
+                                            "kind": "ident",
+                                            "name": "x"
+                                          },
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000019a",
+                                            "kind": "ident",
+                                            "name": "sweepX"
+                                          }
+                                        ],
+                                        "func": "integer_eq",
+                                        "hintId": "743a6a45-b830-4000-8000-00000000019b",
+                                        "kind": "call"
+                                      },
+                                      {
+                                        "args": [
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000019c",
+                                            "kind": "ident",
+                                            "name": "y"
+                                          },
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000019d",
+                                            "kind": "ident",
+                                            "name": "sweepY"
+                                          }
+                                        ],
+                                        "func": "integer_eq",
+                                        "hintId": "743a6a45-b830-4000-8000-00000000019e",
+                                        "kind": "call"
+                                      }
+                                    ],
+                                    "func": "and",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000019f",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-0000000001b7",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001b6",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-0000000001a6",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001a5",
+                                          "kind": "ident",
+                                          "name": "sweepY"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "args": [
+                                                {
+                                                  "hintId": "743a6a45-b830-4000-8000-0000000001a0",
+                                                  "kind": "ident",
+                                                  "name": "height"
+                                                },
+                                                {
+                                                  "hintId": "743a6a45-b830-4000-8000-0000000001a1",
+                                                  "kind": "literal",
+                                                  "type": "integer",
+                                                  "value": 1
+                                                }
+                                              ],
+                                              "func": "sub",
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001a2",
+                                              "kind": "call"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001a3",
+                                              "kind": "ident",
+                                              "name": "sweepY"
+                                            }
+                                          ],
+                                          "func": "sub",
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001a4",
+                                          "kind": "call"
+                                        }
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-0000000001ab",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001aa",
+                                          "kind": "ident",
+                                          "name": "sweepX"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001a7",
+                                              "kind": "ident",
+                                              "name": "sweepX"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001a8",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "add",
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001a9",
+                                          "kind": "call"
+                                        }
+                                      },
+                                      {
+                                        "condition": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001ac",
+                                              "kind": "ident",
+                                              "name": "sweepX"
+                                            },
+                                            {
+                                              "args": [
+                                                {
+                                                  "hintId": "743a6a45-b830-4000-8000-0000000001ad",
+                                                  "kind": "ident",
+                                                  "name": "width"
+                                                },
+                                                {
+                                                  "hintId": "743a6a45-b830-4000-8000-0000000001ae",
+                                                  "kind": "literal",
+                                                  "type": "integer",
+                                                  "value": 1
+                                                }
+                                              ],
+                                              "func": "sub",
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001af",
+                                              "kind": "call"
+                                            }
+                                          ],
+                                          "func": "geq",
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001b0",
+                                          "kind": "call"
+                                        },
+                                        "hintId": "743a6a45-b830-4000-8000-0000000001b5",
+                                        "kind": "if",
+                                        "then": {
+                                          "hintId": "743a6a45-b830-4000-8000-0000000001b4",
+                                          "kind": "block",
+                                          "stmts": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-0000000001b3",
+                                              "ident": {
+                                                "hintId": "743a6a45-b830-4000-8000-0000000001b2",
+                                                "kind": "ident",
+                                                "name": "sweepX"
+                                              },
+                                              "kind": "assign",
+                                              "value": {
+                                                "hintId": "743a6a45-b830-4000-8000-0000000001b1",
+                                                "kind": "literal",
+                                                "type": "integer",
+                                                "value": 2
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-0000000001ba",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001b9",
+                                    "kind": "ident",
+                                    "name": "goalX"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001b8",
+                                    "kind": "ident",
+                                    "name": "sweepX"
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-0000000001bd",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001bc",
+                                    "kind": "ident",
+                                    "name": "goalY"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001bb",
+                                    "kind": "ident",
+                                    "name": "sweepY"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000001c6",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001c5",
+                        "kind": "ident",
+                        "name": "dx"
+                      },
+                      "kind": "declare",
+                      "type": "integer",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001c2",
+                            "kind": "ident",
+                            "name": "goalX"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001c3",
+                            "kind": "ident",
+                            "name": "x"
+                          }
+                        ],
+                        "func": "sub",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001c4",
+                        "kind": "call"
+                      }
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000001cb",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001ca",
+                        "kind": "ident",
+                        "name": "dy"
+                      },
+                      "kind": "declare",
+                      "type": "integer",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001c7",
+                            "kind": "ident",
+                            "name": "goalY"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001c8",
+                            "kind": "ident",
+                            "name": "y"
+                          }
+                        ],
+                        "func": "sub",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001c9",
+                        "kind": "call"
+                      }
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000001ce",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001cd",
+                        "kind": "ident",
+                        "name": "wanted"
+                      },
+                      "kind": "declare",
+                      "type": "integer",
+                      "value": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001cc",
+                        "kind": "ident",
+                        "name": "heading"
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001cf",
+                            "kind": "ident",
+                            "name": "dy"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001d0",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 0
+                          }
+                        ],
+                        "func": "gt",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001d1",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001d6",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001d5",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001d4",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001d3",
+                              "kind": "ident",
+                              "name": "wanted"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001d2",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 1
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001d7",
+                            "kind": "ident",
+                            "name": "dy"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001d8",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 0
+                          }
+                        ],
+                        "func": "lt",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001d9",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001de",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001dd",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001dc",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001db",
+                              "kind": "ident",
+                              "name": "wanted"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001da",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 3
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001df",
+                            "kind": "ident",
+                            "name": "dx"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001e0",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 0
+                          }
+                        ],
+                        "func": "gt",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001e1",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001e6",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001e5",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001e4",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001e3",
+                              "kind": "ident",
+                              "name": "wanted"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001e2",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 0
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001e7",
+                            "kind": "ident",
+                            "name": "dx"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001e8",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 0
+                          }
+                        ],
+                        "func": "lt",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001e9",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001ee",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001ed",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001ec",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001eb",
+                              "kind": "ident",
+                              "name": "wanted"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001ea",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 2
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001ef",
+                            "kind": "ident",
+                            "name": "heading"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001f0",
+                            "kind": "ident",
+                            "name": "wanted"
+                          }
+                        ],
+                        "func": "integer_neq",
+                        "hintId": "743a6a45-b830-4000-8000-0000000001f1",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-0000000001f8",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000001f7",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001f6",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-0000000001f5",
+                              "kind": "ident",
+                              "name": "heading"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-0000000001f3",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-0000000001f2",
+                                  "kind": "ident",
+                                  "name": "wanted"
+                                }
+                              ],
+                              "func": "face",
+                              "hintId": "743a6a45-b830-4000-8000-0000000001f4",
+                              "kind": "call"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000001f9",
+                            "kind": "ident",
+                            "name": "hunting"
+                          },
+                          {
+                            "args": [
+                              {
+                                "args": [
+                                  {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-0000000001fa",
+                                        "kind": "ident",
+                                        "name": "dx"
+                                      }
+                                    ],
+                                    "func": "absolute",
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001fb",
+                                    "kind": "call"
+                                  },
+                                  {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-0000000001fc",
+                                        "kind": "ident",
+                                        "name": "dy"
+                                      }
+                                    ],
+                                    "func": "absolute",
+                                    "hintId": "743a6a45-b830-4000-8000-0000000001fd",
+                                    "kind": "call"
+                                  }
+                                ],
+                                "func": "add",
+                                "hintId": "743a6a45-b830-4000-8000-0000000001fe",
+                                "kind": "call"
+                              },
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-0000000001ff",
+                                "kind": "literal",
+                                "type": "integer",
+                                "value": 1
+                              }
+                            ],
+                            "func": "integer_eq",
+                            "hintId": "743a6a45-b830-4000-8000-000000000200",
+                            "kind": "call"
+                          }
+                        ],
+                        "func": "and",
+                        "hintId": "743a6a45-b830-4000-8000-000000000201",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-000000000215",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000214",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000204",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000203",
+                              "kind": "ident",
+                              "name": "carrying"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [],
+                              "func": "pick_up",
+                              "hintId": "743a6a45-b830-4000-8000-000000000202",
+                              "kind": "call"
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000207",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000206",
+                              "kind": "ident",
+                              "name": "hunting"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000205",
+                              "kind": "literal",
+                              "type": "bool",
+                              "value": false
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000020a",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000209",
+                              "kind": "ident",
+                              "name": "cooldown"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000208",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 0
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000020b",
+                                  "kind": "ident",
+                                  "name": "carrying"
+                                }
+                              ],
+                              "func": "not",
+                              "hintId": "743a6a45-b830-4000-8000-00000000020c",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000212",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000211",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "args": [
+                                    {
+                                      "args": [
+                                        {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000020d",
+                                          "kind": "literal",
+                                          "type": "integer",
+                                          "value": 1
+                                        },
+                                        {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000020e",
+                                          "kind": "literal",
+                                          "type": "integer",
+                                          "value": 3
+                                        }
+                                      ],
+                                      "func": "random_integer",
+                                      "hintId": "743a6a45-b830-4000-8000-00000000020f",
+                                      "kind": "call"
+                                    }
+                                  ],
+                                  "func": "wait",
+                                  "hintId": "743a6a45-b830-4000-8000-000000000210",
+                                  "kind": "call"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000213",
+                            "kind": "continue"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "args": [],
+                                "func": "search_front",
+                                "hintId": "743a6a45-b830-4000-8000-000000000216",
+                                "kind": "call"
+                              }
+                            ],
+                            "func": "is_rock",
+                            "hintId": "743a6a45-b830-4000-8000-000000000217",
+                            "kind": "call"
+                          },
+                          {
+                            "args": [
+                              {
+                                "args": [],
+                                "func": "drill_durability",
+                                "hintId": "743a6a45-b830-4000-8000-000000000218",
+                                "kind": "call"
+                              },
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-000000000219",
+                                "kind": "literal",
+                                "type": "integer",
+                                "value": 0
+                              }
+                            ],
+                            "func": "gt",
+                            "hintId": "743a6a45-b830-4000-8000-00000000021a",
+                            "kind": "call"
+                          }
+                        ],
+                        "func": "and",
+                        "hintId": "743a6a45-b830-4000-8000-00000000021b",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-00000000021e",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000021d",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "args": [],
+                            "func": "drill",
+                            "hintId": "743a6a45-b830-4000-8000-00000000021c",
+                            "kind": "call"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [],
+                        "func": "forward",
+                        "hintId": "743a6a45-b830-4000-8000-00000000021f",
+                        "kind": "call"
+                      },
+                      "else": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000296",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000250",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000024f",
+                              "kind": "ident",
+                              "name": "failures"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000024c",
+                                  "kind": "ident",
+                                  "name": "failures"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000024d",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 1
+                                }
+                              ],
+                              "func": "add",
+                              "hintId": "743a6a45-b830-4000-8000-00000000024e",
+                              "kind": "call"
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000025f",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000025e",
+                              "kind": "ident",
+                              "name": "heading"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000025c",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "args": [
+                                    {
+                                      "args": [
+                                        {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000251",
+                                          "kind": "ident",
+                                          "name": "heading"
+                                        },
+                                        {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000252",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            },
+                                            {
+                                              "args": [
+                                                {
+                                                  "hintId": "743a6a45-b830-4000-8000-000000000253",
+                                                  "kind": "literal",
+                                                  "type": "integer",
+                                                  "value": 2
+                                                },
+                                                {
+                                                  "args": [
+                                                    {
+                                                      "hintId": "743a6a45-b830-4000-8000-000000000254",
+                                                      "kind": "literal",
+                                                      "type": "integer",
+                                                      "value": 0
+                                                    },
+                                                    {
+                                                      "hintId": "743a6a45-b830-4000-8000-000000000255",
+                                                      "kind": "literal",
+                                                      "type": "integer",
+                                                      "value": 1
+                                                    }
+                                                  ],
+                                                  "func": "random_integer",
+                                                  "hintId": "743a6a45-b830-4000-8000-000000000256",
+                                                  "kind": "call"
+                                                }
+                                              ],
+                                              "func": "mul",
+                                              "hintId": "743a6a45-b830-4000-8000-000000000257",
+                                              "kind": "call"
+                                            }
+                                          ],
+                                          "func": "add",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000258",
+                                          "kind": "call"
+                                        }
+                                      ],
+                                      "func": "add",
+                                      "hintId": "743a6a45-b830-4000-8000-000000000259",
+                                      "kind": "call"
+                                    },
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-00000000025a",
+                                      "kind": "literal",
+                                      "type": "integer",
+                                      "value": 4
+                                    }
+                                  ],
+                                  "func": "remainder",
+                                  "hintId": "743a6a45-b830-4000-8000-00000000025b",
+                                  "kind": "call"
+                                }
+                              ],
+                              "func": "face",
+                              "hintId": "743a6a45-b830-4000-8000-00000000025d",
+                              "kind": "call"
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [],
+                              "func": "forward",
+                              "hintId": "743a6a45-b830-4000-8000-000000000260",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-00000000028a",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000289",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000261",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000262",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 0
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000263",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-00000000026a",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000269",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000268",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000267",
+                                          "kind": "ident",
+                                          "name": "x"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000264",
+                                              "kind": "ident",
+                                              "name": "x"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000265",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "add",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000266",
+                                          "kind": "call"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000026b",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000026c",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 1
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000026d",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-000000000274",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000273",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000272",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000271",
+                                          "kind": "ident",
+                                          "name": "y"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000026e",
+                                              "kind": "ident",
+                                              "name": "y"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-00000000026f",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "add",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000270",
+                                          "kind": "call"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000275",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000276",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 2
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000277",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-00000000027e",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000027d",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000027c",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-00000000027b",
+                                          "kind": "ident",
+                                          "name": "x"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000278",
+                                              "kind": "ident",
+                                              "name": "x"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000279",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "sub",
+                                          "hintId": "743a6a45-b830-4000-8000-00000000027a",
+                                          "kind": "call"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "condition": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000027f",
+                                        "kind": "ident",
+                                        "name": "heading"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000280",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 3
+                                      }
+                                    ],
+                                    "func": "integer_eq",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000281",
+                                    "kind": "call"
+                                  },
+                                  "hintId": "743a6a45-b830-4000-8000-000000000288",
+                                  "kind": "if",
+                                  "then": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000287",
+                                    "kind": "block",
+                                    "stmts": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000286",
+                                        "ident": {
+                                          "hintId": "743a6a45-b830-4000-8000-000000000285",
+                                          "kind": "ident",
+                                          "name": "y"
+                                        },
+                                        "kind": "assign",
+                                        "value": {
+                                          "args": [
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000282",
+                                              "kind": "ident",
+                                              "name": "y"
+                                            },
+                                            {
+                                              "hintId": "743a6a45-b830-4000-8000-000000000283",
+                                              "kind": "literal",
+                                              "type": "integer",
+                                              "value": 1
+                                            }
+                                          ],
+                                          "func": "sub",
+                                          "hintId": "743a6a45-b830-4000-8000-000000000284",
+                                          "kind": "call"
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000028b",
+                                  "kind": "ident",
+                                  "name": "failures"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000028c",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 2
+                                }
+                              ],
+                              "func": "gt",
+                              "hintId": "743a6a45-b830-4000-8000-00000000028d",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000295",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000294",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000290",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000028f",
+                                    "kind": "ident",
+                                    "name": "hunting"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000028e",
+                                    "kind": "literal",
+                                    "type": "bool",
+                                    "value": false
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000293",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000292",
+                                    "kind": "ident",
+                                    "name": "cooldown"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000291",
+                                    "kind": "literal",
+                                    "type": "integer",
+                                    "value": 0
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-000000000297",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000024b",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000220",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000221",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 0
+                                }
+                              ],
+                              "func": "integer_eq",
+                              "hintId": "743a6a45-b830-4000-8000-000000000222",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000229",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000228",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000227",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000226",
+                                    "kind": "ident",
+                                    "name": "x"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000223",
+                                        "kind": "ident",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000224",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 1
+                                      }
+                                    ],
+                                    "func": "add",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000225",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000022a",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000022b",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 1
+                                }
+                              ],
+                              "func": "integer_eq",
+                              "hintId": "743a6a45-b830-4000-8000-00000000022c",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000233",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000232",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000231",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000230",
+                                    "kind": "ident",
+                                    "name": "y"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000022d",
+                                        "kind": "ident",
+                                        "name": "y"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-00000000022e",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 1
+                                      }
+                                    ],
+                                    "func": "add",
+                                    "hintId": "743a6a45-b830-4000-8000-00000000022f",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000234",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000235",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 2
+                                }
+                              ],
+                              "func": "integer_eq",
+                              "hintId": "743a6a45-b830-4000-8000-000000000236",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-00000000023d",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000023c",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000023b",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-00000000023a",
+                                    "kind": "ident",
+                                    "name": "x"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000237",
+                                        "kind": "ident",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000238",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 1
+                                      }
+                                    ],
+                                    "func": "sub",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000239",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000023e",
+                                  "kind": "ident",
+                                  "name": "heading"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000023f",
+                                  "kind": "literal",
+                                  "type": "integer",
+                                  "value": 3
+                                }
+                              ],
+                              "func": "integer_eq",
+                              "hintId": "743a6a45-b830-4000-8000-000000000240",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-000000000247",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000246",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000245",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000244",
+                                    "kind": "ident",
+                                    "name": "y"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000241",
+                                        "kind": "ident",
+                                        "name": "y"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000242",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 1
+                                      }
+                                    ],
+                                    "func": "sub",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000243",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000024a",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000249",
+                              "kind": "ident",
+                              "name": "failures"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000248",
+                              "kind": "literal",
+                              "type": "integer",
+                              "value": 0
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-00000000029c",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000029b",
+                        "kind": "ident",
+                        "name": "cooldown"
+                      },
+                      "kind": "assign",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000298",
+                            "kind": "ident",
+                            "name": "cooldown"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000299",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 1
+                          }
+                        ],
+                        "func": "sub",
+                        "hintId": "743a6a45-b830-4000-8000-00000000029a",
+                        "kind": "call"
+                      }
+                    }
+                  ]
+                },
+                "condition": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000029d",
+                  "kind": "literal",
+                  "type": "bool",
+                  "value": true
+                },
+                "hintId": "743a6a45-b830-4000-8000-00000000029f",
+                "kind": "while"
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000002a1",
+                "kind": "return",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000002a0",
+                  "kind": "literal",
+                  "type": "unit",
+                  "value": null
+                }
+              }
+            ]
+          },
+          "hintId": "743a6a45-b830-4000-8000-0000000002a3",
+          "kind": "function",
+          "params": [],
+          "returnType": "unit"
+        },
+        "remainder": {
+          "body": {
+            "hintId": "743a6a45-b830-4000-8000-00000000000d",
+            "kind": "block",
+            "stmts": [
+              {
+                "hintId": "743a6a45-b830-4000-8000-000000000008",
+                "kind": "return",
+                "value": {
+                  "args": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000001",
+                      "kind": "ident",
+                      "name": "value"
+                    },
+                    {
+                      "args": [
+                        {
+                          "args": [
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-000000000002",
+                              "kind": "ident",
+                              "name": "value"
+                            },
+                            {
+                              "hintId": "743a6a45-b830-4000-8000-000000000003",
+                              "kind": "ident",
+                              "name": "divisor"
+                            }
+                          ],
+                          "func": "div",
+                          "hintId": "743a6a45-b830-4000-8000-000000000004",
+                          "kind": "call"
+                        },
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-000000000005",
+                          "kind": "ident",
+                          "name": "divisor"
+                        }
+                      ],
+                      "func": "mul",
+                      "hintId": "743a6a45-b830-4000-8000-000000000006",
+                      "kind": "call"
+                    }
+                  ],
+                  "func": "sub",
+                  "hintId": "743a6a45-b830-4000-8000-000000000007",
+                  "kind": "call"
+                }
+              }
+            ]
+          },
+          "hintId": "743a6a45-b830-4000-8000-00000000000e",
+          "kind": "function",
+          "params": [
+            {
+              "hintId": "743a6a45-b830-4000-8000-00000000000a",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-000000000009",
+                "kind": "ident",
+                "name": "value"
+              },
+              "kind": "param",
+              "type": "integer"
+            },
+            {
+              "hintId": "743a6a45-b830-4000-8000-00000000000c",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-00000000000b",
+                "kind": "ident",
+                "name": "divisor"
+              },
+              "kind": "param",
+              "type": "integer"
+            }
+          ],
+          "returnType": "integer"
+        },
+        "survey": {
+          "body": {
+            "hintId": "743a6a45-b830-4000-8000-0000000000ae",
+            "kind": "block",
+            "stmts": [
+              {
+                "hintId": "743a6a45-b830-4000-8000-00000000004c",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000004b",
+                  "kind": "ident",
+                  "name": "best"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000004a",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": -1
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-00000000004f",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000004e",
+                  "kind": "ident",
+                  "name": "cost"
+                },
+                "kind": "declare",
+                "type": "integer",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-00000000004d",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 10000
+                }
+              },
+              {
+                "body": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000a6",
+                  "kind": "block",
+                  "stmts": [
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000056",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000055",
+                        "kind": "ident",
+                        "name": "d"
+                      },
+                      "kind": "declare",
+                      "type": "integer",
+                      "value": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000053",
+                            "kind": "literal",
+                            "type": "distance_target",
+                            "value": "luggage"
+                          }
+                        ],
+                        "func": "distance",
+                        "hintId": "743a6a45-b830-4000-8000-000000000054",
+                        "kind": "call"
+                      }
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-000000000059",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000058",
+                        "kind": "ident",
+                        "name": "targetX"
+                      },
+                      "kind": "declare",
+                      "type": "integer",
+                      "value": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000057",
+                        "kind": "ident",
+                        "name": "x"
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000005a",
+                            "kind": "ident",
+                            "name": "heading"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000005b",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 0
+                          }
+                        ],
+                        "func": "integer_eq",
+                        "hintId": "743a6a45-b830-4000-8000-00000000005c",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-000000000063",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-000000000062",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000061",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000060",
+                              "kind": "ident",
+                              "name": "targetX"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000005d",
+                                  "kind": "ident",
+                                  "name": "x"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000005e",
+                                  "kind": "ident",
+                                  "name": "d"
+                                }
+                              ],
+                              "func": "add",
+                              "hintId": "743a6a45-b830-4000-8000-00000000005f",
+                              "kind": "call"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000064",
+                            "kind": "ident",
+                            "name": "heading"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000065",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 2
+                          }
+                        ],
+                        "func": "integer_eq",
+                        "hintId": "743a6a45-b830-4000-8000-000000000066",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-00000000006d",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000006c",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000006b",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000006a",
+                              "kind": "ident",
+                              "name": "targetX"
+                            },
+                            "kind": "assign",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000067",
+                                  "kind": "ident",
+                                  "name": "x"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000068",
+                                  "kind": "ident",
+                                  "name": "d"
+                                }
+                              ],
+                              "func": "sub",
+                              "hintId": "743a6a45-b830-4000-8000-000000000069",
+                              "kind": "call"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "condition": {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-00000000006e",
+                                "kind": "ident",
+                                "name": "d"
+                              },
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-00000000006f",
+                                "kind": "literal",
+                                "type": "integer",
+                                "value": 0
+                              }
+                            ],
+                            "func": "gt",
+                            "hintId": "743a6a45-b830-4000-8000-000000000070",
+                            "kind": "call"
+                          },
+                          {
+                            "args": [
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-000000000071",
+                                "kind": "ident",
+                                "name": "targetX"
+                              },
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-000000000072",
+                                "kind": "literal",
+                                "type": "integer",
+                                "value": 0
+                              }
+                            ],
+                            "func": "gt",
+                            "hintId": "743a6a45-b830-4000-8000-000000000073",
+                            "kind": "call"
+                          }
+                        ],
+                        "func": "and",
+                        "hintId": "743a6a45-b830-4000-8000-000000000074",
+                        "kind": "call"
+                      },
+                      "hintId": "743a6a45-b830-4000-8000-00000000009c",
+                      "kind": "if",
+                      "then": {
+                        "hintId": "743a6a45-b830-4000-8000-00000000009b",
+                        "kind": "block",
+                        "stmts": [
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-000000000079",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000078",
+                              "kind": "ident",
+                              "name": "candidate"
+                            },
+                            "kind": "declare",
+                            "type": "integer",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000075",
+                                  "kind": "ident",
+                                  "name": "d"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000076",
+                                  "kind": "ident",
+                                  "name": "targetX"
+                                }
+                              ],
+                              "func": "add",
+                              "hintId": "743a6a45-b830-4000-8000-000000000077",
+                              "kind": "call"
+                            }
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-00000000007d",
+                            "ident": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000007c",
+                              "kind": "ident",
+                              "name": "rock"
+                            },
+                            "kind": "declare",
+                            "type": "integer",
+                            "value": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000007a",
+                                  "kind": "literal",
+                                  "type": "distance_target",
+                                  "value": "rock"
+                                }
+                              ],
+                              "func": "distance",
+                              "hintId": "743a6a45-b830-4000-8000-00000000007b",
+                              "kind": "call"
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "args": [
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-00000000007e",
+                                      "kind": "ident",
+                                      "name": "rock"
+                                    },
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-00000000007f",
+                                      "kind": "literal",
+                                      "type": "integer",
+                                      "value": 0
+                                    }
+                                  ],
+                                  "func": "gt",
+                                  "hintId": "743a6a45-b830-4000-8000-000000000080",
+                                  "kind": "call"
+                                },
+                                {
+                                  "args": [
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-000000000081",
+                                      "kind": "ident",
+                                      "name": "rock"
+                                    },
+                                    {
+                                      "hintId": "743a6a45-b830-4000-8000-000000000082",
+                                      "kind": "ident",
+                                      "name": "d"
+                                    }
+                                  ],
+                                  "func": "lt",
+                                  "hintId": "743a6a45-b830-4000-8000-000000000083",
+                                  "kind": "call"
+                                }
+                              ],
+                              "func": "and",
+                              "hintId": "743a6a45-b830-4000-8000-000000000084",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-00000000008b",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-00000000008a",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000089",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000088",
+                                    "kind": "ident",
+                                    "name": "candidate"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000085",
+                                        "kind": "ident",
+                                        "name": "candidate"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000086",
+                                        "kind": "literal",
+                                        "type": "integer",
+                                        "value": 6
+                                      }
+                                    ],
+                                    "func": "add",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000087",
+                                    "kind": "call"
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "args": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000008c",
+                                  "kind": "ident",
+                                  "name": "candidate"
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-00000000008d",
+                                  "kind": "ident",
+                                  "name": "cost"
+                                }
+                              ],
+                              "func": "lt",
+                              "hintId": "743a6a45-b830-4000-8000-00000000008e",
+                              "kind": "call"
+                            },
+                            "hintId": "743a6a45-b830-4000-8000-00000000009a",
+                            "kind": "if",
+                            "then": {
+                              "hintId": "743a6a45-b830-4000-8000-000000000099",
+                              "kind": "block",
+                              "stmts": [
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000095",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000094",
+                                    "kind": "ident",
+                                    "name": "best"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "args": [
+                                      {
+                                        "args": [
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-00000000008f",
+                                            "kind": "ident",
+                                            "name": "heading"
+                                          },
+                                          {
+                                            "hintId": "743a6a45-b830-4000-8000-000000000090",
+                                            "kind": "literal",
+                                            "type": "integer",
+                                            "value": 256
+                                          }
+                                        ],
+                                        "func": "mul",
+                                        "hintId": "743a6a45-b830-4000-8000-000000000091",
+                                        "kind": "call"
+                                      },
+                                      {
+                                        "hintId": "743a6a45-b830-4000-8000-000000000092",
+                                        "kind": "ident",
+                                        "name": "d"
+                                      }
+                                    ],
+                                    "func": "add",
+                                    "hintId": "743a6a45-b830-4000-8000-000000000093",
+                                    "kind": "call"
+                                  }
+                                },
+                                {
+                                  "hintId": "743a6a45-b830-4000-8000-000000000098",
+                                  "ident": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000097",
+                                    "kind": "ident",
+                                    "name": "cost"
+                                  },
+                                  "kind": "assign",
+                                  "value": {
+                                    "hintId": "743a6a45-b830-4000-8000-000000000096",
+                                    "kind": "ident",
+                                    "name": "candidate"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "args": [
+                        {
+                          "hintId": "743a6a45-b830-4000-8000-00000000009d",
+                          "kind": "literal",
+                          "type": "rotation",
+                          "value": "right"
+                        }
+                      ],
+                      "func": "rotate",
+                      "hintId": "743a6a45-b830-4000-8000-00000000009e",
+                      "kind": "call"
+                    },
+                    {
+                      "hintId": "743a6a45-b830-4000-8000-0000000000a5",
+                      "ident": {
+                        "hintId": "743a6a45-b830-4000-8000-0000000000a4",
+                        "kind": "ident",
+                        "name": "heading"
+                      },
+                      "kind": "assign",
+                      "value": {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-00000000009f",
+                                "kind": "ident",
+                                "name": "heading"
+                              },
+                              {
+                                "hintId": "743a6a45-b830-4000-8000-0000000000a0",
+                                "kind": "literal",
+                                "type": "integer",
+                                "value": 1
+                              }
+                            ],
+                            "func": "add",
+                            "hintId": "743a6a45-b830-4000-8000-0000000000a1",
+                            "kind": "call"
+                          },
+                          {
+                            "hintId": "743a6a45-b830-4000-8000-0000000000a2",
+                            "kind": "literal",
+                            "type": "integer",
+                            "value": 4
+                          }
+                        ],
+                        "func": "remainder",
+                        "hintId": "743a6a45-b830-4000-8000-0000000000a3",
+                        "kind": "call"
+                      }
+                    }
+                  ]
+                },
+                "end": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000052",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 4
+                },
+                "hintId": "743a6a45-b830-4000-8000-0000000000a7",
+                "ident": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000050",
+                  "kind": "ident",
+                  "name": "ray"
+                },
+                "kind": "for",
+                "start": {
+                  "hintId": "743a6a45-b830-4000-8000-000000000051",
+                  "kind": "literal",
+                  "type": "integer",
+                  "value": 0
+                }
+              },
+              {
+                "hintId": "743a6a45-b830-4000-8000-0000000000a9",
+                "kind": "return",
+                "value": {
+                  "hintId": "743a6a45-b830-4000-8000-0000000000a8",
+                  "kind": "ident",
+                  "name": "best"
+                }
+              }
+            ]
+          },
+          "hintId": "743a6a45-b830-4000-8000-0000000000af",
+          "kind": "function",
+          "params": [
+            {
+              "hintId": "743a6a45-b830-4000-8000-0000000000ab",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-0000000000aa",
+                "kind": "ident",
+                "name": "x"
+              },
+              "kind": "param",
+              "type": "integer"
+            },
+            {
+              "hintId": "743a6a45-b830-4000-8000-0000000000ad",
+              "ident": {
+                "hintId": "743a6a45-b830-4000-8000-0000000000ac",
+                "kind": "ident",
+                "name": "heading"
+              },
+              "kind": "param",
+              "type": "integer"
+            }
+          ],
+          "returnType": "integer"
+        }
+      }
+    }
+  },
+  "picolangVersion": 0
+}
