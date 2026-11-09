@@ -19,7 +19,7 @@ type Config struct {
 	Sessions          SessionService
 	SecureCookies     bool
 	Users             UsernameSetter
-	Programs          ProgramCreator
+	Programs          ProgramService
 	ProgramGeneration ProgramGenerationService
 	Tutorials         TutorialService
 	TutorialRuns      TutorialRunner

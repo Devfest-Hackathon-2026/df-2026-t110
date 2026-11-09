@@ -98,12 +98,12 @@ func main() {
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
-      "getMe":                 {authenticate},
+			"getMe":                 {authenticate},
 			"logout":                {authenticate},
 			"createProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
 			"createProgramWithVibe": {authenticate, middleware.BodyLimit(16 << 10)},
 			"runTutorial":           {authenticate, middleware.BodyLimit(1 << 20)},
-      "listTutorialPrograms":  {authenticate},
+			"listTutorialPrograms":  {authenticate},
 			"runEvents":             {authenticate},
 			"setMyUsername":         {authenticate},
 		},
