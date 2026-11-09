@@ -98,17 +98,17 @@ let observer: ResizeObserver | null = null
 let loading = false
 let scheduled = false
 const categoryIcons = {
-  動き: moveIcon,
-  操作: mousePointerIcon,
+  動く: moveIcon,
+  オブジェクト: mousePointerIcon,
   制御: gitBranchIcon,
   変数: variableIcon,
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  乱数: shuffleIcon,
+  ランダム: shuffleIcon,
   スタック: listIcon,
-  オプション: boxIcon,
-  表示: typeIcon,
+  ヌラブル: boxIcon,
+  発言: typeIcon,
   関数: squareFunctionIcon,
   値: boxIcon,
 }

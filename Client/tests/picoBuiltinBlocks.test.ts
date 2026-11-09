@@ -53,7 +53,7 @@ test('every builtin block has the header inputs and output, including toolbox de
       const category = toolbox.contents.find(
         (item) => item.kind === 'category' && 'name' in item && item.name === option.category,
       ) as Blockly.utils.toolbox.StaticCategoryInfo
-      const type = callType(option.name, ['動き', '操作', '表示'].includes(option.category))
+      const type = callType(option.name, ['動く', 'オブジェクト', '発言'].includes(option.category))
       const entry = category.contents.find(
         (item) => item.kind === 'block' && 'type' in item && item.type === type,
       ) as Blockly.utils.toolbox.BlockInfo

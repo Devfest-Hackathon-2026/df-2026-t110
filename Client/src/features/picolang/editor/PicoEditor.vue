@@ -42,7 +42,7 @@ const props = defineProps<{ tutorialId: string }>()
 const emit = defineEmits<{ 'update:program': [program: PicoProgram | null] }>()
 const program = ref<PicoProgram>(picoDraft(newProgram()))
 const activeFunctionName = ref('main')
-const category = ref('動き')
+const category = ref('動く')
 const newFunctionName = ref('')
 const showNewFunction = ref(false)
 const newFunctionInput = ref<HTMLInputElement | null>(null)
@@ -60,42 +60,42 @@ const executionJson = computed(() =>
 )
 const currentFunction = computed(() => functions.value[activeFunctionName.value] ?? functions.value.main)
 const categories = [
-  '動き',
-  '操作',
+  '動く',
+  'オブジェクト',
   '制御',
   '変数',
   '調べる',
   '論理',
   '計算',
-  '乱数',
+  'ランダム',
   'スタック',
-  '表示',
+  '発言',
   '関数',
 ] as const
 const categoryIcons = {
-  動き: moveIcon,
-  操作: mousePointerIcon,
+  動く: moveIcon,
+  オブジェクト: mousePointerIcon,
   制御: gitBranchIcon,
   変数: variableIcon,
   調べる: searchIcon,
   論理: bracesIcon,
   計算: calculatorIcon,
-  乱数: shuffleIcon,
+  ランダム: shuffleIcon,
   スタック: listIcon,
-  表示: typeIcon,
+  発言: typeIcon,
   関数: squareFunctionIcon,
 }
 const paletteHints: Record<string, string> = {
-  動き: 'ロボットを動かす命令です。上から順に実行します。',
-  操作: '目の前の荷物や岩に働きかけます。',
+  動く: 'ロボットを動かす命令です。上から順に実行します。',
+  オブジェクト: '目の前の荷物や岩に働きかけます。',
   制御: '条件や回数に応じて、中に入れた命令を実行します。',
   変数: '値に名前を付けます。作った変数は後の入力欄へドラッグできます。',
   調べる: '周りを調べた答えを返します。答えは条件や変数に使えます。',
   論理: '「はい／いいえ」の答えを組み合わせ、別の答えを返します。',
   計算: '数を計算します。結果を変数やほかの式に渡します。',
-  乱数: '実行時に値を決めます。結果を変数や条件に使います。',
+  ランダム: '実行時に値を決めます。結果を変数や条件に使います。',
   スタック: '複数の値をひとまとめにします。値を足したり除いたりすると、新しいスタックを返します。',
-  表示: '計算結果を実行ログに表示します。',
+  発言: '計算結果を実行ログに表示します。',
   関数: '自分で作った処理を呼び出します。使う値を入力欄に入れます。',
 }
 const controls = [
