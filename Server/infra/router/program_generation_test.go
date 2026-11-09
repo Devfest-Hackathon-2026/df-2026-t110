@@ -42,6 +42,8 @@ func TestCreateProgramWithVibe(t *testing.T) {
 		{"missing session", `{"prompt":"go forward"}`, false, true, nil, 401},
 		{"missing prompt", `{}`, true, true, nil, 400},
 		{"null field", `{"prompt":"go","fieldId":null}`, true, true, nil, 400},
+		{"null battle mode", `{"prompt":"go","isBattle":null}`, true, true, nil, 400},
+		{"trailing value", `{"prompt":"go"}{"prompt":"again"}`, true, true, nil, 400},
 		{"blank prompt", `{"prompt":" "}`, true, true, usecase.ErrInvalidGenerationRequest, 400},
 		{"unknown member", `{"prompt":"go","owner":"attacker"}`, true, true, nil, 400},
 		{"missing field", `{"prompt":"go","fieldId":"missing"}`, true, true, usecase.ErrNotFound, 404},

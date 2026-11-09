@@ -87,8 +87,8 @@ func (r *Router) CreateProgramWithVibe(ctx *echo.Context) error {
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 	}
-	body, err := io.ReadAll(ctx.Request().Body)
-	if err != nil {
+	var body jsontext.Value
+	if err := json.UnmarshalRead(ctx.Request().Body, &body); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
 	}
 	var request api.CreateProgramWithVibeJSONBody
