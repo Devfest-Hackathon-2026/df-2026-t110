@@ -10,7 +10,9 @@
 
 ローカルで結合確認する場合は、別の端末で `Server` から `go run ./cmd`（8080番）、`Client` から `pnpm dev` を起動します。Viteは `/api` を `http://127.0.0.1:8080` に転送します。別のAPIサーバーを使う場合は `VITE_API_BASE_URL` を設定してください。
 
-このブランチでは認証のrouterとClientのHTTP接続を実装しています。GoogleログインのサービスはServer起動時にまだ接続していないため、`GET /api/login` は501を返します。セッションを持つリクエストの `GET /api/me`、`POST /api/me/username`、`POST /api/logout` は既存のユーザー・セッションusecaseへ接続します。
+ログインは `GET /api/login` から設定したOIDCプロバイダーへ進み、認可コード・PKCE・state・nonce・署名を検証して通常のセッションを発行します。ComposeではDexを使い、`docker compose up --build` または `docker compose watch` で起動できます。`http://localhost:8080/account` からログインし、開発用アカウント `developer@example.test` / `password`（別ユーザーは `other@example.test` / `password`）を使います。Dexのissuerは `http://dex.localhost:5556/dex` で、ブラウザではループバック、Compose内ではDexコンテナへ解決されます。Dexの状態はメモリに保持するため、再起動すると認可処理中の情報は失われます。アプリのユーザー・プログラム・セッションは引き続きPostgreSQLに保存します。
+
+ComposeでGoogleを使う場合は `AUTH_PROVIDER=google` と `GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_REDIRECT_URL` を設定します。Compose以外では従来どおりGoogleが既定で、認証設定がなければログインAPIは501を返します。別のOIDCプロバイダーは `AUTH_PROVIDER=oidc` と `OIDC_ISSUER_URL`、`OIDC_CLIENT_ID`、`OIDC_CLIENT_SECRET`、`OIDC_REDIRECT_URL` で指定できます。HTTPのissuerは `APP_ENV=development` のローカルホスト向けに限定され、Cloud Runでは許可しません。Google以外のユーザーIDはissuerごとに分離します。Dex自体の登録情報は `DEX_ISSUER`、`DEX_CLIENT_ID`、`DEX_CLIENT_SECRET`、`DEX_REDIRECT_URL` で設定し、アプリ側の対応する `OIDC_*` と一致させます。
 
 ## 教材詳細
 

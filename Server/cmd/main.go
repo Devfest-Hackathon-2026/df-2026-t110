@@ -38,8 +38,8 @@ func main() {
 	}
 	cfg := router.Config{Tutorials: textbooks}
 	var sessions router.SessionUserLookup
-	googleLogin := googleLoginConfigFromEnv()
-	if err := googleLogin.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
+	login := loginConfigFromEnv()
+	if err := login.validate(os.Getenv("DATABASE_URL") != ""); err != nil {
 		log.Fatal(err)
 	}
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
@@ -53,13 +53,13 @@ func main() {
 		sessions = sessionService
 		cfg.Sessions = sessionService
 		cfg.Users = users
-		if googleLogin.enabled() {
-			auth, err := newGoogleAuth(context.Background(), googleLogin, pool, users, sessionService)
+		if login.enabled() {
+			auth, err := newLoginAuth(context.Background(), login, pool, users, sessionService)
 			if err != nil {
 				log.Fatal(err)
 			}
 			cfg.Auth = auth
-			cfg.SecureCookies = googleLogin.secureCookies()
+			cfg.SecureCookies = login.secureCookies()
 		}
 		programs := repo.NewPrograms(pool)
 		cfg.Programs = usecase.NewPrograms(programs, router.ProgramSourceValidator{})

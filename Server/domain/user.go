@@ -13,7 +13,8 @@ func IsValidUsername(name string) bool {
 	return usernamePattern.MatchString(name) && !strings.EqualFold(name, "self") && !strings.EqualFold(name, "std")
 }
 
-// User is an account of this service, identified at Google by GoogleSubject.
+// User is an account of this service. GoogleSubject is the legacy storage name
+// for the verified provider identity; non-Google subjects are issuer-qualified.
 type User struct {
 	GoogleSubject string
 	Name          *string

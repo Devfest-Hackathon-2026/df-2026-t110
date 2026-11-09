@@ -2,14 +2,14 @@
   get:
     tags:
       - auth
-    summary: Google ログインを開始
+    summary: OIDC ログインを開始
     description: |
       ブラウザの画面遷移で呼び出す。
-      ログイン試行を紐づける cookie を発行し、Google の認可画面へリダイレクトする。
+      ログイン試行を紐づける cookie を発行し、設定したプロバイダーの認可画面へリダイレクトする。
     operationId: login
     responses:
       "302":
-        description: Google の認可画面へリダイレクト
+        description: 設定したプロバイダーの認可画面へリダイレクト
         headers:
           Location:
             $ref: "../../openapi.yaml#/components/headers/Location"
@@ -20,9 +20,9 @@
   get:
     tags:
       - auth
-    summary: Google ログインを完了
+    summary: OIDC ログインを完了
     description: |
-      Google の認可後のリダイレクト先。Google Cloud にリダイレクト URI として登録する。
+      OIDC プロバイダーの認可後のリダイレクト先。使用するプロバイダーにリダイレクト URI として登録する。
       state、認可コード、ID トークンを検証してセッション cookie を発行し、クライアントの画面へリダイレクトする。
     operationId: loginCallback
     parameters:
@@ -33,12 +33,12 @@
           type: string
       - name: code
         in: query
-        description: 認可された場合に Google が付与する認可コード
+        description: 認可された場合にプロバイダーが付与する認可コード
         schema:
           type: string
       - name: error
         in: query
-        description: 認可されなかった場合に Google が付与するエラーコード
+        description: 認可されなかった場合にプロバイダーが付与するエラーコード
         schema:
           type: string
     responses:

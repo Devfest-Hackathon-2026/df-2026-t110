@@ -49,7 +49,7 @@ type LoginAttemptRepository interface {
 
 // AuthUsers is the user functionality needed when establishing a session.
 type AuthUsers interface {
-	ResolveGoogleIdentity(ctx context.Context, subject string) (domain.User, error)
+	ResolveIdentity(ctx context.Context, subject string) (domain.User, error)
 }
 
 // AuthSessions starts a session after successful authentication.
@@ -144,7 +144,7 @@ func (a *Auth) CompleteLogin(ctx context.Context, callback LoginCallback) (domai
 		return domain.Session{}, fmt.Errorf("%w: missing subject", ErrInvalidLogin)
 	}
 
-	user, err := a.deps.Users.ResolveGoogleIdentity(ctx, identity.Subject)
+	user, err := a.deps.Users.ResolveIdentity(ctx, identity.Subject)
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("save user: %w", err)
 	}

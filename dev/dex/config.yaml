@@ -1,0 +1,28 @@
+# Local OIDC provider, rendered by the Dex image's standard gomplate entrypoint.
+issuer: {{ getenv "DEX_ISSUER" | data.ToJSON }}
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+telemetry:
+  http: 0.0.0.0:5558
+oauth2:
+  responseTypes: [code]
+  skipApprovalScreen: true
+staticClients:
+  - id: {{ getenv "DEX_CLIENT_ID" | data.ToJSON }}
+    secret: {{ getenv "DEX_CLIENT_SECRET" | data.ToJSON }}
+    name: Robot Field (local development)
+    redirectURIs:
+      - {{ getenv "DEX_REDIRECT_URL" | data.ToJSON }}
+enablePasswordDB: true
+staticPasswords:
+  # Both development accounts use the password "password" (bcrypt hash).
+  - email: developer@example.test
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: developer
+    userID: "00000000-0000-4000-8000-000000000001"
+  - email: other@example.test
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: other
+    userID: "00000000-0000-4000-8000-000000000002"

@@ -162,9 +162,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Google ログインを開始
+         * OIDC ログインを開始
          * @description ブラウザの画面遷移で呼び出す。
-         *     ログイン試行を紐づける cookie を発行し、Google の認可画面へリダイレクトする。
+         *     ログイン試行を紐づける cookie を発行し、設定したプロバイダーの認可画面へリダイレクトする。
          */
         get: operations["login"];
         put?: never;
@@ -183,8 +183,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Google ログインを完了
-         * @description Google の認可後のリダイレクト先。Google Cloud にリダイレクト URI として登録する。
+         * OIDC ログインを完了
+         * @description OIDC プロバイダーの認可後のリダイレクト先。使用するプロバイダーにリダイレクト URI として登録する。
          *     state、認可コード、ID トークンを検証してセッション cookie を発行し、クライアントの画面へリダイレクトする。
          */
         get: operations["loginCallback"];
@@ -1780,7 +1780,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Google の認可画面へリダイレクト */
+            /** @description 設定したプロバイダーの認可画面へリダイレクト */
             302: {
                 headers: {
                     Location: components["headers"]["Location"];
@@ -1795,9 +1795,9 @@ export interface operations {
         parameters: {
             query: {
                 state: string;
-                /** @description 認可された場合に Google が付与する認可コード */
+                /** @description 認可された場合にプロバイダーが付与する認可コード */
                 code?: string;
-                /** @description 認可されなかった場合に Google が付与するエラーコード */
+                /** @description 認可されなかった場合にプロバイダーが付与するエラーコード */
                 error?: string;
             };
             header?: never;

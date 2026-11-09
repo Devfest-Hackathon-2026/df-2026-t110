@@ -118,8 +118,8 @@ function onEditorToggle(event: Event): void {
           >として対戦します。
         </p>
         <template v-else>
-          <p>Google認証を以下のリンクから行ってください</p>
-          <a class="match-login" :href="loginUrl">Googleでログイン</a>
+          <p>以下のリンクからログインしてください</p>
+          <a class="match-login" :href="loginUrl">ログイン</a>
         </template>
       </section>
 

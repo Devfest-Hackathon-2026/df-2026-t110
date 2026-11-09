@@ -1,8 +1,8 @@
-package googleauth
+package oidcauth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -31,13 +31,13 @@ func TestBeginRequestsOnlyIdentity(t *testing.T) {
 	t.Parallel()
 
 	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
-		if r.URL.String() != googleIssuer+"/.well-known/openid-configuration" {
+		if r.URL.String() != GoogleIssuer+"/.well-known/openid-configuration" {
 			return nil, fmt.Errorf("unexpected discovery URL: %s", r.URL)
 		}
 		w := httptest.NewRecorder()
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{ // #nosec G101 -- These discovery endpoints are public URLs, not credentials.
-			"issuer":                 googleIssuer,
+		_ = json.MarshalWrite(w, map[string]any{ // #nosec G101 -- These discovery endpoints are public URLs, not credentials.
+			"issuer":                 GoogleIssuer,
 			"authorization_endpoint": "https://accounts.google.com/authorize",
 			"token_endpoint":         "https://accounts.google.com/token",
 			"jwks_uri":               "https://accounts.google.com/keys",

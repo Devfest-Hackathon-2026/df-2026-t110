@@ -230,10 +230,10 @@ type SetBattleProgramsJSONBody = []string
 type LoginCallbackParams struct {
 	State string `form:"state" json:"state"`
 
-	// Code 認可された場合に Google が付与する認可コード
+	// Code 認可された場合にプロバイダーが付与する認可コード
 	Code *string `form:"code,omitempty" json:"code,omitempty"`
 
-	// Error 認可されなかった場合に Google が付与するエラーコード
+	// Error 認可されなかった場合にプロバイダーが付与するエラーコード
 	Error *string `form:"error,omitempty" json:"error,omitempty"`
 }
 
@@ -462,10 +462,10 @@ type ServerInterface interface {
 	// GetField フィールドを取得
 	// (GET /field/{fieldId})
 	GetField(ctx *echo.Context, fieldId FieldId) error
-	// Login Google ログインを開始
+	// Login OIDC ログインを開始
 	// (GET /login)
 	Login(ctx *echo.Context) error
-	// LoginCallback Google ログインを完了
+	// LoginCallback OIDC ログインを完了
 	// (GET /login/callback)
 	LoginCallback(ctx *echo.Context, params LoginCallbackParams) error
 	// Logout ログアウト

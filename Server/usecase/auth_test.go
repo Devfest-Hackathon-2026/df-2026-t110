@@ -66,7 +66,7 @@ func (s *loginAttemptsStub) Consume(_ context.Context, id string) (usecase.Login
 
 type usersStub struct{ users map[string]domain.User }
 
-func (s *usersStub) ResolveGoogleIdentity(_ context.Context, subject string) (domain.User, error) {
+func (s *usersStub) ResolveIdentity(_ context.Context, subject string) (domain.User, error) {
 	if user, ok := s.users[subject]; ok {
 		return user, nil
 	}

@@ -92,7 +92,7 @@ components:
       type: apiKey
       in: cookie
       name: session
-      description: Google ログイン後にサーバーが発行するセッション cookie
+      description: OIDC ログイン後にサーバーが発行するセッション cookie
 
   headers:
     Location:

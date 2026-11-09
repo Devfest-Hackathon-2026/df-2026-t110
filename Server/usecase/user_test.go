@@ -69,11 +69,11 @@ func (s *userRepositoryStub) Get(_ context.Context, _ string) (domain.User, erro
 	return s.result, nil
 }
 
-func TestResolveGoogleIdentityDoesNotAssignName(t *testing.T) {
+func TestResolveIdentityDoesNotAssignName(t *testing.T) {
 	t.Parallel()
 	name := "existing"
 	repo := &userRepositoryStub{result: domain.User{GoogleSubject: "subject", Name: &name}}
-	user, err := usecase.NewUser(repo).ResolveGoogleIdentity(context.Background(), "subject")
+	user, err := usecase.NewUser(repo).ResolveIdentity(context.Background(), "subject")
 	if err != nil {
 		t.Fatal(err)
 	}

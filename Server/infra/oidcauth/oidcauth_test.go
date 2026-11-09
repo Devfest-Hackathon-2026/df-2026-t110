@@ -1,4 +1,4 @@
-package googleauth
+package oidcauth
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -48,12 +48,12 @@ func newProviderFixture(t *testing.T) *providerFixture {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "access-token", "refresh_token": "refresh-token", "token_type": "Bearer", "expires_in": 3600, "id_token": f.idToken, "scope": "openid"})
+		_ = json.MarshalWrite(w, map[string]any{"access_token": "access-token", "refresh_token": "refresh-token", "token_type": "Bearer", "expires_in": 3600, "id_token": f.idToken, "scope": "openid"})
 	}))
 	t.Cleanup(f.provider.Close)
 	oauth := &oauth2.Config{ClientID: "client-id", ClientSecret: "client-secret", RedirectURL: "http://localhost:8080/callback", Scopes: identityScopes(), Endpoint: oauth2.Endpoint{AuthURL: f.provider.URL + "/authorize", TokenURL: f.provider.URL + "/token", AuthStyle: oauth2.AuthStyleInParams}}
-	verifier := oidc.NewVerifier(googleIssuer, &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}}, &oidc.Config{ClientID: "client-id"})
-	f.client = &Client{oauth: oauth, verifier: verifier, httpClient: f.provider.Client()}
+	verifier := oidc.NewVerifier(GoogleIssuer, &oidc.StaticKeySet{PublicKeys: []crypto.PublicKey{&key.PublicKey}}, &oidc.Config{ClientID: "client-id"})
+	f.client = &Client{issuer: GoogleIssuer, oauth: oauth, verifier: verifier, httpClient: f.provider.Client()}
 	return f
 }
 
@@ -97,7 +97,7 @@ func (f *providerFixture) sign(t *testing.T, claims map[string]any) string {
 }
 
 func claims(nonce string) map[string]any {
-	return map[string]any{"iss": googleIssuer, "aud": "client-id", "sub": "google-subject", "name": "Alice", "nonce": nonce, "iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix()}
+	return map[string]any{"iss": GoogleIssuer, "aud": "client-id", "sub": "google-subject", "name": "Alice", "nonce": nonce, "iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix()}
 }
 
 func TestAuthorizationAndIdentity(t *testing.T) {

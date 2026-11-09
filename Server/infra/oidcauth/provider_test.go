@@ -1,4 +1,4 @@
-package googleauth
+package oidcauth
 
 import (
 	"context"
