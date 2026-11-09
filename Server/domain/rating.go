@@ -19,7 +19,7 @@ const (
 )
 
 // OutcomeFromScores judges the challenger's result: the higher final score wins and a tie is a draw.
-func OutcomeFromScores(challenger, opponent int) MatchOutcome {
+func OutcomeFromScores(challenger, opponent int64) MatchOutcome {
 	switch {
 	case challenger > opponent:
 		return MatchWin

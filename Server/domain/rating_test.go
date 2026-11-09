@@ -4,7 +4,8 @@ import "testing"
 
 func TestRatingDelta(t *testing.T) {
 	t.Parallel()
-	for _, tt := range []struct {
+
+	cases := []struct {
 		name                 string
 		challenger, opponent int
 		outcome              MatchOutcome
@@ -26,9 +27,12 @@ func TestRatingDelta(t *testing.T) {
 		{name: "draw against much weaker", challenger: 1200, opponent: 1000, outcome: MatchDraw, want: -9},
 		{name: "draw against slightly stronger floors", challenger: 1000, opponent: 1001, outcome: MatchDraw, want: 0},
 		{name: "draw against slightly weaker floors", challenger: 1001, opponent: 1000, outcome: MatchDraw, want: 0},
-	} {
+	}
+
+	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+
 			if got := RatingDelta(tt.challenger, tt.opponent, tt.outcome); got != tt.want {
 				t.Errorf("RatingDelta(%d, %d, %s)=%d, want %d", tt.challenger, tt.opponent, tt.outcome, got, tt.want)
 			}
@@ -38,14 +42,17 @@ func TestRatingDelta(t *testing.T) {
 
 func TestOutcomeFromScores(t *testing.T) {
 	t.Parallel()
-	for _, tt := range []struct {
-		challenger, opponent int
+
+	cases := []struct {
+		challenger, opponent int64
 		want                 MatchOutcome
 	}{
 		{challenger: 2, opponent: 1, want: MatchWin},
 		{challenger: 1, opponent: 2, want: MatchLoss},
 		{challenger: 1, opponent: 1, want: MatchDraw},
-	} {
+	}
+
+	for _, tt := range cases {
 		if got := OutcomeFromScores(tt.challenger, tt.opponent); got != tt.want {
 			t.Errorf("OutcomeFromScores(%d, %d)=%s, want %s", tt.challenger, tt.opponent, got, tt.want)
 		}

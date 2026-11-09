@@ -12,6 +12,7 @@ const BattleRobotCount = 3
 type BattleTeam struct {
 	User     User
 	Programs []Program
+	Rating   int
 }
 
 // BattleLayout is a complete initial board and the rules used for one match.
@@ -37,7 +38,17 @@ type Match struct {
 	OpponentName     string
 }
 
+// MatchResult is what the engine reports for a completed match.
+type MatchResult struct {
+	ChallengerScore int64
+	OpponentScore   int64
+	Replay          jsontext.Value
+}
+
 // MatchRecord is saved atomically with its result after the engine completes.
+// RatingDelta is computed from the ratings read at matching time and is added to
+// the challenger's rating current at saving time, so concurrent matches of one
+// challenger never lose an update.
 type MatchRecord struct {
 	GoogleSubject    string
 	OpponentSubject  string
@@ -45,4 +56,18 @@ type MatchRecord struct {
 	FieldID          string
 	SelectedLayoutID string
 	Result           jsontext.Value
+	Outcome          MatchOutcome
+	ChallengerRating int
+	OpponentRating   int
+	RatingDelta      int
+}
+
+// RankingEntry is a challenger's standing. Users sharing a rating share a rank.
+type RankingEntry struct {
+	Rank   int
+	Name   string
+	Rating int
+	Wins   int
+	Losses int
+	Draws  int
 }
