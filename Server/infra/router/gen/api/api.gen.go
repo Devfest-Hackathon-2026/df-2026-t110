@@ -250,10 +250,10 @@ type SetMyUsernameJSONBody struct {
 
 // CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
 type CreateProgramWithVibeJSONBody struct {
-	// FieldId Field IDを指定すると、LLM にフィールドの情報を渡すことができる
+	// FieldId 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。
 	FieldId *string `json:"fieldId,omitempty"`
 
-	// IsBattle 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す
+	// IsBattle trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
 	IsBattle *bool  `json:"isBattle,omitempty"`
 	Prompt   string `json:"prompt"`
 }

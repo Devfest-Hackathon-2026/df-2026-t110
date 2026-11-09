@@ -1576,9 +1576,9 @@ export interface operations {
             content: {
                 "application/json": {
                     prompt: string;
-                    /** @description Field IDを指定すると、LLM にフィールドの情報を渡すことができる */
+                    /** @description 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。 */
                     fieldId?: string;
-                    /** @description 対戦用のプログラムであれば、LLM に対戦ルールに関する情報を渡す */
+                    /** @description trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。 */
                     isBattle?: boolean;
                 };
             };
@@ -1592,6 +1592,63 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["toplevel.schema"];
                 };
+            };
+            /** @description 本文または生成依頼が不正 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 有効なセッションが必要 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Content-Lengthが16 KiBを超過 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 再試行後も有効なPicolangを生成できなかった */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成の利用枠を超過 */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成サービスまたは保存先でエラーが発生 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成サービスが未設定 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 生成が時間切れ */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

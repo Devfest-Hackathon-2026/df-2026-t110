@@ -5,7 +5,9 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"time"
 
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/gemini"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/repo"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router"
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
@@ -15,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
+	"golang.org/x/oauth2/google"
 )
 
 func main() {
@@ -63,18 +66,45 @@ func main() {
 		runs := usecase.NewTutorialRuns(programs, textbooks, tutorialrun.NewExecutor(), repo.NewRuns(pool))
 		cfg.TutorialRuns = runs
 		cfg.RunResults = usecase.NewRunResults(repo.NewRuns(pool))
+		if project := os.Getenv("GOOGLE_CLOUD_PROJECT"); project != "" {
+			location := os.Getenv("GENERATION_LOCATION")
+			if location == "" {
+				location = "global"
+			}
+			model := os.Getenv("GENERATION_MODEL")
+			if model == "" {
+				model = "gemini-3.5-flash"
+			}
+			client, err := google.DefaultClient(context.Background(), "https://www.googleapis.com/auth/cloud-platform")
+			if err != nil {
+				log.Fatal(err)
+			}
+			generator, err := gemini.NewGenerator(client, project, location, model)
+			if err != nil {
+				log.Fatal(err)
+			}
+			quota, err := usecase.NewGenerationTokenQuota(repo.NewGenerationUsages(pool), 100_000, 24*time.Hour, nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			cfg.ProgramGeneration = usecase.NewProgramGeneration(usecase.ProgramGenerationDeps{
+				Fields: textbooks, Quota: quota, Generator: generator,
+				Validator: router.GeneratedProgramValidator{}, MaxTokens: 8_192, Timeout: 60 * time.Second,
+			})
+		}
 	}
 	r := router.NewRouter(cfg)
 	authenticate := router.Authentication(sessions)
 	api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{
 		BaseURL: "/api",
 		OperationMiddlewares: map[string][]echo.MiddlewareFunc{
-			"getMe":         {authenticate},
-			"logout":        {authenticate},
-			"createProgram": {authenticate, middleware.BodyLimit(1 << 20)},
-			"runTutorial":   {authenticate, middleware.BodyLimit(1 << 20)},
-			"runEvents":     {authenticate},
-			"setMyUsername": {authenticate},
+			"getMe":                 {authenticate},
+			"logout":                {authenticate},
+			"createProgram":         {authenticate, middleware.BodyLimit(1 << 20)},
+			"createProgramWithVibe": {authenticate, middleware.BodyLimit(16 << 10)},
+			"runTutorial":           {authenticate, middleware.BodyLimit(1 << 20)},
+			"runEvents":             {authenticate},
+			"setMyUsername":         {authenticate},
 		},
 	})
 
