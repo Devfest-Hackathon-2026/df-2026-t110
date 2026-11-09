@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import trophyIcon from '@iconify-icons/lucide/trophy'
 import RankingCard from './RankingCard.vue'
+import { useMatchStore } from '../match/useMatchStore.ts'
 import { getRanking, type RankingEntry } from './rankingApi.ts'
 import './ranking.css'
 
 const entries = ref<RankingEntry[]>([])
 const loading = ref(true)
 const error = ref('')
+const jumpMessage = ref('')
+const matchStore = useMatchStore()
 const pageSize = 20
 const rankingPath = /^\/ranking(?:\/([1-9]\d*))?\/?$/
 const pageFromUrl = (): number => Number(rankingPath.exec(window.location.pathname)?.[1] ?? 1)
@@ -18,6 +21,9 @@ const totalPages = computed(() => Math.ceil(entries.value.length / pageSize))
 const firstEntryIndex = computed(() => (currentPage.value - 1) * pageSize)
 const visibleEntries = computed(() =>
   entries.value.slice(firstEntryIndex.value, firstEntryIndex.value + pageSize),
+)
+const myEntryIndex = computed(() =>
+  matchStore.user?.name ? entries.value.findIndex((entry) => entry.name === matchStore.user?.name) : -1,
 )
 let request: AbortController | null = null
 
@@ -32,8 +38,33 @@ function syncPageFromUrl(): void {
 function changePage(page: number): void {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  window.history.pushState(null, '', pageUrl(page))
+  jumpMessage.value = ''
+  if (window.location.pathname !== pageUrl(page)) window.history.pushState(null, '', pageUrl(page))
   document.querySelector('.ranking-list-header')?.scrollIntoView({ block: 'start' })
+}
+
+async function jumpToMyRank(): Promise<void> {
+  jumpMessage.value = ''
+  await matchStore.loadMe()
+  if (matchStore.authStatus !== 'signed-in') {
+    jumpMessage.value = '自分の順位を見るにはログインしてください。'
+    return
+  }
+  if (!matchStore.user?.name) {
+    jumpMessage.value = 'アカウントで表示名を設定してください。'
+    return
+  }
+  if (loading.value || error.value) {
+    jumpMessage.value = 'ランキングを読み込んでからお試しください。'
+    return
+  }
+  if (myEntryIndex.value < 0) {
+    jumpMessage.value = 'まだランキングに掲載されていません。対戦後に確認してください。'
+    return
+  }
+  changePage(Math.floor(myEntryIndex.value / pageSize) + 1)
+  await nextTick()
+  document.getElementById('my-ranking')?.scrollIntoView({ block: 'center' })
 }
 
 async function load(): Promise<void> {
@@ -42,6 +73,7 @@ async function load(): Promise<void> {
   request = current
   loading.value = true
   error.value = ''
+  jumpMessage.value = ''
   try {
     entries.value = await getRanking(current.signal)
     const page = currentPage.value
@@ -71,7 +103,13 @@ onBeforeUnmount(() => {
   <main class="ranking-page container">
     <header class="ranking-heading">
       <h1><Icon :icon="trophyIcon" aria-hidden="true" />ランキング</h1>
-      <p>対戦におけるユーザーの順位とレートの確認ができます。</p>
+      <div class="ranking-heading-actions">
+        <p>対戦におけるユーザーの順位とレートの確認ができます。</p>
+        <button type="button" :disabled="matchStore.authStatus === 'checking'" @click="jumpToMyRank">
+          自分の順位へ移動
+        </button>
+      </div>
+      <p v-if="jumpMessage" class="ranking-jump-message" role="status">{{ jumpMessage }}</p>
     </header>
 
     <p v-if="loading" class="ranking-message" role="status">ランキングを読み込んでいます…</p>
@@ -90,7 +128,12 @@ onBeforeUnmount(() => {
         <p>{{ firstEntryIndex + 1 }}–{{ firstEntryIndex + visibleEntries.length }} 人目を表示</p>
       </div>
       <ol class="ranking-list">
-        <li v-for="(entry, index) in visibleEntries" :key="`${entry.rank}-${entry.name}-${index}`">
+        <li
+          v-for="(entry, index) in visibleEntries"
+          :id="firstEntryIndex + index === myEntryIndex ? 'my-ranking' : undefined"
+          :key="`${entry.rank}-${entry.name}-${index}`"
+          :class="{ 'ranking-list-item--mine': firstEntryIndex + index === myEntryIndex }"
+        >
           <RankingCard :entry="entry" />
         </li>
       </ol>

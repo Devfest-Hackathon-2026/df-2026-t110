@@ -34,9 +34,42 @@
   color: var(--color-accent-deep);
 }
 
-.ranking-heading > p:last-child {
+.ranking-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ranking-heading-actions p {
+  margin: 0;
   color: var(--color-ink-2);
   line-height: 1.65;
+}
+
+.ranking-heading-actions button {
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-accent-deep);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-accent-deep);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ranking-heading-actions button:disabled {
+  border-color: var(--color-rule);
+  color: var(--color-muted);
+  cursor: default;
+}
+
+.ranking-jump-message {
+  margin-top: 12px;
+  color: var(--color-ink-2);
+  font-size: var(--type-small);
 }
 
 .ranking-list-header {
@@ -107,6 +140,11 @@
   background: #fffdf7;
 }
 
+.ranking-list-item--mine .ranking-card {
+  outline: 2px solid var(--color-accent-deep);
+  outline-offset: 2px;
+}
+
 .ranking-card-position,
 .ranking-card-player,
 .ranking-card-rating {
@@ -173,6 +211,11 @@
 }
 
 @media (max-width: 600px) {
+  .ranking-heading-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .ranking-list-header {
     flex-wrap: wrap;
   }
