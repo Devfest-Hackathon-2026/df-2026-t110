@@ -37,10 +37,19 @@ CREATE INDEX programs_google_subject_idx ON programs (google_subject);
 CREATE TABLE runs (
     id uuid PRIMARY KEY,
     google_subject text NOT NULL REFERENCES users (google_subject) ON DELETE CASCADE,
-    tutorial_id text NOT NULL,
+    tutorial_id text,
     field_id text NOT NULL,
-    program_id text NOT NULL REFERENCES programs (id),
-    result jsonb
+    program_id text REFERENCES programs (id),
+    result jsonb,
+    CONSTRAINT runs_tutorial_program_pair CHECK ((tutorial_id IS NULL) = (program_id IS NULL))
+);
+
+CREATE TABLE matches (
+    id uuid PRIMARY KEY,
+    run_id uuid NOT NULL UNIQUE REFERENCES runs (id) ON DELETE CASCADE,
+    opponent_google_subject text NOT NULL REFERENCES users (google_subject),
+    opponent_name text NOT NULL,
+    selected_layout_id text NOT NULL
 );
 
 -- Usage is appended per reservation rather than kept as a per-window counter,

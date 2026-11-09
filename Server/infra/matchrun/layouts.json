@@ -1,0 +1,110 @@
+[
+  {
+    "id": "battle-1-layout-1",
+    "fieldId": "battle-1",
+    "terrain": [
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "rock", "land", "land", "land", "rock", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "rock", "land", "land", "land", "rock", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"]
+    ],
+    "luggage": [
+      { "x": 4, "y": 1 },
+      { "x": 4, "y": 3 },
+      { "x": 4, "y": 5 }
+    ],
+    "territories": [
+      [
+        { "x": 0, "y": 0 },
+        { "x": 0, "y": 1 },
+        { "x": 0, "y": 2 },
+        { "x": 0, "y": 3 },
+        { "x": 0, "y": 4 },
+        { "x": 0, "y": 5 },
+        { "x": 0, "y": 6 }
+      ],
+      [
+        { "x": 8, "y": 0 },
+        { "x": 8, "y": 1 },
+        { "x": 8, "y": 2 },
+        { "x": 8, "y": 3 },
+        { "x": 8, "y": 4 },
+        { "x": 8, "y": 5 },
+        { "x": 8, "y": 6 }
+      ]
+    ],
+    "robots": [
+      [
+        { "position": { "x": 0, "y": 1 }, "direction": "east" },
+        { "position": { "x": 0, "y": 3 }, "direction": "east" },
+        { "position": { "x": 0, "y": 5 }, "direction": "east" }
+      ],
+      [
+        { "position": { "x": 8, "y": 1 }, "direction": "west" },
+        { "position": { "x": 8, "y": 3 }, "direction": "west" },
+        { "position": { "x": 8, "y": 5 }, "direction": "west" }
+      ]
+    ],
+    "drillLimit": 3,
+    "turns": 200,
+    "luggagePoints": 1,
+    "discardPenalty": 1
+  },
+  {
+    "id": "battle-1-layout-2",
+    "fieldId": "battle-1",
+    "terrain": [
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "rock", "land", "rock", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "rock", "land", "rock", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"],
+      ["land", "land", "land", "land", "land", "land", "land", "land", "land"]
+    ],
+    "luggage": [
+      { "x": 4, "y": 1 },
+      { "x": 4, "y": 3 },
+      { "x": 4, "y": 5 }
+    ],
+    "territories": [
+      [
+        { "x": 0, "y": 0 },
+        { "x": 0, "y": 1 },
+        { "x": 0, "y": 2 },
+        { "x": 0, "y": 3 },
+        { "x": 0, "y": 4 },
+        { "x": 0, "y": 5 },
+        { "x": 0, "y": 6 }
+      ],
+      [
+        { "x": 8, "y": 0 },
+        { "x": 8, "y": 1 },
+        { "x": 8, "y": 2 },
+        { "x": 8, "y": 3 },
+        { "x": 8, "y": 4 },
+        { "x": 8, "y": 5 },
+        { "x": 8, "y": 6 }
+      ]
+    ],
+    "robots": [
+      [
+        { "position": { "x": 0, "y": 1 }, "direction": "east" },
+        { "position": { "x": 0, "y": 3 }, "direction": "east" },
+        { "position": { "x": 0, "y": 5 }, "direction": "east" }
+      ],
+      [
+        { "position": { "x": 8, "y": 1 }, "direction": "west" },
+        { "position": { "x": 8, "y": 3 }, "direction": "west" },
+        { "position": { "x": 8, "y": 5 }, "direction": "west" }
+      ]
+    ],
+    "drillLimit": 3,
+    "turns": 200,
+    "luggagePoints": 1,
+    "discardPenalty": 1
+  }
+]

@@ -1,4 +1,5 @@
-package tutorialrun
+// Package replay converts engine recordings to the shared wire schema.
+package replay
 
 import (
 	"fmt"
@@ -9,6 +10,10 @@ import (
 	values "github.com/dvpico/Programming-Learning-AR/Server/game/protocol/value"
 	wire "github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/history"
 )
+
+func History(events []gameevent.GameEvent) (wire.GameHistory, error) {
+	return encodeHistory(events)
+}
 
 // Union slots not supported by the generator remain interfaces, but each event
 // and action is constructed with a generated struct rather than a string map.

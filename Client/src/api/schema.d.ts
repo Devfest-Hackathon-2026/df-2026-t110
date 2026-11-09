@@ -114,12 +114,14 @@ export interface paths {
         put?: never;
         /**
          * ランク対戦を作成し、シミュレーションを開始
-         * @description 自分のプログラムで対戦を申し込む。ロボットが複数あるので、それぞれに対戦用のプログラムのidを指定する。
+         * @description 自分の対戦用プログラムのIDをロボット順に3つ指定する。同じIDの重複を許す。
          *     サーバーは候補配置を1つ選び、自分以外のユーザーからランダムに相手を1人選んで、
-         *     そのユーザーが登録している対戦用プログラムと対戦させる。
-         *     シミュレーションはサーバーで実行し、結果はレスポンスの runId を使って runEvents で受け取る。
+         *     表示名と3台分の対戦用プログラムを登録しているユーザーを候補とする。
+         *     シミュレーションはサーバーアプリ内で同期実行し、結果を保存してから返す。
+         *     結果は両参加者がレスポンスの runId を使って runEvents で繰り返し受け取れる。
+         *     申込時のプログラム指定で、自分の保存済み対戦用プログラム設定は変更しない。
          *     抽選結果を取得・変更する独立したAPIは設けない。
-         *     レートは対戦を申し込んだ側だけ変動する。
+         *     レートの更新は未実装。
          */
         post: operations["createMatch"];
         delete?: never;
@@ -409,9 +411,15 @@ export interface components {
         MatchSummary: {
             /** @description 両プレイヤーの最終得点。同点の場合は引き分け */
             score: {
-                /** @description 対戦を申し込んだプレイヤーの最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦を申し込んだプレイヤーの最終得点
+                 */
                 player: number;
-                /** @description 対戦相手の最終得点 */
+                /**
+                 * Format: int64
+                 * @description 対戦相手の最終得点
+                 */
                 opponent: number;
             };
         };
@@ -1743,7 +1751,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 作成した対戦と抽選結果。シミュレーション中のため status は running */
+            /** @description 作成した対戦と抽選結果。結果保存済みのため status は finished */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1752,6 +1760,13 @@ export interface operations {
                     "application/json": components["schemas"]["Match"];
                 };
             };
+            /** @description 指定数が3つではない、対戦用プログラムではない、または実行できないプログラム */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description 認証されていない */
             401: {
                 headers: {
@@ -1759,10 +1774,10 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description DisplayName が設定されていないためランク対戦に参加できない */
+            /** @description 表示名が未設定、または他のユーザーのプログラムを指定している */
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description このフィールドに対戦相手の候補がいない */
+            /** @description 対戦相手の候補がいない */
             409: components["responses"]["Conflict"];
         };
     };

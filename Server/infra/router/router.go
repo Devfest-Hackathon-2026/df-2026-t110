@@ -25,6 +25,7 @@ type Config struct {
 	TutorialRuns      TutorialRunner
 	RunResults        RunResultGetter
 	BattlePrograms    BattleProgramService
+	Matches           MatchCreator
 }
 
 type AuthService interface {
@@ -53,6 +54,10 @@ type TutorialRunner interface {
 type BattleProgramService interface {
 	Get(ctx context.Context, subject string) ([]string, error)
 	Set(ctx context.Context, subject string, ids []string) error
+}
+
+type MatchCreator interface {
+	Create(ctx context.Context, subject string, ids []string) (domain.Match, error)
 }
 
 type ProgramService interface {

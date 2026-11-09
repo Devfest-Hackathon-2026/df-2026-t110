@@ -199,10 +199,12 @@ components:
           required: [player, opponent]
           properties:
             player:
-              type: number
+              type: integer
+              format: int64
               description: 対戦を申し込んだプレイヤーの最終得点
             opponent:
-              type: number
+              type: integer
+              format: int64
               description: 対戦相手の最終得点
 
     Field:
