@@ -40,7 +40,7 @@ properties:
         $ref: "#/$defs/Terrain"
 
   objects:
-    description: フィールド上に配置するゴール、チェックポイント、荷物の一覧
+    description: フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧
     type: array
     items:
       description: フィールド上に配置する一つのオブジェクト
@@ -100,7 +100,7 @@ $defs:
       - sea
 
   FieldObject:
-    description: フィールドに配置するゴール、チェックポイント、荷物のいずれか
+    description: フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか
     oneOf:
       - $ref: "#/$defs/Goal"
         description: ゴールの定義
@@ -108,6 +108,22 @@ $defs:
         description: チェックポイントの定義
       - $ref: "#/$defs/Luggage"
         description: 荷物の定義
+      - $ref: "#/$defs/Territory"
+        description: 1マスの陣地の定義
+
+  Territory:
+    description: 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない
+    type: object
+    additionalProperties: false
+    required: [type, position]
+    properties:
+      type:
+        description: オブジェクトが陣地であることを示す種別
+        type: string
+        const: territory
+      position:
+        description: 陣地を配置するマスの座標
+        $ref: "#/$defs/Position"
 
   Goal:
     description: ロボットが到達するゴール

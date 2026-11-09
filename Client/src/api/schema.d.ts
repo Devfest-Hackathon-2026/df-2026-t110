@@ -573,13 +573,23 @@ export interface components {
             /** @description 荷物の初期位置 */
             position: components["schemas"]["Position"];
         };
+        /** @description 荷物の配送先となる1マスの陣地。荷物と重ねられるが、ゴール、チェックポイント、他の陣地とは重ねられない */
+        Territory: {
+            /**
+             * @description オブジェクトが陣地であることを示す種別
+             * @constant
+             */
+            type: "territory";
+            /** @description 陣地を配置するマスの座標 */
+            position: components["schemas"]["Position"];
+        };
         /**
          * @description マスの地形。land は陸地、rock は岩、sea は海を表す
          * @enum {string}
          */
         Terrain: "land" | "rock" | "sea";
-        /** @description フィールドに配置するゴール、チェックポイント、荷物のいずれか */
-        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"];
+        /** @description フィールドに配置するゴール、チェックポイント、荷物、陣地のいずれか */
+        FieldObject: components["schemas"]["Goal"] | components["schemas"]["Checkpoint"] | components["schemas"]["Luggage"] | components["schemas"]["Territory"];
         /**
          * @description 向いている方向。north は上、south は下、west は左、east は右を表す
          * @enum {string}
@@ -598,7 +608,7 @@ export interface components {
             height: number;
             /** @description 地形を行、列の順に並べた二次元配列。terrain[y][x] で各マスを参照する */
             terrain: components["schemas"]["Terrain"][][];
-            /** @description フィールド上に配置するゴール、チェックポイント、荷物の一覧 */
+            /** @description フィールド上に配置するゴール、チェックポイント、荷物、陣地の一覧 */
             objects: components["schemas"]["FieldObject"][];
             /** @description ロボットの初期位置と初期方向 */
             robot: {
@@ -917,8 +927,18 @@ export interface components {
              */
             type: "visit_checkpoints";
         };
+        /** @description 陣地のマスに置かれた荷物が必要個数以上になるとクリアする。運搬中の荷物は数えず、ロボットの到着は不要 */
+        DeliverLuggage: {
+            /**
+             * @description 荷物の配達を求めるクリア条件の種別
+             * @constant
+             */
+            type: "deliver_luggage";
+            /** @description 配送先の陣地に置く荷物の必要個数。1マスには1個まで置ける */
+            requiredCount: number;
+        };
         /** @description ステージのクリアに必要な条件 */
-        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"];
+        ClearCondition: components["schemas"]["ReachGoal"] | components["schemas"]["VisitCheckpoints"] | components["schemas"]["DeliverLuggage"];
         /**
          * StageDefinition
          * @description 複数のフィールドと共通のクリア条件を持つステージのスキーマ定義
