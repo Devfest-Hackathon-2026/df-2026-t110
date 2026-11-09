@@ -15,5 +15,5 @@ properties:
     type: string
     minLength: 1
   event:
-    description: 指定した interpreter が出力したデバッグ情報。hintId は interpreterId が示すプログラム内のノードを指す
+    description: 指定した interpreter が出力したデバッグ情報。hintId はそのプログラム内のノード、メモリ ID はその interpreter 専用の仮想メモリ内の値を指す
     $ref: './picolang/event.schema.yaml'

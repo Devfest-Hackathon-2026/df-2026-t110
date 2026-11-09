@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: PicolangMemoryReleaseEvent
+description: |
+  既存の値の所有参照を一つ解放する。
+  参照数が 0 になった値を削除し、list node なら prev と value の参照もそれぞれ一つ再帰的に解放する。
+  再帰的な解放はこのイベントの適用に含め、削除された値ごとの release イベントは出力しない。
+  ID "0" のメモリ自身が保持する最後の一参照は解放できない。
+
+type: object
+additionalProperties: false
+required: [kind, id]
+properties:
+  kind:
+    type: string
+    const: memory_release
+  id:
+    description: 所有参照を解放する、同じ interpreter の仮想メモリ内の有効な ID
+    $ref: './memory-id.schema.yaml'

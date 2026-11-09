@@ -48,12 +48,101 @@
     "type": "picolang",
     "interpreterId": "robot-1",
     "event": {
+      "kind": "memory_allocate",
+      "id": "1",
+      "value": {
+        "type": "integer",
+        "value": 0
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "2",
+      "value": {
+        "type": "list_node",
+        "prev": "0",
+        "value": "1"
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "1"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "3",
+      "value": {
+        "type": "integer",
+        "value": 1
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "4",
+      "value": {
+        "type": "list_node",
+        "prev": "2",
+        "value": "3"
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "3"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "2"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
       "kind": "variable_init",
       "hintId": "00000000-0000-4000-8000-000000000002",
-      "value": [
-        0,
-        1
-      ]
+      "valueId": "4"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "1",
+      "value": {
+        "type": "terrain",
+        "value": {
+          "type": "land",
+          "kind": {
+            "type": "checkpoint",
+            "order": 2
+          }
+        }
+      }
     }
   },
   {
@@ -62,13 +151,7 @@
     "event": {
       "kind": "variable_init",
       "hintId": "00000000-0000-4000-8000-000000000002",
-      "value": {
-        "type": "land",
-        "kind": {
-          "type": "checkpoint",
-          "order": 2
-        }
-      }
+      "valueId": "1"
     }
   },
   {
@@ -86,30 +169,142 @@
     "type": "picolang",
     "interpreterId": "robot-1",
     "event": {
+      "kind": "memory_allocate",
+      "id": "5",
+      "value": {
+        "type": "integer",
+        "value": 2
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "6",
+      "value": {
+        "type": "list_node",
+        "prev": "4",
+        "value": "5"
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "5"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
       "kind": "variable_update",
       "hintId": "00000000-0000-4000-8000-000000000002",
-      "diff": [
-        {
-          "type": "stack",
-          "update": {
-            "op": "push_back",
-            "value": 2
-          }
-        },
-        {
-          "type": "stack",
-          "update": {
-            "op": "push_back",
-            "value": 3
-          }
-        },
-        {
-          "type": "stack",
-          "update": {
-            "op": "pop_back"
+      "valueId": "6"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "4"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "7",
+      "value": {
+        "type": "integer",
+        "value": 3
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "8",
+      "value": {
+        "type": "list_node",
+        "prev": "6",
+        "value": "7"
+      }
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "7"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "variable_update",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "valueId": "8"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "6"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_retain",
+      "id": "6"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "variable_update",
+      "hintId": "00000000-0000-4000-8000-000000000002",
+      "valueId": "6"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "8"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "memory_allocate",
+      "id": "2",
+      "value": {
+        "type": "terrain",
+        "value": {
+          "type": "land",
+          "kind": {
+            "type": "goal"
           }
         }
-      ]
+      }
     }
   },
   {
@@ -118,17 +313,15 @@
     "event": {
       "kind": "variable_update",
       "hintId": "00000000-0000-4000-8000-000000000002",
-      "diff": [
-        {
-          "type": "terrain",
-          "value": {
-            "type": "land",
-            "kind": {
-              "type": "goal"
-            }
-          }
-        }
-      ]
+      "valueId": "2"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "memory_release",
+      "id": "1"
     }
   },
   {
@@ -141,10 +334,26 @@
   },
   {
     "type": "picolang",
+    "interpreterId": "robot-1",
+    "event": {
+      "kind": "memory_release",
+      "id": "6"
+    }
+  },
+  {
+    "type": "picolang",
     "interpreterId": "robot-2",
     "event": {
       "kind": "variable_drop",
       "hintId": "00000000-0000-4000-8000-000000000002"
+    }
+  },
+  {
+    "type": "picolang",
+    "interpreterId": "robot-2",
+    "event": {
+      "kind": "memory_release",
+      "id": "2"
     }
   },
   {

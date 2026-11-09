@@ -362,7 +362,7 @@ $defs:
       robotId:
         $ref: '#/$defs/RobotId'
       terrain:
-        $ref: './picolang/variable-init.schema.yaml#/$defs/Terrain'
+        $ref: './picolang/terrain.schema.yaml'
 
   PrintRotationResult:
     description: 1ターンを消費して回転方向を吹き出しに表示する

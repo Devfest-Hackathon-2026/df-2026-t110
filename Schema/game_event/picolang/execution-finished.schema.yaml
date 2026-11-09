@@ -2,7 +2,7 @@ $schema: https://json-schema.org/draft/2020-12/schema
 title: PicolangExecutionFinishedEvent
 description: |
   VMの実行が終了したことと、その理由を報告する。
-  変数のdropなどの後処理イベントの後に一度だけ出力する。
+  変数の drop と仮想メモリの参照解放などの後処理イベントの後に一度だけ出力する。
   mainの正常終了、実行時エラー、リソース制限超過、開始済みVMのCloseによる打ち切りを対象とする。
   actionによる一時中断、開始前のClose、再試行できる不正な再開入力では出力しない。
 
