@@ -37,7 +37,7 @@ func TestCreateProgramWithVibe(t *testing.T) {
 		serviceErr error
 		want       int
 	}{
-		{"tutorial", `{"prompt":"go forward","fieldId":"first-step"}`, true, true, nil, 201},
+		{"tutorial", `{"prompt":"go forward","fieldId":"first-step-1"}`, true, true, nil, 201},
 		{"battle without field", `{"prompt":"collect luggage","isBattle":true}`, true, true, nil, 201},
 		{"missing session", `{"prompt":"go forward"}`, false, true, nil, 401},
 		{"missing prompt", `{}`, true, true, nil, 400},

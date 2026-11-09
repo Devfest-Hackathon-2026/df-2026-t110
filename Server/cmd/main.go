@@ -37,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fields := usecase.NewFields(textbooks)
 	cfg := router.Config{Tutorials: textbooks}
 	var sessions router.SessionUserLookup
 	googleLogin := googleLoginConfigFromEnv()
@@ -100,7 +101,7 @@ func main() {
 				log.Fatal(err)
 			}
 			cfg.ProgramGeneration = usecase.NewProgramGeneration(usecase.ProgramGenerationDeps{
-				Fields: textbooks, Quota: quota, Generator: generator,
+				Fields: fields, Quota: quota, Generator: generator,
 				Validator: router.GeneratedProgramValidator{}, MaxTokens: 8_192, Timeout: 60 * time.Second,
 			})
 		}
