@@ -44,7 +44,7 @@ func TestPutBattlePrograms(t *testing.T) {
 			api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{OperationMiddlewares: map[string][]echo.MiddlewareFunc{"setBattlePrograms": {Authentication(sessionLookupStub{}), middleware.BodyLimit(1 << 20)}}})
 			req := httptest.NewRequest(http.MethodPut, "/battle/program", strings.NewReader(tt.body))
 			if tt.cookie {
-				req.AddCookie(&http.Cookie{Name: "session", Value: "session-id"})
+				req.AddCookie(&http.Cookie{Name: "session", Value: "session-id", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 			}
 			res := httptest.NewRecorder()
 			e.ServeHTTP(res, req)
