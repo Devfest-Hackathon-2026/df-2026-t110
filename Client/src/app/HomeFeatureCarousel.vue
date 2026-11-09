@@ -47,15 +47,6 @@ function goTo(index: number) {
     </Carousel>
     <p class="home-carousel-caption" aria-live="polite">{{ slides[active]?.caption }}</p>
     <div class="home-carousel-controls">
-      <button type="button" :aria-label="`${label}の前の画像`" @click="goTo(active - 1)">
-        <Icon :icon="arrowLeftIcon" aria-hidden="true" />
-      </button>
-      <span class="home-carousel-count"
-        >{{ String(active + 1).padStart(2, '0') }} / {{ String(slides.length).padStart(2, '0') }}</span
-      >
-      <button type="button" :aria-label="`${label}の次の画像`" @click="goTo(active + 1)">
-        <Icon :icon="arrowRightIcon" aria-hidden="true" />
-      </button>
       <div class="home-carousel-dots" aria-label="画像を選ぶ">
         <button
           v-for="(_, index) in slides"

@@ -77,8 +77,7 @@ document.title = tutorialId
 
     <main v-if="page === 'home'">
       <section class="home-hero container" aria-labelledby="home-title">
-        <p class="home-eyebrow">ROBOT FIELD / LEARN BY MAKING</p>
-        <h1 id="home-title">命令を組んで、<br />ロボットを動かそう。</h1>
+        <h2>命令を組んで、ロボットを動かそう。</h2>
         <p class="hero-lead">
           岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
         </p>
@@ -107,7 +106,9 @@ document.title = tutorialId
             <h2 id="match-title" class="heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
             </h2>
-            <p>自分のプログラムをロボットに託して対戦。結果だけでなく、どんな行動をしたかも振り返れます。</p>
+            <p>
+              自分のプログラムをロボットに設定して対戦。結果だけでなく、どんな行動をしたかも振り返れます。
+            </p>
           </div>
           <HomeFeatureCarousel label="対戦機能の紹介" :slides="matchSlides" />
           <a class="home-feature-link" href="/rooms">対戦を見る <span aria-hidden="true">↗</span></a>
