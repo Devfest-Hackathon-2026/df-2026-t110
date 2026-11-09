@@ -72,6 +72,9 @@ p {
 p:not([class]) {
   max-width: 65ch;
 }
+[role='alert'] {
+  color: var(--color-error);
+}
 img,
 video {
   max-width: 100%;

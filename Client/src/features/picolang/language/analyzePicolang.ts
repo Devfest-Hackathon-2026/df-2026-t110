@@ -22,6 +22,7 @@ export type PicoDiagnosticCode =
   | 'out_of_scope_reference'
   | 'type_mismatch'
   | 'argument_count'
+  | 'missing_argument'
   | 'cannot_infer_type'
   | 'function_conflict'
   | 'function_name_conflict'
@@ -93,9 +94,23 @@ function unify(expected: Term, actual: Term): boolean {
 }
 function typeName(type: Term): string {
   type = prune(type)
-  if (typeof type === 'string') return type
-  if (type.kind === 'variable') return '?'
-  return `${type.name}<${type.args.map(typeName).join(', ')}>`
+  if (typeof type === 'string')
+    return (
+      (
+        {
+          integer: '整数',
+          bool: '真理値',
+          unit: '値なし',
+          terrain: 'マスの種類',
+          rotation: '向き',
+          distance_target: '探索対象',
+        } as Record<string, string>
+      )[type] ?? type
+    )
+  if (type.kind === 'variable') return '未確定'
+  if (type.name === 'stack' || type.name === 'option')
+    return `${typeName(type.args[0]!)}の${type.name === 'stack' ? 'スタック' : 'オプション'}`
+  return '関数'
 }
 
 interface Scope {
@@ -249,6 +264,10 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       return functionType(instantiated.params, instantiated.result)
     }
     function expression(expr: PicoExpr, scope: Scope): Term {
+      if (expr.kind === 'missing') {
+        report('missing_argument', 'error', expr.hintId, '入力欄が空です。値や式のブロックを入れてください。')
+        return invalid
+      }
       if (expr.kind === 'literal') return expr.type
       if (expr.kind === 'ident') return reference(expr, scope, true)
       const args = expr.args.map((arg) => expression(arg, scope))
@@ -287,6 +306,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
         case 'literal':
         case 'ident':
         case 'call':
+        case 'missing':
           expression(stmt, scope)
           break
         case 'declare': {
@@ -390,7 +410,7 @@ export function inferPicolang(program: PicoProgram): PicoAnalysis {
       severity: 'error',
       functionName,
       hintId,
-      message: '型を決められません。関数本体や呼び出し先で値を使い、型が分かる値と組み合わせてください。',
+      message: `関数「${functionName}」で値の種類を決められません。たとえば数として使う値なら、「足した数を返す」の入力につないでください。`,
     })
   }
   for (const { variable, functionName, hintId } of variables) reportUnresolved(variable, functionName, hintId)

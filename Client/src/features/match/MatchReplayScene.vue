@@ -416,7 +416,11 @@ async function setMode(next: 'preview' | 'camera'): Promise<void> {
         await video.value.play()
       }
     } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : 'カメラを開けませんでした'
+      console.error('再生用カメラの起動に失敗しました', cause)
+      error.value =
+        cause instanceof Error && cause.name === 'NotAllowedError'
+          ? 'カメラへのアクセスを許可して、もう一度お試しください。'
+          : 'カメラを開けませんでした。接続とブラウザのカメラ設定を確認してください。'
       mode.value = 'preview'
     }
   }
@@ -496,7 +500,8 @@ onMounted(() => {
       },
     )
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '3D再生を開始できませんでした'
+    console.error('3D再生を開始できませんでした', cause)
+    error.value = 'ロボットの動きを再生できませんでした。ページを再読み込みしてください。'
   }
 })
 onBeforeUnmount(() => {
@@ -517,7 +522,6 @@ onBeforeUnmount(() => {
   <section class="match-replay" aria-labelledby="match-replay-title">
     <div class="match-replay-heading">
       <div>
-        <p class="match-eyebrow">REPLAY</p>
         <h2 id="match-replay-title"><Icon :icon="circlePlayIcon" aria-hidden="true" />対戦を再生</h2>
       </div>
       <span>ターン {{ current?.tick ?? 0 }} · {{ index + 1 }} / {{ frames.length }}</span>

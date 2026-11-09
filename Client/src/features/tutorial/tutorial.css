@@ -586,8 +586,9 @@
 .tutorial-error {
   margin-top: var(--space-md);
   padding: 12px;
-  background: var(--tutor-peach);
-  color: var(--tutor-ink);
+  border-left: 3px solid var(--color-error);
+  background: var(--color-error-bg);
+  color: var(--color-error);
   font-size: var(--type-small);
   line-height: 1.6;
 }
@@ -640,19 +641,18 @@
   padding: 48px 0;
   color: var(--color-ink-2);
 }
+.tutorial-load-message[role='alert'],
+.tutorial-editor-loading[role='alert'] {
+  color: var(--color-error);
+}
 .tutorial-load-message h1 {
   margin-bottom: 20px;
   font-size: var(--type-section);
   line-height: 1.45;
 }
-.tutorial-load-message button {
-  min-height: 40px;
+.tutorial-load-message > a {
+  display: inline-block;
   margin-top: 12px;
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent-deep);
-  cursor: pointer;
 }
 @media (max-width: 700px), (max-aspect-ratio: 1/1) and (max-width: 980px) {
   .tutorial-page {

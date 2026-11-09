@@ -41,7 +41,11 @@ export interface PicoCall extends NodeBase {
   func: string
   args: PicoExpr[]
 }
-export type PicoExpr = PicoIdent | PicoLiteral | PicoCall
+/** An empty editor input, preserved in drafts and rejected for execution. */
+export interface PicoMissing extends NodeBase {
+  kind: 'missing'
+}
+export type PicoExpr = PicoIdent | PicoLiteral | PicoCall | PicoMissing
 export interface PicoBlock extends NodeBase {
   kind: 'block'
   stmts: PicoStatement[]
@@ -109,7 +113,7 @@ export function samePicoType(left: PicoType | undefined, right: PicoType | undef
 export const id = (): string => crypto.randomUUID()
 export const ident = (name = 'x'): PicoIdent => ({ kind: 'ident', hintId: id(), name })
 export const block = (stmts: PicoStatement[] = []): PicoBlock => ({ kind: 'block', hintId: id(), stmts })
-export function defaultExpr(type: PicoSignatureType = 'integer'): PicoExpr {
+export function defaultExpr(type: PicoSignatureType = 'integer'): PicoLiteral | PicoCall {
   if (typeof type !== 'string' && type.kind === 'type_parameter') return defaultExpr('integer')
   if (typeof type !== 'string' && type.kind === 'option')
     return { kind: 'call', hintId: id(), func: 'some', args: [defaultExpr(type.elementType)] }
@@ -210,15 +214,16 @@ function node(value: JsonObject, kind: string, keys: string[], seen: Set<string>
 function validIdent(value: unknown, seen: Set<string>): boolean {
   return object(value) && node(value, 'ident', ['name'], seen) && name(value.name)
 }
-function validExpr(value: unknown, seen: Set<string>): boolean {
+function validExpr(value: unknown, seen: Set<string>, draft: boolean): boolean {
   if (!object(value)) return false
+  if (value.kind === 'missing') return draft && node(value, 'missing', [], seen)
   if (value.kind === 'ident') return validIdent(value, seen)
   if (value.kind === 'call')
     return (
       node(value, 'call', ['func', 'args'], seen) &&
       name(value.func) &&
       Array.isArray(value.args) &&
-      value.args.every((arg) => validExpr(arg, seen))
+      value.args.every((arg) => validExpr(arg, seen, draft))
     )
   if (value.kind !== 'literal' || !node(value, 'literal', ['type', 'value'], seen)) return false
   switch (value.type) {
@@ -250,19 +255,20 @@ function validStmt(value: unknown, seen: Set<string>, draft: boolean): boolean {
     case 'literal':
     case 'ident':
     case 'call':
-      return validExpr(value, seen)
+    case 'missing':
+      return validExpr(value, seen, draft)
     case 'declare':
       return (
         node(value, 'declare', [...('type' in value ? ['type'] : []), 'ident', 'value'], seen) &&
         ((draft && !('type' in value)) || type(value.type)) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.value, seen)
+        validExpr(value.value, seen, draft)
       )
     case 'assign':
       return (
         node(value, 'assign', ['ident', 'value'], seen) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.value, seen)
+        validExpr(value.value, seen, draft)
       )
     case 'if':
       return (
@@ -272,26 +278,26 @@ function validStmt(value: unknown, seen: Set<string>, draft: boolean): boolean {
           value.else === undefined ? ['condition', 'then'] : ['condition', 'then', 'else'],
           seen,
         ) &&
-        validExpr(value.condition, seen) &&
+        validExpr(value.condition, seen, draft) &&
         validBlock(value.then, seen, draft) &&
         (value.else === undefined || validBlock(value.else, seen, draft))
       )
     case 'while':
       return (
         node(value, 'while', ['condition', 'body'], seen) &&
-        validExpr(value.condition, seen) &&
+        validExpr(value.condition, seen, draft) &&
         validBlock(value.body, seen, draft)
       )
     case 'for':
       return (
         node(value, 'for', ['ident', 'start', 'end', 'body'], seen) &&
         validIdent(value.ident, seen) &&
-        validExpr(value.start, seen) &&
-        validExpr(value.end, seen) &&
+        validExpr(value.start, seen, draft) &&
+        validExpr(value.end, seen, draft) &&
         validBlock(value.body, seen, draft)
       )
     case 'return':
-      return node(value, 'return', ['value'], seen) && validExpr(value.value, seen)
+      return node(value, 'return', ['value'], seen) && validExpr(value.value, seen, draft)
     case 'break':
     case 'continue':
       return node(value, value.kind, [], seen)

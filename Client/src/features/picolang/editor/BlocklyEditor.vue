@@ -73,6 +73,11 @@ const newName = ref('')
 const showJson = ref(false)
 const jsonInput = ref('')
 const message = ref('')
+const messageSeverity = ref<'error' | 'success'>('error')
+function showMessage(text: string, severity: 'error' | 'success' = 'error'): void {
+  message.value = text
+  messageSeverity.value = severity
+}
 const history = ref<string[]>([])
 const historyIndex = ref(0)
 const canUndo = computed(() => historyIndex.value > 0)
@@ -305,7 +310,7 @@ function onKey(event: KeyboardEvent): void {
 function addFunction(): void {
   const name = newName.value.trim()
   if (!name || functions.value[name] || name === 'main') {
-    message.value = '別の関数名を入力してください。'
+    showMessage('別の関数名を入力してください。')
     return
   }
   readWorkspace()
@@ -325,7 +330,7 @@ function removeFunction(): void {
   if (activeName.value === 'main') return
   const name = activeName.value
   if (JSON.stringify(program.value).includes(`"func":"${name}"`)) {
-    message.value = 'この関数を使っているブロックがあります。先に外してください。'
+    showMessage('この関数を使っているブロックがあります。先に外してください。')
     return
   }
   delete functions.value[name]
@@ -387,7 +392,7 @@ function renameParam(index: number, value: string): void {
   const name = value.trim()
   const params = activeFunction.value.params
   if (!name || params.some((param, i) => i !== index && param.ident.name === name)) {
-    message.value = '受け取る値には重ならない名前を付けてください。'
+    showMessage('受け取る値には重ならない名前を付けてください。')
     return
   }
   readWorkspace()
@@ -405,13 +410,13 @@ function renameParam(index: number, value: string): void {
 async function copyJson(): Promise<void> {
   try {
     if (!executionJson.value) {
-      message.value = 'エラーを解消するとJSONを出力できます。'
+      showMessage('エラーを解消するとJSONを出力できます。')
       return
     }
     await navigator.clipboard.writeText(executionJson.value)
-    message.value = 'JSONをコピーしました。'
+    showMessage('JSONをコピーしました。', 'success')
   } catch {
-    message.value = 'コピーできませんでした。'
+    showMessage('コピーできませんでした。')
   }
 }
 function importJson(): void {
@@ -422,9 +427,9 @@ function importJson(): void {
     activeName.value = 'main'
     save()
     loadActive()
-    message.value = 'JSONを読み込みました。'
+    showMessage('JSONを読み込みました。', 'success')
   } catch (error) {
-    message.value = error instanceof Error ? error.message : '読み込めませんでした。'
+    showMessage(error instanceof Error ? error.message : '読み込めませんでした。')
   }
 }
 
@@ -586,9 +591,9 @@ onBeforeUnmount(() => {
       :open="showJson"
       @toggle="showJson = ($event.target as HTMLDetailsElement).open"
     >
-      <summary>Schema形式のJSON</summary>
+      <summary>プログラムのJSON</summary>
       <button type="button" :disabled="!executionJson" @click="copyJson">JSONをコピー</button>
-      <pre>{{ executionJson ?? 'エラーを解消すると推論した型付きのJSONを表示します。' }}</pre>
+      <pre>{{ executionJson ?? 'エラーを直すと、プログラムのJSONを表示できます。' }}</pre>
       <label for="blockly-json-input">JSONを読み込む</label>
       <textarea
         id="blockly-json-input"
@@ -599,6 +604,8 @@ onBeforeUnmount(() => {
       ></textarea>
       <button type="button" :disabled="running" @click="importJson">読み込む</button>
     </details>
-    <p v-if="message && !running" class="blockly-message" role="status">{{ message }}</p>
+    <p v-if="message && !running" class="blockly-message" :data-severity="messageSeverity" role="status">
+      {{ message }}
+    </p>
   </div>
 </template>

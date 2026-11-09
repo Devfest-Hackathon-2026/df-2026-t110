@@ -98,13 +98,6 @@ body,
   width: 1.05em;
   height: 1.05em;
 }
-.site-account-name {
-  display: inline-block;
-  max-width: min(28vw, 24ch);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: bottom;
-}
 .site-nav nav a:hover,
 .site-nav nav a[aria-current='page'] {
   color: var(--color-accent-deep);
@@ -482,6 +475,15 @@ body,
   }
 }
 @media (max-width: 640px) {
+  .site-nav {
+    flex-wrap: wrap;
+    padding-block: 8px;
+  }
+  .site-nav nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
   .home-entry-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -503,9 +505,6 @@ body,
   .site-nav nav a {
     gap: 3px;
     font-size: 0.6875rem;
-  }
-  .site-account-name {
-    max-width: 16vw;
   }
   .home-carousel-caption {
     min-height: 92px;

@@ -93,6 +93,51 @@ func (q *Queries) CreateMatchRun(ctx context.Context, arg CreateMatchRunParams) 
 	return err
 }
 
+const getBattleTeam = `-- name: GetBattleTeam :many
+SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source
+FROM users
+JOIN battle_programs ON battle_programs.google_subject = users.google_subject
+JOIN programs ON programs.id = battle_programs.program_id
+WHERE users.google_subject = $1
+ORDER BY battle_programs.robot_index
+`
+
+type GetBattleTeamRow struct {
+	GoogleSubject string
+	Name          pgtype.Text
+	Rating        int32
+	ID            string
+	ProgramName   string
+	Source        []byte
+}
+
+func (q *Queries) GetBattleTeam(ctx context.Context, googleSubject string) ([]GetBattleTeamRow, error) {
+	rows, err := q.db.Query(ctx, getBattleTeam, googleSubject)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBattleTeamRow
+	for rows.Next() {
+		var i GetBattleTeamRow
+		if err := rows.Scan(
+			&i.GoogleSubject,
+			&i.Name,
+			&i.Rating,
+			&i.ID,
+			&i.ProgramName,
+			&i.Source,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserRating = `-- name: GetUserRating :one
 SELECT rating
 FROM users
@@ -104,6 +149,51 @@ func (q *Queries) GetUserRating(ctx context.Context, googleSubject string) (int3
 	var rating int32
 	err := row.Scan(&rating)
 	return rating, err
+}
+
+const listBattleOpponentCandidates = `-- name: ListBattleOpponentCandidates :many
+SELECT users.google_subject, users.rating
+FROM users
+JOIN battle_programs ON battle_programs.google_subject = users.google_subject
+JOIN programs ON programs.id = battle_programs.program_id
+WHERE users.google_subject <> $1
+  AND users.name IS NOT NULL AND btrim(users.name) <> ''
+GROUP BY users.google_subject
+HAVING count(*) = $2::integer
+   AND min(battle_programs.robot_index) = 0
+   AND max(battle_programs.robot_index) = $2::integer - 1
+   AND bool_and(programs.is_battle AND programs.google_subject = users.google_subject)
+ORDER BY users.google_subject
+`
+
+type ListBattleOpponentCandidatesParams struct {
+	Challenger string
+	RobotCount int32
+}
+
+type ListBattleOpponentCandidatesRow struct {
+	GoogleSubject string
+	Rating        int32
+}
+
+func (q *Queries) ListBattleOpponentCandidates(ctx context.Context, arg ListBattleOpponentCandidatesParams) ([]ListBattleOpponentCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listBattleOpponentCandidates, arg.Challenger, arg.RobotCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListBattleOpponentCandidatesRow
+	for rows.Next() {
+		var i ListBattleOpponentCandidatesRow
+		if err := rows.Scan(&i.GoogleSubject, &i.Rating); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRanking = `-- name: ListRanking :many
@@ -148,70 +238,6 @@ func (q *Queries) ListRanking(ctx context.Context) ([]ListRankingRow, error) {
 			&i.Wins,
 			&i.Losses,
 			&i.Draws,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const selectBattleOpponent = `-- name: SelectBattleOpponent :many
-WITH candidate AS (
-    SELECT users.google_subject, users.name, users.rating
-    FROM users
-    JOIN battle_programs ON battle_programs.google_subject = users.google_subject
-    JOIN programs ON programs.id = battle_programs.program_id
-    WHERE users.google_subject <> $1
-      AND users.name IS NOT NULL AND btrim(users.name) <> ''
-    GROUP BY users.google_subject
-    HAVING count(*) = $2::integer
-       AND min(battle_programs.robot_index) = 0
-       AND max(battle_programs.robot_index) = $2::integer - 1
-       AND bool_and(programs.is_battle AND programs.google_subject = users.google_subject)
-    ORDER BY random()
-    LIMIT 1
-)
-SELECT candidate.google_subject, candidate.name, candidate.rating, programs.id, programs.name AS program_name, programs.source
-FROM candidate
-JOIN battle_programs ON battle_programs.google_subject = candidate.google_subject
-JOIN programs ON programs.id = battle_programs.program_id
-ORDER BY battle_programs.robot_index
-`
-
-type SelectBattleOpponentParams struct {
-	Challenger string
-	RobotCount int32
-}
-
-type SelectBattleOpponentRow struct {
-	GoogleSubject string
-	Name          pgtype.Text
-	Rating        int32
-	ID            string
-	ProgramName   string
-	Source        []byte
-}
-
-func (q *Queries) SelectBattleOpponent(ctx context.Context, arg SelectBattleOpponentParams) ([]SelectBattleOpponentRow, error) {
-	rows, err := q.db.Query(ctx, selectBattleOpponent, arg.Challenger, arg.RobotCount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []SelectBattleOpponentRow
-	for rows.Next() {
-		var i SelectBattleOpponentRow
-		if err := rows.Scan(
-			&i.GoogleSubject,
-			&i.Name,
-			&i.Rating,
-			&i.ID,
-			&i.ProgramName,
-			&i.Source,
 		); err != nil {
 			return nil, err
 		}

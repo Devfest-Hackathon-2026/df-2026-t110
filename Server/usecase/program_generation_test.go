@@ -21,7 +21,8 @@ const (
 // rejects badDraft with ErrInvalidGeneratedProgram and accepts everything else.
 type generationFixture struct {
 	// outputs are returned by successive GenerateProgram calls.
-	outputs []jsontext.Value
+	outputs         []jsontext.Value
+	validatedOutput jsontext.Value
 
 	quotaErr, generatorErr, validatorErr, fieldErr error
 
@@ -69,17 +70,20 @@ func (f *generationFixture) GenerateProgram(ctx context.Context, in usecase.Prog
 	return f.outputs[len(f.inputs)-1], nil
 }
 
-func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p jsontext.Value) error {
+func (f *generationFixture) ValidateGeneratedProgram(ctx context.Context, p jsontext.Value) (jsontext.Value, error) {
 	if f.onValidate != nil {
 		f.onValidate(ctx)
 	}
 	if f.validatorErr != nil {
-		return f.validatorErr
+		return nil, f.validatorErr
 	}
 	if string(p) == badDraft {
-		return fmt.Errorf("%w: missing main", usecase.ErrInvalidGeneratedProgram)
+		return nil, fmt.Errorf("%w: missing main", usecase.ErrInvalidGeneratedProgram)
 	}
-	return nil
+	if f.validatedOutput != nil {
+		return f.validatedOutput, nil
+	}
+	return p, nil
 }
 
 func (f *generationFixture) deps() usecase.ProgramGenerationDeps {
@@ -122,6 +126,15 @@ func TestProgramGenerationWithoutFieldPreservesBattleMode(t *testing.T) {
 	}
 	if len(f.inputs) != 1 || !f.inputs[0].IsBattle || string(f.inputs[0].Field) != `{}` {
 		t.Errorf("generation input = %+v", f.inputs)
+	}
+}
+
+func TestProgramGenerationReturnsPreparedProgram(t *testing.T) {
+	t.Parallel()
+	f := &generationFixture{outputs: draftOutputs(goodDraft), validatedOutput: jsontext.Value(`{"serverAssignedHintIds":true}`)}
+	got, err := f.service().Generate(context.Background(), "sub", "field", "go")
+	if err != nil || string(got) != string(f.validatedOutput) {
+		t.Errorf("Generate = %s, %v; want validator output %s", got, err, f.validatedOutput)
 	}
 }
 

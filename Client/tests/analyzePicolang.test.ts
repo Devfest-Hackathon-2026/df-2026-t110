@@ -21,7 +21,7 @@ const call = (func: string, ...args: PicoExpr[]): PicoExpr => ({ kind: 'call', h
 const declare = (
   name: string,
   type: PicoType = 'integer',
-  value = defaultExpr(type),
+  value: PicoExpr = defaultExpr(type),
 ): Extract<PicoStatement, { kind: 'declare' }> => ({
   kind: 'declare',
   hintId: id(),
@@ -29,7 +29,11 @@ const declare = (
   type,
   value,
 })
-const ret = (value = defaultExpr('unit')): PicoStatement => ({ kind: 'return', hintId: id(), value })
+const ret = (value: PicoExpr = defaultExpr('unit')): PicoStatement => ({
+  kind: 'return',
+  hintId: id(),
+  value,
+})
 const conditional = (stmts: PicoStatement[], other?: PicoStatement[]): PicoStatement => ({
   kind: 'if',
   hintId: id(),
@@ -55,6 +59,36 @@ test('valid programs are analyzed without mutation and diagnostics are repeatabl
   assert.deepEqual(analyzePicolang(program), [])
   assert.deepEqual(analyzePicolang(program), [])
   assert.deepEqual(program, before)
+})
+
+test('missing inputs report errors without misleading type errors and prevent execution', () => {
+  const missing: PicoExpr = { kind: 'missing', hintId: id() }
+  const program = source(call('print_integer', call('add', defaultExpr(), missing)))
+  const before = structuredClone(program)
+  const analysis = inferPicolang(program)
+  assert.deepEqual(
+    analysis.diagnostics.map((d) => [d.code, d.severity, d.hintId]),
+    [['missing_argument', 'error', missing.hintId]],
+  )
+  assert.equal(analysis.program, null)
+  assert.equal(isPicoDraft(program), true)
+  assert.equal(isPicoProgram(program), false)
+  assert.deepEqual(inferPicolang(program).diagnostics, analysis.diagnostics)
+  assert.deepEqual(program, before)
+})
+
+test('draft validation checks the shape and unique IDs of missing inputs', () => {
+  const program = source(call('print_integer', { kind: 'missing', hintId: id() }))
+  const saved = JSON.parse(JSON.stringify(program))
+  assert.equal(isPicoDraft(picoDraft(saved)), true)
+  const expr = programFunctions(program).main.body.stmts[0]
+  assert.equal(expr.kind, 'call')
+  expr.args[0].hintId = expr.hintId
+  assert.equal(isPicoDraft(program), false)
+  expr.args[0].hintId = 'invalid'
+  assert.equal(isPicoDraft(program), false)
+  expr.args[0] = { kind: 'missing', hintId: id(), extra: true } as PicoExpr
+  assert.equal(isPicoDraft(program), false)
 })
 
 test('undefined references report their hint and a later declaration in the same scope', () => {

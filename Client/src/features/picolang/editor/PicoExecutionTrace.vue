@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { traceNodeLabel } from './playback/tracePresentation.ts'
 import type { PicolangTrace, TraceNode } from '../language/picolangTrace.ts'
 
-defineProps<{
+const props = defineProps<{
   trace: PicolangTrace | null
   running: boolean
   ready: boolean
@@ -30,12 +30,19 @@ onBeforeUnmount(() => viewport?.removeEventListener('change', updateCompact))
 const endLabels: Record<string, string> = {
   completed: 'プログラム終了',
   interrupted: '課題の終了により停止',
-  runtime_error: '実行時エラー',
-  division_by_zero: '0による除算',
-  step_limit: '実行ステップ数の上限',
-  memory_limit: 'メモリの上限',
-  call_depth_limit: '関数呼び出しの深さの上限',
+  runtime_error: 'プログラムの実行中にエラーが起きました。',
+  division_by_zero: '0で割る計算があるため停止しました。',
+  step_limit: '実行ステップ数の上限に達しました。',
+  memory_limit: '使用できるメモリの上限に達しました。',
+  call_depth_limit: '関数を重ねて呼び出す回数が上限に達しました。',
 }
+watch(
+  () => props.trace?.finished,
+  (finished) => {
+    if (finished && !['completed', 'interrupted'].includes(finished.reason))
+      console.error('プログラムの実行が停止しました', finished)
+  },
+)
 </script>
 
 <template>
@@ -50,7 +57,7 @@ const endLabels: Record<string, string> = {
       </button>
       <button type="button" :disabled="!running || !ready" @click="emit('step')">1ステップ</button>
       <label
-        >ノード間隔
+        >1ステップの間隔
         <select
           :value="interval"
           @change="emit('interval', Number(($event.target as HTMLSelectElement).value))"
@@ -67,8 +74,8 @@ const endLabels: Record<string, string> = {
       </button>
     </p>
     <details :open="expanded" @toggle="expanded = ($event.target as HTMLDetailsElement).open">
-      <summary>変数 {{ trace?.variables.length ?? 0 }} 件・直近のノードの遷移</summary>
-      <ol v-if="trace?.trail.length" class="pico-trace-trail" aria-label="直近のノードの遷移">
+      <summary>変数 {{ trace?.variables.length ?? 0 }} 件・最近実行した命令</summary>
+      <ol v-if="trace?.trail.length" class="pico-trace-trail" aria-label="最近実行した命令">
         <li v-for="(node, index) in trace.trail" :key="index">
           <button type="button" @click="emit('locate', node)">
             {{ node.functionName }}：{{ traceNodeLabel(node) }}
@@ -111,10 +118,7 @@ const endLabels: Record<string, string> = {
       class="pico-trace-ended"
       :class="{ 'pico-trace-error': !['completed', 'interrupted'].includes(trace.finished.reason) }"
     >
-      {{ endLabels[trace.finished.reason]
-      }}<span v-if="!['completed', 'interrupted'].includes(trace.finished.reason)"
-        >：{{ trace.finished.message }}</span
-      >
+      {{ endLabels[trace.finished.reason] ?? 'プログラムが停止しました。' }}
     </p>
     <p v-else-if="!running && !trace" class="pico-trace-ended">この実行結果には追跡情報がありません。</p>
   </section>
@@ -210,7 +214,7 @@ const endLabels: Record<string, string> = {
   font-weight: 600;
 }
 .pico-trace-error {
-  color: #9c3525;
+  color: var(--color-error);
 }
 .pico-trace summary {
   cursor: pointer;

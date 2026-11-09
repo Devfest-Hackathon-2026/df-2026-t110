@@ -22,6 +22,7 @@ import {
   isPicoDraft,
   makeStatement,
   newProgram,
+  picoDraft,
   programFunctions,
   makeCall,
   type PicoType,
@@ -451,6 +452,148 @@ test('diagnostics locate declaration and assignment identifier hints and clear s
     updatePicoDiagnostics(workspace, [])
     assert.equal(messages.get(declared.id), null)
     assert.equal(messages.get(assigned.id), null)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('空の引数は保存・再読込後もエラーになり、値を入れると警告が消えて実行できる', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  functions.main.body.stmts.unshift(makeCall('print_integer'))
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    const print = workspace.getTopBlocks(false)[0]!
+    print.getInputTargetBlock('ARG0')!.dispose()
+    functions.main = readFunction(workspace, functions.main, functions)
+    const analysis = inferPicolang(program)
+    assert.equal(analysis.program, null)
+    assert.equal(isPicoDraft(program), true)
+    assert.equal(isPicoProgram(program), false)
+    assert.deepEqual(
+      analysis.diagnostics.map((d) => d.code),
+      ['missing_argument'],
+    )
+    const diagnostic = analysis.diagnostics[0]!
+    assert.equal(diagnosticBlock(workspace, diagnostic.hintId), print)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), functions.main)
+
+    const saved = picoDraft(JSON.parse(JSON.stringify(program)))
+    assert.equal(isPicoDraft(saved), true)
+    const savedFunctions = programFunctions(saved)
+    loadFunction(workspace, savedFunctions.main, savedFunctions)
+    const restored = diagnosticBlock(workspace, diagnostic.hintId)!
+    assert.equal(restored.type, 'pico_stmt_print_integer')
+    assert.equal(restored.getInputTargetBlock('ARG0'), null)
+    assert.deepEqual(readFunction(workspace, savedFunctions.main, savedFunctions), savedFunctions.main)
+    assert.deepEqual(inferPicolang(saved).diagnostics, analysis.diagnostics)
+
+    let warning: string | null = null
+    restored.setWarningText = (text) => {
+      warning = text
+    }
+    updatePicoDiagnostics(workspace, analysis.diagnostics)
+    assert.match(warning!, /エラー：入力欄が空/)
+    const number = workspace.newBlock('pico_number')
+    restored.getInput('ARG0')!.connection!.connect(number.outputConnection!)
+    savedFunctions.main = readFunction(workspace, savedFunctions.main, savedFunctions)
+    const repaired = inferPicolang(saved)
+    assert.deepEqual(repaired.diagnostics, [])
+    assert.equal(isPicoProgram(repaired.program), true)
+    updatePicoDiagnostics(workspace, repaired.diagnostics)
+    assert.equal(warning, null)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('制御・変数・返り値・式の空欄も、それぞれのブロックに対応するエラーとして保持する', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  registerPicoBlocks(functions)
+  for (const [type, inputs] of [
+    ['pico_if', ['CONDITION']],
+    ['pico_if_else', ['CONDITION']],
+    ['pico_while', ['CONDITION']],
+    ['pico_for', ['START', 'END']],
+    ['pico_declare', ['VALUE']],
+    ['pico_assign', ['VALUE']],
+    ['pico_return', ['VALUE']],
+    ['pico_expr_statement', ['VALUE']],
+    ['pico_stmt_add', ['ARG0', 'ARG1']],
+  ] as const) {
+    const workspace = new Blockly.Workspace()
+    try {
+      const empty = workspace.newBlock(type)
+      if (type === 'pico_assign') {
+        const declaration = workspace.newBlock('pico_declare')
+        declaration
+          .getInput('VALUE')!
+          .connection!.connect(workspace.newBlock('pico_number').outputConnection!)
+        declaration.nextConnection!.connect(empty.previousConnection!)
+      }
+      functions.main = readFunction(workspace, programFunctions(newProgram()).main, functions)
+      const analysis = inferPicolang(program)
+      const missing = analysis.diagnostics.filter((d) => d.code === 'missing_argument')
+      assert.equal(missing.length, inputs.length, type)
+      assert.equal(analysis.program, null, type)
+      assert.equal(
+        analysis.diagnostics.some((d) => d.code === 'type_mismatch'),
+        false,
+        type,
+      )
+      assert.equal(isPicoDraft(program), true, type)
+      for (const diagnostic of missing) assert.equal(diagnosticBlock(workspace, diagnostic.hintId), empty)
+      const before = structuredClone(functions.main)
+      loadFunction(workspace, functions.main, functions)
+      functions.main = readFunction(workspace, functions.main, functions)
+      assert.deepEqual(functions.main, before, type)
+      assert.deepEqual(inferPicolang(program).diagnostics, analysis.diagnostics, type)
+    } finally {
+      workspace.dispose()
+    }
+  }
+})
+
+test('自作関数と入れ子の多相関数でも空の引数を検出する', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  functions.consume = {
+    kind: 'function',
+    hintId: id(),
+    params: [{ kind: 'param', hintId: id(), ident: ident('input') }],
+    body: block([makeCall('print_integer'), { kind: 'return', hintId: id(), value: defaultExpr('unit') }]),
+  }
+  functions.consume.body.stmts[0] = {
+    kind: 'call',
+    hintId: id(),
+    func: 'print_integer',
+    args: [ident('input')],
+  }
+  const nested = makeCall('print_bool')
+  nested.args = [makeCall('is_some')]
+  functions.main.body.stmts.unshift(makeCall('consume', functions), nested)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    for (const type of ['pico_stmt_consume', 'pico_expr_is_some']) {
+      const target = workspace.getAllBlocks(false).find((item) => item.type === type)!
+      target.getInputTargetBlock('ARG0')!.dispose()
+    }
+    functions.main = readFunction(workspace, functions.main, functions)
+    const analysis = inferPicolang(program)
+    assert.deepEqual(
+      analysis.diagnostics.map((d) => d.code),
+      ['missing_argument', 'missing_argument'],
+    )
+    assert.equal(analysis.program, null)
+    const before = structuredClone(functions.main)
+    loadFunction(workspace, functions.main, functions)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), before)
+    for (const diagnostic of analysis.diagnostics) assert.ok(diagnosticBlock(workspace, diagnostic.hintId))
   } finally {
     workspace.dispose()
   }

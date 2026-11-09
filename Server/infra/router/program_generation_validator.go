@@ -16,26 +16,33 @@ type GeneratedProgramValidator struct{}
 
 var _ usecase.GeneratedProgramValidator = GeneratedProgramValidator{}
 
-func (GeneratedProgramValidator) ValidateGeneratedProgram(ctx context.Context, source jsontext.Value) error {
+func (GeneratedProgramValidator) ValidateGeneratedProgram(ctx context.Context, source jsontext.Value) (jsontext.Value, error) {
 	if err := ctx.Err(); err != nil {
-		return err
+		return nil, err
+	}
+	source, err := assignGeneratedHintIDs(source)
+	if err != nil {
+		return nil, err
 	}
 	parsed, err := parse.Parse(source)
 	if err != nil {
-		return fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
+		return nil, fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
 	}
 	if err := ctx.Err(); err != nil {
-		return err
+		return nil, err
 	}
 	indexed, err := index.Index(parsed)
 	if err != nil {
-		return fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
+		return nil, fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
 	}
 	if err := ctx.Err(); err != nil {
-		return err
+		return nil, err
 	}
 	if _, err := typecheck.TypeCheck(indexed); err != nil {
-		return fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
+		return nil, fmt.Errorf("%w: %w", usecase.ErrInvalidGeneratedProgram, err)
 	}
-	return ctx.Err()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return source, nil
 }

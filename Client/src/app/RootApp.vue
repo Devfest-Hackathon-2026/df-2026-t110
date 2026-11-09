@@ -20,9 +20,9 @@ const tutorialSlides = [
     caption: '道をふさぐ岩にはビーム。地形を観察して、次の行動を選びます。',
   },
   {
-    image: '/home-tutorial-route.svg',
-    alt: 'ロボットが海を渡り、ゴールまでの道を探すイメージ',
-    caption: '海を埋めて進みます。同じ命令でも、盤面に合わせて考え方が変わります。',
+    image: '/home-tutorial-iterate.svg',
+    alt: '命令ブロックを並べ、ロボットの動きを見て組み直すイメージ',
+    caption: '命令を並べて実行し、動きを見て組み直す。試しながらゴールへの手順を考えられます。',
   },
 ]
 
@@ -48,15 +48,18 @@ const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/Tut
 const TutorialCatalog = defineAsyncComponent(() => import('../features/tutorial/TutorialCatalog.vue'))
 const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
 const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
+const RankingPage = defineAsyncComponent(() => import('../features/ranking/RankingPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch ? decodeURIComponent(tutorialMatch[1]) : null
 const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
 const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
+const rankingRoute = /^\/ranking(?:\/([1-9]\d*))?$/.exec(path)
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
+  if (rankingRoute) return 'ranking'
   if (matchId) return 'match-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
@@ -64,12 +67,14 @@ const page = computed(() => {
 })
 
 document.title = tutorialId
-  ? '教材 | Robot Field'
+  ? '教材 | PicoBots'
   : matchId
-    ? '対戦結果 | Robot Field'
+    ? '対戦結果 | PicoBots'
     : path === '/rooms'
-      ? '対戦 | Robot Field'
-      : 'Robot Field'
+      ? '対戦 | PicoBots'
+      : rankingRoute
+        ? 'ランキング | PicoBots'
+        : 'PicoBots'
 </script>
 
 <template>
@@ -80,7 +85,7 @@ document.title = tutorialId
       <section class="home-hero container" aria-labelledby="home-title">
         <h2>命令を組んで、ロボットを動かそう。</h2>
         <p class="hero-lead">
-          岩をこわし、海に道をつくる。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
+          岩をこわし、ゴールを目指す。小さなロボットと一緒に、考えた手順をフィールドで試すプログラミング教材です。
         </p>
         <div class="home-entry-grid">
           <a class="home-entry-card" href="/tutorials">
@@ -98,7 +103,6 @@ document.title = tutorialId
 
       <section class="home-explainer container" aria-labelledby="learn-title">
         <div class="home-feature-copy">
-          <p class="home-eyebrow">01 / LEARN</p>
           <h2 id="learn-title" class="heading-with-icon">
             <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>学習チュートリアル</span>
           </h2>
@@ -111,7 +115,6 @@ document.title = tutorialId
       <section class="home-next" aria-labelledby="match-title">
         <div class="container next-inner">
           <div class="home-feature-copy">
-            <p class="home-eyebrow">02 / MATCH</p>
             <h2 id="match-title" class="heading-with-icon">
               <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦機能</span>
             </h2>
@@ -131,13 +134,13 @@ document.title = tutorialId
 
     <MatchPage v-else-if="page === 'rooms' || page === 'match-detail'" :match-id="matchId" />
     <AccountPage v-else-if="page === 'account'" />
+    <RankingPage v-else-if="page === 'ranking'" />
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">
         <h1 class="heading-with-icon">
-          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>最初の一歩から。</span>
+          <Icon :icon="bookOpenIcon" aria-hidden="true" /><span>チュートリアル</span>
         </h1>
-        <p class="inner-lead">短い道から始めて、ロボットにできることを少しずつ増やしていきます。</p>
         <TutorialCatalog />
       </template>
       <template v-else>

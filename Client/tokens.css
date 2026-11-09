@@ -28,7 +28,10 @@
   --dur-micro: 120ms;
   --dur-short: 220ms;
   --dur-long: 420ms;
-  --color-error: oklch(52% 0.19 27);
+  --color-error: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-warning: #facc15;
+  --color-warning-ink: #292500;
   --color-success: oklch(50% 0.12 150);
   --container: 1440px;
   --gutter: 64px;

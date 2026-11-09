@@ -56,17 +56,36 @@ var _ bot.ParseFunc = Parse
 // Name resolution and type checking remain separate stages. On error no partial
 // AST is returned. Calls are independent and may run concurrently.
 func Parse(source []byte) (bot.ParsedProgram, error) {
+	value, err := validateSyntax(source)
+	if err != nil {
+		return bot.ParsedProgram{}, err
+	}
+	return parseProgram(value)
+}
+
+// ValidateSyntax checks the complete source schema without requiring unique hint
+// IDs. Generated programs can use placeholder IDs until the server assigns them.
+func ValidateSyntax(source []byte) error {
+	_, err := validateSyntax(source)
+	return err
+}
+
+func validateSyntax(source []byte) (any, error) {
 	var value any
 	if err := json.Unmarshal(source, &value, json.WithUnmarshalers(exactNumbers)); err != nil {
-		return bot.ParsedProgram{}, fmt.Errorf("parse picolang JSON: %w", err)
+		return nil, fmt.Errorf("parse picolang JSON: %w", err)
 	}
 	schema, err := resolvedSchema()
 	if err != nil {
-		return bot.ParsedProgram{}, fmt.Errorf("resolve picolang schema: %w", err)
+		return nil, fmt.Errorf("resolve picolang schema: %w", err)
 	}
 	if err := schema.Validate(value); err != nil {
-		return bot.ParsedProgram{}, fmt.Errorf("invalid picolang syntax: %w", err)
+		return nil, fmt.Errorf("invalid picolang syntax: %w", err)
 	}
+	return value, nil
+}
+
+func parseProgram(value any) (bot.ParsedProgram, error) {
 	// The schema guarantees the object shapes used by the AST conversion below.
 	root := value.(map[string]any)
 	program := root["picolang"].(map[string]any)["v0"].(map[string]any)["program"].(map[string]any)

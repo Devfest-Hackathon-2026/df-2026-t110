@@ -17,13 +17,6 @@
   color: var(--color-ink-2);
   line-height: 1.65;
 }
-.match-eyebrow {
-  margin: 0;
-  font-size: var(--type-small);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--color-accent-deep) !important;
-}
 .match-account,
 .match-programs,
 .match-start,
@@ -181,9 +174,9 @@
 }
 .match-error {
   padding: var(--space-sm) var(--space-md);
-  border-left: 3px solid #a64735;
-  background: #f6e9e5;
-  color: #703324 !important;
+  border-left: 3px solid var(--color-error);
+  background: var(--color-error-bg);
+  color: var(--color-error) !important;
 }
 .match-demo-link a {
   color: var(--color-accent-deep);
@@ -338,7 +331,7 @@
   font-family: monospace;
 }
 .match-board-import [role='alert'] {
-  color: #9b3d30;
+  color: var(--color-error);
 }
 .match-replay-details > summary {
   width: fit-content;
@@ -402,14 +395,16 @@
   position: absolute;
   z-index: 2;
   transform: translate(-50%, -110%);
-  max-width: 160px;
+  max-width: min(80%, 280px);
   overflow-wrap: anywhere;
-  padding: 6px 10px;
+  padding: 10px 14px;
   border-radius: 9px;
   background: #fff;
   color: #183d37;
   box-shadow: 0 3px 12px #102c2940;
+  font-size: 18px;
   font-weight: 700;
+  line-height: 1.45;
   pointer-events: none;
 }
 .match-replay-mode {

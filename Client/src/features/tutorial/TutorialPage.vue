@@ -11,6 +11,7 @@ import StageScene from '../stage/StageScene.vue'
 import TutorAvatar from './TutorAvatar.vue'
 import { isPicoProgram, type PicoProgram } from '../picolang/language/picolang.ts'
 import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlayback.ts'
+import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
 import { getTutorial, getTutorialField } from './tutorialApi.ts'
@@ -42,7 +43,6 @@ const props = defineProps<{ tutorialId: string }>()
 const tutorial = ref<TutorialRecord | null>(null)
 const catalog = ref<TutorialSummary[]>([])
 const field = ref<FieldData | null>(null)
-const source = ref('')
 const loadState = ref('loading')
 const loadMessage = ref('')
 const sceneError = ref('')
@@ -60,6 +60,10 @@ const activeStage = ref<StageLayout | null>(null)
 const playback = usePicolangPlayback()
 const { animationEvent, speech, executionTrace, playbackReady, playbackPaused, nodeInterval, stepPlayback } =
   playback
+const previewSpeech =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has('previewSpeech')
+    ? speechForValue([1, 2, 3], 0)
+    : null
 const runState = ref<'idle' | 'running' | 'finished' | 'error'>('idle')
 const runMessage = ref('')
 const loginRequired = ref(false)
@@ -143,7 +147,6 @@ async function load(id: string): Promise<void> {
   tutorial.value = null
   catalog.value = []
   field.value = null
-  source.value = ''
   loadState.value = 'loading'
   loadMessage.value = ''
   sceneError.value = ''
@@ -185,10 +188,9 @@ async function load(id: string): Promise<void> {
     const nextField = normalizeField(remoteField as Record<string, unknown>)
     tutorial.value = remote
     field.value = nextField
-    source.value = 'APIから取得'
     layoutIndex.value = 0
     loadState.value = 'ready'
-    document.title = `${remote.title} | Robot Field`
+    document.title = `${remote.title} | PicoBots`
     void getTutorials(signal)
       .then((items) => {
         if (!signal.aborted) catalog.value = items
@@ -198,8 +200,14 @@ async function load(id: string): Promise<void> {
     if (signal.aborted) return
     field.value = null
     loadState.value = 'error'
-    loadMessage.value = error instanceof Error ? error.message : String(error)
+    console.error('教材の読み込みに失敗しました', error)
+    loadMessage.value = '教材を読み込めませんでした。'
   }
+}
+
+function handleSceneError(detail: string): void {
+  console.error('教材のフィールド表示に失敗しました', detail)
+  sceneError.value = detail
 }
 
 function changeLayout(delta: number): void {
@@ -283,13 +291,19 @@ async function runProgram(): Promise<void> {
     if (generation !== runGeneration) return
     runMessage.value = result.summary.cleared
       ? '課題をクリアしました！'
-      : '実行が終了しました。ゴールへの道を考えてみましょう。'
+      : result.summary.reason === 'turn_limit'
+        ? 'ターン数の上限に達しました。課題をクリアできませんでした。'
+        : 'プログラムが終了しました。課題をクリアできませんでした。'
     runState.value = 'finished'
   } catch (error) {
     if (generation !== runGeneration || controller.signal.aborted) return
     runState.value = 'error'
     loginRequired.value = error instanceof TutorialRunApiError && error.status === 401
-    runMessage.value = error instanceof Error ? error.message : 'プログラムを実行できませんでした'
+    console.error('教材の実行に失敗しました', error)
+    runMessage.value =
+      error instanceof TutorialRunApiError
+        ? error.message
+        : 'プログラムを実行できませんでした。もう一度お試しください。'
   } finally {
     if (generation === runGeneration) runController = null
   }
@@ -492,14 +506,14 @@ onBeforeUnmount(() => {
         </button>
         <div class="tutorial-panel-scroll">
           <div class="tutorial-back-row">
-            <a href="/tutorials">教材一覧へ戻る</a><span v-if="source">{{ source }}</span>
+            <a href="/tutorials">チュートリアルへ戻る</a>
           </div>
           <div v-if="loadState === 'loading'" class="tutorial-load-message" role="status">
             教材を読み込んでいます。
           </div>
           <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
             <h1>教材が見つかりません。</h1>
-            <a href="/tutorials">教材一覧を見る</a>
+            <a href="/tutorials">チュートリアルを見る</a>
           </div>
           <template v-else-if="loadState === 'ready' && tutorial">
             <header class="tutorial-heading">
@@ -508,9 +522,9 @@ onBeforeUnmount(() => {
                 {{ String(catalog.length).padStart(2, '0') }}
               </p>
               <h1>{{ tutorial.title }}</h1>
-              <p>
-                この章の目標:
-                {{ tutorial.goal ?? 'フィールドを見て、ロボットをゴールへ導こう。' }}
+              <p v-if="tutorial.goal">
+                この課題の目標:
+                {{ tutorial.goal }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
@@ -538,7 +552,7 @@ onBeforeUnmount(() => {
                 <button type="button" @click="changeLayout(-1)">前の配置</button
                 ><button type="button" @click="changeLayout(1)">次の配置</button>
               </div>
-              <small>個人の教材では、実行直前に候補から1つ選びます。</small>
+              <small>実行すると、候補の中から配置が自動で選ばれます。</small>
             </div>
             <p v-if="sceneError" class="tutorial-error" role="alert">{{ sceneError }}</p>
             <div class="tutorial-bottom-link" aria-label="課題の移動">
@@ -549,12 +563,13 @@ onBeforeUnmount(() => {
               >
               <a v-if="nextLesson" :href="`/tutorials/${nextLesson.id}`"
                 >次の課題を見る <Icon :icon="arrowRightIcon" aria-hidden="true" /></a
-              ><a v-else href="/tutorials">教材一覧へ <Icon :icon="arrowRightIcon" aria-hidden="true" /></a>
+              ><a v-else href="/tutorials"
+                >チュートリアルへ <Icon :icon="arrowRightIcon" aria-hidden="true"
+              /></a>
             </div>
           </template>
           <div v-else class="tutorial-load-message" role="alert">
-            {{ loadMessage }}
-            <button type="button" @click="load(tutorialId)">再試行</button>
+            <p>{{ loadMessage }}</p>
             <a :href="`/tutorials/${encodeURIComponent(tutorialId)}`">ページを開き直す</a>
           </div>
         </div>
@@ -591,9 +606,9 @@ onBeforeUnmount(() => {
           :stage="stage"
           :mode="mode"
           :animation-event="animationEvent"
-          :speech="speech"
+          :speech="speech ?? previewSpeech"
           :preview-distance="previewDistance"
-          @error="sceneError = $event"
+          @error="handleSceneError"
         />
         <div v-else class="tutorial-stage-empty">
           {{ loadState === 'loading' ? 'フィールドを読み込んでいます' : 'フィールドを表示できません' }}

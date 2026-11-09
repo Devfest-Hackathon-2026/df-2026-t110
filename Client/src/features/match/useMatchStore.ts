@@ -212,7 +212,8 @@ export const useMatchStore = defineStore('match', () => {
         try {
           frames.value = replayFrames(received.history)
         } catch (cause) {
-          error.value = cause instanceof Error ? cause.message : '再生用の履歴を読み取れませんでした。'
+          console.error('対戦の再生データを読み取れませんでした', cause)
+          error.value = 'ロボットの動きを再生できませんでした。対戦結果は確認できます。'
         }
         stopEvents?.()
         stopEvents = undefined
@@ -260,5 +261,6 @@ function errorText(cause: unknown): string {
     if (cause.status === 409) return '対戦できる相手がまだいません。'
     if (cause.status === 501) return 'この機能は現在利用できません。'
   }
-  return cause instanceof Error ? cause.message : '通信に失敗しました。'
+  console.error('対戦の操作に失敗しました', cause)
+  return '対戦の操作を完了できませんでした。接続を確認して、もう一度お試しください。'
 }

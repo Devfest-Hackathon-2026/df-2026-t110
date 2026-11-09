@@ -44,24 +44,24 @@ WHERE users.name IS NOT NULL AND btrim(users.name) <> ''
 GROUP BY users.google_subject
 ORDER BY users.rating DESC, users.name;
 
--- name: SelectBattleOpponent :many
-WITH candidate AS (
-    SELECT users.google_subject, users.name, users.rating
-    FROM users
-    JOIN battle_programs ON battle_programs.google_subject = users.google_subject
-    JOIN programs ON programs.id = battle_programs.program_id
-    WHERE users.google_subject <> sqlc.arg(challenger)
-      AND users.name IS NOT NULL AND btrim(users.name) <> ''
-    GROUP BY users.google_subject
-    HAVING count(*) = sqlc.arg(robot_count)::integer
-       AND min(battle_programs.robot_index) = 0
-       AND max(battle_programs.robot_index) = sqlc.arg(robot_count)::integer - 1
-       AND bool_and(programs.is_battle AND programs.google_subject = users.google_subject)
-    ORDER BY random()
-    LIMIT 1
-)
-SELECT candidate.google_subject, candidate.name, candidate.rating, programs.id, programs.name AS program_name, programs.source
-FROM candidate
-JOIN battle_programs ON battle_programs.google_subject = candidate.google_subject
+-- name: ListBattleOpponentCandidates :many
+SELECT users.google_subject, users.rating
+FROM users
+JOIN battle_programs ON battle_programs.google_subject = users.google_subject
 JOIN programs ON programs.id = battle_programs.program_id
+WHERE users.google_subject <> sqlc.arg(challenger)
+  AND users.name IS NOT NULL AND btrim(users.name) <> ''
+GROUP BY users.google_subject
+HAVING count(*) = sqlc.arg(robot_count)::integer
+   AND min(battle_programs.robot_index) = 0
+   AND max(battle_programs.robot_index) = sqlc.arg(robot_count)::integer - 1
+   AND bool_and(programs.is_battle AND programs.google_subject = users.google_subject)
+ORDER BY users.google_subject;
+
+-- name: GetBattleTeam :many
+SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source
+FROM users
+JOIN battle_programs ON battle_programs.google_subject = users.google_subject
+JOIN programs ON programs.id = battle_programs.program_id
+WHERE users.google_subject = @google_subject
 ORDER BY battle_programs.robot_index;

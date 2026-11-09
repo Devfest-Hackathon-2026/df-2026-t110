@@ -51,7 +51,6 @@ function onEditorToggle(event: Event): void {
 <template>
   <main class="match-main container">
     <header class="match-heading">
-      <p class="match-eyebrow">ROBOT FIELD / MATCH</p>
       <h1 class="heading-with-icon"><Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span></h1>
       <p>3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
@@ -61,9 +60,12 @@ function onEditorToggle(event: Event): void {
       <section class="match-account" aria-labelledby="match-account-title">
         <div class="match-section-heading"><h2 id="match-account-title">アカウント</h2></div>
         <p v-if="store.authStatus === 'checking'">ログイン状態を確認しています…</p>
-        <p v-else-if="store.authStatus === 'signed-in'">
-          <strong>{{ store.user?.name || 'ログイン中' }}</strong
+        <p v-else-if="store.authStatus === 'signed-in' && store.user?.name">
+          <strong>{{ store.user.name }}</strong
           >として対戦します。
+        </p>
+        <p v-else-if="store.authStatus === 'signed-in'">
+          対戦するには表示名の設定が必要です。<a href="/account">表示名を設定する</a>
         </p>
         <template v-else>
           <p>対戦には Google アカウントでのログインが必要です。</p>
@@ -187,14 +189,13 @@ function onEditorToggle(event: Event): void {
         :class="{ 'match-status--result': store.phase === 'finished' && score }"
         aria-live="polite"
       >
-        <p class="match-eyebrow">{{ store.phase === 'finished' ? 'MATCH COMPLETE' : 'MATCH IN PROGRESS' }}</p>
         <h2>{{ store.phase === 'finished' ? `対戦結果 · ${outcome}` : '結果を読み込んでいます' }}</h2>
         <p>対戦ID: {{ store.match?.id }}</p>
         <p v-if="store.match?.fieldId">選ばれた配置: {{ store.match.fieldId }}</p>
         <template v-if="store.phase === 'running'">
           <div v-if="!store.error" class="match-progress" aria-hidden="true"><span /></div>
           <button v-if="store.error && store.match?.runId" type="button" @click="store.reconnect">
-            <Icon :icon="rotateCcwIcon" aria-hidden="true" />結果に再接続
+            <Icon :icon="rotateCcwIcon" aria-hidden="true" />結果を再取得
           </button>
         </template>
         <div v-if="score" class="match-score">
@@ -210,7 +211,9 @@ function onEditorToggle(event: Event): void {
             <TutorAvatar variant="purple" :animated="false" />
           </div>
         </div>
-        <p v-if="store.phase === 'finished'">対戦の計算過程を、3Dまたはカメラに重ねて確認できます。</p>
+        <p v-if="store.phase === 'finished'">
+          ロボットの動きを3Dで再生できます。カメラの映像に重ねることもできます。
+        </p>
       </section>
       <details
         v-if="store.phase === 'finished' && store.frames.length"
@@ -218,7 +221,7 @@ function onEditorToggle(event: Event): void {
         :open="replayOpen"
         @toggle="replayOpen = ($event.target as HTMLDetailsElement).open"
       >
-        <summary>計算過程を見る</summary>
+        <summary>対戦を再生</summary>
         <MatchReplayScene v-if="replayOpen" :frames="store.frames" />
       </details>
       <a class="match-back" href="/rooms">新しい対戦を準備する</a>

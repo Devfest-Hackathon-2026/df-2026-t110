@@ -12,6 +12,7 @@ import (
 
 // NewBoard builds the selected zero-based variant and its completion rules.
 // Use robotID when registering the tutorial robot with the Hub.
+// maxTicks is a safety stop, separate from the normal tutorial TurnLimit.
 func NewBoard(stage schema.StageDefinition, variant int, robotID protocol.RobotID, maxTicks uint64) (*board.Board, error) {
 	if variant < 0 || variant >= len(stage.Variants) {
 		return nil, fmt.Errorf("tutorial variant %d is out of range", variant)

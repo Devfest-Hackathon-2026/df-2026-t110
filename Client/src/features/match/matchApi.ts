@@ -41,14 +41,7 @@ export class MatchApiError extends Error {
 async function request(path: string, init: RequestInit = {}): Promise<unknown> {
   const response = await fetch(`${base}${path}`, { credentials: 'include', ...init })
   if (!response.ok) {
-    let message = `API エラー (${response.status})`
-    try {
-      const body: unknown = await response.json()
-      if (isObject(body) && typeof body.message === 'string') message = body.message
-    } catch {
-      // A status code is sufficient when the response has no JSON body.
-    }
-    throw new MatchApiError(response.status, message)
+    throw new MatchApiError(response.status, '対戦のデータを取得できませんでした。')
   }
   if (!response.headers.get('content-type')?.includes('application/json'))
     throw new Error('対戦データを取得できませんでした。しばらくしてから再試行してください。')
@@ -180,14 +173,15 @@ export function subscribeMatchResult(
     try {
       onResult(parseMatchResult(JSON.parse((event as MessageEvent).data)))
     } catch (error) {
-      onError(error instanceof Error ? error.message : '対戦結果を読み取れませんでした')
+      console.error('対戦結果を読み取れませんでした', error)
+      onError('対戦結果を読み込めませんでした。もう一度取得してください。')
     } finally {
       source.close()
     }
   })
   source.onerror = () => {
     source.close()
-    onError('結果を受信できませんでした。再接続してください。')
+    onError('対戦結果を受信できませんでした。「結果を再取得」を押してください。')
   }
   return () => source.close()
 }

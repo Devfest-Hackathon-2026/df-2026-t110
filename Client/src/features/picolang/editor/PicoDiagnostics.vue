@@ -66,12 +66,17 @@ button {
 }
 strong {
   flex: none;
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 .pico-diagnostic--error strong {
-  color: #a12525;
+  background: var(--color-error);
+  color: #fff;
 }
 .pico-diagnostic--warning strong {
-  color: #865500;
+  background: var(--color-warning);
+  color: var(--color-warning-ink);
 }
 button:hover span {
   text-decoration: underline;

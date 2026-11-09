@@ -33,6 +33,13 @@ const props = withDefaults(
   { animationEvent: null, speech: null, previewDistance: 4.8 },
 )
 const emit = defineEmits<{ error: [message: string] }>()
+function cameraErrorMessage(error: unknown): string {
+  const name = error instanceof Error ? error.name : ''
+  if (name === 'NotAllowedError') return 'カメラへのアクセスを許可して、もう一度お試しください。'
+  if (name === 'NotFoundError') return 'カメラが見つかりません。接続を確認してください。'
+  return 'カメラを起動できませんでした。接続とブラウザのカメラ設定を確認してください。'
+}
+
 const host = ref<HTMLElement | null>(null)
 let renderer!: THREE.WebGLRenderer
 let scene!: THREE.Scene
@@ -71,6 +78,7 @@ let rockBreakStart: number | null = null
 let pendingEvent: AnimationEvent | null = null
 const robotCell = ref<{ x: number; y: number } | null>(null)
 const speechPosition = ref<{ x: number; y: number } | null>(null)
+const speechBubble = ref<HTMLElement | null>(null)
 defineExpose({ robotCell, reset: replaceStage, resetRobot, refreshVisuals, setCarrying })
 let yaw = 0.55
 let pitch = 0.65
@@ -223,18 +231,17 @@ function loadRobot() {
       board.add(robotRig)
       positionRobot(robotCell.value)
       robotAnimator = createRobotAnimator(robotRig, robotModel, pivots)
-      if (!found.every(Boolean)) emit('error', 'GLBの left_arm / right_arm を検出できませんでした')
+      if (!found.every(Boolean)) emit('error', 'ロボットの動きを表示できませんでした。')
       if (pendingEvent) {
         playAnimationEvent(pendingEvent)
         pendingEvent = null
       }
     },
     undefined,
-    (error) =>
-      emit(
-        'error',
-        `ロボットGLBを読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`,
-      ),
+    (error) => {
+      console.error('ロボットモデルの読み込みに失敗しました', error)
+      emit('error', 'ロボットを表示できませんでした。ページを再読み込みしてください。')
+    },
   )
 }
 
@@ -450,15 +457,26 @@ function animate(time: number): void {
     board.updateMatrixWorld(true)
     camera.updateMatrixWorld()
     const point = new THREE.Vector3(0, 1.1, 0).applyMatrix4(robotRig.matrixWorld).project(camera)
+    const horizontalInset = Math.min(
+      host.value.clientWidth / 2,
+      (speechBubble.value?.offsetWidth ?? 144) / 2 + 12,
+    )
+    const verticalInset = Math.min(
+      host.value.clientHeight - 12,
+      (speechBubble.value?.offsetHeight ?? 100) + 12,
+    )
     speechPosition.value =
       point.z >= -1 && point.z <= 1
         ? {
             x: Math.max(
-              72,
-              Math.min(host.value.clientWidth - 72, (point.x * 0.5 + 0.5) * host.value.clientWidth),
+              horizontalInset,
+              Math.min(
+                host.value.clientWidth - horizontalInset,
+                (point.x * 0.5 + 0.5) * host.value.clientWidth,
+              ),
             ),
             y: Math.max(
-              112,
+              verticalInset,
               Math.min(host.value.clientHeight - 12, (-point.y * 0.5 + 0.5) * host.value.clientHeight),
             ),
           }
@@ -482,7 +500,10 @@ async function startCamera() {
       onCameraReady: () => {
         if (generation === markerGeneration) cameraReady.value = true
       },
-      onCameraError: (error) => emit('error', `マーカー追跡のカメラを開けませんでした: ${String(error)}`),
+      onCameraError: (error) => {
+        console.error('カメラの起動に失敗しました', error)
+        emit('error', cameraErrorMessage(error))
+      },
     })
     if (generation !== markerGeneration || props.mode !== 'camera') {
       tracker.stop()
@@ -511,10 +532,8 @@ async function startCamera() {
   } catch (error) {
     if (generation !== markerGeneration || props.mode !== 'camera') return
     markerLoading.value = false
-    emit(
-      'error',
-      `マーカー追跡を開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    console.error('マーカー追跡を開始できませんでした', error)
+    emit('error', cameraErrorMessage(error))
   }
 }
 
@@ -587,11 +606,10 @@ onMounted(() => {
         stageAssets = loaded
         refreshVisuals()
       },
-      (error) =>
-        emit(
-          'error',
-          `ステージのGLBを読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`,
-        ),
+      (error) => {
+        console.error('フィールド素材の読み込みに失敗しました', error)
+        emit('error', 'フィールドを表示できませんでした。ページを再読み込みしてください。')
+      },
     )
     loadRobot()
     resizeObserver = new ResizeObserver(resizeImmediately)
@@ -600,10 +618,8 @@ onMounted(() => {
     frame = requestAnimationFrame(animate)
     startCamera()
   } catch (error) {
-    emit(
-      'error',
-      `3Dステージを開始できませんでした: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    console.error('3Dフィールドの起動に失敗しました', error)
+    emit('error', 'フィールドを表示できませんでした。ページを再読み込みしてください。')
   }
 })
 
@@ -649,6 +665,7 @@ onBeforeUnmount(() => {
   >
     <div
       v-if="speech && speechPosition"
+      ref="speechBubble"
       :key="speech.id"
       class="stage-robot-speech"
       :style="{ left: `${speechPosition.x}px`, top: `${speechPosition.y}px` }"
@@ -694,7 +711,7 @@ onBeforeUnmount(() => {
           配置を確定
         </button>
         <p v-else-if="!trackingPoseAvailable" role="status">
-          基準マーカーを映し、2枚を一度同時に映してください。
+          配置を決めたときのマーカーを映してください。そのまま、もう1枚も一緒に映してください。
         </p>
         <p v-else role="status">もう1枚のマーカーも一度同時に映すと、見失ったときに切り替えられます。</p>
       </div>
@@ -724,8 +741,9 @@ body {
   z-index: 5;
   display: grid;
   justify-items: center;
-  max-width: min(80%, 400px);
-  padding: 7px 10px;
+  min-width: 120px;
+  max-width: min(85%, 480px);
+  padding: 12px 16px;
   transform: translate(-50%, -100%);
   border: 2px solid #356b61;
   border-radius: 14px;
@@ -751,7 +769,7 @@ body {
   max-width: 100%;
   gap: 6px;
   overflow-x: auto;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
   white-space: nowrap;
   touch-action: pan-x;
@@ -765,13 +783,13 @@ body {
   content: '·';
 }
 .terrain-speech-model {
-  width: 116px;
-  height: 94px;
+  width: 150px;
+  height: 120px;
 }
 .terrain-speech-model canvas {
   display: block;
-  width: 116px;
-  height: 94px;
+  width: 150px;
+  height: 120px;
 }
 .stage-scene .marker-overlay {
   position: absolute;
