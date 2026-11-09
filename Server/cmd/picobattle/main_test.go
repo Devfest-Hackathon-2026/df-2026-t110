@@ -72,7 +72,8 @@ func TestGenerateAndReproducibleBattle(t *testing.T) {
 		history := readTestFile(t, filepath.Join(dir, "history.jsonl"))
 		histories = append(histories, history)
 		scanner := bufio.NewScanner(bytes.NewReader(history))
-		count, lastTick := 0, 0
+		var count uint64
+		lastTick := 0
 		for scanner.Scan() {
 			var event wire.FieldEvent
 			if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
@@ -90,7 +91,7 @@ func TestGenerateAndReproducibleBattle(t *testing.T) {
 		if err := scanner.Err(); err != nil {
 			t.Fatal(err)
 		}
-		if count < 201 || lastTick != 200 {
+		if count != r.Layout.Turns+1 || lastTick < 0 || uint64(lastTick) != r.Layout.Turns {
 			t.Errorf("history count=%d lastTick=%d", count, lastTick)
 		}
 		if _, err := os.Stat(filepath.Join(dir, "team-2-robot-1.json")); err != nil {
