@@ -39,6 +39,7 @@ func TestSelectRatedOpponent(t *testing.T) {
 	me := domain.OpponentCandidate{GoogleSubject: "me", Rating: 1000}
 	near := domain.OpponentCandidate{GoogleSubject: "near", Rating: 1000}
 	sigma := domain.OpponentCandidate{GoogleSubject: "sigma", Rating: 1150}
+	twoSigma := domain.OpponentCandidate{GoogleSubject: "two-sigma", Rating: 1300}
 	far := domain.OpponentCandidate{GoogleSubject: "far", Rating: 7000}
 	farther := domain.OpponentCandidate{GoogleSubject: "farther", Rating: 7100}
 	// near and sigma weigh 1 and exp(-0.5), so near covers draws below 1/(1+exp(-0.5)) ≈ 0.6225.
@@ -55,9 +56,12 @@ func TestSelectRatedOpponent(t *testing.T) {
 		{name: "draw just inside the nearer share", candidates: []domain.OpponentCandidate{near, sigma}, draw: nearShare - 1e-9, want: near},
 		{name: "draw just past the nearer share", candidates: []domain.OpponentCandidate{near, sigma}, draw: nearShare + 1e-9, want: sigma},
 		{name: "order does not change the shares", candidates: []domain.OpponentCandidate{sigma, near}, draw: 1 - nearShare + 1e-9, want: near},
+		// Weights 1, exp(-0.5) and exp(-2) give sigma the draws in about [0.574, 0.922); a uniform pick would choose two-sigma.
+		{name: "middle candidate owns its cumulative share", candidates: []domain.OpponentCandidate{near, sigma, twoSigma}, draw: 0.75, want: sigma},
 		{name: "single candidate is always chosen", candidates: []domain.OpponentCandidate{sigma}, draw: 0.999, want: sigma},
 		{name: "no hard limit on rating difference", candidates: []domain.OpponentCandidate{far}, draw: 0.5, want: far},
-		{name: "distant candidates keep relative weights", candidates: []domain.OpponentCandidate{farther, far}, draw: 0.999, want: far},
+		// Both weights underflow to zero unless scaled, which would leave the choice to the last candidate.
+		{name: "distant candidates keep relative weights", candidates: []domain.OpponentCandidate{far, farther}, draw: 0.999, want: far},
 		{name: "challenger is excluded", candidates: []domain.OpponentCandidate{me, sigma}, draw: 0, want: sigma},
 		{name: "only the challenger", candidates: []domain.OpponentCandidate{me}, draw: 0, err: domain.ErrNoOpponent},
 		{name: "no candidates", candidates: nil, draw: 0, err: domain.ErrNoOpponent},
