@@ -10,9 +10,29 @@
 ## 相手の選び方
 
 - (仮実装) 表示名と3台分の対戦用プログラムを登録している自分以外のユーザーからランダムに1人選び、登録済みのプログラムをロボット順に使う。プログラムIDの重複は保持する
-  - レートを考慮した相手選択は [#156](https://github.com/dvpico/Programming-Learning-AR/issues/156) で対応する
+  - レートを考慮した相手選択は [#156](https://github.com/dvpico/Programming-Learning-AR/issues/156) で対応する (下記「レート差による重み付きランダム選択」)
   - ランクが近い人だけに絞る場合、似た組み合わせの対戦になりやすい
   - プログラム単位で選ぶ場合、多く提出したユーザーほど選ばれやすくなる
+
+### レート差による重み付きランダム選択
+
+[#156](https://github.com/dvpico/Programming-Learning-AR/issues/156) で採用する方式。レートの計算は [rating.md](rating.md) を参照。
+
+- 自分以外の公開entityから、**レート差による重み付きランダム選択**を行う。
+- レート差が小さい相手ほど選ばれやすくする。
+- ハードなレート差制限は設けない。
+- 各候補の選択重みは次のガウス関数で計算する。
+
+\[
+w(d)=\exp\left(-\frac{d^2}{2\sigma^2}\right)
+\]
+
+- \(d\)：相手のレート − 挑戦者のレート
+- \(\sigma=150\)：暫定値
+- 各候補の選択確率は、重みを全候補の重みの合計で割って算出する。
+- ユーザーによる対戦相手の指定・再抽選はできない。
+- 同じ相手との連戦は制限しない。
+- 対戦候補が存在しない場合はマッチング不可とする。
 
 ### エラーの扱い
 
@@ -35,7 +55,7 @@
 - (仮実装) サーバーのDBで無期限に保持する
   - `GET /run/{runId}/events` により後からも同じデータを参照できるようにすることで、エラー発生時も改めて読み込みやすく
 
-既存DBには、サーバー更新前に `Server/infra/repo/sql/migrations/20261109_matches.sql` を適用する。新規DBでは `Server/infra/repo/sql/schema/schema.sql` を使う。
+既存DBには、サーバー更新前に `Server/infra/repo/sql/migrations/20261109_matches.sql`、`20261109_ratings.sql` の順で未適用のものを適用する。新規DBでは `Server/infra/repo/sql/schema/schema.sql` を使う。
 
 ### DBスキーマの適用方法
 
@@ -48,12 +68,13 @@
 | Cloud SQL | TerraformはDBインスタンス・DB・ユーザーを作成する。テーブルDDLを適用する処理はない |
 | サーバーのデプロイCI | イメージのビルド・配布・Cloud Runの更新を行う。DBマイグレーションを実行する処理はない |
 
-今回の変更は `matches` の追加と、対戦では使わない `runs.tutorial_id` / `runs.program_id` のNULL許可を含む。既存DBのデータを維持してこの構造に更新するために移行SQLが必要となる。`sql/migrations` は現時点では手動適用用のSQLを置くディレクトリであり、適用履歴の管理や自動実行の仕組みはない。
+`20261109_matches.sql` は `matches` の追加と、対戦では使わない `runs.tutorial_id` / `runs.program_id` のNULL許可を含む。`20261109_ratings.sql` は `users.rating` と、`matches` の勝敗・レート列を追加する。レート導入前の対戦は保存済みのスコアから勝敗だけを復元し、レート列は NULL のままとする。既存DBのデータを維持してこの構造に更新するために移行SQLが必要となる。`sql/migrations` は現時点では手動適用用のSQLを置くディレクトリであり、適用履歴の管理や自動実行の仕組みはない。
 
-Composeの既存DBでは、リポジトリルートから以下を一度実行する。
+Composeの既存DBでは、リポジトリルートから未適用のものを順に一度ずつ実行する。
 
 ```sh
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261109_matches.sql
+docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U app -d app < Server/infra/repo/sql/migrations/20261109_ratings.sql
 ```
 
 Cloud SQLでは接続を用意したうえで同じ移行SQLを手動適用する。新規の空DBには移行SQLではなく `schema.sql` を適用する。
@@ -67,7 +88,7 @@ Cloud SQLでは接続を用意したうえで同じ移行SQLを手動適用す�
 
 ## ランキングについて
 
-- レート計算・更新は [#155](https://github.com/dvpico/Programming-Learning-AR/issues/155) で対応する。実装時にはランキングは対戦を申し込んだ側だけ変動させる
+- レートは対戦を申し込んだ側だけ変動させる。計算と反映の詳細は [rating.md](rating.md) を参照
   - 相手側は自分の知らないところで対戦されるため、気づいたときに勝手にレートが上下するのはあまり直感的でない
 - ランキング掲載には DisplayName の設定を必須とする
   - なお、 DisplayName は変更不可 (ref: [users.md](users.md))

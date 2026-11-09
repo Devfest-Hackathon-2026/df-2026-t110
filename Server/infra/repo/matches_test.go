@@ -10,6 +10,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
@@ -18,6 +19,8 @@ import (
 	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 )
 
@@ -146,8 +149,14 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 		t.Errorf("run=%+v", run)
 	}
 	var savedLayout string
-	if err := pool.QueryRow(t.Context(), "SELECT selected_layout_id FROM matches WHERE run_id=$1", match.RunId).Scan(&savedLayout); err != nil {
+	var before, after int
+	if err := pool.QueryRow(t.Context(), "SELECT selected_layout_id, rating_before, rating_after FROM matches WHERE run_id=$1", match.RunId).Scan(&savedLayout, &before, &after); err != nil {
 		t.Errorf("get persisted match: %v", err)
+	}
+	// The outcome depends on the engine, so only check that the saved result was applied
+	// to the challenger alone; rating changes are covered by TestCreateMatchSavesRating.
+	if before != domain.InitialRating || getRating(t, pool, "owner") != after || getRating(t, pool, "opponent") != domain.InitialRating {
+		t.Errorf("rating=%d->%d, owner=%d, opponent=%d", before, after, getRating(t, pool, "owner"), getRating(t, pool, "opponent"))
 	}
 	if savedLayout != match.SelectedLayoutId {
 		t.Errorf("saved layout=%s, response layout=%s", savedLayout, match.SelectedLayoutId)
@@ -193,22 +202,200 @@ func TestPostMatchPersistsAndReplays(t *testing.T) {
 	}
 }
 
-func TestMatchSaveRollsBackRun(t *testing.T) {
-	t.Parallel()
-	pool := newTestPool(t)
-	mustCreateUser(t, pool, "owner", ptr("Owner"))
-	_, err := NewMatches(pool).Create(t.Context(), domain.MatchRecord{
-		GoogleSubject: "owner", OpponentSubject: "missing", OpponentName: "Opponent", FieldID: "field", SelectedLayoutID: "layout", Result: jsontext.Value(`{"history":[],"summary":{"score":{"player":0,"opponent":0}}}`),
-	})
-	if err == nil {
-		t.Error("saving a nonexistent opponent succeeded")
+func ratedRecord(challenger, opponent string, outcome domain.MatchOutcome, delta int) domain.MatchRecord {
+	return domain.MatchRecord{
+		GoogleSubject: challenger, OpponentSubject: opponent, OpponentName: opponent, FieldID: "field", SelectedLayoutID: "layout",
+		Result:  jsontext.Value(`{"history":[],"summary":{"score":{"player":0,"opponent":0}}}`),
+		Outcome: outcome, ChallengerRating: domain.InitialRating, OpponentRating: domain.InitialRating, RatingDelta: delta,
 	}
+}
+
+func getRating(t *testing.T, pool interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, subject string) int {
+	t.Helper()
+
+	var rating int
+	if err := pool.QueryRow(t.Context(), "SELECT rating FROM users WHERE google_subject=$1", subject).Scan(&rating); err != nil {
+		t.Fatalf("get rating: %v", err)
+	}
+	return rating
+}
+
+func countRuns(t *testing.T, pool *pgxpool.Pool) int {
+	t.Helper()
+
 	var count int
 	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM runs").Scan(&count); err != nil {
-		t.Errorf("count runs: %v", err)
-		return
+		t.Fatalf("count runs: %v", err)
 	}
-	if count != 0 {
-		t.Errorf("failed match left %d runs", count)
+	return count
+}
+
+func TestMatchSaveRollsBackRunAndRating(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("Owner"))
+
+	// The match row is inserted after the rating update, so its failure shows that
+	// the update is rolled back together with the run.
+	if _, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "missing", domain.MatchWin, 30)); err == nil {
+		t.Error("saving a nonexistent opponent succeeded")
+	}
+
+	if runs := countRuns(t, pool); runs != 0 {
+		t.Errorf("failed match left %d runs", runs)
+	}
+	if got := getRating(t, pool, "owner"); got != domain.InitialRating {
+		t.Errorf("failed match changed rating to %d", got)
+	}
+}
+
+func TestMatchRating(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("Owner"))
+	matches := NewMatches(pool)
+
+	if rating, err := matches.Rating(t.Context(), "owner"); err != nil || rating != domain.InitialRating {
+		t.Errorf("Rating=%d, %v, want %d", rating, err, domain.InitialRating)
+	}
+	if _, err := matches.Rating(t.Context(), "missing"); !errors.Is(err, usecase.ErrNotFound) {
+		t.Errorf("missing user error=%v, want %v", err, usecase.ErrNotFound)
+	}
+}
+
+func TestCreateMatchSavesRating(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("Owner"))
+	mustCreateUser(t, pool, "opponent", ptr("Opponent"))
+
+	match, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "opponent", domain.MatchLoss, -25))
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	var outcome string
+	var opponentRating, before, after int
+	if err := pool.QueryRow(t.Context(), "SELECT outcome, opponent_rating, rating_before, rating_after FROM matches WHERE run_id=$1", match.RunID).
+		Scan(&outcome, &opponentRating, &before, &after); err != nil {
+		t.Fatalf("get match: %v", err)
+	}
+	if outcome != "loss" || opponentRating != 1000 || before != 1000 || after != 975 {
+		t.Errorf("saved outcome=%s opponent=%d rating=%d->%d", outcome, opponentRating, before, after)
+	}
+
+	if got := getRating(t, pool, "owner"); got != 975 {
+		t.Errorf("challenger rating=%d, want 975", got)
+	}
+	if got := getRating(t, pool, "opponent"); got != domain.InitialRating {
+		t.Errorf("opponent rating changed to %d", got)
+	}
+}
+
+// Concurrent results of one challenger, all rated from the same matching-time rating,
+// are each added to the latest rating, and the saved histories chain without gaps.
+func TestCreateMatchAppliesConcurrentResults(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	mustCreateUser(t, pool, "owner", ptr("Owner"))
+	mustCreateUser(t, pool, "opponent", ptr("Opponent"))
+
+	const results = 5
+	var wg sync.WaitGroup
+	for range results {
+		wg.Go(func() {
+			if _, err := NewMatches(pool).Create(t.Context(), ratedRecord("owner", "opponent", domain.MatchWin, 30)); err != nil {
+				t.Errorf("Create: %v", err)
+			}
+		})
+	}
+	wg.Wait()
+
+	if got, want := getRating(t, pool, "owner"), domain.InitialRating+results*30; got != want {
+		t.Errorf("rating=%d, want %d", got, want)
+	}
+
+	rows, err := pool.Query(t.Context(), "SELECT rating_before, rating_after FROM matches ORDER BY rating_before")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var history [][2]int
+	for rows.Next() {
+		var change [2]int
+		if err := rows.Scan(&change[0], &change[1]); err != nil {
+			t.Fatal(err)
+		}
+		history = append(history, change)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	var want [][2]int
+	for i := range results {
+		before := domain.InitialRating + i*30
+		want = append(want, [2]int{before, before + 30})
+	}
+	if !reflect.DeepEqual(history, want) {
+		t.Errorf("history=%v, want %v", history, want)
+	}
+}
+
+func TestRanking(t *testing.T) {
+	t.Parallel()
+
+	pool := newTestPool(t)
+	for _, subject := range []string{"alice", "bob", "carol", "dave", "idle"} {
+		mustCreateUser(t, pool, subject, ptr(subject))
+	}
+	mustCreateUser(t, pool, "nameless", nil)
+	mustCreateUser(t, pool, "blank", ptr(" "))
+
+	matches := NewMatches(pool)
+	matchesPlayed := []struct {
+		challenger string
+		outcome    domain.MatchOutcome
+		delta      int
+	}{
+		{"alice", domain.MatchWin, 30}, {"alice", domain.MatchLoss, -25}, {"alice", domain.MatchDraw, 0},
+		{"bob", domain.MatchWin, 30}, {"carol", domain.MatchWin, 30},
+		{"dave", domain.MatchLoss, -25}, {"nameless", domain.MatchWin, 30}, {"blank", domain.MatchWin, 30},
+	}
+	for _, played := range matchesPlayed {
+		if _, err := matches.Create(t.Context(), ratedRecord(played.challenger, "idle", played.outcome, played.delta)); err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+	}
+
+	// A match played before ratings were introduced still counts toward the record.
+	if _, err := pool.Exec(t.Context(), `
+		WITH run AS (
+			INSERT INTO runs (id, google_subject, field_id, result)
+			VALUES (gen_random_uuid(), 'dave', 'field', '{}') RETURNING id
+		)
+		INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, selected_layout_id, outcome)
+		SELECT gen_random_uuid(), id, 'idle', 'idle', 'layout', 'win' FROM run`); err != nil {
+		t.Fatalf("insert legacy match: %v", err)
+	}
+
+	got, err := matches.Ranking(t.Context())
+	if err != nil {
+		t.Fatalf("Ranking: %v", err)
+	}
+
+	want := []domain.RankingEntry{
+		{Rank: 1, Name: "bob", Rating: 1030, Wins: 1},
+		{Rank: 1, Name: "carol", Rating: 1030, Wins: 1},
+		{Rank: 3, Name: "alice", Rating: 1005, Wins: 1, Losses: 1, Draws: 1},
+		{Rank: 4, Name: "dave", Rating: 975, Wins: 1, Losses: 1},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Ranking=%+v, want %+v", got, want)
 	}
 }

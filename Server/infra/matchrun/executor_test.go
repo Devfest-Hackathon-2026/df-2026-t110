@@ -55,7 +55,10 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 				History []wire.FieldEvent `json:"history"`
 				Summary api.MatchSummary  `json:"summary"`
 			}
-			if err := json.Unmarshal(result, &decoded); err != nil {
+			if result.ChallengerScore != 3 || result.OpponentScore != 0 {
+				t.Errorf("scores=%d-%d, want 3-0", result.ChallengerScore, result.OpponentScore)
+			}
+			if err := json.Unmarshal(result.Replay, &decoded); err != nil {
 				t.Errorf("decode result: %v", err)
 				return
 			}
@@ -63,7 +66,7 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 				t.Errorf("score=%+v", decoded.Summary.Score)
 			}
 			if len(decoded.History) == 0 || decoded.History[0].State.Initial == nil {
-				t.Errorf("missing initial board: %s", result)
+				t.Errorf("missing initial board: %s", result.Replay)
 				return
 			}
 			initial := decoded.History[0].State.Initial
@@ -137,7 +140,7 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 			var decoded struct {
 				History []wire.FieldEvent `json:"history"`
 			}
-			if err := json.Unmarshal(result, &decoded); err != nil {
+			if err := json.Unmarshal(result.Replay, &decoded); err != nil {
 				t.Errorf("decode: %v", err)
 				return
 			}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
 
@@ -32,12 +31,12 @@ type Executor struct{}
 
 func NewExecutor() *Executor { return &Executor{} }
 
-func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (jsontext.Value, error) {
+func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return domain.MatchResult{}, err
 	}
 	if len(player) != domain.BattleRobotCount || len(opponent) != domain.BattleRobotCount {
-		return nil, domain.ErrInvalidProgram
+		return domain.MatchResult{}, domain.ErrInvalidProgram
 	}
 	limits := interpreter.Limits{MaxSteps: 10_000, MaxMemoryBytes: 1 << 20, MaxCallDepth: 64}
 	var participants []hub.Participant
@@ -46,14 +45,14 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 		for slot, program := range programs {
 			var seed [8]byte
 			if _, err := rand.Read(seed[:]); err != nil {
-				return nil, fmt.Errorf("generate battle seed: %w", err)
+				return domain.MatchResult{}, fmt.Errorf("generate battle seed: %w", err)
 			}
 			bot, err := robot.NewPicolangBot(program.Source, binary.LittleEndian.Uint64(seed[:]), limits, false)
 			id := protocol.RobotID(fmt.Sprintf("team-%d-robot-%d", team+1, slot+1))
 			participant := hub.Participant{ID: id}
 			if err != nil {
 				if team == 0 {
-					return nil, fmt.Errorf("%w: robot %d: %w", domain.ErrInvalidProgram, slot+1, err)
+					return domain.MatchResult{}, fmt.Errorf("%w: robot %d: %w", domain.ErrInvalidProgram, slot+1, err)
 				}
 				// A broken defense program stops its robot, without blocking all
 				// challengers who happen to draw this opponent.
@@ -69,37 +68,37 @@ func (*Executor) Execute(ctx context.Context, player, opponent []domain.Program,
 	}
 	b, err := newBoard(layout, states)
 	if err != nil {
-		return nil, fmt.Errorf("build battle board: %w", err)
+		return domain.MatchResult{}, fmt.Errorf("build battle board: %w", err)
 	}
 	game, err := hub.New(b, participants)
 	if err != nil {
-		return nil, fmt.Errorf("build battle hub: %w", err)
+		return domain.MatchResult{}, fmt.Errorf("build battle hub: %w", err)
 	}
 	recording := contextRecorder{ctx: ctx}
 	// Queries can resume a robot repeatedly without advancing a turn. Every
 	// action charges at least one VM step; allow a final resume to stop each VM.
 	report, err := game.Run(hub.Options{MaxResumes: uint64(len(participants)) * (limits.MaxSteps + 1), Recorder: &recording})
 	if err != nil {
-		return nil, fmt.Errorf("run battle simulation: %w", err)
+		return domain.MatchResult{}, fmt.Errorf("run battle simulation: %w", err)
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return domain.MatchResult{}, err
 	}
 	outcome, ok := report.Result().(boardmsg.BattleResult)
 	if !ok {
-		return nil, fmt.Errorf("unexpected battle result %T", report.Result())
+		return domain.MatchResult{}, fmt.Errorf("unexpected battle result %T", report.Result())
 	}
 	history, err := replay.History(recording.Events)
 	if err != nil {
-		return nil, err
+		return domain.MatchResult{}, err
 	}
 	result := api.MatchResult{History: history}
 	result.Summary.Score.Player, result.Summary.Score.Opponent = outcome.Team1().Score(), outcome.Team2().Score()
 	encoded, err := json.Marshal(result)
 	if err != nil {
-		return nil, fmt.Errorf("encode match result: %w", err)
+		return domain.MatchResult{}, fmt.Errorf("encode match result: %w", err)
 	}
-	return encoded, nil
+	return domain.MatchResult{ChallengerScore: outcome.Team1().Score(), OpponentScore: outcome.Team2().Score(), Replay: encoded}, nil
 }
 
 func newBoard(layout domain.BattleLayout, robots map[protocol.RobotID]board.RobotState) (*board.Board, error) {

@@ -3,6 +3,9 @@
     tags:
       - ranking
     summary: ランキングを取得
+    description: |
+      表示名を設定し、1回以上対戦を申し込んだユーザーをレート降順に返す。
+      同じレートのユーザーは同じ順位とし、表示名順に並べる。
     operationId: getRanking
     responses:
       "200":
@@ -12,5 +15,4 @@
             schema:
               type: array
               items:
-                type: object
-                additionalProperties: true
+                $ref: "../../openapi.yaml#/components/schemas/RankingEntry"

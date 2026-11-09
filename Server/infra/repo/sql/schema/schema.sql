@@ -1,6 +1,7 @@
 CREATE TABLE users (
     google_subject text PRIMARY KEY,
-    name text UNIQUE
+    name text UNIQUE,
+    rating integer NOT NULL DEFAULT 1000
 );
 
 CREATE TABLE sessions (
@@ -49,7 +50,14 @@ CREATE TABLE matches (
     run_id uuid NOT NULL UNIQUE REFERENCES runs (id) ON DELETE CASCADE,
     opponent_google_subject text NOT NULL REFERENCES users (google_subject),
     opponent_name text NOT NULL,
-    selected_layout_id text NOT NULL
+    selected_layout_id text NOT NULL,
+    outcome text NOT NULL CHECK (outcome IN ('win', 'loss', 'draw')),
+    -- NULL for matches played before ratings were introduced.
+    opponent_rating integer,
+    rating_before integer,
+    rating_after integer,
+    CHECK ((opponent_rating IS NULL) = (rating_before IS NULL) AND
+           (rating_before IS NULL) = (rating_after IS NULL))
 );
 
 -- Usage is appended per reservation rather than kept as a per-window counter,

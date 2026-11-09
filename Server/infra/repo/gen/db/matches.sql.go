@@ -11,9 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addUserRating = `-- name: AddUserRating :one
+UPDATE users
+SET rating = rating + $1::bigint
+WHERE google_subject = $2
+RETURNING rating
+`
+
+type AddUserRatingParams struct {
+	Delta         int64
+	GoogleSubject string
+}
+
+// Adding to the current value lets the row lock of this UPDATE serialize only the
+// application of concurrent results, without holding a lock during the match.
+// The delta is bigint so that PostgreSQL rejects an out-of-range rating.
+func (q *Queries) AddUserRating(ctx context.Context, arg AddUserRatingParams) (int32, error) {
+	row := q.db.QueryRow(ctx, addUserRating, arg.Delta, arg.GoogleSubject)
+	var rating int32
+	err := row.Scan(&rating)
+	return rating, err
+}
+
 const createMatch = `-- name: CreateMatch :exec
-INSERT INTO matches (id, run_id, opponent_google_subject, opponent_name, selected_layout_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO matches (
+    id, run_id, opponent_google_subject, opponent_name, selected_layout_id,
+    outcome, opponent_rating, rating_before, rating_after
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6,
+    $7::bigint, $8::bigint, $9::bigint
+)
 `
 
 type CreateMatchParams struct {
@@ -22,8 +50,14 @@ type CreateMatchParams struct {
 	OpponentGoogleSubject string
 	OpponentName          string
 	SelectedLayoutID      string
+	Outcome               string
+	OpponentRating        int64
+	RatingBefore          int64
+	RatingAfter           int64
 }
 
+// Ratings are passed as bigint so that PostgreSQL, not a silent int32
+// conversion, rejects values outside the integer columns.
 func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error {
 	_, err := q.db.Exec(ctx, createMatch,
 		arg.ID,
@@ -31,6 +65,10 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 		arg.OpponentGoogleSubject,
 		arg.OpponentName,
 		arg.SelectedLayoutID,
+		arg.Outcome,
+		arg.OpponentRating,
+		arg.RatingBefore,
+		arg.RatingAfter,
 	)
 	return err
 }
@@ -57,9 +95,75 @@ func (q *Queries) CreateMatchRun(ctx context.Context, arg CreateMatchRunParams) 
 	return err
 }
 
+const getUserRating = `-- name: GetUserRating :one
+SELECT rating
+FROM users
+WHERE google_subject = $1
+`
+
+func (q *Queries) GetUserRating(ctx context.Context, googleSubject string) (int32, error) {
+	row := q.db.QueryRow(ctx, getUserRating, googleSubject)
+	var rating int32
+	err := row.Scan(&rating)
+	return rating, err
+}
+
+const listRanking = `-- name: ListRanking :many
+SELECT
+    rank() OVER (ORDER BY users.rating DESC) AS rank,
+    users.name::text AS name,
+    users.rating,
+    count(*) FILTER (WHERE matches.outcome = 'win') AS wins,
+    count(*) FILTER (WHERE matches.outcome = 'loss') AS losses,
+    count(*) FILTER (WHERE matches.outcome = 'draw') AS draws
+FROM users
+JOIN runs ON runs.google_subject = users.google_subject
+JOIN matches ON matches.run_id = runs.id
+WHERE users.name IS NOT NULL AND btrim(users.name) <> ''
+GROUP BY users.google_subject
+ORDER BY users.rating DESC, users.name
+`
+
+type ListRankingRow struct {
+	Rank   int64
+	Name   string
+	Rating int32
+	Wins   int64
+	Losses int64
+	Draws  int64
+}
+
+// Only users who have challenged at least once and have a display name are ranked.
+func (q *Queries) ListRanking(ctx context.Context) ([]ListRankingRow, error) {
+	rows, err := q.db.Query(ctx, listRanking)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRankingRow
+	for rows.Next() {
+		var i ListRankingRow
+		if err := rows.Scan(
+			&i.Rank,
+			&i.Name,
+			&i.Rating,
+			&i.Wins,
+			&i.Losses,
+			&i.Draws,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const selectBattleOpponent = `-- name: SelectBattleOpponent :many
 WITH candidate AS (
-    SELECT users.google_subject, users.name
+    SELECT users.google_subject, users.name, users.rating
     FROM users
     JOIN battle_programs ON battle_programs.google_subject = users.google_subject
     JOIN programs ON programs.id = battle_programs.program_id
@@ -73,7 +177,7 @@ WITH candidate AS (
     ORDER BY random()
     LIMIT 1
 )
-SELECT candidate.google_subject, candidate.name, programs.id, programs.name AS program_name, programs.source
+SELECT candidate.google_subject, candidate.name, candidate.rating, programs.id, programs.name AS program_name, programs.source
 FROM candidate
 JOIN battle_programs ON battle_programs.google_subject = candidate.google_subject
 JOIN programs ON programs.id = battle_programs.program_id
@@ -88,6 +192,7 @@ type SelectBattleOpponentParams struct {
 type SelectBattleOpponentRow struct {
 	GoogleSubject string
 	Name          pgtype.Text
+	Rating        int32
 	ID            string
 	ProgramName   string
 	Source        []byte
@@ -105,6 +210,7 @@ func (q *Queries) SelectBattleOpponent(ctx context.Context, arg SelectBattleOppo
 		if err := rows.Scan(
 			&i.GoogleSubject,
 			&i.Name,
+			&i.Rating,
 			&i.ID,
 			&i.ProgramName,
 			&i.Source,
