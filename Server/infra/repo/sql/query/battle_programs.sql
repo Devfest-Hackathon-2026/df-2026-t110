@@ -1,7 +1,10 @@
--- name: SetBattlePrograms :exec
-INSERT INTO battle_programs (google_subject, program_1, program_2, program_3)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (google_subject) DO UPDATE SET
-    program_1 = EXCLUDED.program_1,
-    program_2 = EXCLUDED.program_2,
-    program_3 = EXCLUDED.program_3;
+-- name: LockBattleProgramOwner :one
+SELECT google_subject FROM users WHERE google_subject = $1 FOR UPDATE;
+
+-- name: DeleteBattlePrograms :exec
+DELETE FROM battle_programs WHERE google_subject = $1;
+
+-- name: InsertBattlePrograms :exec
+INSERT INTO battle_programs (google_subject, program_id, robot_index)
+SELECT sqlc.arg(google_subject), program_id, (slot - 1)::smallint
+FROM unnest(sqlc.arg(program_ids)::text[]) WITH ORDINALITY AS p(program_id, slot);

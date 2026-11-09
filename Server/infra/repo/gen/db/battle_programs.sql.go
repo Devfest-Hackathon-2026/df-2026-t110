@@ -9,28 +9,38 @@ import (
 	"context"
 )
 
-const setBattlePrograms = `-- name: SetBattlePrograms :exec
-INSERT INTO battle_programs (google_subject, program_1, program_2, program_3)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (google_subject) DO UPDATE SET
-    program_1 = EXCLUDED.program_1,
-    program_2 = EXCLUDED.program_2,
-    program_3 = EXCLUDED.program_3
+const deleteBattlePrograms = `-- name: DeleteBattlePrograms :exec
+DELETE FROM battle_programs WHERE google_subject = $1
 `
 
-type SetBattleProgramsParams struct {
-	GoogleSubject string
-	Program1      string
-	Program2      string
-	Program3      string
+func (q *Queries) DeleteBattlePrograms(ctx context.Context, googleSubject string) error {
+	_, err := q.db.Exec(ctx, deleteBattlePrograms, googleSubject)
+	return err
 }
 
-func (q *Queries) SetBattlePrograms(ctx context.Context, arg SetBattleProgramsParams) error {
-	_, err := q.db.Exec(ctx, setBattlePrograms,
-		arg.GoogleSubject,
-		arg.Program1,
-		arg.Program2,
-		arg.Program3,
-	)
+const insertBattlePrograms = `-- name: InsertBattlePrograms :exec
+INSERT INTO battle_programs (google_subject, program_id, robot_index)
+SELECT $1, program_id, (slot - 1)::smallint
+FROM unnest($2::text[]) WITH ORDINALITY AS p(program_id, slot)
+`
+
+type InsertBattleProgramsParams struct {
+	GoogleSubject string
+	ProgramIds    []string
+}
+
+func (q *Queries) InsertBattlePrograms(ctx context.Context, arg InsertBattleProgramsParams) error {
+	_, err := q.db.Exec(ctx, insertBattlePrograms, arg.GoogleSubject, arg.ProgramIds)
 	return err
+}
+
+const lockBattleProgramOwner = `-- name: LockBattleProgramOwner :one
+SELECT google_subject FROM users WHERE google_subject = $1 FOR UPDATE
+`
+
+func (q *Queries) LockBattleProgramOwner(ctx context.Context, googleSubject string) (string, error) {
+	row := q.db.QueryRow(ctx, lockBattleProgramOwner, googleSubject)
+	var google_subject string
+	err := row.Scan(&google_subject)
+	return google_subject, err
 }

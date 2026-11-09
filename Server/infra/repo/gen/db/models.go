@@ -10,9 +10,8 @@ import (
 
 type BattleProgram struct {
 	GoogleSubject string
-	Program1      string
-	Program2      string
-	Program3      string
+	ProgramID     string
+	RobotIndex    int16
 }
 
 type GenerationUsage struct {

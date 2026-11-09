@@ -4,10 +4,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/dvpico/Programming-Learning-AR/Server/infra/router/gen/api"
 	"github.com/dvpico/Programming-Learning-AR/Server/usecase"
 	"github.com/labstack/echo/v5"
 )
@@ -28,12 +28,8 @@ func (r *Router) SetBattlePrograms(ctx *echo.Context) error {
 	if !ok {
 		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 	}
-	body, err := io.ReadAll(ctx.Request().Body)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
-	}
-	var ids []string
-	if err := json.Unmarshal(body, &ids); err != nil {
+	var ids api.SetBattleProgramsJSONRequestBody
+	if err := json.UnmarshalRead(ctx.Request().Body, &ids); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest)).Wrap(err)
 	}
 	return battleProgramError(ctx, r.cfg.BattlePrograms.Set(ctx.Request().Context(), user.GoogleSubject, ids))
