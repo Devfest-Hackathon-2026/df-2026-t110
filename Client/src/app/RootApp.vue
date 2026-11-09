@@ -48,15 +48,18 @@ const TutorialPage = defineAsyncComponent(() => import('../features/tutorial/Tut
 const TutorialCatalog = defineAsyncComponent(() => import('../features/tutorial/TutorialCatalog.vue'))
 const MatchPage = defineAsyncComponent(() => import('../features/match/MatchPage.vue'))
 const AccountPage = defineAsyncComponent(() => import('../features/match/AccountPage.vue'))
+const RankingPage = defineAsyncComponent(() => import('../features/ranking/RankingPage.vue'))
 const path = window.location.pathname.replace(/\/$/, '') || '/'
 const tutorialMatch = /^\/tutorials\/([^/]+)$/.exec(path)
 const tutorialId = tutorialMatch ? decodeURIComponent(tutorialMatch[1]) : null
 const matchRoute = /^\/matches\/([^/]+)$/.exec(path)
 const matchId = matchRoute ? decodeURIComponent(matchRoute[1]) : null
+const rankingRoute = /^\/ranking(?:\/([1-9]\d*))?$/.exec(path)
 const page = computed(() => {
   if (path === '/tutorials') return 'tutorials'
   if (tutorialId) return 'tutorial-detail'
   if (path === '/rooms') return 'rooms'
+  if (rankingRoute) return 'ranking'
   if (matchId) return 'match-detail'
   if (path === '/account') return 'account'
   if (path === '/') return 'home'
@@ -69,7 +72,9 @@ document.title = tutorialId
     ? '対戦結果 | Robot Field'
     : path === '/rooms'
       ? '対戦 | Robot Field'
-      : 'Robot Field'
+      : rankingRoute
+        ? 'ランキング | Robot Field'
+        : 'Robot Field'
 </script>
 
 <template>
@@ -131,6 +136,7 @@ document.title = tutorialId
 
     <MatchPage v-else-if="page === 'rooms' || page === 'match-detail'" :match-id="matchId" />
     <AccountPage v-else-if="page === 'account'" />
+    <RankingPage v-else-if="page === 'ranking'" />
 
     <main v-else class="inner-page container">
       <template v-if="page === 'tutorials'">

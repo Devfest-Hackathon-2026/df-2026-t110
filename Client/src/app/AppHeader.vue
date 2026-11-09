@@ -4,10 +4,13 @@ import { Icon } from '@iconify/vue'
 import houseIcon from '@iconify-icons/lucide/house'
 import bookOpenIcon from '@iconify-icons/lucide/book-open'
 import swordsIcon from '@iconify-icons/lucide/swords'
+import trophyIcon from '@iconify-icons/lucide/trophy'
 import userRoundIcon from '@iconify-icons/lucide/user-round'
 import { useMatchStore } from '../features/match/useMatchStore.ts'
 
-defineProps<{ activePage: 'home' | 'tutorials' | 'tutorial-detail' | 'rooms' | 'account' | 'missing' }>()
+defineProps<{
+  activePage: 'home' | 'tutorials' | 'tutorial-detail' | 'rooms' | 'ranking' | 'account' | 'missing'
+}>()
 
 const matchStore = useMatchStore()
 onMounted(() => void matchStore.loadMe())
@@ -27,6 +30,9 @@ onMounted(() => void matchStore.loadMe())
       >
       <a href="/rooms" :aria-current="activePage === 'rooms' ? 'page' : undefined"
         ><Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span></a
+      >
+      <a href="/ranking" :aria-current="activePage === 'ranking' ? 'page' : undefined"
+        ><Icon :icon="trophyIcon" aria-hidden="true" /><span>ランキング</span></a
       >
       <a href="/account" :aria-current="activePage === 'account' ? 'page' : undefined"
         ><Icon :icon="userRoundIcon" aria-hidden="true" /><span
