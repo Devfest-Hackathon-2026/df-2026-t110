@@ -62,3 +62,18 @@ func TestSetBattlePrograms(t *testing.T) {
 		})
 	}
 }
+
+func (s *battleStore) Get(_ context.Context, _ string) ([]string, error) { return s.ids, nil }
+
+func TestGetBattlePrograms(t *testing.T) {
+	t.Parallel()
+	store := &battleStore{ids: []string{"c", "a", "c"}}
+	svc := NewBattlePrograms(store, battleLookup{})
+	ids, err := svc.Get(context.Background(), "owner")
+	if err != nil || !reflect.DeepEqual(ids, store.ids) {
+		t.Errorf("Get=%v, %v", ids, err)
+	}
+	if _, err := svc.Get(context.Background(), ""); !errors.Is(err, ErrUnauthenticated) {
+		t.Errorf("error=%v", err)
+	}
+}

@@ -35,3 +35,14 @@ func (r *BattlePrograms) Set(ctx context.Context, subject string, ids []string) 
 		return nil
 	})
 }
+
+func (r *BattlePrograms) Get(ctx context.Context, subject string) ([]string, error) {
+	ids, err := db.New(r.pool).GetBattlePrograms(ctx, subject)
+	if err != nil {
+		return nil, fmt.Errorf("select battle programs: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, usecase.ErrNotFound
+	}
+	return ids, nil
+}

@@ -51,6 +51,7 @@ type TutorialRunner interface {
 }
 
 type BattleProgramService interface {
+	Get(ctx context.Context, subject string) ([]string, error)
 	Set(ctx context.Context, subject string, ids []string) error
 }
 

@@ -18,6 +18,32 @@ func (q *Queries) DeleteBattlePrograms(ctx context.Context, googleSubject string
 	return err
 }
 
+const getBattlePrograms = `-- name: GetBattlePrograms :many
+SELECT program_id FROM battle_programs
+WHERE google_subject = $1
+ORDER BY robot_index
+`
+
+func (q *Queries) GetBattlePrograms(ctx context.Context, googleSubject string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getBattlePrograms, googleSubject)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var program_id string
+		if err := rows.Scan(&program_id); err != nil {
+			return nil, err
+		}
+		items = append(items, program_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertBattlePrograms = `-- name: InsertBattlePrograms :exec
 INSERT INTO battle_programs (google_subject, program_id, robot_index)
 SELECT $1, program_id, (slot - 1)::smallint

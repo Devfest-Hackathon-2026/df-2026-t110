@@ -57,3 +57,34 @@ func TestPutBattlePrograms(t *testing.T) {
 		})
 	}
 }
+
+func (s *battleProgramStore) Get(_ context.Context, _ string) ([]string, error) { return s.saved, nil }
+
+func TestGetBattlePrograms(t *testing.T) {
+	t.Parallel()
+	for _, cookie := range []bool{true, false} {
+		t.Run(http.StatusText(map[bool]int{true: 200, false: 401}[cookie]), func(t *testing.T) {
+			t.Parallel()
+			e := echo.New()
+			store := &battleProgramStore{saved: []string{"c", "a", "c"}}
+			r := NewRouter(Config{BattlePrograms: usecase.NewBattlePrograms(store, battleProgramLookup{})})
+			api.RegisterHandlersWithOptions(e, r, api.RegisterHandlersOptions{OperationMiddlewares: map[string][]echo.MiddlewareFunc{"getBattlePrograms": {Authentication(sessionLookupStub{})}}})
+			req := httptest.NewRequest(http.MethodGet, "/battle/program", nil)
+			if cookie {
+				req.AddCookie(&http.Cookie{Name: "session", Value: "session-id", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+			}
+			res := httptest.NewRecorder()
+			e.ServeHTTP(res, req)
+			want := 401
+			if cookie {
+				want = 200
+			}
+			if res.Code != want {
+				t.Errorf("status=%d, want %d", res.Code, want)
+			}
+			if cookie && strings.TrimSpace(res.Body.String()) != `["c","a","c"]` {
+				t.Errorf("body=%s", res.Body.String())
+			}
+		})
+	}
+}

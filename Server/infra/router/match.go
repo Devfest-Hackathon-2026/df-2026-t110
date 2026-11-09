@@ -17,7 +17,22 @@ func (r *Router) CreateMatch(ctx *echo.Context) error {
 }
 
 func (r *Router) GetBattlePrograms(ctx *echo.Context) error {
-	return errNotImplemented()
+	if r.cfg.BattlePrograms == nil {
+		return errNotImplemented()
+	}
+	user, ok := UserFromContext(ctx.Request().Context())
+	if !ok {
+		return echo.NewHTTPError(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+	}
+	ids, err := r.cfg.BattlePrograms.Get(ctx.Request().Context(), user.GoogleSubject)
+	if err != nil {
+		return battleProgramError(ctx, err)
+	}
+	body, err := json.Marshal(ids)
+	if err != nil {
+		return fmt.Errorf("marshal battle programs: %w", err)
+	}
+	return ctx.JSONBlob(http.StatusOK, body)
 }
 
 func (r *Router) SetBattlePrograms(ctx *echo.Context) error {
