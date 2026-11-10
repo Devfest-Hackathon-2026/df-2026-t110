@@ -308,14 +308,10 @@ body,
 .home-carousel {
   width: min(100%, 900px);
   margin-inline: auto;
-  border: 1px solid var(--color-edge);
-  border-radius: 4px;
-  background: var(--color-card);
   overflow: hidden;
 }
 .home-carousel-view {
   padding-block: 18px;
-  background: var(--color-paper-2);
 }
 .home-carousel-slide {
   padding-inline: 9px;
@@ -373,7 +369,6 @@ body,
   justify-content: center;
   gap: 10px;
   padding: 10px 16px;
-  border-top: 1px solid var(--color-edge);
 }
 .home-carousel-controls > button {
   display: grid;

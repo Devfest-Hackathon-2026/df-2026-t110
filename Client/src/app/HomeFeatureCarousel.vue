@@ -24,7 +24,7 @@ function goTo(index: number) {
       class="home-carousel-view"
       :items-to-show="1.16"
       breakpoint-mode="carousel"
-      :breakpoints="{ 700: { itemsToShow: 1.6 } }"
+      :breakpoints="{ 700: { itemsToShow: 1.25 } }"
       snap-align="center"
       :wrap-around="true"
       :transition="400"
