@@ -261,14 +261,28 @@ function onEditorToggle(event: Event): void {
           <h2 id="match-start-title" class="furigana-heading">対戦を始める</h2>
         </div>
         <p class="furigana-text">3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
-        <button
-          type="button"
-          class="action-primary"
-          :disabled="store.busy || !store.canStart"
-          @click="store.startMatch"
-        >
-          <Icon :icon="playIcon" aria-hidden="true" />{{ store.busy ? '対戦を準備中…' : '対戦を始める' }}
-        </button>
+        <div v-if="store.startingMatch" class="match-start-pending" role="status" aria-live="polite">
+          <strong>対戦を進めています</strong>
+          <p>対戦相手と盤面を選び、ロボットの動きを計算しています。完了すると結果へ移動します。</p>
+          <div class="match-progress" aria-hidden="true"><span /></div>
+        </div>
+        <template v-else>
+          <button
+            type="button"
+            class="action-primary"
+            :disabled="store.busy || !store.canStart"
+            @click="store.startMatch"
+          >
+            <Icon :icon="playIcon" aria-hidden="true" />対戦を始める
+          </button>
+          <div v-if="store.startMatchError" class="match-start-feedback" role="alert">
+            <strong>{{ store.noOpponent ? '対戦相手がまだいません' : '対戦を開始できませんでした' }}</strong>
+            <p v-if="store.noOpponent">
+              他の参加者が対戦用プログラムを設定したあと、もう一度お試しください。
+            </p>
+            <p v-else>{{ store.startMatchError }}</p>
+          </div>
+        </template>
       </section>
     </template>
 
