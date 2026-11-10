@@ -49,12 +49,14 @@ function loadLibraries(): Promise<void> {
 export async function mountRoomMarkerTracker(
   container: HTMLElement,
   callbacks: RoomMarkerCallbacks,
+  signal?: AbortSignal,
 ): Promise<RoomMarkerTracker> {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new Error('カメラにはlocalhostまたはHTTPSが必要です')
   }
 
   await loadLibraries()
+  signal?.throwIfAborted()
 
   const scene = document.createElement('a-scene')
   scene.setAttribute('embedded', '')

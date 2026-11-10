@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { advanceWater, createStageVisuals, disposeStageVisuals } from './stageVisuals.ts'
@@ -10,13 +10,8 @@ import { createArmPivots } from './armController.ts'
 import { CARRIED_LUGGAGE_HEIGHT, createCarriedLuggage, disposeCarriedLuggage } from './carriedLuggage.ts'
 import { createRobotAnimator } from './robotAnimator.ts'
 import { createRockBreakEffect } from './rockBreakEffect.ts'
-import { MarkerPoseStabilizer } from './markerPoseStabilizer.ts'
-import {
-  mountRoomMarkerTracker,
-  type RoomMarkerId,
-  type RoomMarkerState,
-  type RoomMarkerTracker,
-} from '../rooms/roomMarkerTracking.ts'
+import RoomMarkerOverlay from '../rooms/RoomMarkerOverlay.vue'
+import { useRoomMarkerPlacement } from '../rooms/useRoomMarkerPlacement.ts'
 import type { StageCell, StageLayout } from './stage.ts'
 import type { AnimationEvent } from './robotAnimator.ts'
 import type { PicolangSpeech } from '../picolang/editor/playback/picolangSpeech.ts'
@@ -33,13 +28,6 @@ const props = withDefaults(
   { animationEvent: null, speech: null, previewDistance: 4.8 },
 )
 const emit = defineEmits<{ error: [message: string] }>()
-function cameraErrorMessage(error: unknown): string {
-  const name = error instanceof Error ? error.name : ''
-  if (name === 'NotAllowedError') return 'カメラへのアクセスを許可して、もう一度お試しください。'
-  if (name === 'NotFoundError') return 'カメラが見つかりません。接続を確認してください。'
-  return 'カメラを起動できませんでした。接続とブラウザのカメラ設定を確認してください。'
-}
-
 const host = ref<HTMLElement | null>(null)
 let renderer!: THREE.WebGLRenderer
 let scene!: THREE.Scene
@@ -52,21 +40,27 @@ let frame = 0
 let resizeObserver: ResizeObserver | null = null
 let canvasWidth = 0
 let canvasHeight = 0
-let markerTracker: RoomMarkerTracker | null = null
-let markerGeneration = 0
-const markerState = ref<RoomMarkerState>({ a: false, b: false })
-const markerSeen = computed(() => markerState.value.a || markerState.value.b)
-const markerCount = computed(() => Number(markerState.value.a) + Number(markerState.value.b))
-const markerActive = ref(false)
-const markerLoading = ref(false)
-const cameraReady = ref(false)
-const placementConfirmed = ref(false)
-const trackingPoseAvailable = ref(false)
-const calibrated = ref(false)
-let anchorMarker: RoomMarkerId | null = null
-let alternateToAnchor: THREE.Matrix4 | null = null
-const markerPose = new MarkerPoseStabilizer()
-let lastMarkerPoseTime: number | null = null
+const {
+  markerState,
+  markerActive,
+  markerLoading,
+  cameraReady,
+  placementConfirmed,
+  trackingPoseAvailable,
+  calibrated,
+  confirmPlacement,
+  retainBoardPose: retainCameraBoardPose,
+  resize: resizeTracking,
+  start: startCamera,
+  stop: stopCamera,
+  update: updateMarkerPlacement,
+} = useRoomMarkerPlacement({
+  host,
+  getBoard: () => board,
+  getCamera: () => camera,
+  isCamera: () => props.mode === 'camera',
+  onError: (message) => emit('error', message),
+})
 let robotRig: THREE.Group | null = null
 let robotModel: THREE.Object3D | null = null
 let robotAnimator: ReturnType<typeof createRobotAnimator> | null = null
@@ -91,12 +85,7 @@ function setView() {
   if (props.mode === 'camera') {
     camera.position.set(0, 0, 0)
     camera.rotation.set(0, 0, 0)
-    if (markerTracker || markerLoading.value) {
-      board.visible = false
-      return
-    }
-    board.rotation.set(1, 0, 0)
-    if (board.position.z !== -3) board.position.set(0, -0.05, -3)
+    board.visible = false
   } else {
     const horizontal = Math.cos(pitch) * distance
     camera.position.set(Math.sin(yaw) * horizontal, Math.sin(pitch) * distance, Math.cos(yaw) * horizontal)
@@ -104,16 +93,8 @@ function setView() {
     board.position.set(0, 0, 0)
     board.rotation.set(0, 0, 0)
     board.scale.set(1, 1, 1)
+    board.visible = true
   }
-}
-
-function retainCameraBoardPose(previous: THREE.Group | undefined): boolean {
-  if (!previous || props.mode !== 'camera' || !markerTracker || !placementConfirmed.value) return false
-  board.position.copy(previous.position)
-  board.quaternion.copy(previous.quaternion)
-  board.scale.copy(previous.scale)
-  board.visible = previous.visible
-  return true
 }
 
 function replaceStage() {
@@ -356,87 +337,12 @@ function resizeImmediately() {
   renderer.setSize(width, height, false)
   camera.aspect = width / height
   camera.updateProjectionMatrix()
-  const trackingScene = markerTracker?.scene as
-    | (HTMLElement & {
-        systems?: { arjs?: { _arSession?: { onResize(): void } } }
-      })
-    | undefined
-  trackingScene?.systems?.arjs?._arSession?.onResize()
-}
-
-function detectedMarkerPose(id: RoomMarkerId): THREE.Matrix4 | null {
-  if (!markerTracker || !markerState.value[id]) return null
-  const marker = markerTracker.markers[id] as HTMLElement & {
-    object3D?: { matrixWorld: { elements: number[] }; visible: boolean }
-  }
-  return marker.object3D?.visible ? new THREE.Matrix4().fromArray(marker.object3D.matrixWorld.elements) : null
-}
-
-function confirmPlacement(): void {
-  if (!markerActive.value || !markerSeen.value) return
-  anchorMarker = markerState.value.a ? 'a' : 'b'
-  alternateToAnchor = null
-  calibrated.value = false
-  markerPose.reset()
-  lastMarkerPoseTime = null
-  placementConfirmed.value = true
-}
-
-function updateMarkerPlacement(time: number): void {
-  if (!board || !anchorMarker || !placementConfirmed.value) {
-    if (board) board.visible = false
-    trackingPoseAvailable.value = false
-    lastMarkerPoseTime = null
-    return
-  }
-  const alternateId = anchorMarker === 'a' ? 'b' : 'a'
-  const anchorPose = detectedMarkerPose(anchorMarker)
-  const alternatePose = detectedMarkerPose(alternateId)
-  if (anchorPose && alternatePose) {
-    alternateToAnchor = alternatePose.clone().invert().multiply(anchorPose)
-    calibrated.value = true
-  }
-  const pose =
-    anchorPose ?? (alternatePose && alternateToAnchor ? alternatePose.multiply(alternateToAnchor) : null)
-  if (!pose) {
-    if (lastMarkerPoseTime !== null && time - lastMarkerPoseTime < 300) return
-    trackingPoseAvailable.value = false
-    board.visible = false
-    markerPose.reset()
-    lastMarkerPoseTime = null
-    return
-  }
-  lastMarkerPoseTime = time
-  trackingPoseAvailable.value = true
-  board.visible = true
-  board.matrix.copy(pose)
-  board.matrix.decompose(board.position, board.quaternion, board.scale)
-  markerPose.update(pose, time)
-  board.position.copy(markerPose.position)
-  board.quaternion.copy(markerPose.quaternion)
-  board.scale.multiplyScalar(1)
+  resizeTracking()
 }
 
 function animate(time: number): void {
   frame = requestAnimationFrame(animate)
-  if (markerTracker && board) {
-    const trackingCamera = markerTracker.scene as HTMLElement & {
-      camera?: { projectionMatrix: { elements: number[] } }
-    }
-    if (trackingCamera.camera) {
-      camera.projectionMatrix.fromArray(trackingCamera.camera.projectionMatrix.elements)
-      const cameraVideo = host.value?.querySelector<HTMLVideoElement>('.room-marker-video')
-      if (cameraVideo?.videoWidth && cameraVideo.videoHeight && canvasWidth && canvasHeight) {
-        const cover = Math.max(canvasWidth / cameraVideo.videoWidth, canvasHeight / cameraVideo.videoHeight)
-        const scaleX = (cameraVideo.videoWidth * cover) / canvasWidth
-        const scaleY = (cameraVideo.videoHeight * cover) / canvasHeight
-        for (const index of [0, 4, 8, 12]) camera.projectionMatrix.elements[index] *= scaleX
-        for (const index of [1, 5, 9, 13]) camera.projectionMatrix.elements[index] *= scaleY
-      }
-      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert()
-    }
-    updateMarkerPlacement(time)
-  }
+  updateMarkerPlacement(time)
   advanceWater(time)
   robotAnimator?.update(time)
   if (cargoTransition && carriedLuggage) {
@@ -483,81 +389,6 @@ function animate(time: number): void {
         : null
   } else if (speechPosition.value) speechPosition.value = null
   renderer.render(scene, camera)
-}
-
-async function startCamera() {
-  stopMarkerTracking()
-  if (props.mode !== 'camera') return
-  markerLoading.value = true
-  cameraReady.value = false
-  board.visible = false
-  const generation = markerGeneration
-  try {
-    const tracker = await mountRoomMarkerTracker(host.value!, {
-      onChange: (state) => {
-        markerState.value = state
-      },
-      onCameraReady: () => {
-        if (generation === markerGeneration) cameraReady.value = true
-      },
-      onCameraError: (error) => {
-        console.error('カメラの起動に失敗しました', error)
-        emit('error', cameraErrorMessage(error))
-      },
-    })
-    if (generation !== markerGeneration || props.mode !== 'camera') {
-      tracker.stop()
-      return
-    }
-    markerTracker = tracker
-    markerLoading.value = false
-    markerActive.value = true
-    tracker.scene.style.position = 'absolute'
-    tracker.scene.style.inset = '0'
-    tracker.scene.style.width = '100%'
-    tracker.scene.style.height = '100%'
-    tracker.scene.style.opacity = '0'
-    tracker.scene.style.pointerEvents = 'none'
-    tracker.scene.addEventListener(
-      'renderstart',
-      () => {
-        const sceneWithAR = tracker.scene as HTMLElement & {
-          systems?: { arjs?: { _arSession?: { onResize(): void } } }
-        }
-        sceneWithAR.systems?.arjs?._arSession?.onResize()
-      },
-      { once: true },
-    )
-    return
-  } catch (error) {
-    if (generation !== markerGeneration || props.mode !== 'camera') return
-    markerLoading.value = false
-    console.error('マーカー追跡を開始できませんでした', error)
-    emit('error', cameraErrorMessage(error))
-  }
-}
-
-function stopCamera() {
-  stopMarkerTracking()
-}
-
-function stopMarkerTracking(): void {
-  markerGeneration++
-  markerTracker?.stop()
-  markerTracker = null
-  markerState.value = { a: false, b: false }
-  markerActive.value = false
-  markerLoading.value = false
-  cameraReady.value = false
-  placementConfirmed.value = false
-  trackingPoseAvailable.value = false
-  calibrated.value = false
-  anchorMarker = null
-  alternateToAnchor = null
-  markerPose.reset()
-  lastMarkerPoseTime = null
-  if (board) board.visible = true
-  if (camera) camera.updateProjectionMatrix()
 }
 
 function pointerDown(event: PointerEvent): void {
@@ -680,62 +511,21 @@ onBeforeUnmount(() => {
         <span v-if="speech.items.length === 0">空</span>
       </div>
     </div>
-    <div v-if="mode === 'camera' && (markerLoading || markerActive)" class="marker-overlay">
-      <div class="marker-status" role="status">
-        <strong>{{ cameraReady ? `マーカー検出 ${markerCount}/2` : 'カメラ準備中' }}</strong>
-        <span :class="{ detected: markerState.a }">Hiro {{ markerState.a ? '検出中' : '未検出' }}</span>
-        <span :class="{ detected: markerState.b }">Kanji {{ markerState.b ? '検出中' : '未検出' }}</span>
-      </div>
-      <p v-if="markerLoading" class="marker-guidance" role="status">マーカー追跡を準備しています。</p>
-      <div
-        v-if="markerActive && (!markerSeen || !placementConfirmed || !trackingPoseAvailable || !calibrated)"
-        class="marker-guidance"
-      >
-        <p v-if="!cameraReady" role="status">カメラを起動しています。アクセスを許可してください。</p>
-        <p v-else-if="!markerSeen" role="status">
-          {{
-            placementConfirmed
-              ? 'マーカーを見失いました。Hiro または Kanji をもう一度映してください。'
-              : 'Hiro または Kanji マーカーをカメラに映してください。'
-          }}
-          <template v-if="!placementConfirmed">
-            <a href="/markers/marker-hiro.png" target="_blank" rel="noopener">Hiro</a>・<a
-              href="/markers/marker-kanji.png"
-              target="_blank"
-              rel="noopener"
-              >Kanji</a
-            >
-          </template>
-        </p>
-        <button v-else-if="!placementConfirmed" type="button" @click.stop="confirmPlacement">
-          配置を確定
-        </button>
-        <p v-else-if="!trackingPoseAvailable" role="status">
-          配置を決めたときのマーカーを映してください。そのまま、もう1枚も一緒に映してください。
-        </p>
-        <p v-else role="status">もう1枚のマーカーも一度同時に映すと、見失ったときに切り替えられます。</p>
-      </div>
-    </div>
+    <RoomMarkerOverlay
+      v-if="mode === 'camera'"
+      :marker-state="markerState"
+      :marker-active="markerActive"
+      :marker-loading="markerLoading"
+      :camera-ready="cameraReady"
+      :placement-confirmed="placementConfirmed"
+      :tracking-pose-available="trackingPoseAvailable"
+      :calibrated="calibrated"
+      @confirm="confirmPlacement"
+    />
   </div>
 </template>
 
 <style>
-/* AR.js keeps a resize listener after the scene is removed and can resize body again. */
-body {
-  width: auto !important;
-  height: auto !important;
-  margin: 0 !important;
-}
-.stage-scene .room-marker-video {
-  position: absolute !important;
-  inset: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-  z-index: 0 !important;
-  pointer-events: none;
-}
 .stage-robot-speech {
   position: absolute;
   z-index: 5;
@@ -790,72 +580,5 @@ body {
   display: block;
   width: 150px;
   height: 120px;
-}
-.stage-scene .marker-overlay {
-  position: absolute;
-  z-index: 4;
-  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
-  right: max(8px, env(safe-area-inset-right));
-  display: flex;
-  width: min(280px, calc(100% - 16px));
-  max-height: min(45%, 240px);
-  flex-direction: column;
-  gap: 6px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.stage-scene .marker-status {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  flex: none;
-  padding: 8px;
-  border-radius: 8px;
-  background: #172c24;
-  color: white;
-  font-size: 13px;
-}
-.stage-scene .marker-status strong,
-.stage-scene .marker-status span {
-  padding: 3px 6px;
-}
-.stage-scene .marker-status strong {
-  grid-column: 1 / -1;
-}
-.stage-scene .marker-status span {
-  border-radius: 4px;
-  background: #405047;
-}
-.stage-scene .marker-status span.detected {
-  background: #b5f7d0;
-  color: #172c24;
-}
-.stage-scene .marker-guidance {
-  flex: none;
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 8px;
-  background: #172c24;
-  color: white;
-}
-.stage-scene .marker-guidance a {
-  color: #b5f7d0;
-}
-.stage-scene .marker-guidance p {
-  margin: 0;
-}
-.stage-scene .marker-guidance button {
-  border: 0;
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: #b5f7d0;
-  color: #172c24;
-  font: inherit;
-  cursor: pointer;
-}
-@media (max-width: 600px) {
-  .stage-scene .marker-overlay {
-    width: min(280px, calc(100% - 104px));
-  }
 }
 </style>

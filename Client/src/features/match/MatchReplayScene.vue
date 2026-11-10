@@ -17,6 +17,8 @@ import {
 import { createRobotAnimator, type AnimationEvent } from '../stage/robotAnimator.ts'
 import { createRockBreakEffect } from '../stage/rockBreakEffect.ts'
 import { loadStageAssets, type StageAssets } from '../stage/stageAssets.ts'
+import RoomMarkerOverlay from '../rooms/RoomMarkerOverlay.vue'
+import { useRoomMarkerPlacement } from '../rooms/useRoomMarkerPlacement.ts'
 import {
   advanceWater,
   createStageVisuals,
@@ -33,7 +35,6 @@ import {
 
 const props = defineProps<{ frames: ReplayFrame[] }>()
 const host = ref<HTMLElement | null>(null)
-const video = ref<HTMLVideoElement | null>(null)
 const index = ref(0)
 const playing = ref(false)
 const transitioning = ref(false)
@@ -104,7 +105,6 @@ let transitionStartedAt = 0
 let animationTime = 0
 let lastAnimationTime: number | null = null
 let observer: ResizeObserver | null = null
-let stream: MediaStream | null = null
 let alive = false
 let yaw = 0.55
 let pitch = 0.65
@@ -112,7 +112,31 @@ let distance = 3.25
 let dragging = false
 let lastPointer = [0, 0]
 let eventId = 0
-let cameraPlacement = { x: 0, y: -0.05 }
+const {
+  markerState,
+  markerActive,
+  markerLoading,
+  cameraReady,
+  placementConfirmed,
+  trackingPoseAvailable,
+  calibrated,
+  confirmPlacement,
+  retainBoardPose,
+  resize: resizeTracking,
+  start: startMarkerTracking,
+  stop: stopMarkerTracking,
+  update: updateMarkerPlacement,
+} = useRoomMarkerPlacement({
+  host,
+  getBoard: () => board,
+  getCamera: () => camera,
+  isCamera: () => mode.value === 'camera',
+  onError: (message) => {
+    error.value = message
+    mode.value = 'preview'
+    setView()
+  },
+})
 const heading = (frame: ReplayFrame): string =>
   frame.actions.length
     ? frame.actions
@@ -139,20 +163,22 @@ function resize(): void {
   renderer.setSize(width, height, false)
   camera.aspect = width / height
   camera.updateProjectionMatrix()
+  resizeTracking()
 }
 function setView(): void {
   if (!camera || !board) return
   if (mode.value === 'camera') {
     camera.position.set(0, 0, 0)
     camera.rotation.set(0, 0, 0)
-    board.rotation.set(1, 0, 0)
-    board.position.set(cameraPlacement.x, cameraPlacement.y, -3)
+    board.visible = false
   } else {
     const horizontal = Math.cos(pitch) * distance
     camera.position.set(Math.sin(yaw) * horizontal, Math.sin(pitch) * distance, Math.cos(yaw) * horizontal)
     camera.lookAt(0, 0, 0)
     board.rotation.set(0, 0, 0)
     board.position.set(0, 0, 0)
+    board.scale.set(1, 1, 1)
+    board.visible = true
   }
 }
 function makeRig(teamId?: number): Rig | null {
@@ -212,6 +238,7 @@ function luggagePoint(rig: Rig, target?: { x: number; y: number }): THREE.Vector
 }
 function renderFrame(): void {
   if (!scene || !current.value) return
+  const previousBoard = board
   cargoTransitions = []
   for (const item of effects) item.effect.dispose()
   effects = []
@@ -250,11 +277,12 @@ function renderFrame(): void {
     rig.animator.setCarrying(Boolean(robot.carryingLuggage))
     syncCargo(rig, Boolean(robot.carryingLuggage))
   }
-  setView()
+  if (!retainBoardPose(previousBoard)) setView()
 }
 function animate(time: number): void {
   if (!alive || !renderer || !scene || !camera) return
   raf = requestAnimationFrame(animate)
+  updateMarkerPlacement(time)
   animationTime +=
     Math.max(0, time - (lastAnimationTime ?? time)) * (transitioning.value ? playbackSpeed.value : 1)
   lastAnimationTime = time
@@ -274,7 +302,7 @@ function animate(time: number): void {
     target.object.rotation.y += target.kind === 'hover' ? 0.006 : 0.004
     if (target.kind === 'hover') target.object.position.y = target.baseY + Math.sin(time * 0.002) * 0.035
   }
-  if (board && host.value && current.value?.robots.some((robot) => robot.speech)) {
+  if (board?.visible && host.value && current.value?.robots.some((robot) => robot.speech)) {
     board.updateMatrixWorld(true)
     camera.updateMatrixWorld()
     const width = host.value.clientWidth
@@ -437,43 +465,19 @@ function previous(): void {
   renderFrame()
 }
 async function setMode(next: 'preview' | 'camera'): Promise<void> {
+  if (mode.value === next || !alive || !renderer) return
   mode.value = next
-  stream?.getTracks().forEach((track) => track.stop())
-  stream = null
-  if (video.value) video.value.srcObject = null
-  if (next === 'camera') {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      })
-      if (video.value) {
-        video.value.srcObject = stream
-        await video.value.play()
-      }
-    } catch (cause) {
-      console.error('再生用カメラの起動に失敗しました', cause)
-      error.value =
-        cause instanceof Error && cause.name === 'NotAllowedError'
-          ? 'カメラへのアクセスを許可して、もう一度お試しください。'
-          : 'カメラを開けませんでした。接続とブラウザのカメラ設定を確認してください。'
-      mode.value = 'preview'
-    }
-  }
+  dragging = false
   setView()
+  if (next === 'camera') {
+    error.value = ''
+    await startMarkerTracking()
+  } else {
+    stopMarkerTracking()
+  }
 }
 function pointerDown(event: PointerEvent): void {
-  if (mode.value === 'camera') {
-    if (!host.value || !board || !camera) return
-    const rect = host.value.getBoundingClientRect()
-    const halfHeight = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 3
-    cameraPlacement = {
-      x: (((event.clientX - rect.left) / rect.width) * 2 - 1) * halfHeight * camera.aspect,
-      y: (1 - ((event.clientY - rect.top) / rect.height) * 2) * halfHeight,
-    }
-    board.position.set(cameraPlacement.x, cameraPlacement.y, -3)
-    return
-  }
+  if (mode.value === 'camera') return
   dragging = true
   lastPointer = [event.clientX, event.clientY]
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
@@ -545,7 +549,7 @@ onBeforeUnmount(() => {
   if (timer) clearTimeout(timer)
   cancelAnimationFrame(raf)
   observer?.disconnect()
-  stream?.getTracks().forEach((track) => track.stop())
+  stopMarkerTracking()
   for (const rig of rigs.values()) disposeRig(rig)
   for (const entry of effects) entry.effect.dispose()
   if (board) disposeStageVisuals(board)
@@ -574,7 +578,17 @@ onBeforeUnmount(() => {
         @pointercancel="dragging = false"
         @wheel.prevent="wheel"
       >
-        <video v-show="mode === 'camera'" ref="video" autoplay muted playsinline />
+        <RoomMarkerOverlay
+          v-if="mode === 'camera'"
+          :marker-state="markerState"
+          :marker-active="markerActive"
+          :marker-loading="markerLoading"
+          :camera-ready="cameraReady"
+          :placement-confirmed="placementConfirmed"
+          :tracking-pose-available="trackingPoseAvailable"
+          :calibrated="calibrated"
+          @confirm="confirmPlacement"
+        />
         <div
           v-for="bubble in bubbles"
           :key="bubble.id"

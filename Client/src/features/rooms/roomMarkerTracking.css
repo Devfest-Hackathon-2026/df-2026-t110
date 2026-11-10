@@ -1,0 +1,16 @@
+/* AR.js keeps a resize listener after the scene is removed and can resize body again. */
+body {
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+.room-marker-video {
+  position: absolute !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  z-index: 0 !important;
+  pointer-events: none;
+}
