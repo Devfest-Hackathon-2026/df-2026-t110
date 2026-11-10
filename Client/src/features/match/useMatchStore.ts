@@ -63,6 +63,9 @@ export const useMatchStore = defineStore('match', () => {
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const busy = ref(false)
+  const startingMatch = ref(false)
+  const startMatchError = ref('')
+  const noOpponent = ref(false)
   const error = ref('')
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
   const canStart = computed(() => selectedProgramIds.value.every(Boolean))
@@ -208,6 +211,9 @@ export const useMatchStore = defineStore('match', () => {
   async function startMatch(): Promise<void> {
     if (authStatus.value !== 'signed-in' || !canStart.value || busy.value) return
     busy.value = true
+    startingMatch.value = true
+    startMatchError.value = ''
+    noOpponent.value = false
     error.value = ''
     try {
       const ids: ProgramIds = [...selectedProgramIds.value]
@@ -226,8 +232,10 @@ export const useMatchStore = defineStore('match', () => {
       )
       watchMatch(created.id, created)
     } catch (cause) {
-      error.value = errorText(cause)
+      noOpponent.value = cause instanceof MatchApiError && cause.status === 409
+      startMatchError.value = errorText(cause)
     } finally {
+      startingMatch.value = false
       busy.value = false
     }
   }
@@ -288,6 +296,9 @@ export const useMatchStore = defineStore('match', () => {
     user,
     authStatus,
     busy,
+    startingMatch,
+    startMatchError,
+    noOpponent,
     error,
     phase,
     canStart,
