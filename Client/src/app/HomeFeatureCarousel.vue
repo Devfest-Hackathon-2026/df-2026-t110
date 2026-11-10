@@ -24,7 +24,7 @@ function goTo(index: number) {
       class="home-carousel-view"
       :items-to-show="1.16"
       breakpoint-mode="carousel"
-      :breakpoints="{ 700: { itemsToShow: 1.6 } }"
+      :breakpoints="{ 700: { itemsToShow: 1.25 } }"
       snap-align="center"
       :wrap-around="true"
       :transition="400"
@@ -42,7 +42,7 @@ function goTo(index: number) {
         </button>
       </Slide>
     </Carousel>
-    <p class="home-carousel-caption" aria-live="polite">{{ slides[active]?.caption }}</p>
+    <p class="home-carousel-caption furigana-text" aria-live="polite">{{ slides[active]?.caption }}</p>
     <div class="home-carousel-controls">
       <div class="home-carousel-dots" aria-label="画像を選ぶ">
         <button

@@ -16,12 +16,13 @@ import (
 )
 
 var _ usecase.TutorialRepository = (*Textbooks)(nil)
-var _ usecase.GenerationFields = (*Textbooks)(nil)
+var _ usecase.FieldRepository = (*Textbooks)(nil)
 
 // Textbooks keeps validated pages in source file order and indexed by ID.
 type Textbooks struct {
-	byID map[string]domain.Tutorial
-	list []domain.Tutorial
+	byID   map[string]domain.Tutorial
+	fields map[string]schema.FieldDefinition
+	list   []domain.Tutorial
 }
 
 // NewTextbooks validates and indexes all pages at startup.
@@ -30,7 +31,16 @@ func NewTextbooks(ctx context.Context, pages fs.FS) (*Textbooks, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Textbooks{byID: byID, list: list}, nil
+	fields := make(map[string]schema.FieldDefinition)
+	for _, tutorial := range list {
+		for _, field := range tutorial.Stage.Variants {
+			if _, exists := fields[field.Id]; exists {
+				return nil, fmt.Errorf("duplicate field id %q", field.Id)
+			}
+			fields[field.Id] = field
+		}
+	}
+	return &Textbooks{byID: byID, fields: fields, list: list}, nil
 }
 
 func loadTextbooks(ctx context.Context, pages fs.FS) (map[string]domain.Tutorial, []domain.Tutorial, error) {
@@ -87,18 +97,16 @@ func (r *Textbooks) Get(ctx context.Context, id string) (domain.Tutorial, error)
 	return tutorial, nil
 }
 
-// GetGenerationField exposes only the stage of a published textbook. Battle
-// fields are not available until the field repository is implemented.
-func (r *Textbooks) GetGenerationField(ctx context.Context, _ string, fieldID string) (jsontext.Value, error) {
-	tutorial, err := r.Get(ctx, fieldID)
-	if err != nil {
-		return nil, err
+// GetField returns a published tutorial variant by its field ID.
+func (r *Textbooks) GetField(ctx context.Context, id string) (schema.FieldDefinition, error) {
+	if err := ctx.Err(); err != nil {
+		return schema.FieldDefinition{}, err
 	}
-	stage, err := json.Marshal(tutorial.Stage)
-	if err != nil {
-		return nil, fmt.Errorf("encode generation field %q: %w", fieldID, err)
+	field, ok := r.fields[id]
+	if !ok {
+		return schema.FieldDefinition{}, usecase.ErrNotFound
 	}
-	return jsontext.Value(stage), nil
+	return field, nil
 }
 
 func parseTextbook(path string, raw []byte) (domain.Tutorial, error) {

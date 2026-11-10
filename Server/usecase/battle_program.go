@@ -15,10 +15,10 @@ type BattleProgramRepository interface {
 
 type BattlePrograms struct {
 	repo     BattleProgramRepository
-	programs RunProgramRepository
+	programs ProgramGetter
 }
 
-func NewBattlePrograms(repo BattleProgramRepository, programs RunProgramRepository) *BattlePrograms {
+func NewBattlePrograms(repo BattleProgramRepository, programs ProgramGetter) *BattlePrograms {
 	return &BattlePrograms{repo: repo, programs: programs}
 }
 

@@ -40,11 +40,11 @@ test('optionとstackの入れ子をBlocklyの型キーと相互変換できる',
     assert.equal(typeKey(keyType(key)), key)
 })
 
-test('オプションカテゴリのブロックはoptionを受け取り、unwrapの返り値を固定しない', () => {
+test('ヌラブルカテゴリのブロックはoptionを受け取り、unwrapの返り値を固定しない', () => {
   const functions = programFunctions(newProgram())
   registerPicoBlocks(functions)
   const category = picoToolbox(functions).contents.find(
-    (item) => item.kind === 'category' && 'name' in item && item.name === 'オプション',
+    (item) => item.kind === 'category' && 'name' in item && item.name === 'ヌラブル',
   ) as Blockly.utils.toolbox.StaticCategoryInfo
   assert.ok(category)
   assert.equal(category.contents.length, 4)
@@ -200,8 +200,8 @@ test('ツールボックスの初期リテラルを取り外し、別の入力�
   registerPicoBlocks(functions)
   const toolbox = picoToolbox(functions)
   for (const [categoryName, blockType, input] of [
-    ['動き', 'pico_stmt_wait', 'ARG0'],
-    ['動き', 'pico_stmt_rotate', 'ARG0'],
+    ['動く', 'pico_stmt_wait', 'ARG0'],
+    ['動く', 'pico_stmt_rotate', 'ARG0'],
     ['制御', 'pico_if', 'CONDITION'],
     ['制御', 'pico_return', 'VALUE'],
     ['制御', 'pico_for', 'END'],
@@ -706,6 +706,51 @@ test('declaration blocks display inferred stack types without a type selector or
     assert.equal('type' in declaration, false)
     updatePicoDiagnostics(workspace, [])
     assert.equal(block.getFieldValue('INFERRED_TYPE'), '未確定')
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('forの変数ブロックは初期配置・読み込み・名前変更と取り出し後も使える', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    const category = picoToolbox(functions).contents.find(
+      (item) => item.kind === 'category' && 'name' in item && item.name === '制御',
+    ) as Blockly.utils.toolbox.StaticCategoryInfo
+    const entry = category.contents.find(
+      (item) => item.kind === 'block' && 'type' in item && item.type === 'pico_for',
+    ) as Blockly.utils.toolbox.BlockInfo
+    const loop = Blockly.serialization.blocks.append({ ...entry, type: 'pico_for' }, workspace)
+    assert.equal(loop.getInputTargetBlock('TOKEN')?.getFieldValue('NAME'), 'i')
+    loop.setFieldValue('steps', 'NAME')
+    refreshVariableBlocks(workspace)
+    const token = loop.getInputTargetBlock('TOKEN')!
+    assert.equal(token.getFieldValue('NAME'), 'steps')
+    assert.equal(token.isShadow(), true)
+    token.setShadow(false)
+    token.unplug()
+    const print = workspace.newBlock('pico_stmt_print_integer')
+    print.getInput('ARG0')!.connection!.connect(token.outputConnection!)
+    loop.getInput('BODY')!.connection!.connect(print.previousConnection!)
+    refreshVariableBlocks(workspace)
+    assert.equal(loop.getInputTargetBlock('TOKEN')?.isShadow(), true)
+    assert.equal(loop.getInputTargetBlock('TOKEN')?.getFieldValue('NAME'), 'steps')
+    const result = readFunction(workspace, functions.main, functions)
+    const statement = result.body.stmts[0]
+    assert.equal(statement.kind, 'for')
+    assert.equal(statement.ident.name, 'steps')
+    loadFunction(workspace, result, functions)
+    const loaded = workspace.getAllBlocks(false).find((item) => item.type === 'pico_for')!
+    assert.equal(loaded.getInputTargetBlock('TOKEN')?.getFieldValue('NAME'), 'steps')
+    assert.deepEqual(readFunction(workspace, result, functions), result)
+    functions.main = result
+    assert.equal(
+      inferPicolang(program).diagnostics.some((item) => item.severity === 'error'),
+      false,
+    )
   } finally {
     workspace.dispose()
   }

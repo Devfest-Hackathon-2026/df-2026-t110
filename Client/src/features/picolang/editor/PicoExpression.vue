@@ -87,7 +87,7 @@ const standaloneNote = computed(() => {
   if (!props.statement || node.kind !== 'call') return ''
   if (resultGuidance[node.func]) return `${resultGuidance[node.func]} この行だけでは返した値を使いません。`
   const category = PICO_BUILTIN_OPTIONS.find((item) => item.name === node.func)?.category
-  return category && !['動き', '操作', '表示'].includes(category)
+  return category && !['動く', 'オブジェクト', '発言'].includes(category)
     ? 'この行だけでは返した値を使いません。変数や条件の入力欄に入れてください。'
     : ''
 })

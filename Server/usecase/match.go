@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/google/uuid"
 )
 
 type MatchUserRepository interface {
@@ -25,40 +26,34 @@ type MatchLayoutRepository interface {
 	List(ctx context.Context) ([]domain.BattleLayout, error)
 }
 
-type MatchExecutor interface {
-	Execute(ctx context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error)
-}
-
 type MatchRepository interface {
 	// Rating returns the challenger's latest rating. It is read without a lock: a match
 	// is rated from the ratings at matching time.
 	Rating(ctx context.Context, subject string) (int, error)
-	// Create saves the match and adds record.RatingDelta to the challenger's current
-	// rating in one transaction.
-	Create(ctx context.Context, record domain.MatchRecord) (domain.Match, error)
 }
 
 type MatchDeps struct {
 	Users     MatchUserRepository
-	Programs  RunProgramRepository
+	Programs  ProgramGetter
 	Opponents MatchOpponentRepository
 	Layouts   MatchLayoutRepository
-	Executor  MatchExecutor
+	Executor  *Executor
 	Matches   MatchRepository
 }
 
 type Matches struct {
-	deps MatchDeps
-	pick func(int) int
-	draw func() float64
+	deps  MatchDeps
+	pick  func(int) int
+	draw  func() float64
+	newID func() (uuid.UUID, error)
 }
 
 func NewMatches(deps MatchDeps) *Matches {
-	return &Matches{deps: deps, pick: rand.IntN, draw: rand.Float64}
+	return &Matches{deps: deps, pick: rand.IntN, draw: rand.Float64, newID: uuid.NewV7}
 }
 
-// Create runs the engine in the server process and saves a completed match.
-// Rejected requests and failed executions do not leave pending runs behind.
+// Create matches the challenger with an opponent and hands the match to the
+// executor. A failed simulation leaves a pending run without a match.
 func (m *Matches) Create(ctx context.Context, subject string, ids []string) (domain.Match, error) {
 	if strings.TrimSpace(subject) == "" {
 		return domain.Match{}, ErrUnauthenticated
@@ -112,28 +107,18 @@ func (m *Matches) Create(ctx context.Context, subject string, ids []string) (dom
 		return domain.Match{}, ErrNotFound
 	}
 	layout := layouts[m.pick(len(layouts))]
-	result, err := m.deps.Executor.Execute(ctx, programs, opponent.Programs, layout)
+	id, err := m.newID()
+	if err != nil {
+		return domain.Match{}, fmt.Errorf("generate match ID: %w", err)
+	}
+	entry := domain.MatchEntry{
+		ID: id.String(), GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject, OpponentName: *opponent.User.Name,
+		ChallengerRating: rating, OpponentRating: opponent.Rating,
+	}
+	run := domain.Run{GoogleSubject: subject, FieldID: layout.FieldID}
+	runID, err := m.deps.Executor.Execute(ctx, run, domain.MatchJob{Entry: entry, Player: programs, Opponent: opponent.Programs, Layout: layout})
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("execute match: %w", err)
 	}
-	outcome := domain.OutcomeFromScores(result.ChallengerScore, result.OpponentScore)
-	match, err := m.deps.Matches.Create(ctx, domain.MatchRecord{
-		ChallengerPrograms: programReferences(programs), OpponentPrograms: programReferences(opponent.Programs),
-		GoogleSubject: subject, OpponentSubject: opponent.User.GoogleSubject,
-		OpponentName: *opponent.User.Name, FieldID: layout.FieldID, Result: result.Replay,
-		Outcome: outcome, ChallengerRating: rating, OpponentRating: opponent.Rating,
-		RatingDelta: domain.RatingDelta(rating, opponent.Rating, outcome),
-	})
-	if err != nil {
-		return domain.Match{}, fmt.Errorf("save match: %w", err)
-	}
-	return match, nil
-}
-
-func programReferences(programs []domain.Program) []domain.ProgramRef {
-	refs := make([]domain.ProgramRef, len(programs))
-	for i, program := range programs {
-		refs[i] = program.Ref()
-	}
-	return refs
+	return domain.Match{ID: entry.ID, RunID: runID, FieldID: layout.FieldID, OpponentName: entry.OpponentName}, nil
 }

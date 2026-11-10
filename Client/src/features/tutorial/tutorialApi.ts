@@ -1,3 +1,5 @@
+import { isPicoProgram, newProgram, type PicoProgram } from '../picolang/language/picolang.ts'
+
 const base = (import.meta.env?.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '')
 
 export interface TutorialRecord {
@@ -9,6 +11,13 @@ export interface TutorialRecord {
   description: string
   lesson?: string
   guide?: string[]
+  initialProgram?: PicoProgram
+}
+
+export function initialTutorialProgram(tutorial: TutorialRecord): PicoProgram {
+  if (tutorial.initialProgram === undefined) return newProgram()
+  if (!isPicoProgram(tutorial.initialProgram)) throw new Error('教材の初期プログラムの形式が不正です')
+  return tutorial.initialProgram
 }
 
 export interface TutorialSummary {

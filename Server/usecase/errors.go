@@ -17,6 +17,8 @@ var (
 	ErrForbidden = errors.New("forbidden")
 	// ErrInvalidLogin reports a rejected, expired, replayed, or unverifiable login attempt.
 	ErrInvalidLogin = errors.New("invalid login")
+	// ErrRunUnavailable reports that program execution is not configured.
+	ErrRunUnavailable = errors.New("run unavailable")
 	// ErrLoginUnavailable reports that no identity provider is configured.
 	ErrLoginUnavailable = errors.New("login unavailable")
 	// ErrInvalidUsername reports a name outside the allowed format.

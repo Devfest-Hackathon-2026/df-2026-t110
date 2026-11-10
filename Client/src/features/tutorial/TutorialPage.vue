@@ -14,7 +14,7 @@ import { usePicolangPlayback } from '../picolang/editor/playback/usePicolangPlay
 import { speechForValue } from '../picolang/editor/playback/picolangSpeech.ts'
 import { normalizeField } from '../stage/stage.ts'
 import type { FieldData, StageLayout } from '../stage/stage.ts'
-import { getTutorial, getTutorialField } from './tutorialApi.ts'
+import { getTutorial, getTutorialField, initialTutorialProgram } from './tutorialApi.ts'
 import { getTutorials, type TutorialRecord, type TutorialSummary } from './tutorialApi.ts'
 import {
   receiveTutorialResult,
@@ -80,6 +80,7 @@ const compactScreen = ref(false)
 const compactPane = ref<'work' | 'ar'>('work')
 const modeBeforeCompactWork = ref<'preview' | 'camera' | null>(null)
 const picolangProgram = ref<PicoProgram | null>(null)
+const editorInitialProgram = ref<PicoProgram | null>(null)
 let resizing = false
 const resizingStage = ref(false)
 let controller: AbortController | null = null
@@ -163,6 +164,7 @@ async function load(id: string): Promise<void> {
   activeStage.value = null
   animationEvent.value = null
   picolangProgram.value = null
+  editorInitialProgram.value = null
   runState.value = 'idle'
   runMessage.value = ''
   loginRequired.value = false
@@ -186,8 +188,10 @@ async function load(id: string): Promise<void> {
     if (!remoteField || typeof remoteField !== 'object' || Array.isArray(remoteField))
       throw new Error('チュートリアルのフィールドが見つかりません')
     const nextField = normalizeField(remoteField as Record<string, unknown>)
+    const initialProgram = initialTutorialProgram(remote)
     tutorial.value = remote
     field.value = nextField
+    editorInitialProgram.value = initialProgram
     layoutIndex.value = 0
     loadState.value = 'ready'
     document.title = `${remote.title} | PicoBots`
@@ -449,13 +453,14 @@ onBeforeUnmount(() => {
       :inert="compactScreen && compactPane !== 'work'"
     >
       <div class="tutorial-editor-heading">
-        <h2 id="tutorial-editor-title">コード</h2>
+        <h2 id="tutorial-editor-title" class="furigana-heading">コード</h2>
         <span>Picolang v0</span>
       </div>
       <div class="tutorial-editor-body">
         <BlocklyEditor
           v-if="loadState === 'ready'"
           :tutorial-id="tutorialId"
+          :initial-program="editorInitialProgram"
           :execution="executionTrace"
           :running="runState === 'running'"
           :playback-ready="playbackReady"
@@ -512,7 +517,7 @@ onBeforeUnmount(() => {
             チュートリアルを読み込んでいます。
           </div>
           <div v-else-if="loadState === 'not-found'" class="tutorial-load-message">
-            <h1>チュートリアルが見つかりません。</h1>
+            <h1 class="furigana-heading">チュートリアルが見つかりません。</h1>
             <a href="/tutorials">チュートリアルを見る</a>
           </div>
           <template v-else-if="loadState === 'ready' && tutorial">
@@ -521,21 +526,21 @@ onBeforeUnmount(() => {
                 {{ String(lessonPosition + 1).padStart(2, '0') }} /
                 {{ String(catalog.length).padStart(2, '0') }}
               </p>
-              <h1>{{ tutorial.title }}</h1>
-              <p v-if="tutorial.goal">
+              <h1 class="furigana-heading">{{ tutorial.title }}</h1>
+              <p v-if="tutorial.goal" class="furigana-text">
                 この課題の目標:
                 {{ tutorial.goal }}
               </p>
             </header>
             <section class="tutorial-note" aria-labelledby="tutorial-note-title">
-              <h2 id="tutorial-note-title">この課題で考えること</h2>
-              <p>{{ tutorial.lesson ?? tutorial.description }}</p>
+              <h2 id="tutorial-note-title" class="furigana-heading">この課題で考えること</h2>
+              <p class="furigana-text">{{ tutorial.lesson ?? tutorial.description }}</p>
             </section>
             <div v-if="guideLines.length" class="tutor-conversation">
               <TutorAvatar />
               <div class="tutor-speech">
                 <span>案内役のロボット</span>
-                <p aria-live="polite">{{ guideLines[guideIndex] }}</p>
+                <p class="furigana-text" aria-live="polite">{{ guideLines[guideIndex] }}</p>
               </div>
             </div>
             <div v-if="guideLines.length" class="tutor-stepper" aria-label="説明を切り替える">

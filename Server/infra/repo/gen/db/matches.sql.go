@@ -71,28 +71,6 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) error 
 	return err
 }
 
-const createMatchRun = `-- name: CreateMatchRun :exec
-INSERT INTO runs (id, google_subject, field_id, result)
-VALUES ($1, $2, $3, $4)
-`
-
-type CreateMatchRunParams struct {
-	ID            pgtype.UUID
-	GoogleSubject string
-	FieldID       string
-	Result        []byte
-}
-
-func (q *Queries) CreateMatchRun(ctx context.Context, arg CreateMatchRunParams) error {
-	_, err := q.db.Exec(ctx, createMatchRun,
-		arg.ID,
-		arg.GoogleSubject,
-		arg.FieldID,
-		arg.Result,
-	)
-	return err
-}
-
 const getBattleTeam = `-- name: GetBattleTeam :many
 SELECT users.google_subject, users.name, users.rating, programs.id, programs.name AS program_name, programs.source, programs.revision
 FROM users

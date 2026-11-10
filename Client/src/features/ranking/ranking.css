@@ -141,8 +141,7 @@
 }
 
 .ranking-list-item--mine .ranking-card {
-  outline: 2px solid var(--color-accent-deep);
-  outline-offset: 2px;
+  background: #eaf5ef;
 }
 
 .ranking-card-position,

@@ -1,7 +1,3 @@
--- name: CreateMatchRun :exec
-INSERT INTO runs (id, google_subject, field_id, result)
-VALUES ($1, $2, $3, $4);
-
 -- Ratings are passed as bigint so that PostgreSQL, not a silent int32
 -- conversion, rejects values outside the integer columns.
 -- name: CreateMatch :exec

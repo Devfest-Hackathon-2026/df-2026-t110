@@ -3,7 +3,7 @@
     tags:
       - field
     summary: フィールドを取得
-    description: 単一のフィールドの盤面情報を返す。
+    description: 教材の variant の fieldId から単一ロボットの盤面を返す。複数ロボットとテリトリーを含む対戦用 BattleLayout は Field で表現できないため対象外。
     operationId: getField
     parameters:
       - $ref: "../../openapi.yaml#/components/parameters/FieldId"

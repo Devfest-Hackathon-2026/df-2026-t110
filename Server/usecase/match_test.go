@@ -2,12 +2,12 @@ package usecase
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/google/uuid"
 )
 
 type matchUserStub struct{ name *string }
@@ -53,50 +53,19 @@ func (s matchLayoutsStub) List(context.Context) ([]domain.BattleLayout, error) {
 	return s.layouts, nil
 }
 
-type matchExecutorStub struct {
-	player, opponent []domain.Program
-	layout           domain.BattleLayout
-	scores           [2]int64
-	err              error
-	calls            int
-}
+type matchRatingStub struct{ rating int }
 
-func (s *matchExecutorStub) Execute(_ context.Context, player, opponent []domain.Program, layout domain.BattleLayout) (domain.MatchResult, error) {
-	s.calls++
-	s.player, s.opponent, s.layout = player, opponent, layout
-	if s.err != nil {
-		return domain.MatchResult{}, s.err
-	}
-	return domain.MatchResult{
-		ChallengerScore: s.scores[0], OpponentScore: s.scores[1],
-		Replay: jsontext.Value(`{"history":[],"summary":{"score":{"player":1,"opponent":0}}}`),
-	}, nil
-}
-
-type matchStoreStub struct {
-	rating int
-	record domain.MatchRecord
-	err    error
-	calls  int
-}
-
-func (s *matchStoreStub) Rating(context.Context, string) (int, error) { return s.rating, nil }
-
-func (s *matchStoreStub) Create(_ context.Context, record domain.MatchRecord) (domain.Match, error) {
-	s.calls++
-	s.record = record
-	return domain.Match{ID: "match-id", RunID: "run-id", FieldID: record.FieldID, OpponentName: record.OpponentName}, s.err
-}
+func (s matchRatingStub) Rating(context.Context, string) (int, error) { return s.rating, nil }
 
 func TestCreateMatch(t *testing.T) {
 	t.Parallel()
 	storageErr := errors.New("storage unavailable")
 	for _, tt := range []struct {
-		name                                       string
-		subject                                    string
-		ids                                        []string
-		noName                                     bool
-		selectionErr, executeErr, saveErr, wantErr error
+		name                                            string
+		subject                                         string
+		ids                                             []string
+		noName                                          bool
+		selectionErr, simulateErr, completeErr, wantErr error
 	}{
 		{name: "ordered duplicate programs", subject: "owner", ids: []string{"b", "a", "b"}},
 		{name: "no session", ids: []string{"a", "a", "a"}, wantErr: ErrUnauthenticated},
@@ -110,8 +79,8 @@ func TestCreateMatch(t *testing.T) {
 		{name: "tutorial program", subject: "owner", ids: []string{"a", "tutorial", "a"}, wantErr: domain.ErrInvalidProgram},
 		{name: "no opponent", subject: "owner", ids: []string{"a", "a", "a"}, selectionErr: ErrNoOpponent, wantErr: ErrNoOpponent},
 		{name: "selection failure", subject: "owner", ids: []string{"a", "a", "a"}, selectionErr: storageErr, wantErr: storageErr},
-		{name: "execution failure", subject: "owner", ids: []string{"a", "a", "a"}, executeErr: domain.ErrInvalidProgram, wantErr: domain.ErrInvalidProgram},
-		{name: "save failure", subject: "owner", ids: []string{"a", "a", "a"}, saveErr: storageErr, wantErr: storageErr},
+		{name: "simulation failure", subject: "owner", ids: []string{"a", "a", "a"}, simulateErr: domain.ErrInvalidProgram, wantErr: domain.ErrInvalidProgram},
+		{name: "result save failure", subject: "owner", ids: []string{"a", "a", "a"}, completeErr: storageErr, wantErr: storageErr},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -120,13 +89,14 @@ func TestCreateMatch(t *testing.T) {
 			if !tt.noName {
 				displayName = &name
 			}
-			store := &matchStoreStub{rating: 1000, err: tt.saveErr}
 			opponent := &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
 				User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
 				Programs: []domain.Program{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}},
 				Rating:   1200,
 			}, err: tt.selectionErr}
-			executor := &matchExecutorStub{scores: [2]int64{1, 0}, err: tt.executeErr}
+			runs := &runRepositoryStub{}
+			results := &matchResultRepositoryStub{err: tt.completeErr}
+			simulator := &matchSimulatorStub{err: tt.simulateErr}
 			service := NewMatches(MatchDeps{
 				Users: matchUserStub{displayName}, Programs: matchProgramsStub{map[string]domain.Program{
 					"a":        {ID: "a", Revision: 2, GoogleSubject: "owner", IsBattle: true},
@@ -135,7 +105,8 @@ func TestCreateMatch(t *testing.T) {
 					"tutorial": {ID: "tutorial", GoogleSubject: "owner"},
 				}}, Opponents: opponent,
 				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{FieldID: "layout-a"}, {FieldID: "layout-b"}}},
-				Executor: executor, Matches: store,
+				Executor: NewExecutor(runs, results, nil, simulator),
+				Matches:  matchRatingStub{1000},
 			})
 			service.pick = func(n int) int {
 				if n != 2 {
@@ -143,86 +114,44 @@ func TestCreateMatch(t *testing.T) {
 				}
 				return 1
 			}
+			matchID := uuid.Must(uuid.NewV7())
+			service.newID = func() (uuid.UUID, error) { return matchID, nil }
 			match, err := service.Create(t.Context(), tt.subject, tt.ids)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Create error=%v, want %v", err, tt.wantErr)
 			}
 			if tt.wantErr != nil {
-				if match.ID != "" || (tt.saveErr == nil && store.calls != 0) {
-					t.Errorf("failed match was saved or returned: match=%+v, saves=%d", match, store.calls)
+				if match.ID != "" {
+					t.Errorf("failed match was returned: %+v", match)
 				}
-				if tt.executeErr == nil && tt.saveErr == nil && executor.calls != 0 {
-					t.Error("rejected request executed the engine")
+				if tt.simulateErr == nil && tt.completeErr == nil && runs.created != nil {
+					t.Error("rejected request created a run")
 				}
 				return
 			}
+			job := simulator.job
 			var gotIDs []string
-			for _, p := range executor.player {
+			for _, p := range job.Player {
 				gotIDs = append(gotIDs, p.ID)
 			}
-			if !reflect.DeepEqual(gotIDs, tt.ids) || !reflect.DeepEqual(executor.opponent, opponent.team.Programs) {
-				t.Errorf("engine programs=%v/%v", gotIDs, executor.opponent)
+			if !reflect.DeepEqual(gotIDs, tt.ids) || !reflect.DeepEqual(job.Opponent, opponent.team.Programs) {
+				t.Errorf("engine programs=%v/%v", gotIDs, job.Opponent)
 			}
-			if opponent.challenger != "owner" || executor.layout.FieldID != "layout-b" || executor.calls != 1 {
-				t.Errorf("selection=%+v, execution=%+v", opponent, executor)
+			if opponent.challenger != "owner" || job.Layout.FieldID != "layout-b" || simulator.calls != 1 {
+				t.Errorf("selection=%+v, simulated %d times on %q", opponent, simulator.calls, job.Layout.FieldID)
 			}
-			if match.ID != "match-id" || match.RunID != "run-id" || match.OpponentName != opponentName || match.FieldID != "layout-b" {
+			if run := runs.created; run == nil || run.GoogleSubject != "owner" || run.FieldID != "layout-b" || run.TutorialID != "" || run.Program != nil {
+				t.Errorf("executed run=%+v", run)
+			}
+			if match.ID != matchID.String() || match.RunID != "run-id" || match.OpponentName != opponentName || match.FieldID != "layout-b" {
 				t.Errorf("match=%+v", match)
 			}
-			wantChallenger := []domain.ProgramRef{{ID: "b", Revision: 5}, {ID: "a", Revision: 2}, {ID: "b", Revision: 5}}
-			wantOpponent := []domain.ProgramRef{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}}
-			if !reflect.DeepEqual(store.record.ChallengerPrograms, wantChallenger) || !reflect.DeepEqual(store.record.OpponentPrograms, wantOpponent) {
-				t.Errorf("saved program references=%v/%v, want %v/%v", store.record.ChallengerPrograms, store.record.OpponentPrograms, wantChallenger, wantOpponent)
-			}
-			if store.record.GoogleSubject != "owner" || store.record.OpponentSubject != "opponent" || !store.record.Result.IsValid() {
-				t.Errorf("saved record=%+v", store.record)
-			}
-		})
-	}
-}
-
-func TestCreateMatchRatesChallenger(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name        string
-		scores      [2]int64
-		wantOutcome domain.MatchOutcome
-		wantDelta   int
-	}{
-		{name: "win against stronger", scores: [2]int64{2, 1}, wantOutcome: domain.MatchWin, wantDelta: 120},
-		{name: "loss against stronger", scores: [2]int64{0, 1}, wantOutcome: domain.MatchLoss, wantDelta: -5},
-		{name: "draw against stronger", scores: [2]int64{1, 1}, wantOutcome: domain.MatchDraw, wantDelta: 10},
-	}
-
-	for _, tt := range cases {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			name, opponentName := "Owner", "Opponent"
-			store := &matchStoreStub{rating: 1000}
-			service := NewMatches(MatchDeps{
-				Users: matchUserStub{&name},
-				Programs: matchProgramsStub{map[string]domain.Program{
-					"a": {ID: "a", GoogleSubject: "owner", IsBattle: true},
-				}},
-				Opponents: &matchOpponentStub{candidates: []domain.OpponentCandidate{{GoogleSubject: "opponent", Rating: 1200}}, team: domain.BattleTeam{
-					User:     domain.User{GoogleSubject: "opponent", Name: &opponentName},
-					Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
-					Rating:   1200,
-				}},
-				Layouts:  matchLayoutsStub{[]domain.BattleLayout{{FieldID: "field"}}},
-				Executor: &matchExecutorStub{scores: tt.scores}, Matches: store,
-			})
-
-			if _, err := service.Create(t.Context(), "owner", []string{"a", "a", "a"}); err != nil {
-				t.Fatalf("Create: %v", err)
-			}
-
-			got := store.record
-			if got.Outcome != tt.wantOutcome || got.ChallengerRating != 1000 || got.OpponentRating != 1200 || got.RatingDelta != tt.wantDelta {
-				t.Errorf("outcome=%s ratings=%d vs %d delta=%d, want %s 1000 vs 1200 delta=%d",
-					got.Outcome, got.ChallengerRating, got.OpponentRating, got.RatingDelta, tt.wantOutcome, tt.wantDelta)
+			want := domain.MatchEntry{ID: matchID.String(), GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: opponentName, ChallengerRating: 1000, OpponentRating: 1200}
+			wantRecord := want.Record(domain.MatchResult{})
+			wantRecord.ChallengerPrograms = []domain.ProgramRef{{ID: "b", Revision: 5}, {ID: "a", Revision: 2}, {ID: "b", Revision: 5}}
+			wantRecord.OpponentPrograms = []domain.ProgramRef{{ID: "o2", Revision: 9}, {ID: "o1", Revision: 4}, {ID: "o2", Revision: 9}}
+			if results.completed == nil || !reflect.DeepEqual(*results.completed, wantRecord) {
+				t.Errorf("completed=%+v, want %+v", results.completed, wantRecord)
 			}
 		})
 	}
@@ -262,13 +191,14 @@ func TestCreateMatchChoosesOpponentByRating(t *testing.T) {
 				User:     domain.User{Name: &opponentName},
 				Programs: []domain.Program{{ID: "o"}, {ID: "o"}, {ID: "o"}},
 			}}
-			store := &matchStoreStub{rating: tt.rating}
+			runs, results := &runRepositoryStub{}, &matchResultRepositoryStub{}
 			service := NewMatches(MatchDeps{
 				Users:     matchUserStub{&name},
 				Programs:  matchProgramsStub{map[string]domain.Program{"a": {ID: "a", GoogleSubject: "owner", IsBattle: true}}},
 				Opponents: opponent,
 				Layouts:   matchLayoutsStub{[]domain.BattleLayout{{FieldID: "field"}}},
-				Executor:  &matchExecutorStub{}, Matches: store,
+				Executor:  NewExecutor(runs, results, nil, &matchSimulatorStub{}),
+				Matches:   matchRatingStub{tt.rating},
 			})
 			service.draw = func() float64 { return tt.draw }
 
@@ -276,8 +206,14 @@ func TestCreateMatchChoosesOpponentByRating(t *testing.T) {
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("Create error=%v, want %v", err, tt.wantErr)
 			}
-			if store.record.OpponentSubject != tt.want {
-				t.Errorf("saved opponent=%q, want %q", store.record.OpponentSubject, tt.want)
+			if tt.wantErr != nil {
+				if runs.created != nil {
+					t.Error("failed matching created a run")
+				}
+				return
+			}
+			if results.completed == nil || results.completed.OpponentSubject != tt.want {
+				t.Errorf("completed=%+v, want opponent %q", results.completed, tt.want)
 			}
 		})
 	}

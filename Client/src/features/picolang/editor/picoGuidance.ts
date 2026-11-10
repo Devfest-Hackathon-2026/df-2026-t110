@@ -42,9 +42,9 @@ export const builtinArguments: Partial<Record<PicoBuiltinName, readonly string[]
   pop_back: ['最後を除くスタック'],
   get_back: ['最後を見るスタック'],
   size: ['個数を数えるスタック'],
-  some: ['オプションに入れる値'],
-  unwrap: ['値を取り出すオプション'],
-  is_some: ['値の有無を調べるオプション'],
+  some: ['ヌラブルに入れる値'],
+  unwrap: ['値を取り出すヌラブル'],
+  is_some: ['値の有無を調べるヌラブル'],
   print_integer: ['表示する数'],
   print_bool: ['表示する答え'],
   print_unit: ['表示する値なし'],
@@ -64,7 +64,7 @@ export function argumentLabel(name: string, index: number, functions: Record<str
 export function typeLabel(type: PicoSignatureType | undefined): string {
   if (!type || (typeof type !== 'string' && type.kind === 'type_parameter')) return '未確定'
   if (typeof type !== 'string')
-    return `${typeLabel(type.elementType)}の${type.kind === 'option' ? 'オプション' : 'スタック'}`
+    return `${typeLabel(type.elementType)}の${type.kind === 'option' ? 'ヌラブル' : 'スタック'}`
   return {
     bool: '真理値',
     integer: '整数',
@@ -81,8 +81,8 @@ export const resultGuidance: Record<string, string> = {
   pop_back: '元のスタックは変わりません。空のスタックには使えません。',
   get_back: 'スタックは変わりません。空のスタックには使えません。',
   size: '元のスタックは変わりません。',
-  some: '値を入れたオプションを返します。中の値は「値を取り出す」で使えます。',
-  none: '値のないオプションを返します。値の種類は、代入する変数や呼び出す関数などから決まります。',
+  some: '値を入れたヌラブルを返します。中の値は「値を取り出す」で使えます。',
+  none: '値のないヌラブルを返します。値の種類は、代入する変数や呼び出す関数などから決まります。',
   unwrap: '値がない場合はエラーで実行が止まります。先に「値があるか調べる」で確認してください。',
   is_some: '値がある場合は「はい」、値がない場合は「いいえ」を返します。',
 }

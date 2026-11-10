@@ -2,6 +2,33 @@
 /* Hallmark · critique: replaced oversized left copy and empty mission band with a compact heading and product preview. */
 @import url('../../tokens.css');
 @import url('../../base.css');
+/* Furifont v0.7.0: https://furifont.antfu.me/docs/website
+   Licenses: public/licenses/furifont/. Vite hashes the font for caching. */
+@font-face {
+  font-family: 'Furifont Sans';
+  src: url('../assets/fonts/furifont/FurifontSansVF-v0.7.0.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 250 900;
+  font-display: swap;
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+  /* Preserve the existing Latin text and number metrics. */
+  unicode-range:
+    U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF, U+20000-2FA1F, U+E0100-E01EF;
+}
+/* Opt in prose and selected headings; compact controls and code keep their fonts. */
+.site .furigana-text:lang(ja),
+.site .furigana-heading:lang(ja) {
+  font-family: 'Furifont Sans', var(--font-body);
+  letter-spacing: normal;
+}
+.site .furigana-text:lang(ja) {
+  line-height: 1.8;
+}
+.site .furigana-heading:lang(ja) {
+  line-height: 1.6;
+}
 :root {
   --color-paper: #f1f6f2;
   --color-paper-2: #e2eee8;
@@ -53,8 +80,10 @@ body,
   color: inherit;
 }
 .site a:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 4px;
+  outline: none;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.25em;
 }
 .site-nav {
   max-width: none;
@@ -279,14 +308,10 @@ body,
 .home-carousel {
   width: min(100%, 900px);
   margin-inline: auto;
-  border: 1px solid var(--color-edge);
-  border-radius: 4px;
-  background: var(--color-card);
   overflow: hidden;
 }
 .home-carousel-view {
   padding-block: 18px;
-  background: var(--color-paper-2);
 }
 .home-carousel-slide {
   padding-inline: 9px;
@@ -344,7 +369,6 @@ body,
   justify-content: center;
   gap: 10px;
   padding: 10px 16px;
-  border-top: 1px solid var(--color-edge);
 }
 .home-carousel-controls > button {
   display: grid;
@@ -433,6 +457,41 @@ body,
 }
 .lesson-entry:hover strong {
   color: var(--color-accent-deep);
+}
+.tutorial-catalog-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  max-width: 760px;
+  margin-bottom: var(--space-sm);
+  color: var(--color-ink-2);
+  font-size: var(--type-small);
+}
+.tutorial-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  max-width: 760px;
+  margin-top: 28px;
+  color: var(--color-ink-2);
+  font-size: var(--type-small);
+}
+.tutorial-pagination button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-accent-deep);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-accent-deep);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tutorial-pagination button:disabled {
+  border-color: var(--color-rule);
+  color: var(--color-muted);
+  cursor: default;
 }
 .page-note {
   margin-top: var(--space-lg);

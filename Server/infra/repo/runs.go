@@ -22,6 +22,8 @@ type Runs struct{ queries *db.Queries }
 
 func NewRuns(pool *pgxpool.Pool) *Runs { return &Runs{queries: db.New(pool)} }
 
+// Create saves a pending run. Match runs have no tutorial or program, which are
+// stored as NULL.
 func (r *Runs) Create(ctx context.Context, run domain.Run) (string, error) {
 	id, err := uuid.NewV7()
 	if err != nil {

@@ -14,6 +14,12 @@ import {
   type ProgramRecord,
 } from './matchApi.ts'
 import type { PicoProgram } from '../picolang/language/picolang.ts'
+import {
+  getSavedProgram,
+  updateSavedProgram,
+  SavedProgramApiError,
+  type SavedProgram,
+} from '../picolang/savedProgramApi.ts'
 import { replayFrames, type ReplayFrame } from './matchReplay.ts'
 
 type ProgramIds = [string, string, string]
@@ -57,6 +63,9 @@ export const useMatchStore = defineStore('match', () => {
   const user = ref<MatchUser | null>(null)
   const authStatus = ref<'checking' | 'signed-in' | 'guest'>('checking')
   const busy = ref(false)
+  const startingMatch = ref(false)
+  const startMatchError = ref('')
+  const noOpponent = ref(false)
   const error = ref('')
   const phase = computed(() => (result.value ? 'finished' : match.value ? 'running' : 'preparing'))
   const canStart = computed(() => selectedProgramIds.value.every(Boolean))
@@ -106,13 +115,23 @@ export const useMatchStore = defineStore('match', () => {
         selectedProgramIds.value = emptyIds()
         return
       }
+      const saved = await Promise.allSettled(
+        [...new Set(ids)].map((id) => getSavedProgram(id, controller.signal)),
+      )
+      if (controller.signal.aborted) return
       const names = new Map(programs.value.map((program) => [program.id, program.name]))
+      for (const result of saved) {
+        if (result.status === 'fulfilled' && result.value.isBattle)
+          names.set(result.value.id, result.value.name)
+      }
       programs.value = [...new Set([...ids, ...names.keys()])].map((id) => ({
         id,
         name: names.get(id) ?? id,
       }))
       selectedProgramIds.value = [...ids]
       registeredProgramIds.value = [...ids]
+      if (saved.some((result) => result.status === 'rejected'))
+        error.value = '一部のプログラム名を取得できませんでした。対戦は続けられます。'
     } catch (cause) {
       if (!controller.signal.aborted) error.value = errorText(cause)
     } finally {
@@ -140,6 +159,40 @@ export const useMatchStore = defineStore('match', () => {
     }
   }
 
+  async function loadEditableProgram(id: string): Promise<SavedProgram | null> {
+    busy.value = true
+    error.value = ''
+    try {
+      const program = await getSavedProgram(id)
+      if (!program.isBattle) throw new Error('対戦用プログラムではありません。')
+      return program
+    } catch (cause) {
+      error.value = errorText(cause)
+      return null
+    } finally {
+      busy.value = false
+    }
+  }
+
+  async function updateExistingProgram(id: string, name: string, source: PicoProgram): Promise<boolean> {
+    if (authStatus.value !== 'signed-in' || !name.trim()) return false
+    busy.value = true
+    error.value = ''
+    try {
+      const saved = await updateSavedProgram(id, name.trim(), source)
+      programs.value = programs.value.map((program) =>
+        program.id === id ? { id: saved.id, name: saved.name } : program,
+      )
+      rememberProgram(saved)
+      return true
+    } catch (cause) {
+      error.value = errorText(cause)
+      return false
+    } finally {
+      busy.value = false
+    }
+  }
+
   async function saveSettings(): Promise<void> {
     if (authStatus.value !== 'signed-in' || !canStart.value) return
     busy.value = true
@@ -158,6 +211,9 @@ export const useMatchStore = defineStore('match', () => {
   async function startMatch(): Promise<void> {
     if (authStatus.value !== 'signed-in' || !canStart.value || busy.value) return
     busy.value = true
+    startingMatch.value = true
+    startMatchError.value = ''
+    noOpponent.value = false
     error.value = ''
     try {
       const ids: ProgramIds = [...selectedProgramIds.value]
@@ -176,8 +232,10 @@ export const useMatchStore = defineStore('match', () => {
       )
       watchMatch(created.id, created)
     } catch (cause) {
-      error.value = errorText(cause)
+      noOpponent.value = cause instanceof MatchApiError && cause.status === 409
+      startMatchError.value = errorText(cause)
     } finally {
+      startingMatch.value = false
       busy.value = false
     }
   }
@@ -238,6 +296,9 @@ export const useMatchStore = defineStore('match', () => {
     user,
     authStatus,
     busy,
+    startingMatch,
+    startMatchError,
+    noOpponent,
     error,
     phase,
     canStart,
@@ -245,6 +306,8 @@ export const useMatchStore = defineStore('match', () => {
     loadMe,
     loadPrograms,
     saveProgram,
+    loadEditableProgram,
+    updateExistingProgram,
     saveSettings,
     startMatch,
     watchMatch,
@@ -254,6 +317,7 @@ export const useMatchStore = defineStore('match', () => {
 })
 
 function errorText(cause: unknown): string {
+  if (cause instanceof SavedProgramApiError) return cause.message
   if (cause instanceof MatchApiError) {
     if (cause.status === 401) return 'ログインが必要です。'
     if (cause.status === 403) return '表示名と対戦用プログラムの設定を確認してください。'

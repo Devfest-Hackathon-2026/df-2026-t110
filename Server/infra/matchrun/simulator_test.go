@@ -24,7 +24,7 @@ func source(actions ...string) jsontext.Value {
 	return jsontext.Value(`{"picolangVersion":0,"picolang":{"v0":{"program":{"main":{"kind":"function","hintId":"00000000-0000-4000-8000-000000000000","params":[],"returnType":"unit","body":{"kind":"block","hintId":"00000000-0000-4000-8000-000000000001","stmts":[` + strings.Join(stmts, ",") + `]}}}}}}`)
 }
 
-func TestExecuteProductionLayouts(t *testing.T) {
+func TestSimulateProductionLayouts(t *testing.T) {
 	t.Parallel()
 	layouts, err := testLayouts(t).List(t.Context())
 	if err != nil {
@@ -37,7 +37,7 @@ func TestExecuteProductionLayouts(t *testing.T) {
 	for _, layout := range layouts {
 		t.Run(layout.FieldID, func(t *testing.T) {
 			t.Parallel()
-			result, err := NewExecutor().Execute(t.Context(), team(program), team(program), layout)
+			result, err := Simulate(t.Context(), team(program), team(program), layout)
 			if err != nil {
 				t.Errorf("execute production board: %v", err)
 				return
@@ -75,7 +75,7 @@ func team(program jsontext.Value) []domain.Program {
 	return programs
 }
 
-func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
+func TestSimulateScoresAndRecordsIndependentRobots(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("../../testdata/battle/cargo-lanes.json")
 	if err != nil {
@@ -85,9 +85,9 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 	if err := json.Unmarshal(data, &layout, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
-	result, err := NewExecutor().Execute(t.Context(), team(source("forward", "pick_up", "back", "release")), team(source()), layout)
+	result, err := Simulate(t.Context(), team(source("forward", "pick_up", "back", "release")), team(source()), layout)
 	if err != nil {
-		t.Errorf("Execute: %v", err)
+		t.Errorf("Simulate: %v", err)
 		return
 	}
 	var decoded struct {
@@ -134,7 +134,7 @@ func TestExecuteScoresAndRecordsIndependentRobots(t *testing.T) {
 	}
 }
 
-func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
+func TestSimulateLimitsAndInvalidPrograms(t *testing.T) {
 	t.Parallel()
 	layouts, err := testLayouts(t).List(t.Context())
 	if err != nil {
@@ -167,9 +167,9 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := NewExecutor().Execute(t.Context(), team(tt.player), team(tt.opponent), layouts[0])
+			result, err := Simulate(t.Context(), team(tt.player), team(tt.opponent), layouts[0])
 			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("Execute error=%v, want %v", err, tt.wantErr)
+				t.Errorf("Simulate error=%v, want %v", err, tt.wantErr)
 			}
 			if err != nil || tt.wantErr != nil {
 				return
@@ -195,7 +195,7 @@ func TestExecuteLimitsAndInvalidPrograms(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := NewExecutor().Execute(ctx, team(source()), team(source()), layouts[0]); !errors.Is(err, context.Canceled) {
+	if _, err := Simulate(ctx, team(source()), team(source()), layouts[0]); !errors.Is(err, context.Canceled) {
 		t.Errorf("canceled execution: %v", err)
 	}
 }

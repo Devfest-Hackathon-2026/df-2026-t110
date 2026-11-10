@@ -99,7 +99,7 @@ func (r *Router) ListTutorialPrograms(ctx *echo.Context, tutorialID api.Tutorial
 }
 
 func (r *Router) RunTutorial(ctx *echo.Context, tutorialID api.TutorialId) error {
-	if r.cfg.TutorialRuns == nil {
+	if r.cfg.Tutorials == nil {
 		return errNotImplemented()
 	}
 	user, ok := UserFromContext(ctx.Request().Context())
@@ -115,9 +115,11 @@ func (r *Router) RunTutorial(ctx *echo.Context, tutorialID api.TutorialId) error
 	if request.ProgramID == nil {
 		return echo.NewHTTPError(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 	}
-	run, err := r.cfg.TutorialRuns.Run(ctx.Request().Context(), user.GoogleSubject, tutorialID, *request.ProgramID)
+	run, err := r.cfg.Tutorials.Run(ctx.Request().Context(), user.GoogleSubject, tutorialID, *request.ProgramID)
 	status := 0
 	switch {
+	case errors.Is(err, usecase.ErrRunUnavailable):
+		return errNotImplemented()
 	case errors.Is(err, domain.ErrInvalidProgram):
 		status = http.StatusBadRequest
 	case errors.Is(err, usecase.ErrUnauthenticated):

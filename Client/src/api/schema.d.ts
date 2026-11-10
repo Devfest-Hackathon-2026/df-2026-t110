@@ -13,7 +13,7 @@ export interface paths {
         };
         /**
          * フィールドを取得
-         * @description 単一のフィールドの盤面情報を返す。
+         * @description 教材の variant の fieldId から単一ロボットの盤面を返す。複数ロボットとテリトリーを含む対戦用 BattleLayout は Field で表現できないため対象外。
          */
         get: operations["getField"];
         put?: never;
@@ -1597,7 +1597,7 @@ export interface operations {
             content: {
                 "application/json": {
                     prompt: string;
-                    /** @description 指定すると盤面情報を生成時に渡す。現行の取得元は教材IDであり、対戦フィールドの取得は未実装。 */
+                    /** @description 指定すると教材の variant の fieldId に対応する盤面情報を生成時に渡す。対戦用 BattleLayout は対象外。 */
                     fieldId?: string;
                     /** @description trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。 */
                     isBattle?: boolean;

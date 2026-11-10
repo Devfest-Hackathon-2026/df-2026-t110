@@ -4,6 +4,7 @@ import { Icon } from '@iconify/vue'
 import swordsIcon from '@iconify-icons/lucide/swords'
 import playIcon from '@iconify-icons/lucide/play'
 import saveIcon from '@iconify-icons/lucide/save'
+import pencilIcon from '@iconify-icons/lucide/pencil'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
@@ -20,6 +21,12 @@ const draft = ref<PicoProgram | null>(null)
 const generatedDraft = ref<PicoTypedProgram | null>(null)
 const generatedName = ref('')
 const editorOpen = ref(false)
+const editSelection = ref('')
+const editingProgramId = ref('')
+const editingName = ref('')
+const editingSource = ref<PicoProgram | null>(null)
+const editDraft = ref<PicoProgram | null>(null)
+const editMessage = ref('')
 const replayOpen = ref(false)
 const score = computed(() => store.result?.summary.score)
 const outcome = computed(() => {
@@ -43,6 +50,28 @@ async function saveGenerated(): Promise<void> {
   if (!generatedDraft.value) return
   await store.saveProgram(generatedName.value, generatedDraft.value)
 }
+async function openSavedProgram(): Promise<void> {
+  if (!editSelection.value) return
+  editMessage.value = ''
+  const program = await store.loadEditableProgram(editSelection.value)
+  if (!program) return
+  editingProgramId.value = program.id
+  editingName.value = program.name
+  editingSource.value = program.source
+  editDraft.value = program.source
+}
+async function saveEditedProgram(): Promise<void> {
+  if (!editingProgramId.value || !editDraft.value) return
+  editMessage.value = ''
+  if (await store.updateExistingProgram(editingProgramId.value, editingName.value, editDraft.value))
+    editMessage.value = '変更を保存しました。'
+}
+function changeEditSelection(): void {
+  editingProgramId.value = ''
+  editingSource.value = null
+  editDraft.value = null
+  editMessage.value = ''
+}
 function onEditorToggle(event: Event): void {
   editorOpen.value = (event.target as HTMLDetailsElement).open
 }
@@ -51,14 +80,18 @@ function onEditorToggle(event: Event): void {
 <template>
   <main class="match-main container">
     <header class="match-heading">
-      <h1 class="heading-with-icon"><Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span></h1>
-      <p>3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
+      <h1 class="furigana-heading heading-with-icon">
+        <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span>
+      </h1>
+      <p class="furigana-text">3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
     <p v-if="store.error" class="match-error" role="alert">{{ store.error }}</p>
 
     <template v-if="store.phase === 'preparing'">
       <section class="match-account" aria-labelledby="match-account-title">
-        <div class="match-section-heading"><h2 id="match-account-title">アカウント</h2></div>
+        <div class="match-section-heading">
+          <h2 id="match-account-title" class="furigana-heading">アカウント</h2>
+        </div>
         <p v-if="store.authStatus === 'checking'">ログイン状態を確認しています…</p>
         <p v-else-if="store.authStatus === 'signed-in' && store.user?.name">
           <strong>{{ store.user.name }}</strong
@@ -78,8 +111,12 @@ function onEditorToggle(event: Event): void {
         class="match-programs"
         aria-labelledby="match-program-title"
       >
-        <div class="match-section-heading"><h2 id="match-program-title">ロボットのプログラム</h2></div>
-        <p>3台それぞれに対戦用プログラムを選びます。同じプログラムを複数のロボットに使えます。</p>
+        <div class="match-section-heading">
+          <h2 id="match-program-title" class="furigana-heading">ロボットのプログラム</h2>
+        </div>
+        <p class="furigana-text">
+          3台それぞれに対戦用プログラムを選びます。同じプログラムを複数のロボットに使えます。
+        </p>
         <p v-if="store.busy && !store.programs.length" role="status">プログラムを読み込んでいます…</p>
         <div class="match-assignments">
           <div v-for="slot in 3" :key="slot" class="match-assignment">
@@ -117,7 +154,7 @@ function onEditorToggle(event: Event): void {
         </div>
 
         <details class="match-editor-details" @toggle="onEditorToggle">
-          <summary>新しいプログラムを作る</summary>
+          <summary class="furigana-heading">新しいプログラムを作る</summary>
           <div v-if="editorOpen" class="match-editor">
             <BlocklyEditor tutorial-id="match:editor" @update:program="draft = $event" />
           </div>
@@ -138,9 +175,59 @@ function onEditorToggle(event: Event): void {
             </div>
           </form>
         </details>
+        <details v-if="store.programs.length" class="match-editor-details">
+          <summary class="furigana-heading">保存済みプログラムを編集する</summary>
+          <div class="match-edit-selection">
+            <label for="match-edit-program">プログラム</label>
+            <div class="match-edit-selection-controls">
+              <button
+                type="button"
+                :disabled="!editSelection || store.busy"
+                aria-label="選択したプログラムを編集する"
+                title="選択したプログラムを編集する"
+                @click="openSavedProgram"
+              >
+                <Icon :icon="pencilIcon" aria-hidden="true" />
+              </button>
+              <select
+                id="match-edit-program"
+                v-model="editSelection"
+                :disabled="store.busy"
+                @change="changeEditSelection"
+              >
+                <option value="">選択してください</option>
+                <option v-for="program in store.programs" :key="program.id" :value="program.id">
+                  {{ program.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <template v-if="editingProgramId && editingSource">
+            <div class="match-editor">
+              <BlocklyEditor
+                :key="editingProgramId"
+                :tutorial-id="`match:edit:${editingProgramId}`"
+                :initial-program="editingSource"
+                @update:program="editDraft = $event"
+              />
+            </div>
+            <form class="match-save-form" @submit.prevent="saveEditedProgram">
+              <label for="match-edit-name">保存する名前</label>
+              <div>
+                <input id="match-edit-name" v-model="editingName" type="text" required maxlength="80" />
+                <button type="submit" :disabled="store.busy || !editDraft">
+                  <Icon :icon="saveIcon" aria-hidden="true" />変更を保存
+                </button>
+              </div>
+            </form>
+            <p v-if="editMessage" role="status">{{ editMessage }}</p>
+          </template>
+        </details>
         <details class="match-editor-details">
-          <summary>文章からプログラムを生成して試す</summary>
-          <p>文章から対戦用のプログラムを生成します。生成結果を確認してから保存できます。</p>
+          <summary class="furigana-heading">文章からプログラムを生成して試す</summary>
+          <p class="furigana-text">
+            文章から対戦用のプログラムを生成します。生成結果を確認してから保存できます。
+          </p>
           <ProgramGenerator
             :is-battle="true"
             @started="generatedDraft = null"
@@ -170,16 +257,32 @@ function onEditorToggle(event: Event): void {
         class="match-start"
         aria-labelledby="match-start-title"
       >
-        <div class="match-section-heading"><h2 id="match-start-title">対戦を始める</h2></div>
-        <p>3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
-        <button
-          type="button"
-          class="action-primary"
-          :disabled="store.busy || !store.canStart"
-          @click="store.startMatch"
-        >
-          <Icon :icon="playIcon" aria-hidden="true" />{{ store.busy ? '対戦を準備中…' : '対戦を始める' }}
-        </button>
+        <div class="match-section-heading">
+          <h2 id="match-start-title" class="furigana-heading">対戦を始める</h2>
+        </div>
+        <p class="furigana-text">3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
+        <div v-if="store.startingMatch" class="match-start-pending" role="status" aria-live="polite">
+          <strong>対戦を進めています</strong>
+          <p>対戦相手と盤面を選び、ロボットの動きを計算しています。完了すると結果へ移動します。</p>
+          <div class="match-progress" aria-hidden="true"><span /></div>
+        </div>
+        <template v-else>
+          <button
+            type="button"
+            class="action-primary"
+            :disabled="store.busy || !store.canStart"
+            @click="store.startMatch"
+          >
+            <Icon :icon="playIcon" aria-hidden="true" />対戦を始める
+          </button>
+          <div v-if="store.startMatchError" class="match-start-feedback" role="alert">
+            <strong>{{ store.noOpponent ? '対戦相手がまだいません' : '対戦を開始できませんでした' }}</strong>
+            <p v-if="store.noOpponent">
+              他の参加者が対戦用プログラムを設定したあと、もう一度お試しください。
+            </p>
+            <p v-else>{{ store.startMatchError }}</p>
+          </div>
+        </template>
       </section>
     </template>
 
@@ -189,7 +292,9 @@ function onEditorToggle(event: Event): void {
         :class="{ 'match-status--result': store.phase === 'finished' && score }"
         aria-live="polite"
       >
-        <h2>{{ store.phase === 'finished' ? `対戦結果 · ${outcome}` : '結果を読み込んでいます' }}</h2>
+        <h2 class="furigana-heading">
+          {{ store.phase === 'finished' ? `対戦結果 · ${outcome}` : '結果を読み込んでいます' }}
+        </h2>
         <p>対戦ID: {{ store.match?.id }}</p>
         <p v-if="store.match?.fieldId">選ばれた配置: {{ store.match.fieldId }}</p>
         <template v-if="store.phase === 'running'">
@@ -221,7 +326,7 @@ function onEditorToggle(event: Event): void {
         :open="replayOpen"
         @toggle="replayOpen = ($event.target as HTMLDetailsElement).open"
       >
-        <summary>対戦を再生</summary>
+        <summary class="furigana-heading">対戦を再生</summary>
         <MatchReplayScene v-if="replayOpen" :frames="store.frames" />
       </details>
       <a class="match-back" href="/rooms">新しい対戦を準備する</a>

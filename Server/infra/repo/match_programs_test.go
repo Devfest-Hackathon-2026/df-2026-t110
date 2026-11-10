@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dvpico/Programming-Learning-AR/Server/domain"
+	"github.com/google/uuid"
 )
 
 func TestMatchProgramReferencesBulkInsert(t *testing.T) {
@@ -26,14 +27,14 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 		{{ID: "p1", Revision: 2}, {ID: "p0", Revision: 1}, {ID: "p1", Revision: 1}},
 		{{ID: "p0", Revision: 1}, {ID: "p1", Revision: 2}, {ID: "p0", Revision: 1}},
 	}
-	record := domain.MatchRecord{GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: "Opponent", FieldID: "field", Outcome: domain.MatchOutcome("win"), Result: jsontext.Value(`{}`), ChallengerPrograms: teams[0], OpponentPrograms: teams[1], RatingDelta: 10}
-	// A failure in the last row must roll back the entire match, including the run.
+	record := domain.MatchRecord{ID: uuid.Must(uuid.NewV7()).String(), GoogleSubject: "owner", OpponentSubject: "opponent", OpponentName: "Opponent", Outcome: domain.MatchOutcome("win"), Result: jsontext.Value(`{}`), ChallengerPrograms: teams[0], OpponentPrograms: teams[1], RatingDelta: 10}
+	// A failure in the last row must roll back the entire completion, including the run result.
 	record.OpponentPrograms[2].Revision = 99
-	if _, err := NewMatches(pool).Create(t.Context(), record); err == nil {
+	if _, err := completeMatch(t.Context(), pool, record); err == nil {
 		t.Error("accepted nonexistent final revision")
 	}
 	var remaining int
-	if err := pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM runs) + (SELECT count(*) FROM matches) + (SELECT count(*) FROM run_programs)`).Scan(&remaining); err != nil {
+	if err := pool.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM runs WHERE result IS NOT NULL) + (SELECT count(*) FROM matches) + (SELECT count(*) FROM run_programs)`).Scan(&remaining); err != nil {
 		t.Fatal(err)
 	}
 	if remaining != 0 {
@@ -43,11 +44,11 @@ func TestMatchProgramReferencesBulkInsert(t *testing.T) {
 		t.Errorf("failed match changed rating: %d", got)
 	}
 	record.OpponentPrograms[2].Revision = 1
-	match, err := NewMatches(pool).Create(t.Context(), record)
+	runID, err := completeMatch(t.Context(), pool, record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := pool.Query(t.Context(), `SELECT side,robot_index,program_id,revision FROM run_programs WHERE run_id=$1 ORDER BY side,robot_index`, match.RunID)
+	rows, err := pool.Query(t.Context(), `SELECT side,robot_index,program_id,revision FROM run_programs WHERE run_id=$1 ORDER BY side,robot_index`, runID)
 	if err != nil {
 		t.Fatal(err)
 	}
