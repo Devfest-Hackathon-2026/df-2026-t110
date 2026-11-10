@@ -52,6 +52,7 @@ import {
 } from '../language/picolang.ts'
 import { typeLabel } from './picoGuidance.ts'
 import { PersistentToolbox } from './PersistentToolbox.ts'
+import { PICO_RENDERER, registerPicoRenderer } from './PicoRenderer.ts'
 import './blocklyEditor.css'
 
 const props = defineProps<{
@@ -479,9 +480,10 @@ onMounted(() => {
     ),
   )
   registerPicoBlocks(functions.value)
+  registerPicoRenderer()
   workspace = Blockly.inject(host.value, {
     toolbox: picoToolbox(functions.value),
-    renderer: 'zelos',
+    renderer: PICO_RENDERER,
     plugins: { toolbox: PersistentToolbox },
     trashcan: true,
     sounds: false,
