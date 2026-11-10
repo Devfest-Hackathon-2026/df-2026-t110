@@ -1,0 +1,68 @@
+# 学び方: 考え方
+id: command-order
+title: 命令を順番に並べる
+goal: 動く順番を考えて、命令を並べよう。
+description: 見本の命令を並べかえて、曲がった先のゴールへ進もう。
+lesson: 命令は上から順に動きます。同じ命令でも、順番が変わると動く道が変わります。
+guide:
+  - 見本のプログラムでは、どのマスで曲がるかな。ロボットの動きを指でたどってみよう。
+  - ゴールを向くには、曲がる前に何マス進めばよいかな。
+  - 「前に進む」を二つ、左を選んだ「〜向きに回転する」、「前に進む」の順に並べよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000003-0000-4000-8000-000000000009
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000003-0000-4000-8000-000000000008
+            stmts:
+              - kind: call
+                hintId: a0000003-0000-4000-8000-000000000001
+                func: forward
+                args: []
+              - kind: call
+                hintId: a0000003-0000-4000-8000-000000000003
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: a0000003-0000-4000-8000-000000000002
+                    type: rotation
+                    value: left
+              - kind: call
+                hintId: a0000003-0000-4000-8000-000000000004
+                func: forward
+                args: []
+              - kind: call
+                hintId: a0000003-0000-4000-8000-000000000005
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000003-0000-4000-8000-000000000007
+                value:
+                  kind: literal
+                  hintId: a0000003-0000-4000-8000-000000000006
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: command-order-1
+      width: 3
+      height: 2
+      terrain:
+        - [sea, land, land]
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

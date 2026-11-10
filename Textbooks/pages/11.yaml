@@ -1,0 +1,28 @@
+# 学び方: 練習
+id: after-repeat
+title: くり返したあとに進む
+goal: くり返す動きと、最後の動きを分けよう。
+description: 同じ動きをまとめ、最後の1マスでゴールへ進もう。
+lesson: くり返しが終わると、その下の命令に進みます。
+guide:
+  - 曲がり角までのマス数を、それぞれ数えよう。
+  - 二つの「前に進む」と、左を選んだ「〜向きに回転する」は、何組あるかな。
+  - その組を2回くり返そう。最後の「前に進む」は、くり返しの外に置きます。
+stage:
+  variants:
+    - id: after-repeat-1
+      width: 3
+      height: 3
+      terrain:
+        - [sea, land, land]
+        - [sea, sea, land]
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 1, y: 0 }
+      robot:
+        position: { x: 0, y: 2 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

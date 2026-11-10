@@ -1,0 +1,55 @@
+# 学び方: 操作
+id: break-rock
+title: 岩をこわす
+goal: 前の岩をこわして、道を開こう。
+description: 見本に「岩をこわす」を足して、ゴールへ進もう。
+lesson: 岩のマスには進めません。前のとなりの岩をこわすと、通れる陸になります。
+guide:
+  - まずは見本を試そう。岩の前で進めなくなります。
+  - 岩をこわしても、ロボットのいるマスは変わりません。
+  - 「オブジェクト」にある「岩をこわす」を先頭に足そう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000004-0000-4000-8000-000000000006
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000004-0000-4000-8000-000000000005
+            stmts:
+              - kind: call
+                hintId: a0000004-0000-4000-8000-000000000001
+                func: forward
+                args: []
+              - kind: call
+                hintId: a0000004-0000-4000-8000-000000000002
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000004-0000-4000-8000-000000000004
+                value:
+                  kind: literal
+                  hintId: a0000004-0000-4000-8000-000000000003
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: break-rock-1
+      width: 3
+      height: 1
+      terrain:
+        - [land, rock, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

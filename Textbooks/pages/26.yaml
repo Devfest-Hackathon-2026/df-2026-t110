@@ -1,0 +1,184 @@
+# 学び方: 発展
+id: stack-order
+title: "[難しい] 上のカードから順に使う"
+goal: 入れる順と、使う順のちがいを考えよう。
+description: 3マス進み、左を向いて2マス進もう。カードを入れる順番を直そう。
+lesson: 最後に入れた数を使い、そのカードを取ると、次の数が上に出ます。入れた順とは反対に使います。
+guide:
+  - 進む数は順番に3、2です。先に使う3を、山の一番上にするには、どの順に入れるかな。
+  - 2、3の順に入れよう。使ったカードをのぞくには、「〜の一番うしろを取り除いたスタック」を使います。
+  - のぞいたあとの山も、同じ「カード」に入れ直します。読むだけでは、同じ数を何度も使ってしまいます。
+  - 「〜の長さ」が0なら空です。空の山からは読んだり取ったりできないので、くり返しを終えます。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: 64a747a5-df6c-460e-94f5-14e26da08dd5
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: b793fc79-9b88-425d-8d6b-82dc54bfb9cf
+            stmts:
+              - kind: declare
+                hintId: b1504acf-5873-405d-a9f0-7a7325d03abf
+                type:
+                  kind: stack
+                  elementType: integer
+                ident:
+                  kind: ident
+                  hintId: 2cffd9d4-ba80-484a-a2f5-73bafdfd46a4
+                  name: カード
+                value:
+                  kind: call
+                  hintId: 4e47c8cd-e58f-400a-bd40-93dbc23f1adc
+                  func: new
+                  args: []
+              - kind: assign
+                hintId: adc498e0-cf46-4c95-8f4d-dc85e03b9629
+                ident:
+                  kind: ident
+                  hintId: 0a53bc15-3c0f-4a4e-9033-5df4234e8bab
+                  name: カード
+                value:
+                  kind: call
+                  hintId: d5aac3bf-d702-4a7e-9791-1fecfe8a5095
+                  func: push_back
+                  args:
+                    - kind: ident
+                      hintId: bf0bbb68-2141-4ef7-9c2c-56e95dd676e0
+                      name: カード
+                    - kind: literal
+                      hintId: 70160f2f-ad81-41d4-a220-d97590a9879d
+                      type: integer
+                      value: 3
+              - kind: assign
+                hintId: 986ffcb8-7e98-4104-854d-59cc8bc52905
+                ident:
+                  kind: ident
+                  hintId: 7c41d52f-c714-41f6-94d7-b18c8d35db65
+                  name: カード
+                value:
+                  kind: call
+                  hintId: 1541e209-f4b5-4418-bb65-367d5e12ff3a
+                  func: push_back
+                  args:
+                    - kind: ident
+                      hintId: 1b2c6492-2354-4c32-ae77-dfc9a8afaab0
+                      name: カード
+                    - kind: literal
+                      hintId: ab4d7bd0-1826-44d9-964a-2c3ae40193ad
+                      type: integer
+                      value: 2
+              - kind: while
+                hintId: 8d460077-d274-494c-b126-eb520d3c3235
+                condition:
+                  kind: call
+                  hintId: 18288a91-a55d-4480-a810-d7b135b55260
+                  func: gt
+                  args:
+                    - kind: call
+                      hintId: fea7515d-6142-4064-b5f8-a647a1ed8bb1
+                      func: size
+                      args:
+                        - kind: ident
+                          hintId: d98a8610-57f7-48a3-8720-49475061cd57
+                          name: カード
+                    - kind: literal
+                      hintId: 2c6083cb-2298-4263-8a64-969c551f1ec4
+                      type: integer
+                      value: 0
+                body:
+                  kind: block
+                  hintId: 9cdba742-4e40-47d6-9ce8-79cfd79b4ba5
+                  stmts:
+                    - kind: for
+                      hintId: 39460e80-69c2-4b31-a083-d0ff24d6bbbf
+                      ident:
+                        kind: ident
+                        hintId: 947af373-ccfd-4cc2-8a93-25fccc3cd96a
+                        name: 回数
+                      start:
+                        kind: literal
+                        hintId: 87395da8-1096-4e3f-9bcd-0d2508698041
+                        type: integer
+                        value: 0
+                      end:
+                        kind: call
+                        hintId: c6131632-b738-4603-a7eb-3254b95b1a62
+                        func: get_back
+                        args:
+                          - kind: ident
+                            hintId: 5231636b-a71d-433f-99b2-9e18dc084226
+                            name: カード
+                      body:
+                        kind: block
+                        hintId: 537cecaf-baf2-42b6-94ab-b96b9d5807ac
+                        stmts:
+                          - kind: call
+                            hintId: 78c1d83f-4d3a-4741-be6c-9792b0d26985
+                            func: forward
+                            args: []
+                    - kind: assign
+                      hintId: e38b147e-e356-4988-b7ad-d7cdfe9da757
+                      ident:
+                        kind: ident
+                        hintId: 12a97e19-76e8-49bb-8564-851c8f61d921
+                        name: カード
+                      value:
+                        kind: call
+                        hintId: 0337533e-fd61-4d9b-8d11-b00e121c428b
+                        func: pop_back
+                        args:
+                          - kind: ident
+                            hintId: 3664699e-5ffd-444e-ae41-b39bce5084a0
+                            name: カード
+                    - kind: call
+                      hintId: 5044c14c-ea00-4518-96e7-2a4906439c19
+                      func: rotate
+                      args:
+                        - kind: literal
+                          hintId: 8a95d5a6-cff8-4e02-9ef3-48d7887f7cda
+                          type: rotation
+                          value: left
+              - kind: return
+                hintId: b7bebb51-53c1-4ee7-9943-a57465f6ce23
+                value:
+                  kind: literal
+                  hintId: 67f137be-9183-48cd-9917-97fc8e484000
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: stack-order-1
+      width: 4
+      height: 3
+      terrain:
+        - - sea
+          - sea
+          - sea
+          - land
+        - - sea
+          - sea
+          - sea
+          - land
+        - - land
+          - land
+          - land
+          - land
+      objects:
+        - type: goal
+          position:
+            x: 3
+            y: 0
+      robot:
+        position:
+          x: 0
+          y: 2
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

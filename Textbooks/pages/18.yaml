@@ -1,0 +1,120 @@
+# 学び方: 考え方
+id: function-argument
+title: 関数に数をわたす
+goal: 同じ関数にわたす数を変え、動きを変えよう。
+description: 「歩く」にわたす数を、二つの道に合わせよう。
+lesson: 関数にわたす数などを「引数」といいます。「歩く」関数は、受け取った数だけ前進します。
+guide:
+  - 「歩く」関数の中を見てみましょう。「歩く」の中では、受け取った「歩数」をくり返す回数に使います。
+  - 初めの道は3マス、左に回った先は2マスです。「歩く」関数を使ってゴールしてみよう。
+  - 「main」の初めの「歩く」に3、次の「歩く」に2をわたそう。
+  - 関数の中を書き直さず、引数を変えることで、関数の動きを変えることができます。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000018-0000-4000-8000-000000000010
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000018-0000-4000-8000-000000000009
+            stmts:
+              - kind: call
+                hintId: c0000018-0000-4000-8000-000000000002
+                func: 歩く
+                args:
+                  - kind: literal
+                    hintId: c0000018-0000-4000-8000-000000000001
+                    type: integer
+                    value: 1
+              - kind: call
+                hintId: c0000018-0000-4000-8000-000000000004
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: c0000018-0000-4000-8000-000000000003
+                    type: rotation
+                    value: left
+              - kind: call
+                hintId: c0000018-0000-4000-8000-000000000006
+                func: 歩く
+                args:
+                  - kind: literal
+                    hintId: c0000018-0000-4000-8000-000000000005
+                    type: integer
+                    value: 1
+              - kind: return
+                hintId: c0000018-0000-4000-8000-000000000008
+                value:
+                  kind: literal
+                  hintId: c0000018-0000-4000-8000-000000000007
+                  type: unit
+                  value: null
+        歩く:
+          kind: function
+          hintId: c0000018-0000-4000-8000-000000000022
+          params:
+            - kind: param
+              hintId: c0000018-0000-4000-8000-000000000018
+              ident:
+                kind: ident
+                hintId: c0000018-0000-4000-8000-000000000017
+                name: 歩数
+              type: integer
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000018-0000-4000-8000-000000000021
+            stmts:
+              - kind: for
+                hintId: c0000018-0000-4000-8000-000000000016
+                ident:
+                  kind: ident
+                  hintId: c0000018-0000-4000-8000-000000000013
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: c0000018-0000-4000-8000-000000000014
+                  type: integer
+                  value: 0
+                end:
+                  kind: ident
+                  hintId: c0000018-0000-4000-8000-000000000011
+                  name: 歩数
+                body:
+                  kind: block
+                  hintId: c0000018-0000-4000-8000-000000000015
+                  stmts:
+                    - kind: call
+                      hintId: c0000018-0000-4000-8000-000000000012
+                      func: forward
+                      args: []
+              - kind: return
+                hintId: c0000018-0000-4000-8000-000000000020
+                value:
+                  kind: literal
+                  hintId: c0000018-0000-4000-8000-000000000019
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: function-argument-1
+      width: 4
+      height: 3
+      terrain:
+        - [sea, sea, sea, land]
+        - [sea, sea, sea, land]
+        - [land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 3, y: 0 }
+      robot:
+        position: { x: 0, y: 2 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

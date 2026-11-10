@@ -1,0 +1,98 @@
+# 学び方: 考え方
+id: function-result
+title: 関数の答えを使う
+goal: 関数が返す数を、あとの命令に使おう。
+description: 「進む数」が返す数を変え、ゴールまで進もう。
+lesson: 関数は、答えを返すこともできます。関数が返す答えを「もどり値」といいます。よび出すと、その場所で答えを使えます。
+guide:
+  - 「進む数」は、数を返す関数です。ロボットを動かす命令は入っていません。
+  - 「main」は、返ってきた数を「歩数」に入れています。
+  - 「進む数」の「〜を返す」で、数を3に変えよう。くり返しの回数も3になります。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000019-0000-4000-8000-000000000013
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000019-0000-4000-8000-000000000012
+            stmts:
+              - kind: declare
+                hintId: c0000019-0000-4000-8000-000000000003
+                type: integer
+                ident:
+                  kind: ident
+                  hintId: c0000019-0000-4000-8000-000000000002
+                  name: 歩数
+                value:
+                  kind: call
+                  hintId: c0000019-0000-4000-8000-000000000001
+                  func: 進む数
+                  args: []
+              - kind: for
+                hintId: c0000019-0000-4000-8000-000000000009
+                ident:
+                  kind: ident
+                  hintId: c0000019-0000-4000-8000-000000000006
+                  name: 回数
+                start:
+                  kind: literal
+                  hintId: c0000019-0000-4000-8000-000000000007
+                  type: integer
+                  value: 0
+                end:
+                  kind: ident
+                  hintId: c0000019-0000-4000-8000-000000000004
+                  name: 歩数
+                body:
+                  kind: block
+                  hintId: c0000019-0000-4000-8000-000000000008
+                  stmts:
+                    - kind: call
+                      hintId: c0000019-0000-4000-8000-000000000005
+                      func: forward
+                      args: []
+              - kind: return
+                hintId: c0000019-0000-4000-8000-000000000011
+                value:
+                  kind: literal
+                  hintId: c0000019-0000-4000-8000-000000000010
+                  type: unit
+                  value: null
+        進む数:
+          kind: function
+          hintId: c0000019-0000-4000-8000-000000000017
+          params: []
+          returnType: integer
+          body:
+            kind: block
+            hintId: c0000019-0000-4000-8000-000000000016
+            stmts:
+              - kind: return
+                hintId: c0000019-0000-4000-8000-000000000015
+                value:
+                  kind: literal
+                  hintId: c0000019-0000-4000-8000-000000000014
+                  type: integer
+                  value: 1
+stage:
+  variants:
+    - id: function-result-1
+      width: 4
+      height: 1
+      terrain:
+        - [land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 3, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

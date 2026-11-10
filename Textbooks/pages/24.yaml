@@ -1,0 +1,138 @@
+# 学び方: 発展
+id: optional-fallback
+title: "[難しい] 数がないときの動きを決める"
+goal: 数があるか調べてから、安全に取り出そう。
+description: 数がないときにも、3マス先のゴールへ進めるように見本を直そう。
+lesson: 「〜に値がある」で調べ、「はい」のときだけ「〜の値を取り出す」を使います。「いいえ」なら、別の動きを決めます。
+guide:
+  - 見本は「値の入っていないのヌラブル」を使っています。「そうではないなら」の中が動きます。
+  - 「そうではないなら」のくり返す回数を、1から3に変えよう。
+  - 次は「3を入れたヌラブル」に変えよう。「もし」の中が動いても、同じゴールに着きます。
+  - 数がないのに取り出すと、実行が止まります。先に「〜に値がある」で調べよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: 6f9fce3a-47fc-42d6-a73f-5eb8293bcd2c
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c8d4cd88-152c-4ed4-b7a1-3e633775fafe
+            stmts:
+              - kind: declare
+                hintId: 959ce82d-1da6-4c8a-865d-5be4a155d5d1
+                type:
+                  kind: option
+                  elementType: integer
+                ident:
+                  kind: ident
+                  hintId: bf506e55-a217-45a2-a6ea-144368d819b6
+                  name: 歩数
+                value:
+                  kind: call
+                  hintId: bbcbab5a-f47d-40f3-a565-cb67741ef1b8
+                  func: none
+                  args: []
+              - kind: if
+                hintId: 38920592-ab76-4742-9da4-5a38a1c33b6f
+                condition:
+                  kind: call
+                  hintId: f519ef53-faeb-46fa-8abb-dec4debae8ba
+                  func: is_some
+                  args:
+                    - kind: ident
+                      hintId: 51d9c5d8-7daf-4aea-9009-175962b48605
+                      name: 歩数
+                then:
+                  kind: block
+                  hintId: e1bd1ff4-8285-4338-b15c-7ea6e50f73f9
+                  stmts:
+                    - kind: for
+                      hintId: dae1db31-7d8d-421c-a0b1-53f6c3a211f5
+                      ident:
+                        kind: ident
+                        hintId: 224ee86f-96b0-4995-acd6-a2a755fb51ca
+                        name: 回数
+                      start:
+                        kind: literal
+                        hintId: 71cf6f69-a9e5-41b7-a723-9a0f52b0025a
+                        type: integer
+                        value: 0
+                      end:
+                        kind: call
+                        hintId: 7a138d3e-10e9-4126-96dd-66ef07aedd88
+                        func: unwrap
+                        args:
+                          - kind: ident
+                            hintId: 13537006-46be-4810-a3e9-a7f79b5f7a1a
+                            name: 歩数
+                      body:
+                        kind: block
+                        hintId: 4a588ca2-aca8-4bde-af0f-9388dcb30c7a
+                        stmts:
+                          - kind: call
+                            hintId: 847ee314-c8d0-4cbd-8a17-65d49f558fe1
+                            func: forward
+                            args: []
+                else:
+                  kind: block
+                  hintId: f1952ad8-cd66-46db-a85f-f823a3820e2c
+                  stmts:
+                    - kind: for
+                      hintId: 5cde2508-094f-4519-ba1b-e2602ce3cbe0
+                      ident:
+                        kind: ident
+                        hintId: cb6dc7c1-84a1-4d5c-a9eb-ccc38b2821c0
+                        name: 回数
+                      start:
+                        kind: literal
+                        hintId: f5f8df51-3afe-4a2d-9edb-780ef77d7ba2
+                        type: integer
+                        value: 0
+                      end:
+                        kind: literal
+                        hintId: 40f83565-a6f6-4265-80d2-8f40df48b17f
+                        type: integer
+                        value: 1
+                      body:
+                        kind: block
+                        hintId: d37e2881-9846-45fc-b931-9d2c9b4b8746
+                        stmts:
+                          - kind: call
+                            hintId: 54fe8f84-bf70-4f50-a54f-f69acd26642d
+                            func: forward
+                            args: []
+              - kind: return
+                hintId: fe01499d-d246-43f1-96a6-229c20066580
+                value:
+                  kind: literal
+                  hintId: ff3e96c1-2eca-440f-95c4-b9400cc0a55e
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: optional-fallback-1
+      width: 4
+      height: 1
+      terrain:
+        - - land
+          - land
+          - land
+          - land
+      objects:
+        - type: goal
+          position:
+            x: 3
+            y: 0
+      robot:
+        position:
+          x: 0
+          y: 0
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

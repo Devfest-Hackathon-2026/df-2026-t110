@@ -1,0 +1,71 @@
+# 学び方: 考え方
+id: call-function
+title: 動きに名前をつける
+goal: 動きをまとめた関数を、名前でよび出そう。
+description: 「二歩󠇢進󠇢む」をよび出す命令を足し、ゴールへ進もう。
+lesson: いくつかの命令をまとめ、名前をつけたものを「関数」といいます。関数は、他の場所から実行することができます。動きを一つのまとまりにしたいとき便利です。
+guide:
+  - 上の方にある「二歩󠇢進󠇢む」を開こう。「前に進む」が二つ入っています。
+  - 「main」は最初に動く場所です。「main」にもどって「二歩󠇢進󠇢む」を一つ置こう。「関数」から他の関数のブロックを使うことができます。「二歩󠇢進󠇢む」ブロックを置いたら実行してみましょう。
+  - ゴールまで6マスです。「main」から「二歩󠇢進󠇢む」を何回よび出せばいいかな。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000017-0000-4000-8000-000000000004
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000017-0000-4000-8000-000000000003
+            stmts:
+              - kind: return
+                hintId: c0000017-0000-4000-8000-000000000002
+                value:
+                  kind: literal
+                  hintId: c0000017-0000-4000-8000-000000000001
+                  type: unit
+                  value: null
+        二歩進む:
+          kind: function
+          hintId: c0000017-0000-4000-8000-000000000010
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000017-0000-4000-8000-000000000009
+            stmts:
+              - kind: call
+                hintId: c0000017-0000-4000-8000-000000000005
+                func: forward
+                args: []
+              - kind: call
+                hintId: c0000017-0000-4000-8000-000000000006
+                func: forward
+                args: []
+              - kind: return
+                hintId: c0000017-0000-4000-8000-000000000008
+                value:
+                  kind: literal
+                  hintId: c0000017-0000-4000-8000-000000000007
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: call-function-1
+      width: 7
+      height: 1
+      terrain:
+        - [land, land, land, land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 6, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

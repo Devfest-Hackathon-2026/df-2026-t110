@@ -1,0 +1,153 @@
+# 学び方: 考え方
+# 制作用メモ: 前進回数0〜7の8候補。実行時に1候補が選ばれるため、児童に候補の指定や全候補の実行を求めない。
+id: while-land
+title: 道が続く間は進む
+goal: 条件が合う間、同じ動きをくり返そう。
+description: 道の長さが変わっても、海の手前で左に回ってゴールへ進もう。
+lesson: 「～の間くり返す」ブロックは、条件を毎回調べます。「はい」ならくり返し、「いいえ」ならその下に進みます。
+guide:
+  - このステージはいろんなフィールドがあります。まずは「フィールド候補」を見てみましょう。どうしたらゴールまで行けるかな。
+  - 海にぶつかるまでまっすぐ進んで、左に曲がるとゴールに行けそうです。
+  - 「「前のマスを調べて返す」は陸」を「～の間」の条件にしよう。道の外は海です。
+  - 「～の間」のくり返しの中に、「前に進む」を入れよう。進むたびに次のマスを調べます。
+  - くり返しの外で左に回り、1マス進もう。初めから前が海なら、前進は0回です。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000009-0000-4000-8000-000000000009
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000009-0000-4000-8000-000000000008
+            stmts:
+              - kind: while
+                hintId: c0000009-0000-4000-8000-000000000005
+                condition:
+                  kind: literal
+                  hintId: 8cced08c-d089-466c-b268-274dc4e620c1
+                  type: bool
+                  value: false
+                body:
+                  kind: block
+                  hintId: c0000009-0000-4000-8000-000000000004
+                  stmts: []
+              - kind: return
+                hintId: c0000009-0000-4000-8000-000000000007
+                value:
+                  kind: literal
+                  hintId: c0000009-0000-4000-8000-000000000006
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: while-land-1
+      width: 8
+      height: 2
+      terrain:
+        - [land, sea, sea, sea, sea, sea, sea, sea]
+        - [land, sea, sea, sea, sea, sea, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 0, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-2
+      width: 8
+      height: 2
+      terrain:
+        - [sea, land, sea, sea, sea, sea, sea, sea]
+        - [land, land, sea, sea, sea, sea, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 1, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-3
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, land, sea, sea, sea, sea, sea]
+        - [land, land, land, sea, sea, sea, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-4
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, sea, land, sea, sea, sea, sea]
+        - [land, land, land, land, sea, sea, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 3, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-5
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, sea, sea, land, sea, sea, sea]
+        - [land, land, land, land, land, sea, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 4, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-6
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, sea, sea, sea, land, sea, sea]
+        - [land, land, land, land, land, land, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 5, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-7
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, sea, sea, sea, sea, land, sea]
+        - [land, land, land, land, land, land, land, sea]
+      objects:
+        - type: goal
+          position: { x: 6, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+    - id: while-land-8
+      width: 8
+      height: 2
+      terrain:
+        - [sea, sea, sea, sea, sea, sea, sea, land]
+        - [land, land, land, land, land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 7, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

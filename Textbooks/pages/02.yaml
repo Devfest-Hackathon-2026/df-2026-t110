@@ -1,0 +1,60 @@
+# 学び方: 操作
+id: turn
+title: 向きを変える
+goal: 右と左を選んで、向きを変えよう。
+description: 見本の「〜向きに回転する」で左を選び、ゴールへ進もう。
+lesson: 回転しても、いるマスは変わりません。右と左は、ロボットから見た向きです。
+guide:
+  - 今は右向きです。ゴールを向くには、右と左のどちらに回るかな。
+  - 回ったあとの向きを予想しよう。
+  - 「〜向きに回転する」で左を選ぼう。その下の「前に進む」でゴールに着きます。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000002-0000-4000-8000-000000000007
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000002-0000-4000-8000-000000000006
+            stmts:
+              - kind: call
+                hintId: a0000002-0000-4000-8000-000000000002
+                func: rotate
+                args:
+                  - kind: literal
+                    hintId: a0000002-0000-4000-8000-000000000001
+                    type: rotation
+                    value: right
+              - kind: call
+                hintId: a0000002-0000-4000-8000-000000000003
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000002-0000-4000-8000-000000000005
+                value:
+                  kind: literal
+                  hintId: a0000002-0000-4000-8000-000000000004
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: turn-1
+      width: 1
+      height: 2
+      terrain:
+        - [land]
+        - [land]
+      objects:
+        - type: goal
+          position: { x: 0, y: 0 }
+      robot:
+        position: { x: 0, y: 1 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

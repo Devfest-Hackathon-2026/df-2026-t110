@@ -1,0 +1,43 @@
+# 学び方: 考え方
+id: choose-path
+title: 二つの道を使い分ける
+goal: 条件に合わせて、二つの動きから選ぼう。
+description: 「もし」と「でなければ」を使い、どちらの道でもゴールへ進もう。
+lesson: 条件が「はい」なら「もし」の中、「いいえ」なら「でなければ」の中が動きます。
+guide:
+  - 前が陸の道と、前が海の道があります。実行すると、どちらかになります。
+  - 「制御」（せいぎょ）にある「もし～なら、そうではないなら」のブロックを使おう。
+  - 「もし」の条件では、前のマスが陸なのか海なのかを調べよう。「調べる」に条件のブロックがあります。
+  - 陸なら前へ2マス。海なら左を向いて2マス進むと、ゴールに着きます。
+stage:
+  variants:
+    - id: choose-path-1
+      width: 3
+      height: 3
+      terrain:
+        - [sea, sea, sea]
+        - [sea, sea, sea]
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 2 }
+      robot:
+        position: { x: 0, y: 2 }
+        direction: east
+      drillLimit: 0
+    - id: choose-path-2
+      width: 3
+      height: 3
+      terrain:
+        - [land, sea, sea]
+        - [land, sea, sea]
+        - [land, sea, sea]
+      objects:
+        - type: goal
+          position: { x: 0, y: 0 }
+      robot:
+        position: { x: 0, y: 2 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

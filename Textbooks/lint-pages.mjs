@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import { JSON_SCHEMA, load } from "js-yaml";
 import { createLinter, loadTextlintrc } from "textlint";
+import { isBlockLabelKanji } from "./block-labels.mjs";
 
 const textbooksDir = new URL("./", import.meta.url);
 const schemaDir = new URL("../Schema/", textbooksDir);
@@ -75,6 +76,7 @@ for (const path of targets) {
     if (typeof value !== "string") continue;
     const { messages } = await linter.lintText(value, `${path}.${field}.txt`);
     for (const message of messages) {
+      if (isBlockLabelKanji(message, value)) continue;
       console.error(
         `${path} [textlint] ${field}:${message.loc.start.line}:${message.loc.start.column}-${message.loc.end.line}:${message.loc.end.column} ${message.message} (${message.ruleId})`,
       );

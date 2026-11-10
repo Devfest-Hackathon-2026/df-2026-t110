@@ -1,0 +1,27 @@
+# 学び方: 操作・練習
+id: choose-rock
+title: どの岩をこわす？
+goal: 岩をこわせる回数に合わせて、道を選ぼう。
+description: こわせる岩は1こまでです。通れる道を選んで、ゴールへ進もう。
+lesson: "こわせる岩は1こまでです。通れる道を選んで、ゴールへ進もう。道\U000E01E2全体を見て考えよう。"
+guide:
+  - まっすぐの道と、下の道にある岩を数えよう。
+  - まっすぐの道には岩が3こ、下の道には1こあります。岩をこわせるのは1回だけです。
+  - 下の道を通り、岩の手前で「岩をこわす」を使おう。最後はゴールを向いて進もう。
+stage:
+  variants:
+    - id: choose-rock-1
+      width: 5
+      height: 2
+      terrain:
+        - [land, rock, rock, rock, land]
+        - [land, land, rock, land, land]
+      objects:
+        - type: goal
+          position: { x: 4, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

@@ -1,0 +1,87 @@
+# 学び方: 考え方
+id: if-rock
+title: もし岩があったら
+goal: 「もし」を使って、必要なときだけ動かそう。
+description: 「前に進む」の置き場所を直し、どちらの道でもゴールへ進もう。
+lesson: 「もし」の中は、条件が「はい」のときだけ動きます。その下の命令は、どちらでも動きます。
+guide:
+  - 実行すると、下の「フィールド候補」のうちどれかが選ばれます。「前のフィールド」「次のフィールド」をおして、ステージがどう変わるか見てみましょう。
+  - 岩があるときには岩をこわして進みたいです。「もし～なら」の中に「岩をこわす」をいれましょう。
+  - ゴールに行くためには、「前に進む」は何回必要ですか？
+  - 実行で選ばれた道を見て、「もし」の中が動くか確かめよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: a0000007-0000-4000-8000-000000000011
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: a0000007-0000-4000-8000-000000000010
+            stmts:
+              - kind: if
+                hintId: a0000007-0000-4000-8000-000000000006
+                condition:
+                  kind: call
+                  hintId: a0000007-0000-4000-8000-000000000002
+                  func: is_rock
+                  args:
+                    - kind: call
+                      hintId: a0000007-0000-4000-8000-000000000001
+                      func: search_front
+                      args: []
+                then:
+                  kind: block
+                  hintId: a0000007-0000-4000-8000-000000000005
+                  stmts:
+                    - kind: call
+                      hintId: c6fa794d-ca8d-47b3-8428-f2eb7ac49e12
+                      func: print_terrain
+                      args:
+                        - kind: call
+                          hintId: 6170c09d-18c0-43d9-8af6-b4c02d73ab74
+                          func: search_front
+                          args: []
+              - kind: call
+                hintId: a0000007-0000-4000-8000-000000000007
+                func: forward
+                args: []
+              - kind: return
+                hintId: a0000007-0000-4000-8000-000000000009
+                value:
+                  kind: literal
+                  hintId: a0000007-0000-4000-8000-000000000008
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: if-rock-1
+      width: 3
+      height: 1
+      terrain:
+        - [land, rock, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+    - id: if-rock-2
+      width: 3
+      height: 1
+      terrain:
+        - [land, land, land]
+      objects:
+        - type: goal
+          position: { x: 2, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 1
+  clearCondition:
+    type: reach_goal

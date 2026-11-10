@@ -1,0 +1,126 @@
+# 学び方: 発展
+# 制作用メモ: nullable の概念を、本実装の option<integer> / some / none で扱う。unit や整数0を欠損値として扱わない。
+id: optional-number
+title: "[難しい] 数がある・ないを覚える"
+goal: 数があることと、ないことを分けて覚えよう。
+description: 見本の「歩数」に入れる数を変えて、3マス先のゴールへ進もう。
+lesson: 数がないことも覚えられるしくみを、nullable（ヌラブル）といいます。
+guide:
+  - 0のカードがある箱と、空の箱はちがいます。「〜を入れたヌラブル」は数あり、「値なしのヌラブルを作る」は数なしです。
+  - 見本は「0を入れたヌラブル」です。「〜に値がある」の答えは「はい」ですが、進む回数は0です。
+  - 入れる数を3に変えよう。「〜の値を取り出す」で中の数を使うと、3回進󠇢みます。
+  - 値は、ここでは数のことです。数がないときは、取り出せません。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: 5c23b048-21a2-40fe-acb2-b6010bd04586
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: d585390e-f40c-4b50-a968-4cda3e6bd619
+            stmts:
+              - kind: declare
+                hintId: 1025685e-e94b-4d7b-a9a9-664f7a2470fd
+                type:
+                  kind: option
+                  elementType: integer
+                ident:
+                  kind: ident
+                  hintId: 70f1198f-8dab-434a-bdd6-01f1209b80e0
+                  name: 歩数
+                value:
+                  kind: call
+                  hintId: 0874cc71-7c71-4b1a-9d3e-7eeda791feee
+                  func: some
+                  args:
+                    - kind: literal
+                      hintId: 4c7eab18-d2c4-4631-8726-6d7efe7c1def
+                      type: integer
+                      value: 0
+              - kind: call
+                hintId: 9d2b853f-50ba-488e-83c0-b5c3b235dc73
+                func: print_bool
+                args:
+                  - kind: call
+                    hintId: a7722c30-4af1-483a-b70d-2db78d4a39e2
+                    func: is_some
+                    args:
+                      - kind: ident
+                        hintId: 37e0505d-bbc3-4597-8262-9bc81332b5fb
+                        name: 歩数
+              - kind: if
+                hintId: f10c1939-da8c-4420-8da6-c6968664145c
+                condition:
+                  kind: call
+                  hintId: a73e4956-8bed-483f-951a-01bdafcc9e20
+                  func: is_some
+                  args:
+                    - kind: ident
+                      hintId: 6df37360-200d-44f3-97b2-f54c7af59370
+                      name: 歩数
+                then:
+                  kind: block
+                  hintId: 95d47070-3d90-4e21-ad84-20bf7a181010
+                  stmts:
+                    - kind: for
+                      hintId: fec4ca46-f092-4c59-9e57-0c98b0099f42
+                      ident:
+                        kind: ident
+                        hintId: 7e134c17-fa09-4956-bdd2-90b22e5bfaba
+                        name: 回数
+                      start:
+                        kind: literal
+                        hintId: 73939511-d74d-4289-8194-7cc87e48b941
+                        type: integer
+                        value: 0
+                      end:
+                        kind: call
+                        hintId: 049b8820-a22b-4b77-8d21-5f9a9e62a62b
+                        func: unwrap
+                        args:
+                          - kind: ident
+                            hintId: f5e2711c-5a25-429d-a350-27e49a150a0e
+                            name: 歩数
+                      body:
+                        kind: block
+                        hintId: 7f0c226d-840f-4737-8319-d9311a6e56aa
+                        stmts:
+                          - kind: call
+                            hintId: 493ca6a7-e9aa-48d0-b6fe-e86a938dbd2f
+                            func: forward
+                            args: []
+              - kind: return
+                hintId: bf8e4bd2-39c8-4556-8568-998a776811de
+                value:
+                  kind: literal
+                  hintId: a4e4e4dd-38bc-4fce-a1a9-02d165da3fd5
+                  type: unit
+                  value: null
+stage:
+  variants:
+    - id: optional-number-1
+      width: 4
+      height: 1
+      terrain:
+        - - land
+          - land
+          - land
+          - land
+      objects:
+        - type: goal
+          position:
+            x: 3
+            y: 0
+      robot:
+        position:
+          x: 0
+          y: 0
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

@@ -1,0 +1,60 @@
+# 学び方: まとめ
+id: solve-new-path
+title: "[まとめ] はじめての道を自分でとく"
+goal: 調べる・条件・くり返しを組み合わせよう。
+description: どの道が選ばれてもゴールに着くプログラムを作ろう。
+lesson: 何を調べ、どこで使ったか、ブロックを指して話そう。
+guide:
+  - 実行すると、フィールドのどれか一つが選ばれます。どのフィールドが選ばれてもゴールできるよう考えてみよう。
+stage:
+  variants:
+    - id: solve-new-path-1
+      width: 6
+      height: 1
+      terrain:
+        - [land, rock, land, rock, land, land]
+      objects:
+        - type: goal
+          position: { x: 5, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 2
+    - id: solve-new-path-2
+      width: 8
+      height: 1
+      terrain:
+        - [land, land, rock, land, land, land, rock, land]
+      objects:
+        - type: goal
+          position: { x: 7, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 2
+    - id: solve-new-path-3
+      width: 9
+      height: 1
+      terrain:
+        - [land, rock, land, land, rock, land, rock, land, land]
+      objects:
+        - type: goal
+          position: { x: 8, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 3
+    - id: solve-new-path-4
+      width: 4
+      height: 1
+      terrain:
+        - [land, land, land, land]
+      objects:
+        - type: goal
+          position: { x: 3, y: 0 }
+      robot:
+        position: { x: 0, y: 0 }
+        direction: east
+      drillLimit: 0
+  clearCondition:
+    type: reach_goal

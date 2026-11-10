@@ -85,6 +85,7 @@ test('現行Stage/Field schemaの地形・配置物・初期方向を表示デ�
         ],
         objects: [
           { type: 'checkpoint', order: 2, position: { x: 2, y: 0 } },
+          { type: 'territory', position: { x: 1, y: 1 } },
           { type: 'luggage', id: 'parcel-a', position: { x: 1, y: 1 } },
           { type: 'goal', position: { x: 2, y: 1 } },
         ],
@@ -98,7 +99,9 @@ test('現行Stage/Field schemaの地形・配置物・初期方向を表示デ�
   assert.equal(layout.robot.direction, 'south')
   assert.deepEqual(layout.rows, ['S#C', '_OG'])
   assert.equal(layout.cells.find((cell) => cell.x === 2 && cell.y === 0)?.objects[0].order, 2)
-  assert.equal(layout.cells.find((cell) => cell.x === 1 && cell.y === 1)?.objects[0].id, 'parcel-a')
+  const destination = layout.cells.find((cell) => cell.x === 1 && cell.y === 1)
+  assert.equal(destination?.territoryOwner, 1)
+  assert.deepEqual(destination?.objects, [{ type: 'luggage', id: 'parcel-a' }])
   assert.equal(layout.rockCount, 1)
 })
 
