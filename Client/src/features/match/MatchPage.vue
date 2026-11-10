@@ -8,18 +8,15 @@ import pencilIcon from '@iconify-icons/lucide/pencil'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
-import type { PicoProgram, PicoTypedProgram } from '../picolang/language/picolang.ts'
+import type { PicoProgram } from '../picolang/language/picolang.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/BlocklyEditor.vue'))
 const MatchReplayScene = defineAsyncComponent(() => import('./MatchReplayScene.vue'))
 const TutorAvatar = defineAsyncComponent(() => import('../tutorial/TutorAvatar.vue'))
-const ProgramGenerator = defineAsyncComponent(() => import('../program-generation/ProgramGenerator.vue'))
 const props = defineProps<{ matchId?: string | null }>()
 const store = useMatchStore()
 const programName = ref('')
 const draft = ref<PicoProgram | null>(null)
-const generatedDraft = ref<PicoTypedProgram | null>(null)
-const generatedName = ref('')
 const editorOpen = ref(false)
 const editSelection = ref('')
 const editingProgramId = ref('')
@@ -45,10 +42,6 @@ onBeforeUnmount(() => store.dispose())
 async function save(): Promise<void> {
   if (!draft.value) return
   await store.saveProgram(programName.value, draft.value)
-}
-async function saveGenerated(): Promise<void> {
-  if (!generatedDraft.value) return
-  await store.saveProgram(generatedName.value, generatedDraft.value)
 }
 async function openSavedProgram(): Promise<void> {
   if (!editSelection.value) return
@@ -222,33 +215,6 @@ function onEditorToggle(event: Event): void {
             </form>
             <p v-if="editMessage" role="status">{{ editMessage }}</p>
           </template>
-        </details>
-        <details class="match-editor-details">
-          <summary class="furigana-heading">文章からプログラムを生成して試す</summary>
-          <p class="furigana-text">
-            文章から対戦用のプログラムを生成します。生成結果を確認してから保存できます。
-          </p>
-          <ProgramGenerator
-            :is-battle="true"
-            @started="generatedDraft = null"
-            @generated="generatedDraft = $event"
-          />
-          <form v-if="generatedDraft" class="match-save-form" @submit.prevent="saveGenerated">
-            <label for="match-generated-name">生成したプログラムの名前</label>
-            <div>
-              <input
-                id="match-generated-name"
-                v-model="generatedName"
-                type="text"
-                required
-                maxlength="80"
-                placeholder="例：生成したロボット"
-              />
-              <button type="submit" :disabled="store.busy">
-                <Icon :icon="saveIcon" aria-hidden="true" />保存する
-              </button>
-            </div>
-          </form>
         </details>
       </section>
 

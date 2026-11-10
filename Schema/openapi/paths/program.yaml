@@ -104,59 +104,6 @@
             schema:
               $ref: "../../openapi.yaml#/components/schemas/ApiError"
 
-/program/create-with-vibe:
-  post:
-    tags:
-      - program
-    summary: 自然言語からプログラムを生成
-    description: |
-      picolang のソースだけを生成し、保存や対戦用の登録は行わない。
-      生成結果を確認・編集した後、createProgram で保存し、対戦用の場合は setBattlePrograms で登録する。
-    operationId: createProgramWithVibe
-    security:
-      - sessionCookie: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [prompt]
-            properties:
-              prompt:
-                type: string
-              fieldId:
-                type: string
-                description: 指定すると教材の variant の fieldId に対応する盤面情報を生成時に渡す。対戦用 BattleLayout は対象外。
-              isBattle:
-                type: boolean
-                description: trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
-    responses:
-      "201":
-        description: 生成した picolang のソース
-        content:
-          application/json:
-            schema:
-              $ref: "../../openapi.yaml#/components/schemas/PicolangProgram"
-      "400":
-        description: 本文または生成依頼が不正
-      "401":
-        description: 有効なセッションが必要
-      "404":
-        $ref: "../../openapi.yaml#/components/responses/NotFound"
-      "413":
-        description: Content-Lengthが16 KiBを超過
-      "422":
-        description: 再試行後も有効なPicolangを生成できなかった
-      "429":
-        description: 生成の利用枠を超過
-      "500":
-        description: 生成サービスまたは保存先でエラーが発生
-      "501":
-        description: 生成サービスが未設定
-      "504":
-        description: 生成が時間切れ
-
 /program:
   post:
     tags:

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -132,15 +132,15 @@ func TestGenerationUsesTextbookFieldID(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name   string
-		id     string
-		status int
-		want   string
+		name    string
+		id      string
+		want    string
+		wantErr error
 	}{
-		{"first variant", "field-a", http.StatusCreated, fieldA},
-		{"second variant", "field-b", http.StatusCreated, fieldB},
-		{"tutorial id", "lesson", http.StatusNotFound, ""},
-		{"unknown id", "missing", http.StatusNotFound, ""},
+		{"first variant", "field-a", fieldA, nil},
+		{"second variant", "field-b", fieldB, nil},
+		{"tutorial id", "lesson", "", usecase.ErrNotFound},
+		{"unknown id", "missing", "", usecase.ErrNotFound},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -148,29 +148,20 @@ func TestGenerationUsesTextbookFieldID(t *testing.T) {
 
 			stub := &fieldGenerationStub{}
 			generation := usecase.NewProgramGeneration(usecase.ProgramGenerationDeps{Fields: testFields(t), Quota: stub, Generator: stub, Validator: stub, MaxTokens: 100})
-			e := echo.New()
-			api.RegisterHandlersWithOptions(e, NewRouter(Config{ProgramGeneration: generation}), api.RegisterHandlersOptions{
-				BaseURL:              "/api",
-				OperationMiddlewares: map[string][]echo.MiddlewareFunc{"createProgramWithVibe": {Authentication(sessionLookupStub{})}},
-			})
-			req := httptest.NewRequest(http.MethodPost, "/api/program/create-with-vibe", strings.NewReader(`{"prompt":"go","fieldId":"`+tt.id+`"}`))
-			req.Header.Set("Content-Type", "application/json")
-			req.AddCookie(&http.Cookie{Name: "session", Value: "session-id", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode})
-			res := httptest.NewRecorder()
-
-			e.ServeHTTP(res, req)
-			if res.Code != tt.status {
-				t.Fatalf("status = %d, want %d; body = %s", res.Code, tt.status, res.Body.String())
+			_, err := generation.GenerateWithOptions(t.Context(), "verified-subject", usecase.ProgramGenerationRequest{Prompt: "go", FieldID: tt.id})
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("generation error = %v, want %v", err, tt.wantErr)
 			}
 
-			if tt.status != http.StatusCreated {
+			if tt.wantErr != nil {
 				if stub.reserves != 0 || len(stub.inputs) != 0 {
 					t.Errorf("quota reserves = %d, generator calls = %d; want none for unknown field", stub.reserves, len(stub.inputs))
 				}
 				return
 			}
 			if len(stub.inputs) != 1 {
-				t.Fatalf("generator calls = %d, want 1", len(stub.inputs))
+				t.Errorf("generator calls = %d, want 1", len(stub.inputs))
+				return
 			}
 			assertFieldJSON(t, stub.inputs[0].Field, tt.want)
 		})

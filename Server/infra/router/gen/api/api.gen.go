@@ -265,16 +265,6 @@ type SetMyUsernameJSONBody struct {
 	Username string `json:"username"`
 }
 
-// CreateProgramWithVibeJSONBody defines parameters for CreateProgramWithVibe.
-type CreateProgramWithVibeJSONBody struct {
-	// FieldId 指定すると教材の variant の fieldId に対応する盤面情報を生成時に渡す。対戦用 BattleLayout は対象外。
-	FieldId *string `json:"fieldId,omitempty"`
-
-	// IsBattle trueの場合は対戦向けの指示を生成時に渡す。省略時はfalse。
-	IsBattle *bool  `json:"isBattle,omitempty"`
-	Prompt   string `json:"prompt"`
-}
-
 // RunTutorialJSONBody defines parameters for RunTutorial.
 type RunTutorialJSONBody struct {
 	// ProgramId このチュートリアル用に保存したプログラムのID
@@ -292,9 +282,6 @@ type SetMyUsernameJSONRequestBody SetMyUsernameJSONBody
 
 // CreateProgramJSONRequestBody defines body for CreateProgram for application/json ContentType.
 type CreateProgramJSONRequestBody = Program
-
-// CreateProgramWithVibeJSONRequestBody defines body for CreateProgramWithVibe for application/json ContentType.
-type CreateProgramWithVibeJSONRequestBody CreateProgramWithVibeJSONBody
 
 // UpdateProgramJSONRequestBody defines body for UpdateProgram for application/json ContentType.
 type UpdateProgramJSONRequestBody = UpdateProgramRequest
@@ -500,9 +487,6 @@ type ServerInterface interface {
 	// CreateProgram プログラムを作成
 	// (POST /program)
 	CreateProgram(ctx *echo.Context) error
-	// CreateProgramWithVibe 自然言語からプログラムを生成
-	// (POST /program/create-with-vibe)
-	CreateProgramWithVibe(ctx *echo.Context) error
 	// GetProgram プログラムを取得
 	// (GET /program/{programId})
 	GetProgram(ctx *echo.Context, programId ProgramId) error
@@ -651,15 +635,6 @@ func (w *ServerInterfaceWrapper) CreateProgram(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateProgram(ctx)
-	return err
-}
-
-// CreateProgramWithVibe converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateProgramWithVibe(ctx *echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateProgramWithVibe(ctx)
 	return err
 }
 
@@ -834,7 +809,6 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/me", wrapper.GetMe, options.OperationMiddlewares["getMe"]...)
 	router.POST(options.BaseURL+"/me/username", wrapper.SetMyUsername, options.OperationMiddlewares["setMyUsername"]...)
 	router.POST(options.BaseURL+"/program", wrapper.CreateProgram, options.OperationMiddlewares["createProgram"]...)
-	router.POST(options.BaseURL+"/program/create-with-vibe", wrapper.CreateProgramWithVibe, options.OperationMiddlewares["createProgramWithVibe"]...)
 	router.GET(options.BaseURL+"/program/:programId", wrapper.GetProgram, options.OperationMiddlewares["getProgram"]...)
 	router.PUT(options.BaseURL+"/program/:programId", wrapper.UpdateProgram, options.OperationMiddlewares["updateProgram"]...)
 	router.GET(options.BaseURL+"/ranking", wrapper.GetRanking, options.OperationMiddlewares["getRanking"]...)

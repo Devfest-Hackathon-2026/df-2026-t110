@@ -15,18 +15,17 @@ var _ api.ServerInterface = (*Router)(nil)
 
 // Config holds HTTP-level settings of the handlers.
 type Config struct {
-	Auth              AuthService
-	Sessions          SessionService
-	SecureCookies     bool
-	Users             UsernameSetter
-	Programs          ProgramService
-	ProgramGeneration ProgramGenerationService
-	Fields            FieldService
-	Tutorials         TutorialService
-	RunResults        RunResultGetter
-	BattlePrograms    BattleProgramService
-	Matches           MatchService
-	Rankings          RankingLister
+	Auth           AuthService
+	Sessions       SessionService
+	SecureCookies  bool
+	Users          UsernameSetter
+	Programs       ProgramService
+	Fields         FieldService
+	Tutorials      TutorialService
+	RunResults     RunResultGetter
+	BattlePrograms BattleProgramService
+	Matches        MatchService
+	Rankings       RankingLister
 }
 
 type AuthService interface {
@@ -72,10 +71,6 @@ type ProgramService interface {
 	Get(ctx context.Context, subject, id string) (domain.Program, error)
 	Update(ctx context.Context, subject, id string, draft domain.Program) (domain.Program, error)
 	ListByTutorialID(ctx context.Context, subject, tutorialID string) ([]domain.Program, error)
-}
-
-type ProgramGenerationService interface {
-	GenerateWithOptions(ctx context.Context, subject string, request usecase.ProgramGenerationRequest) (jsontext.Value, error)
 }
 
 type UsernameSetter interface {

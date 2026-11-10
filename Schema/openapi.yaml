@@ -14,8 +14,6 @@ paths:
     $ref: "./openapi/paths/field.yaml#/~1field~1%7BfieldId%7D"
   /program/{programId}:
     $ref: "./openapi/paths/program.yaml#/~1program~1%7BprogramId%7D"
-  /program/create-with-vibe:
-    $ref: "./openapi/paths/program.yaml#/~1program~1create-with-vibe"
   /program:
     $ref: "./openapi/paths/program.yaml#/~1program"
   /match:
