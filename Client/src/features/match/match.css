@@ -225,6 +225,16 @@
 .match-status--result {
   max-width: none;
 }
+.match-score-help {
+  margin-block: var(--space-lg);
+}
+.match-score-help > summary {
+  min-height: 44px;
+  padding-block: var(--space-xs);
+  color: var(--color-accent-deep);
+  font-weight: 650;
+  cursor: pointer;
+}
 .match-status h2 {
   margin-top: var(--space-sm);
 }

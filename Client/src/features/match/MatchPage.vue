@@ -8,6 +8,8 @@ import pencilIcon from '@iconify-icons/lucide/pencil'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
+import MatchGuide from './MatchGuide.vue'
+import MatchScoreRules from './MatchScoreRules.vue'
 import type { PicoProgram } from '../picolang/language/picolang.ts'
 
 const BlocklyEditor = defineAsyncComponent(() => import('../picolang/editor/BlocklyEditor.vue'))
@@ -76,8 +78,8 @@ function onEditorToggle(event: Event): void {
       <h1 class="furigana-heading heading-with-icon">
         <Icon :icon="swordsIcon" aria-hidden="true" /><span>対戦</span>
       </h1>
-      <p class="furigana-text">3台のロボットにプログラムを割り当てて、ほかのプレイヤーと競います。</p>
     </header>
+    <MatchGuide v-if="store.phase === 'preparing'" />
     <p v-if="store.error" class="match-error" role="alert">{{ store.error }}</p>
 
     <template v-if="store.phase === 'preparing'">
@@ -143,7 +145,7 @@ function onEditorToggle(event: Event): void {
             <Icon :icon="saveIcon" aria-hidden="true" />対戦用の設定を保存
           </button>
           <p v-if="store.settingsSaved" role="status">3台分の設定を保存しました。</p>
-          <p v-else>設定を保存すると、ほかのプレイヤーとの対戦候補になります。</p>
+          <p class="furigana-text">ほかの人から対戦されたときに使う、3台分のプログラムを登録します。</p>
         </div>
 
         <details class="match-editor-details" @toggle="onEditorToggle">
@@ -226,7 +228,10 @@ function onEditorToggle(event: Event): void {
         <div class="match-section-heading">
           <h2 id="match-start-title" class="furigana-heading">対戦を始める</h2>
         </div>
-        <p class="furigana-text">3台分の設定で対戦を始めます。対戦可能な相手が選ばれ、結果が表示されます。</p>
+        <p class="furigana-text">
+          選んだ3台分の設定を保存して対戦します。相手と盤面が自動で選ばれ、結果が表示されます。
+        </p>
+        <p class="furigana-text">この対戦の結果に応じて、あなたのレートが変わります。</p>
         <div v-if="store.startingMatch" class="match-start-pending" role="status" aria-live="polite">
           <strong>対戦を進めています</strong>
           <p>対戦相手と盤面を選び、ロボットの動きを計算しています。完了すると結果へ移動します。</p>
@@ -282,6 +287,10 @@ function onEditorToggle(event: Event): void {
             <TutorAvatar variant="purple" :animated="false" />
           </div>
         </div>
+        <details v-if="score" class="match-score-help">
+          <summary class="furigana-heading">得点の数え方</summary>
+          <MatchScoreRules />
+        </details>
         <p v-if="store.phase === 'finished'">
           ロボットの動きを3Dで再生できます。カメラの映像に重ねることもできます。
         </p>
