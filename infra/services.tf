@@ -1,6 +1,6 @@
 locals {
   required_services = [
-    "aiplatform.googleapis.com",
+    # "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",

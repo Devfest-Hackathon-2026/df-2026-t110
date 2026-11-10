@@ -24,7 +24,7 @@ variable "server_max_instances" {
 variable "iap_enabled" {
   description = "Restrict the server (frontend and API) to iap_members with IAP. Set to false to open it to everyone."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "iap_members" {
