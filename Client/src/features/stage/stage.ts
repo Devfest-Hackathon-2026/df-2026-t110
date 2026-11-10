@@ -142,7 +142,7 @@ function normalizeSchemaField(raw: Record<string, unknown>, index: number): Stag
       Number(at.x) >= Number(width) ||
       Number(at.y) < 0 ||
       Number(at.y) >= Number(height) ||
-      !['goal', 'checkpoint', 'luggage'].includes(String(item.type))
+      !['goal', 'checkpoint', 'luggage', 'territory'].includes(String(item.type))
     )
       throw new Error('schema field に不正な object があります')
     if (item.type === 'checkpoint' && !Number.isInteger(item.order))
@@ -150,6 +150,12 @@ function normalizeSchemaField(raw: Record<string, unknown>, index: number): Stag
     if (item.type === 'luggage' && (typeof item.id !== 'string' || !item.id))
       throw new Error('luggage の id が不正です')
     const cell = cells[Number(at.y) * Number(width) + Number(at.x)]
+    if (item.type === 'territory') {
+      if (cell.terrain !== 'land') throw new Error('陣地は陸に置いてください')
+      // Tutorial delivery destinations use the same territory marker as the server replay.
+      cell.territoryOwner = 1
+      continue
+    }
     cell.objects.push({
       type: item.type as StageObject['type'],
       ...(item.type === 'checkpoint' ? { order: item.order as number } : {}),
@@ -226,7 +232,7 @@ function generateLayouts(
     const choose = (offset: number, remaining: number, selected: number[]): void => {
       if (remaining === 0) {
         if (layouts.length >= MAX_GENERATED_VARIANTS)
-          throw new Error('配置候補が多すぎます。候補マップを明示してください')
+          throw new Error('フィールド候補が多すぎます。候補マップを明示してください')
         const rows = template.map((row) => [...row].map((symbol) => (symbol === '?' ? '.' : symbol)))
         for (const slot of selected) {
           const [x, y] = slots[slot]
