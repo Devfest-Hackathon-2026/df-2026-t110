@@ -4,12 +4,46 @@ id: while-land
 title: 道が続く間は進む
 goal: 条件が合う間、同じ動きをくり返そう。
 description: 道の長さが変わっても、海の手前で左に回ってゴールへ進もう。
-lesson: 条件を毎回調べます。「はい」ならくり返し、「いいえ」ならその下に進みます。
+lesson: 「～の間くり返す」ブロックは、条件を毎回調べます。「はい」ならくり返し、「いいえ」ならその下に進みます。
 guide:
-  - 「前のマスを調べて返す」を「〜は陸」に入れ、条件にしよう。道の外は海です。
+  - このステージはいろんなフィールドがあります。まずは「フィールド候補」を見てみましょう。どうしたらゴールまで行けるかな。
+  - 海にぶつかるまでまっすぐ進んで、左に曲がるとゴールに行けそうです。
+  - 「「前のマスを調べて返す」は陸」を「～の間」の条件にしよう。道の外は海です。
   - 条件が合う間のくり返しの中に、「前に進む」を入れよう。進むたびに次のマスを調べます。
   - くり返しの外で左に回り、1マス進もう。初めから前が海なら、前進は0回です。
   - 実行で選ばれた道でも、海の手前で止まるか確かめよう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000009-0000-4000-8000-000000000009
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000009-0000-4000-8000-000000000008
+            stmts:
+              - kind: while
+                hintId: c0000009-0000-4000-8000-000000000005
+                condition:
+                  kind: literal
+                  hintId: 8cced08c-d089-466c-b268-274dc4e620c1
+                  type: bool
+                  value: false
+                body:
+                  kind: block
+                  hintId: c0000009-0000-4000-8000-000000000004
+                  stmts: []
+              - kind: return
+                hintId: c0000009-0000-4000-8000-000000000007
+                value:
+                  kind: literal
+                  hintId: c0000009-0000-4000-8000-000000000006
+                  type: unit
+                  value: null
 stage:
   variants:
     - id: while-land-1

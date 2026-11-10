@@ -4,12 +4,55 @@ id: use-distance
 title: 調べた数を使って進む
 goal: 調べた数を覚え、あとの動きに使おう。
 description: 岩までのきょりを覚え、どの道が選ばれてもゴールへ進もう。
-lesson: スタートから岩までと、岩からゴールまでは、同じマス数です。
+lesson: 岩までのきょりを覚え、どのフィールドが選ばれてもゴールへ進もう。スタートから岩までと、岩からゴールまでは、同じマス数です。
 guide:
-  - 岩を選んだ「距離を返す」（きょりをかえす）の答えを、「歩数」に入れよう。
-  - 「〜 - 〜」で「歩数」から1を引き、その数だけ進むと、岩の手前に着きます。
-  - 「岩を壊す」（いわをこわす）を使って1マス進み、覚えた数だけ進もう。
-  - 実行で選ばれた道でも、覚えた数でゴールに着くか確かめよう。
+  - 見本は、岩までのきょりを「歩数」に入れて、その数を言います。
+  - 引き算のブロックで「歩数」から1を引き、その数だけ進むと、岩の手前に着きます。引き算のブロックは「計算」にあります。
+  - 「岩をこわす」を使って1マス進み、覚えた数だけ進もう。
+initialProgram:
+  picolangVersion: 0
+  picolang:
+    v0:
+      program:
+        main:
+          kind: function
+          hintId: c0000021-0000-4000-8000-000000000010
+          params: []
+          returnType: unit
+          body:
+            kind: block
+            hintId: c0000021-0000-4000-8000-000000000009
+            stmts:
+              - kind: declare
+                hintId: c0000021-0000-4000-8000-000000000004
+                type: integer
+                ident:
+                  kind: ident
+                  hintId: c0000021-0000-4000-8000-000000000003
+                  name: 歩数
+                value:
+                  kind: call
+                  hintId: c0000021-0000-4000-8000-000000000002
+                  func: distance
+                  args:
+                    - kind: literal
+                      hintId: c0000021-0000-4000-8000-000000000001
+                      type: distance_target
+                      value: rock
+              - kind: call
+                hintId: c0000021-0000-4000-8000-000000000006
+                func: print_integer
+                args:
+                  - kind: ident
+                    hintId: c0000021-0000-4000-8000-000000000005
+                    name: 歩数
+              - kind: return
+                hintId: c0000021-0000-4000-8000-000000000008
+                value:
+                  kind: literal
+                  hintId: c0000021-0000-4000-8000-000000000007
+                  type: unit
+                  value: null
 stage:
   variants:
     - id: use-distance-1
