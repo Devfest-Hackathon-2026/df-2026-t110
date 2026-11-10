@@ -29,6 +29,119 @@ import {
 } from '../src/features/picolang/language/picolang.ts'
 import { analyzePicolang, inferPicolang } from '../src/features/picolang/language/analyzePicolang.ts'
 
+test('同じツールボックスから左回転を2回追加しても実行できる', () => {
+  const program = newProgram()
+  const functions = programFunctions(program)
+  registerPicoBlocks(functions)
+  const movement = picoToolbox(functions).contents.find(
+    (item) => item.kind === 'category' && 'name' in item && item.name === '動く',
+  ) as Blockly.utils.toolbox.StaticCategoryInfo
+  const entry = movement.contents.find(
+    (item) => item.kind === 'block' && 'type' in item && item.type === 'pico_stmt_rotate',
+  ) as Blockly.utils.toolbox.BlockInfo
+  const workspace = new Blockly.Workspace()
+  try {
+    const first = Blockly.serialization.blocks.append({ ...entry, type: 'pico_stmt_rotate' }, workspace)
+    const forward = workspace.newBlock('pico_stmt_forward')
+    const second = Blockly.serialization.blocks.append({ ...entry, type: 'pico_stmt_rotate' }, workspace)
+    first.nextConnection!.connect(forward.previousConnection!)
+    forward.nextConnection!.connect(second.previousConnection!)
+    functions.main = readFunction(workspace, functions.main, functions)
+    const analysis = inferPicolang(program)
+    assert.deepEqual(analysis.diagnostics, [])
+    assert.equal(isPicoProgram(analysis.program), true)
+    assert.deepEqual(
+      functions.main.body.stmts.map((stmt) => (stmt.kind === 'call' ? stmt.func : stmt.kind)),
+      ['rotate', 'forward', 'rotate', 'return'],
+    )
+    for (const index of [0, 2]) {
+      const stmt = functions.main.body.stmts[index]
+      assert.equal(stmt.kind, 'call')
+      assert.equal(stmt.args[0].kind, 'literal')
+      assert.equal(stmt.args[0].value, 'left')
+    }
+    const before = structuredClone(functions.main)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), before)
+    loadFunction(workspace, functions.main, functions)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), before)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('入れ子の制御ブロックの複製は本体と変数と空欄のIDも重複しない', () => {
+  const program = picoDraft(newProgram())
+  const functions = programFunctions(program)
+  const loop = makeStatement('for', functions)
+  assert.equal(loop.kind, 'for')
+  loop.body.stmts.push(makeCall('rotate'), {
+    kind: 'call',
+    hintId: id(),
+    func: 'print_integer',
+    args: [{ kind: 'missing', hintId: id() }],
+  })
+  functions.main.body.stmts.unshift(loop)
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    const first = workspace.getTopBlocks(false)[0]
+    const saved = Blockly.serialization.blocks.save(first, { addNextBlocks: false })!
+    const copy = Blockly.serialization.blocks.append(saved, workspace)
+    const trailingReturn = first.getNextBlock()!
+    trailingReturn.unplug()
+    first.nextConnection!.connect(copy.previousConnection!)
+    copy.nextConnection!.connect(trailingReturn.previousConnection!)
+    refreshVariableBlocks(workspace)
+    functions.main = readFunction(workspace, functions.main, functions)
+    assert.equal(isPicoDraft(program), true)
+    const missing = analyzePicolang(program).filter((item) => item.code === 'missing_argument')
+    assert.equal(missing.length, 2)
+    assert.notEqual(missing[0].hintId, missing[1].hintId)
+    assert.notEqual(
+      diagnosticBlock(workspace, missing[0].hintId),
+      diagnosticBlock(workspace, missing[1].hintId),
+    )
+    const before = structuredClone(functions.main)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), before)
+    loadFunction(workspace, functions.main, functions)
+    assert.deepEqual(readFunction(workspace, functions.main, functions), before)
+  } finally {
+    workspace.dispose()
+  }
+})
+
+test('別の関数へ貼り付けたブロックは元の関数とIDが重複しない', () => {
+  const program = picoDraft(newProgram())
+  const functions = programFunctions(program)
+  functions.main.body.stmts.unshift(makeCall('rotate'))
+  functions.other = {
+    kind: 'function',
+    hintId: id(),
+    params: [],
+    body: block([{ kind: 'return', hintId: id(), value: defaultExpr('unit') }]),
+  }
+  registerPicoBlocks(functions)
+  const workspace = new Blockly.Workspace()
+  try {
+    loadFunction(workspace, functions.main, functions)
+    const saved = Blockly.serialization.blocks.save(workspace.getTopBlocks(false)[0], {
+      addNextBlocks: false,
+    })!
+    const original = structuredClone(functions.main)
+    loadFunction(workspace, functions.other, functions)
+    const trailingReturn = workspace.getTopBlocks(false)[0]
+    const copy = Blockly.serialization.blocks.append(saved, workspace)
+    copy.nextConnection!.connect(trailingReturn.previousConnection!)
+    functions.other = readFunction(workspace, functions.other, functions)
+    assert.deepEqual(functions.main, original)
+    assert.equal(isPicoProgram(inferPicolang(program).program), true)
+    assert.deepEqual(readFunction(workspace, functions.other, functions), functions.other)
+  } finally {
+    workspace.dispose()
+  }
+})
+
 test('入れ子のstack型をBlocklyの型キーと相互変換できる', () => {
   const type: PicoType = { kind: 'stack', elementType: { kind: 'stack', elementType: 'bool' } }
   assert.equal(typeKey(type), 'stack:stack:bool')

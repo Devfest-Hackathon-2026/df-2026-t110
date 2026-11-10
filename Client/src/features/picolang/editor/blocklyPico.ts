@@ -633,11 +633,47 @@ function readStack(first: Block | null, functions: Record<string, PicoFunction>)
   }
   return statements
 }
+
+/** Toolbox templates and clipboard copies reuse data, including nested AST IDs. */
+function uniqueWorkspaceHintIds(
+  workspace: Blockly.Workspace,
+  original: PicoFunction,
+  functions: Record<string, PicoFunction>,
+): void {
+  const used = new Set([original.hintId, original.body.hintId])
+  function reserve(value: unknown): void {
+    if (!value || typeof value !== 'object') return
+    for (const [key, child] of Object.entries(value)) {
+      if (key === 'hintId' && typeof child === 'string') used.add(child)
+      else reserve(child)
+    }
+  }
+  reserve(original.params)
+  for (const fn of Object.values(functions)) {
+    if (fn.hintId !== original.hintId) reserve(fn)
+  }
+  for (const block of workspace.getAllBlocks(false)) {
+    const data = meta(block)
+    let changed = false
+    for (const [key, hintId] of Object.entries(data)) {
+      // Expression statements use the value node's ID; the wrapper is not an AST node.
+      if (block.type === 'pico_expr_statement' && key === 'hintId') continue
+      if (used.has(hintId)) {
+        data[key] = id()
+        changed = true
+      }
+      used.add(data[key]!)
+    }
+    if (changed) block.data = JSON.stringify(data)
+  }
+}
+
 export function readFunction(
   workspace: Blockly.Workspace,
   original: PicoFunction,
   functions: Record<string, PicoFunction>,
 ): PicoFunction {
+  uniqueWorkspaceHintIds(workspace, original, functions)
   const tops = workspace.getTopBlocks(true).filter((item) => !!item.previousConnection && !item.isShadow())
   const statements = tops.flatMap((top) => readStack(top, functions))
   const returns = statements.filter((item) => item.kind === 'return')
