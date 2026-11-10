@@ -425,6 +425,33 @@
   overflow: hidden;
   background: #174d49;
 }
+.match-replay.match-replay--fullscreen {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  background: var(--color-card);
+}
+.match-replay--fullscreen > * {
+  flex-shrink: 0;
+}
+.match-replay--fullscreen > input[type='range'] {
+  margin-inline: 0;
+}
+.match-replay--fullscreen .match-replay-viewport {
+  flex: 1 0 160px;
+  height: auto;
+  margin-block: var(--space-sm);
+}
 .match-replay-scene {
   position: absolute;
   inset: 0;
@@ -470,6 +497,21 @@
 .match-replay-mode button[aria-pressed='true'] {
   background: var(--color-accent-deep) !important;
   color: white !important;
+}
+.match-replay-mode .match-replay-fullscreen-button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+}
+.match-replay-fullscreen-button svg {
+  width: 20px;
+  height: 20px;
+}
+.match-replay-fullscreen-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .match-replay-action {
   min-height: 2em;

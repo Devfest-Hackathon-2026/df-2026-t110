@@ -10,7 +10,7 @@ import type {
   RoomMarkerTracker,
 } from '../src/features/rooms/roomMarkerTracking.ts'
 
-function fixture(pending = false) {
+function fixture(pending = false, boardScale = 1) {
   let board = new THREE.Group()
   let cameraMode = true
   const camera = new THREE.PerspectiveCamera(48, 1, 0.05, 100)
@@ -47,6 +47,7 @@ function fixture(pending = false) {
     getBoard: () => board,
     getCamera: () => camera,
     isCamera: () => cameraMode,
+    boardScale,
     onError: (message) => errors.push(message),
     mountTracker: (_host, handlers, abortSignal) => {
       callbacks = handlers
@@ -193,6 +194,27 @@ test('replay frame replacement retains placement and visibility even during mark
   assert.equal(f.board.visible, false)
   f.preview()
   assert.equal(f.replaceBoard(), false)
+})
+
+test('quarter-scale placement keeps the anchor position and retains scale across tracking and replay updates', async () => {
+  const f = fixture(false, 0.25)
+  await f.placement.start()
+  f.pose('a', pose(0.4, 0.5))
+  f.pose('b', pose(0.8, -0.2))
+  f.detect({ a: true, b: true })
+  f.placement.confirmPlacement()
+  for (const time of [0, 16, 32]) {
+    f.placement.update(time)
+    assert.ok(f.board.scale.distanceTo(new THREE.Vector3(0.25, 0.25, 0.25)) < 1e-10)
+    assert.ok(f.board.position.distanceTo(new THREE.Vector3(0.4, 0.1, -2)) < 1e-10)
+  }
+  assert.equal(f.replaceBoard(), true)
+  assert.ok(f.board.scale.distanceTo(new THREE.Vector3(0.25, 0.25, 0.25)) < 1e-10)
+  f.detect({ a: false, b: true })
+  f.placement.update(48)
+  assert.equal(f.board.visible, true)
+  assert.ok(f.board.scale.distanceTo(new THREE.Vector3(0.25, 0.25, 0.25)) < 1e-10)
+  assert.ok(f.board.position.distanceTo(new THREE.Vector3(0.4, 0.1, -2)) < 1e-10)
 })
 
 test('camera projection matches video cover cropping and resets when returning to 3D', async () => {

@@ -6,6 +6,8 @@ import skipBackIcon from '@iconify-icons/lucide/skip-back'
 import playIcon from '@iconify-icons/lucide/play'
 import pauseIcon from '@iconify-icons/lucide/pause'
 import skipForwardIcon from '@iconify-icons/lucide/skip-forward'
+import maximizeIcon from '@iconify-icons/lucide/maximize'
+import minimizeIcon from '@iconify-icons/lucide/minimize'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createArmPivots } from '../stage/armController.ts'
@@ -35,6 +37,8 @@ import {
 
 const props = defineProps<{ frames: ReplayFrame[] }>()
 const host = ref<HTMLElement | null>(null)
+const replayRef = ref<HTMLElement | null>(null)
+const replayFullscreen = ref(false)
 const index = ref(0)
 const playing = ref(false)
 const transitioning = ref(false)
@@ -131,6 +135,7 @@ const {
   getBoard: () => board,
   getCamera: () => camera,
   isCamera: () => mode.value === 'camera',
+  boardScale: 0.25,
   onError: (message) => {
     error.value = message
     mode.value = 'preview'
@@ -153,6 +158,29 @@ const directionYaw: Record<ReplayRobot['direction'], number> = {
   east: -Math.PI / 2,
   south: Math.PI,
   west: Math.PI / 2,
+}
+
+function exitReplayFullscreen(): void {
+  if (document.fullscreenElement !== replayRef.value) return
+  void document.exitFullscreen?.().catch(() => {})
+}
+function toggleReplayFullscreen(): void {
+  if (replayFullscreen.value) {
+    replayFullscreen.value = false
+    exitReplayFullscreen()
+    return
+  }
+  replayFullscreen.value = true
+  // Keep the CSS fullscreen layout when the Fullscreen API is unavailable or denied.
+  void replayRef.value?.requestFullscreen?.().catch(() => {})
+}
+function syncFullscreen(): void {
+  if (document.fullscreenElement !== replayRef.value) replayFullscreen.value = false
+}
+function fullscreenKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && replayFullscreen.value && !document.fullscreenElement) {
+    replayFullscreen.value = false
+  }
 }
 
 function resize(): void {
@@ -497,6 +525,8 @@ function wheel(event: WheelEvent): void {
 onMounted(() => {
   if (!host.value) return
   alive = true
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  document.addEventListener('keydown', fullscreenKeydown)
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -546,6 +576,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   alive = false
+  document.removeEventListener('fullscreenchange', syncFullscreen)
+  document.removeEventListener('keydown', fullscreenKeydown)
+  exitReplayFullscreen()
   if (timer) clearTimeout(timer)
   cancelAnimationFrame(raf)
   observer?.disconnect()
@@ -559,7 +592,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="match-replay" aria-labelledby="match-replay-title">
+  <section
+    ref="replayRef"
+    class="match-replay"
+    :class="{ 'match-replay--fullscreen': replayFullscreen }"
+    aria-labelledby="match-replay-title"
+  >
     <div class="match-replay-heading">
       <div>
         <h2 id="match-replay-title" class="furigana-heading">
@@ -599,6 +637,16 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="match-replay-mode">
+        <button
+          type="button"
+          class="match-replay-fullscreen-button"
+          :aria-pressed="replayFullscreen"
+          :aria-label="replayFullscreen ? '全画面を閉じる' : 'ARを全画面表示'"
+          :title="replayFullscreen ? '全画面を閉じる' : 'ARを全画面表示'"
+          @click="toggleReplayFullscreen"
+        >
+          <Icon :icon="replayFullscreen ? minimizeIcon : maximizeIcon" aria-hidden="true" />
+        </button>
         <button type="button" :aria-pressed="mode === 'preview'" @click="setMode('preview')">3D</button>
         <button type="button" :aria-pressed="mode === 'camera'" @click="setMode('camera')">カメラ</button>
       </div>

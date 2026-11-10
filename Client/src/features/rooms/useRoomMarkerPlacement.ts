@@ -13,6 +13,7 @@ interface PlacementOptions {
   getBoard(): THREE.Group | null | undefined
   getCamera(): THREE.PerspectiveCamera | null | undefined
   isCamera(): boolean
+  boardScale?: number
   onError(message: string): void
   mountTracker?: typeof mountRoomMarkerTracker
 }
@@ -198,6 +199,7 @@ export function useRoomMarkerPlacement(options: PlacementOptions) {
     trackingPoseAvailable.value = true
     board.visible = true
     pose.decompose(board.position, board.quaternion, board.scale)
+    board.scale.multiplyScalar(options.boardScale ?? 1)
     markerPose.update(pose, time)
     board.position.copy(markerPose.position)
     board.quaternion.copy(markerPose.quaternion)
