@@ -12,10 +12,10 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
 
 <template>
   <section class="match-guide" aria-labelledby="match-guide-title">
-    <h2 id="match-guide-title" class="furigana-heading">荷物を集めて、<wbr />自分の領地に置こう！</h2>
+    <h2 id="match-guide-title" class="furigana-heading">荷物を集めて、<wbr />自分のじん地に置こう！</h2>
     <p class="match-guide-lead furigana-text">
-      {{ battleGuide.robotCount }}台のロボットをプログラムで動かす対戦です。試合終了時の得点が高いほうが勝ち。
-      領地に置いた荷物も相手に持ち出されるので、最後まで油断できません。
+      {{ battleGuide.robotCount }}台のロボットをプログラムで動かす対戦です。荷物を自分のじん地に集めて、試合終了時の得点が高いほうが勝ち。
+      じん地に置いた荷物も相手に持ち出されるので、最後まで油断できません。
     </p>
     <details class="match-guide-details">
       <summary class="furigana-heading">遊び方とルール</summary>
@@ -26,16 +26,13 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
             <li>
               <strong>プログラムを選ぶ</strong>
               <p>
-                ログインして表示名を設定し、{{
-                  battleGuide.robotCount
-                }}台それぞれに対戦用プログラムを選びます。 同じプログラムを複数のロボットに使えます。
+                {{ battleGuide.robotCount }}台それぞれに対戦用プログラムを選びます。 同じプログラムを複数のロボットに使えます。
               </p>
             </li>
             <li>
               <strong>自動で対戦する</strong>
               <p>
                 「対戦を始める」で相手と盤面が選ばれ、プログラムどおりに動きます。試合中の操作はありません。
-                相手が同時にログインしている必要もありません。
               </p>
             </li>
             <li>
@@ -58,7 +55,7 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
               <dd>{{ width }} × {{ height }}マス</dd>
             </div>
             <div>
-              <dt>最初の荷物</dt>
+              <dt>荷物の数</dt>
               <dd>{{ luggageCount }}個</dd>
             </div>
             <div>
@@ -68,32 +65,22 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
           </dl>
           <figure class="match-guide-field">
             <div class="match-guide-field-labels furigana-text" aria-hidden="true">
-              <strong>自分の領地</strong><strong>相手の領地</strong>
+              <strong>自分のじん地</strong><strong>相手のじん地</strong>
             </div>
-            <svg
-              :viewBox="`-12 -12 ${width * 32 + 24} ${height * 32 + 24}`"
-              role="img"
-              aria-labelledby="match-guide-board-title match-guide-board-description"
-            >
+            <svg :viewBox="`-12 -12 ${width * 32 + 24} ${height * 32 + 24}`" role="img"
+              aria-labelledby="match-guide-board-title match-guide-board-description">
               <title id="match-guide-board-title">対戦フィールドの配置例</title>
               <desc id="match-guide-board-description">
-                横14マス、縦11マス。左端1列が自分の領地、右端1列が相手の領地です。
+                横14マス、縦11マス。左端1列が自分のじん地、右端1列が相手のじん地です。
                 両チームのロボット1・2・3は、それぞれ上から6・7・8行目に並び、中央を向いてスタートします。
                 岩と荷物は左右対称に配置されています。周囲は海です。
               </desc>
               <rect x="-12" y="-12" :width="width * 32 + 24" :height="height * 32 + 24" fill="#b9dce5" />
-              <g
-                v-for="cell in cells"
-                :key="`${cell.x},${cell.y}`"
-                :transform="`translate(${cell.x * 32} ${cell.y * 32})`"
-              >
-                <rect
-                  width="32"
-                  height="32"
-                  :fill="cell.x === 0 ? '#c1ded5' : cell.x === width - 1 ? '#e2d4ed' : '#f1f6f2'"
-                  stroke="#a9c9c1"
-                  stroke-width="0.6"
-                />
+              <g v-for="cell in cells" :key="`${cell.x},${cell.y}`"
+                :transform="`translate(${cell.x * 32} ${cell.y * 32})`">
+                <rect width="32" height="32"
+                  :fill="cell.x === 0 ? '#c1ded5' : cell.x === width - 1 ? '#e2d4ed' : '#f1f6f2'" stroke="#a9c9c1"
+                  stroke-width="0.6" />
                 <path v-if="cell.symbol === '#'" d="M4 25 7 11 17 5 27 14 26 26Z" fill="#637c78" />
                 <g v-else-if="cell.symbol === 'O'" fill="#edcc79" stroke="#805d21" stroke-width="1.3">
                   <rect x="8" y="8" width="16" height="17" rx="2" />
@@ -102,14 +89,8 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
                 <g v-else-if="cell.robot" :fill="cell.x === 0 ? '#16655f' : '#704396'">
                   <circle :cx="cell.x === 0 ? 13 : 19" cy="16" r="10" />
                   <path :d="cell.x === 0 ? 'M25 10 31 16 25 22Z' : 'M7 10 1 16 7 22Z'" />
-                  <text
-                    :x="cell.x === 0 ? 13 : 19"
-                    y="20"
-                    fill="white"
-                    text-anchor="middle"
-                    font-size="12"
-                    font-weight="700"
-                  >
+                  <text :x="cell.x === 0 ? 13 : 19" y="20" fill="white" text-anchor="middle" font-size="12"
+                    font-weight="700">
                     {{ cell.symbol }}
                   </text>
                 </g>
@@ -117,14 +98,14 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
             </svg>
             <figcaption class="furigana-text">
               <strong>配置例</strong>。数字は設定欄のロボット番号、矢印は最初の向きです。
-              ロボットの初期位置・向きと領地は固定。岩と荷物の配置は、対戦ごとに候補から選ばれます。
+              ロボットの初期位置・向きとじん地は固定。岩と荷物の配置は、対戦ごとに候補から選ばれます。
             </figcaption>
             <ul class="match-guide-legend furigana-text" aria-label="配置図の凡例">
               <li>
-                <span class="match-guide-swatch match-guide-swatch--own" aria-hidden="true" />自分の領地
+                <span class="match-guide-swatch match-guide-swatch--own" aria-hidden="true" />自分のじん地
               </li>
               <li>
-                <span class="match-guide-swatch match-guide-swatch--opponent" aria-hidden="true" />相手の領地
+                <span class="match-guide-swatch match-guide-swatch--opponent" aria-hidden="true" />相手のじん地
               </li>
               <li><span class="match-guide-swatch match-guide-swatch--rock" aria-hidden="true" />岩</li>
               <li><span class="match-guide-swatch match-guide-swatch--luggage" aria-hidden="true" />荷物</li>
@@ -165,7 +146,7 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
               最後のターンの行動も得点に反映されます。
             </p>
             <p>
-              プログラムの終了や実行エラーで停止したロボットは盤面から消えます。持っていた荷物も消えますが、海に捨てた場合の減点はありません。
+              プログラムの終了や実行エラーで停止したロボットは盤面から消えます。
             </p>
             <h3 class="furigana-heading">対戦相手とレート</h3>
             <p>レートが近い相手ほど選ばれやすくなります。自分で相手を指定することはできません。</p>
@@ -184,13 +165,16 @@ const luggageCount = cells.filter((cell) => cell.symbol === 'O').length
   padding-block: var(--space-lg);
   border-bottom: 1px solid var(--color-rule);
 }
+
 .match-guide h2 {
   word-break: keep-all;
 }
+
 .match-guide-lead {
   margin: 0 0 var(--space-sm);
   color: var(--color-ink-2);
 }
+
 summary {
   min-height: 44px;
   padding-block: var(--space-xs);
@@ -198,71 +182,86 @@ summary {
   font-weight: 650;
   cursor: pointer;
 }
+
 .match-guide-body {
   display: grid;
   gap: var(--space-lg);
   padding-top: var(--space-md);
 }
+
 h3 {
   margin: 0 0 var(--space-sm);
   font-size: 1.125rem;
 }
+
 .match-guide-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   margin: 0;
   padding-left: 1.5em;
 }
+
 .match-guide-steps li::marker {
   color: var(--color-accent-deep);
   font-weight: 700;
 }
+
 .match-guide-steps p {
   margin: var(--space-xs) 0 0;
   color: var(--color-ink-2);
 }
+
 .match-guide-facts {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-md) var(--space-xl);
   margin: 0 0 var(--space-md);
 }
+
 .match-guide-facts dt {
   color: var(--color-muted);
   font-size: var(--type-small);
 }
+
 .match-guide-facts dd {
   margin: 0;
   font-weight: 650;
 }
+
 .match-guide-field {
   max-width: 600px;
   margin: 0 auto;
 }
+
 .match-guide-field-labels {
   display: flex;
   justify-content: space-between;
   gap: var(--space-md);
   margin-bottom: var(--space-xs);
 }
+
 .match-guide-field-labels strong:first-child {
   color: #16655f;
 }
+
 .match-guide-field-labels strong:last-child {
   color: #704396;
 }
+
 .match-guide-field svg {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 4px;
 }
+
 figcaption {
   margin-top: var(--space-sm);
   color: var(--color-muted);
   font-size: var(--type-small);
 }
+
 .match-guide-legend {
   display: flex;
   flex-wrap: wrap;
@@ -272,50 +271,63 @@ figcaption {
   list-style: none;
   font-size: var(--type-small);
 }
+
 .match-guide-legend li {
   display: flex;
   align-items: center;
   gap: var(--space-2xs);
 }
+
 .match-guide-swatch {
   width: 14px;
   height: 14px;
   border: 1px solid var(--color-muted);
 }
+
 .match-guide-swatch--own {
   background: #c1ded5;
 }
+
 .match-guide-swatch--opponent {
   background: #e2d4ed;
 }
+
 .match-guide-swatch--rock {
   background: #637c78;
 }
+
 .match-guide-swatch--luggage {
   background: #edcc79;
 }
+
 .match-guide-swatch--sea {
   background: #b9dce5;
 }
+
 .match-guide-list {
   margin: var(--space-md) 0 0;
   padding-left: 1.4em;
   color: var(--color-ink-2);
 }
-.match-guide-list li + li {
+
+.match-guide-list li+li {
   margin-top: var(--space-xs);
 }
+
 .match-guide-fine-print {
   padding-top: var(--space-sm);
   border-top: 1px solid var(--color-rule);
 }
+
 .match-guide-fine-print h3 {
   margin-top: var(--space-md);
 }
+
 .match-guide-fine-print p {
   margin: var(--space-xs) 0 0;
   color: var(--color-ink-2);
 }
+
 @media (max-width: 600px) {
   .match-guide-steps {
     grid-template-columns: 1fr;
