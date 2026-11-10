@@ -55,12 +55,20 @@ onBeforeUnmount(() => controller?.abort())
 </script>
 
 <template>
-  <form class="program-generator" @submit.prevent="submit">
+  <form class="program-generator" :aria-busy="pending" @submit.prevent="submit">
     <label :for="promptId">作りたい動きを文章で書く</label>
     <textarea :id="promptId" v-model="prompt" required rows="3" maxlength="12000" />
-    <button type="submit" :disabled="pending || !prompt.trim()">
-      {{ pending ? '生成中…' : 'プログラムを生成' }}
-    </button>
+    <div class="program-generator-action">
+      <div
+        v-if="pending"
+        class="program-generator-progress"
+        role="progressbar"
+        aria-label="プログラムを生成中"
+      >
+        <span aria-hidden="true" />
+      </div>
+      <button v-else type="submit" :disabled="!prompt.trim()">プログラムを生成</button>
+    </div>
     <p v-if="error" role="alert">{{ error }}</p>
     <details v-if="generated">
       <summary>生成したプログラムのJSON</summary>
@@ -80,9 +88,45 @@ onBeforeUnmount(() => controller?.abort())
   font: inherit;
 }
 .program-generator button {
-  justify-self: start;
   padding: 8px 14px;
   cursor: pointer;
+}
+.program-generator-action {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 40px;
+}
+.program-generator-progress {
+  position: relative;
+  align-self: center;
+  width: min(100%, 260px);
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-edge);
+}
+.program-generator-progress span {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 38%;
+  border-radius: inherit;
+  background: var(--color-accent-deep);
+  animation: program-generator-loading 1.5s ease-in-out infinite alternate;
+}
+@keyframes program-generator-loading {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(165%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .program-generator-progress span {
+    width: 100%;
+    animation: none;
+  }
 }
 .program-generator button:disabled {
   cursor: default;

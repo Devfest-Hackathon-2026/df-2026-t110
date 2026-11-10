@@ -99,7 +99,7 @@
 .match-main summary:focus-visible,
 .match-login:focus-visible {
   outline: 2px solid var(--color-focus);
-  outline-offset: 3px;
+  outline-offset: -2px;
 }
 .match-login {
   margin-top: var(--space-sm);
@@ -156,6 +156,25 @@
   color: var(--color-accent-deep);
   cursor: pointer;
   font-weight: 650;
+}
+.match-edit-selection-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.match-edit-selection-controls select {
+  flex: 1 1 0;
+  max-width: 420px;
+}
+.match-main .match-edit-selection-controls > button {
+  flex: none;
+  width: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.match-edit-selection-controls > button:hover:not(:disabled) {
+  background: var(--color-paper-2);
 }
 .match-editor {
   height: min(70svh, 650px);

@@ -4,6 +4,7 @@ import { Icon } from '@iconify/vue'
 import swordsIcon from '@iconify-icons/lucide/swords'
 import playIcon from '@iconify-icons/lucide/play'
 import saveIcon from '@iconify-icons/lucide/save'
+import pencilIcon from '@iconify-icons/lucide/pencil'
 import rotateCcwIcon from '@iconify-icons/lucide/rotate-ccw'
 import { useMatchStore } from './useMatchStore.ts'
 import { loginUrl } from './matchApi.ts'
@@ -178,20 +179,28 @@ function onEditorToggle(event: Event): void {
           <summary class="furigana-heading">保存済みプログラムを編集する</summary>
           <div class="match-edit-selection">
             <label for="match-edit-program">プログラム</label>
-            <select
-              id="match-edit-program"
-              v-model="editSelection"
-              :disabled="store.busy"
-              @change="changeEditSelection"
-            >
-              <option value="">選択してください</option>
-              <option v-for="program in store.programs" :key="program.id" :value="program.id">
-                {{ program.name }}
-              </option>
-            </select>
-            <button type="button" :disabled="!editSelection || store.busy" @click="openSavedProgram">
-              編集する
-            </button>
+            <div class="match-edit-selection-controls">
+              <button
+                type="button"
+                :disabled="!editSelection || store.busy"
+                aria-label="選択したプログラムを編集する"
+                title="選択したプログラムを編集する"
+                @click="openSavedProgram"
+              >
+                <Icon :icon="pencilIcon" aria-hidden="true" />
+              </button>
+              <select
+                id="match-edit-program"
+                v-model="editSelection"
+                :disabled="store.busy"
+                @change="changeEditSelection"
+              >
+                <option value="">選択してください</option>
+                <option v-for="program in store.programs" :key="program.id" :value="program.id">
+                  {{ program.name }}
+                </option>
+              </select>
+            </div>
           </div>
           <template v-if="editingProgramId && editingSource">
             <div class="match-editor">

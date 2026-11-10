@@ -5,6 +5,8 @@ import * as ja from 'blockly/msg/ja'
 import { Icon } from '@iconify/vue'
 import plusIcon from '@iconify-icons/lucide/plus'
 import trashIcon from '@iconify-icons/lucide/trash-2'
+import copyIcon from '@iconify-icons/lucide/copy'
+import clipboardPasteIcon from '@iconify-icons/lucide/clipboard-paste'
 import undoIcon from '@iconify-icons/lucide/undo-2'
 import redoIcon from '@iconify-icons/lucide/redo-2'
 import moveIcon from '@iconify-icons/lucide/move'
@@ -595,17 +597,41 @@ onBeforeUnmount(() => {
       @toggle="showJson = ($event.target as HTMLDetailsElement).open"
     >
       <summary>プログラムのJSON</summary>
-      <button type="button" :disabled="!executionJson" @click="copyJson">JSONをコピー</button>
-      <pre>{{ executionJson ?? 'エラーを直すと、プログラムのJSONを表示できます。' }}</pre>
-      <label for="blockly-json-input">JSONを読み込む</label>
-      <textarea
-        id="blockly-json-input"
-        v-model="jsonInput"
-        :disabled="running"
-        placeholder="Picolang v0のJSONを貼り付け"
-        data-1p-ignore
-      ></textarea>
-      <button type="button" :disabled="running" @click="importJson">読み込む</button>
+      <div class="blockly-json-content">
+        <div class="blockly-json-actions">
+          <button
+            type="button"
+            class="blockly-json-icon-button"
+            :disabled="!executionJson"
+            aria-label="JSONをコピー"
+            title="JSONをコピー"
+            @click="copyJson"
+          >
+            <Icon :icon="copyIcon" aria-hidden="true" />
+          </button>
+        </div>
+        <pre>{{ executionJson ?? 'エラーを直すと、プログラムのJSONを表示できます。' }}</pre>
+        <div class="blockly-json-input-heading">
+          <label for="blockly-json-input">JSONを読み込む</label>
+          <button
+            type="button"
+            class="blockly-json-icon-button"
+            :disabled="running"
+            aria-label="入力したJSONを読み込む"
+            title="入力したJSONを読み込む"
+            @click="importJson"
+          >
+            <Icon :icon="clipboardPasteIcon" aria-hidden="true" />
+          </button>
+        </div>
+        <textarea
+          id="blockly-json-input"
+          v-model="jsonInput"
+          :disabled="running"
+          placeholder="Picolang v0のJSONを貼り付け"
+          data-1p-ignore
+        ></textarea>
+      </div>
     </details>
     <p v-if="message && !running" class="blockly-message" :data-severity="messageSeverity" role="status">
       {{ message }}
