@@ -2,6 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import circlePlayIcon from '@iconify-icons/lucide/circle-play'
+import skipBackIcon from '@iconify-icons/lucide/skip-back'
+import playIcon from '@iconify-icons/lucide/play'
+import pauseIcon from '@iconify-icons/lucide/pause'
+import skipForwardIcon from '@iconify-icons/lucide/skip-forward'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { createArmPivots } from '../stage/armController.ts'
@@ -33,6 +37,7 @@ const video = ref<HTMLVideoElement | null>(null)
 const index = ref(0)
 const playing = ref(false)
 const transitioning = ref(false)
+const playbackSpeed = ref<1 | 2 | 4 | 8>(1)
 const mode = ref<'preview' | 'camera'>('preview')
 const error = ref('')
 const bubbles = ref<Array<{ id: string; text: string; x: number; y: number }>>([])
@@ -93,6 +98,11 @@ let cargoTransitions: Array<{
 }> = []
 let raf = 0
 let timer: ReturnType<typeof setTimeout> | null = null
+let transitionDuration = 0
+let transitionElapsed = 0
+let transitionStartedAt = 0
+let animationTime = 0
+let lastAnimationTime: number | null = null
 let observer: ResizeObserver | null = null
 let stream: MediaStream | null = null
 let alive = false
@@ -245,17 +255,20 @@ function renderFrame(): void {
 function animate(time: number): void {
   if (!alive || !renderer || !scene || !camera) return
   raf = requestAnimationFrame(animate)
+  animationTime +=
+    Math.max(0, time - (lastAnimationTime ?? time)) * (transitioning.value ? playbackSpeed.value : 1)
+  lastAnimationTime = time
   advanceWater(time)
-  for (const rig of rigs.values()) rig.animator.update(time)
+  for (const rig of rigs.values()) rig.animator.update(animationTime)
   for (const entry of cargoTransitions) {
-    entry.start ??= time
-    const progress = Math.min(1, (time - entry.start) / 900)
+    entry.start ??= animationTime
+    const progress = Math.min(1, (animationTime - entry.start) / 900)
     const eased = progress * progress * (3 - 2 * progress)
     entry.cargo.position.lerpVectors(entry.from, entry.to, eased)
   }
   for (const entry of effects) {
-    entry.start ??= time
-    entry.effect.update(Math.min(1, (time - entry.start) / 1000))
+    entry.start ??= animationTime
+    entry.effect.update(Math.min(1, (animationTime - entry.start) / 1000))
   }
   for (const target of animated) {
     target.object.rotation.y += target.kind === 'hover' ? 0.006 : 0.004
@@ -353,7 +366,23 @@ function stop(): void {
   transitioning.value = false
   if (timer) clearTimeout(timer)
   timer = null
+  transitionDuration = 0
+  transitionElapsed = 0
   renderFrame()
+}
+let transitionAuto = false
+function scheduleTransition(): void {
+  transitionStartedAt = performance.now()
+  timer = setTimeout(
+    () => {
+      timer = null
+      transitioning.value = false
+      index.value++
+      renderFrame()
+      if (transitionAuto && playing.value) step(true)
+    },
+    Math.max(0, (transitionDuration - transitionElapsed) / playbackSpeed.value),
+  )
 }
 function step(auto = false): void {
   if (index.value >= props.frames.length - 1) {
@@ -365,18 +394,25 @@ function step(auto = false): void {
   const next = props.frames[index.value + 1]
   for (const action of next.actions) animateAction(action)
   const wait = next.actions.find((action) => action.kind === 'wait')
-  const duration = wait
+  transitionDuration = wait
     ? Math.min(3000, Math.max(1000, (wait.ticks ?? 1) * 1000))
     : next.actions.length
       ? 1050
       : 350
-  timer = setTimeout(() => {
+  transitionElapsed = 0
+  transitionAuto = auto
+  scheduleTransition()
+}
+function changeSpeed(event: Event): void {
+  const next = Number((event.target as HTMLSelectElement).value)
+  if (next !== 1 && next !== 2 && next !== 4 && next !== 8) return
+  if (timer) {
+    transitionElapsed += (performance.now() - transitionStartedAt) * playbackSpeed.value
+    clearTimeout(timer)
     timer = null
-    transitioning.value = false
-    index.value++
-    renderFrame()
-    if (auto && playing.value) step(true)
-  }, duration)
+  }
+  playbackSpeed.value = next
+  if (transitioning.value) scheduleTransition()
 }
 function togglePlay(): void {
   if (playing.value) {
@@ -570,15 +606,34 @@ onBeforeUnmount(() => {
       @input="seek"
     />
     <div class="match-replay-controls">
-      <button type="button" :disabled="index === 0" @click="previous">前へ</button>
-      <button type="button" @click="togglePlay">{{ playing ? '一時停止' : '再生' }}</button>
-      <button
-        type="button"
-        :disabled="index >= frames.length - 1 || playing || transitioning"
-        @click="step()"
-      >
-        次へ
-      </button>
+      <div class="match-replay-transport" aria-label="再生操作">
+        <button type="button" :disabled="index === 0" aria-label="前へ" title="前へ" @click="previous">
+          <Icon :icon="skipBackIcon" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          :aria-label="playing ? '一時停止' : '再生'"
+          :title="playing ? '一時停止' : '再生'"
+          @click="togglePlay"
+        >
+          <Icon :icon="playing ? pauseIcon : playIcon" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          :disabled="index >= frames.length - 1 || playing || transitioning"
+          aria-label="次へ"
+          title="次へ"
+          @click="step()"
+        >
+          <Icon :icon="skipForwardIcon" aria-hidden="true" />
+        </button>
+      </div>
+      <select class="match-replay-speed" :value="playbackSpeed" aria-label="再生速度" @change="changeSpeed">
+        <option :value="1">x1</option>
+        <option :value="2">x2</option>
+        <option :value="4">x4</option>
+        <option :value="8">x8</option>
+      </select>
     </div>
   </section>
 </template>

@@ -486,9 +486,49 @@
   accent-color: var(--color-accent-deep);
 }
 .match-replay-controls {
+  position: relative;
   display: flex;
-  gap: var(--space-sm);
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
   margin-top: var(--space-md);
+}
+.match-replay-transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.match-main .match-replay-transport button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.match-replay-transport button:hover:not(:disabled) {
+  background: var(--color-paper-2);
+}
+.match-replay-transport button svg {
+  width: 22px;
+  height: 22px;
+}
+.match-replay-transport button:nth-child(2) svg {
+  width: 26px;
+  height: 26px;
+}
+.match-main .match-replay-speed {
+  position: absolute;
+  right: 0;
+  width: 70px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-deep);
+  font-size: var(--type-small);
+  font-weight: 700;
+  cursor: pointer;
 }
 @media (max-width: 700px) {
   .match-main {
