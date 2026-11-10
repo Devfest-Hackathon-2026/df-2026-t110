@@ -458,6 +458,41 @@ body,
 .lesson-entry:hover strong {
   color: var(--color-accent-deep);
 }
+.tutorial-catalog-list-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  max-width: 760px;
+  margin-bottom: var(--space-sm);
+  color: var(--color-ink-2);
+  font-size: var(--type-small);
+}
+.tutorial-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  max-width: 760px;
+  margin-top: 28px;
+  color: var(--color-ink-2);
+  font-size: var(--type-small);
+}
+.tutorial-pagination button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--color-accent-deep);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-accent-deep);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tutorial-pagination button:disabled {
+  border-color: var(--color-rule);
+  color: var(--color-muted);
+  cursor: default;
+}
 .page-note {
   margin-top: var(--space-lg);
 }
