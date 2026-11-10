@@ -1,6 +1,72 @@
 import * as Blockly from 'blockly'
 
 export class PersistentToolbox extends Blockly.Toolbox {
+  private touchActivation: {
+    item: Blockly.ISelectableToolboxItem
+    wasSelected: boolean
+    pointerId: number
+  } | null = null
+
+  protected override attachEvents_(container: HTMLDivElement, contents: HTMLDivElement): void {
+    super.attachEvents_(container, contents)
+    this.boundEvents_.push(
+      Blockly.browserEvents.bind(container, 'click', this, this.onTouchClick),
+      Blockly.browserEvents.bind(container, 'pointercancel', this, (event: PointerEvent) => {
+        if (this.touchActivation?.pointerId === event.pointerId) this.touchActivation = null
+      }),
+    )
+  }
+
+  protected override onClick_(event: PointerEvent): void {
+    this.touchActivation = null
+    if (event.pointerType === 'touch') {
+      const item = this.itemForEvent(event)
+      if (!event.isPrimary || item) {
+        if (event.isPrimary && item) {
+          this.touchActivation = {
+            item,
+            wasSelected: this.getSelectedItem() === item,
+            pointerId: event.pointerId,
+          }
+        }
+        // Defer category toggling until Safari has applied native touch focus.
+        Blockly.Touch.clearTouchIdentifier()
+        return
+      }
+    }
+    super.onClick_(event)
+  }
+
+  private itemForEvent(event: Event): Blockly.ISelectableToolboxItem | null {
+    let target = event.target
+    while (target instanceof Element && target !== this.HtmlDiv) {
+      const item = this.getToolboxItemById(target.id)
+      if (item?.isSelectable()) return item as Blockly.ISelectableToolboxItem
+      target = target.parentElement
+    }
+    return null
+  }
+
+  private onTouchClick(event: Event): void {
+    const activation = this.touchActivation
+    this.touchActivation = null
+    if (!activation || !this.isVisible_ || activation.item !== this.itemForEvent(event)) return
+
+    const { item, wasSelected } = activation
+    item.onClick(event)
+    // Keep focus on the category so delayed Safari focus cannot select it again.
+    Blockly.getFocusManager().focusNode(item)
+    if (wasSelected) this.clearSelection()
+    else if (this.getSelectedItem() !== item) this.setSelectedItem(item)
+    this.workspace_.hideChaff(!wasSelected)
+    event.preventDefault()
+  }
+
+  protected override onKeyDown_(event: KeyboardEvent): void {
+    this.touchActivation = null
+    super.onKeyDown_(event)
+  }
+
   protected override createFlyout_(): Blockly.IFlyout {
     const options = this.workspace_.copyOptionsForFlyout()
     options.toolboxPosition = this.workspace_.options.toolboxPosition
