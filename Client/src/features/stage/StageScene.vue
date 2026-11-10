@@ -794,11 +794,11 @@ body {
 .stage-scene .marker-overlay {
   position: absolute;
   z-index: 4;
-  top: max(8px, env(safe-area-inset-top));
+  bottom: max(76px, calc(env(safe-area-inset-bottom) + 76px));
   right: max(8px, env(safe-area-inset-right));
   display: flex;
   width: min(280px, calc(100% - 16px));
-  max-height: calc(100% - max(8px, env(safe-area-inset-top)) - 8px);
+  max-height: min(45%, 240px);
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
