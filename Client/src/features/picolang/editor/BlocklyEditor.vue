@@ -51,6 +51,7 @@ import {
   type PicoStatement,
 } from '../language/picolang.ts'
 import { typeLabel } from './picoGuidance.ts'
+import { PersistentToolbox } from './PersistentToolbox.ts'
 import './blocklyEditor.css'
 
 const props = defineProps<{
@@ -230,7 +231,7 @@ function lockWorkspace(): void {
     workspace.getToolbox()?.setVisible(!props.running)
     if (props.running) {
       Blockly.hideChaff()
-      workspace.getFlyout()?.hide()
+      workspace.getToolbox()?.clearSelection()
     }
   } finally {
     Blockly.Events.enable()
@@ -481,6 +482,7 @@ onMounted(() => {
   workspace = Blockly.inject(host.value, {
     toolbox: picoToolbox(functions.value),
     renderer: 'zelos',
+    plugins: { toolbox: PersistentToolbox },
     trashcan: true,
     sounds: false,
     move: { scrollbars: true, drag: true, wheel: true },

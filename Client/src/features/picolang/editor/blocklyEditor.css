@@ -207,7 +207,7 @@
 .blockly-canvas .blocklyFlyoutBackground {
   fill: #f8fbf9;
 }
-.blockly-canvas .blocklyToolboxFlyout[style*='display: none'] + .blocklyFlyoutScrollbar {
+.blockly-canvas .blocklyFlyoutScrollbar[display='none'] {
   display: none;
 }
 .blockly-canvas .blocklyZoom > image,
